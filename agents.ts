@@ -32,6 +32,7 @@ export interface AgentConfig {
 	defaultReads?: string[];
 	defaultProgress?: boolean;
 	interactive?: boolean;
+	maxSubagentDepth?: number;
 	extraFields?: Record<string, string>;
 }
 
@@ -134,6 +135,8 @@ function loadAgentsFromDir(dir: string, source: AgentSource): AgentConfig[] {
 			if (!KNOWN_FIELDS.has(key)) extraFields[key] = value;
 		}
 
+		const parsedMaxSubagentDepth = Number(frontmatter.maxSubagentDepth);
+
 		agents.push({
 			name: frontmatter.name,
 			description: frontmatter.description,
@@ -151,6 +154,10 @@ function loadAgentsFromDir(dir: string, source: AgentSource): AgentConfig[] {
 			defaultReads: defaultReads && defaultReads.length > 0 ? defaultReads : undefined,
 			defaultProgress: frontmatter.defaultProgress === "true",
 			interactive: frontmatter.interactive === "true",
+			maxSubagentDepth:
+				Number.isInteger(parsedMaxSubagentDepth) && parsedMaxSubagentDepth >= 0
+					? parsedMaxSubagentDepth
+					: undefined,
 			extraFields: Object.keys(extraFields).length > 0 ? extraFields : undefined,
 		});
 	}

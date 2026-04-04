@@ -127,7 +127,7 @@ export async function runSync(
 		}
 	}
 
-	const spawnEnv = { ...process.env, ...sharedEnv, ...getSubagentDepthEnv() };
+	const spawnEnv = { ...process.env, ...sharedEnv, ...getSubagentDepthEnv(options.maxSubagentDepth) };
 
 	let closeJsonlWriter: (() => Promise<void>) | undefined;
 	const exitCode = await new Promise<number>((resolve) => {

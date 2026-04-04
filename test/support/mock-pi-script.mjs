@@ -77,6 +77,9 @@ async function main() {
 		for (const entry of response.jsonl) {
 			writeJsonlLine(entry);
 		}
+	} else if (Array.isArray(response.echoEnv) && response.echoEnv.length > 0) {
+		const envSnapshot = Object.fromEntries(response.echoEnv.map((key) => [key, process.env[key] ?? null]));
+		writeJsonlLine(defaultAssistantMessage(JSON.stringify(envSnapshot)));
 	} else if (typeof response.output === "string") {
 		writeJsonlLine(defaultAssistantMessage(response.output));
 	}

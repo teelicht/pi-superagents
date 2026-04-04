@@ -232,6 +232,22 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.equal(fs.readFileSync(outputPath, "utf-8"), "fresh assistant output");
 	});
 
+	it("passes maxSubagentDepth through to child execution env", async () => {
+		mockPi.onCall({ echoEnv: ["PI_SUBAGENT_DEPTH", "PI_SUBAGENT_MAX_DEPTH"] });
+		const agents = makeAgentConfigs(["echo"]);
+
+		const result = await runSync(tempDir, agents, "echo", "Task", {
+			runId: "depth-env",
+			maxSubagentDepth: 1,
+		});
+
+		assert.equal(result.exitCode, 0);
+		assert.deepEqual(JSON.parse(result.finalOutput ?? "{}"), {
+			PI_SUBAGENT_DEPTH: "1",
+			PI_SUBAGENT_MAX_DEPTH: "1",
+		});
+	});
+
 	it("handles abort signal (completes faster than delay)", async () => {
 		mockPi.onCall({ delay: 10000 }); // Long delay — process should be killed before this
 		const agents = makeAgentConfigs(["slow"]);

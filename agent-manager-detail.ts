@@ -58,6 +58,7 @@ function buildDetailLines(
 	const output = agent.output ?? "(none)";
 	const reads = agent.defaultReads && agent.defaultReads.length > 0 ? agent.defaultReads.join(", ") : "(none)";
 	const progress = agent.defaultProgress ? "on" : "off";
+	const maxSubagentDepth = agent.maxSubagentDepth !== undefined ? String(agent.maxSubagentDepth) : "(default)";
 
 	lines.push(renderFieldLine("Model:", agent.model ?? "default", contentWidth, theme));
 	lines.push(renderFieldLine("Thinking:", agent.thinking ?? "off", contentWidth, theme));
@@ -71,6 +72,7 @@ function buildDetailLines(
 	lines.push(renderFieldLine("Output:", output, contentWidth, theme));
 	lines.push(renderFieldLine("Reads:", reads, contentWidth, theme));
 	lines.push(renderFieldLine("Progress:", progress, contentWidth, theme));
+	lines.push(renderFieldLine("Max depth:", maxSubagentDepth, contentWidth, theme));
 
 	if (agent.extraFields) {
 		for (const [key, value] of Object.entries(agent.extraFields)) {

@@ -22,6 +22,7 @@ import {
 	type MaxOutputConfig,
 	ASYNC_DIR,
 	RESULTS_DIR,
+	resolveChildMaxSubagentDepth,
 } from "./types.ts";
 
 const require = createRequire(import.meta.url);
@@ -65,6 +66,7 @@ export interface AsyncChainParams {
 	sessionRoot?: string;
 	chainSkills?: string[];
 	sessionFilesByFlatIndex?: (string | undefined)[];
+	maxSubagentDepth: number;
 }
 
 export interface AsyncSingleParams {
@@ -81,6 +83,7 @@ export interface AsyncSingleParams {
 	sessionFile?: string;
 	skills?: string[];
 	output?: string | false;
+	maxSubagentDepth: number;
 }
 
 export interface AsyncExecutionResult {
@@ -134,6 +137,7 @@ export function executeAsyncChain(
 		shareEnabled,
 		sessionRoot,
 		sessionFilesByFlatIndex,
+		maxSubagentDepth,
 	} = params;
 	const chainSkills = params.chainSkills ?? [];
 
@@ -197,6 +201,7 @@ export function executeAsyncChain(
 			skills: resolvedSkills.map((r) => r.name),
 			outputPath,
 			sessionFile,
+			maxSubagentDepth: resolveChildMaxSubagentDepth(maxSubagentDepth, a.maxSubagentDepth),
 		};
 	};
 
@@ -301,6 +306,7 @@ export function executeAsyncSingle(
 		shareEnabled,
 		sessionRoot,
 		sessionFile,
+		maxSubagentDepth,
 	} = params;
 	const skillNames = params.skills ?? agentConfig.skills ?? [];
 	const { resolved: resolvedSkills } = resolveSkills(skillNames, ctx.cwd);
@@ -341,6 +347,7 @@ export function executeAsyncSingle(
 					skills: resolvedSkills.map((r) => r.name),
 					outputPath,
 					sessionFile,
+					maxSubagentDepth: resolveChildMaxSubagentDepth(maxSubagentDepth, agentConfig.maxSubagentDepth),
 				},
 			],
 			resultPath: path.join(RESULTS_DIR, `${id}.json`),

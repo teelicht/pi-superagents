@@ -72,6 +72,7 @@ interface AgentConfig {
 	reads?: string[] | false;
 	progress?: boolean;
 	mcpDirectTools?: string[];
+	maxSubagentDepth?: number;
 }
 
 /**

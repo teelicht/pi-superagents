@@ -9,7 +9,7 @@
  * Toggle: async parameter (default: false, configurable via config.json)
  *
  * Config file: ~/.pi/agent/extensions/subagent/config.json
- *   { "asyncByDefault": true }
+ *   { "asyncByDefault": true, "maxSubagentDepth": 1 }
  */
 
 import * as fs from "node:fs";

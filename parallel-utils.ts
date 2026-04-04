@@ -17,6 +17,7 @@ export interface RunnerSubagentStep {
 	skills?: string[];
 	outputPath?: string;
 	sessionFile?: string;
+	maxSubagentDepth?: number;
 }
 
 /** Parallel step group — multiple agents running concurrently */

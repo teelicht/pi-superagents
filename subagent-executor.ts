@@ -46,6 +46,8 @@ import {
 	MAX_CONCURRENCY,
 	MAX_PARALLEL,
 	checkSubagentDepth,
+	resolveChildMaxSubagentDepth,
+	resolveCurrentMaxSubagentDepth,
 	wrapForkTask,
 } from "./types.js";
 
@@ -362,6 +364,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 	}
 	const id = randomUUID();
 	const asyncCtx = { pi: deps.pi, cwd: ctx.cwd, currentSessionId: deps.state.currentSessionId! };
+	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(deps.config.maxSubagentDepth);
 
 	if (hasChain && params.chain) {
 		const normalized = normalizeSkillInput(params.skill);
@@ -379,6 +382,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			sessionRoot,
 			chainSkills,
 			sessionFilesByFlatIndex: collectChainSessionFiles(chain, sessionFileForIndex),
+			maxSubagentDepth: currentMaxSubagentDepth,
 		});
 	}
 
@@ -395,6 +399,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 		const effectiveOutput: string | false | undefined = rawOutput === true ? a.output : (rawOutput as string | false | undefined);
 		const normalizedSkills = normalizeSkillInput(params.skill);
 		const skills = normalizedSkills === false ? [] : normalizedSkills;
+		const maxSubagentDepth = resolveChildMaxSubagentDepth(currentMaxSubagentDepth, a.maxSubagentDepth);
 		return executeAsyncSingle(id, {
 			agent: params.agent!,
 			task: params.context === "fork" ? wrapForkTask(params.task!) : params.task!,
@@ -409,6 +414,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			sessionFile: sessionFileForIndex(0),
 			skills,
 			output: effectiveOutput,
+			maxSubagentDepth,
 		});
 	}
 
@@ -433,6 +439,7 @@ async function runChainPath(data: ExecutionContextData, deps: ExecutorDeps): Pro
 	const normalized = normalizeSkillInput(params.skill);
 	const chainSkills = normalized === false ? [] : (normalized ?? []);
 	const chain = wrapChainTasksForFork(params.chain as ChainStep[], params.context);
+	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(deps.config.maxSubagentDepth);
 	const chainResult = await executeChain({
 		chain,
 		task: params.task,
@@ -451,6 +458,7 @@ async function runChainPath(data: ExecutionContextData, deps: ExecutorDeps): Pro
 		onUpdate,
 		chainSkills,
 		chainDir: params.chainDir,
+		maxSubagentDepth: currentMaxSubagentDepth,
 	});
 
 	if (chainResult.requestedAsync) {
@@ -476,6 +484,7 @@ async function runChainPath(data: ExecutionContextData, deps: ExecutorDeps): Pro
 			sessionRoot,
 			chainSkills: chainResult.requestedAsync.chainSkills,
 			sessionFilesByFlatIndex: collectChainSessionFiles(asyncChain, sessionFileForIndex),
+			maxSubagentDepth: currentMaxSubagentDepth,
 		});
 	}
 
@@ -496,6 +505,7 @@ interface ForegroundParallelRunInput {
 	artifactsDir: string;
 	maxOutput?: MaxOutputConfig;
 	paramsCwd?: string;
+	maxSubagentDepths: number[];
 	modelOverrides: (string | undefined)[];
 	skillOverrides: (string[] | false | undefined)[];
 	behaviors: Array<ReturnType<typeof resolveStepBehavior>>;
@@ -587,6 +597,7 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 			artifactsDir: input.artifactConfig.enabled ? input.artifactsDir : undefined,
 			artifactConfig: input.artifactConfig,
 			maxOutput: input.maxOutput,
+			maxSubagentDepth: input.maxSubagentDepths[index],
 			modelOverride: input.modelOverrides[index],
 			skills: effectiveSkills === false ? [] : effectiveSkills,
 			onUpdate: input.onUpdate
@@ -651,6 +662,11 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		}
 		agentConfigs.push(config);
 	}
+
+	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(deps.config.maxSubagentDepth);
+	const maxSubagentDepths = agentConfigs.map((config) =>
+		resolveChildMaxSubagentDepth(currentMaxSubagentDepth, config.maxSubagentDepth),
+	);
 
 	const effectiveCwd = params.cwd ?? ctx.cwd;
 	if (params.worktree) {
@@ -733,6 +749,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 				sessionRoot,
 				chainSkills: [],
 				sessionFilesByFlatIndex: tasks.map((_, index) => sessionFileForIndex(index)),
+				maxSubagentDepth: currentMaxSubagentDepth,
 			});
 		}
 	}
@@ -772,6 +789,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 			modelOverrides,
 			skillOverrides,
 			behaviors,
+			maxSubagentDepths,
 			liveResults,
 			liveProgress,
 			onUpdate,
@@ -850,6 +868,8 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	let skillOverride: string[] | false | undefined = normalizeSkillInput(params.skill);
 	const rawOutput = params.output !== undefined ? params.output : agentConfig.output;
 	let effectiveOutput: string | false | undefined = rawOutput === true ? agentConfig.output : (rawOutput as string | false | undefined);
+	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(deps.config.maxSubagentDepth);
+	const maxSubagentDepth = resolveChildMaxSubagentDepth(currentMaxSubagentDepth, agentConfig.maxSubagentDepth);
 
 	if (params.clarify === true && ctx.hasUI) {
 		const availableModels: ModelInfo[] = ctx.modelRegistry.getAvailable().map((m) => ({
@@ -912,6 +932,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 				sessionFile: sessionFileForIndex(0),
 				skills: skillOverride === false ? [] : skillOverride,
 				output: effectiveOutput,
+				maxSubagentDepth,
 			});
 		}
 	}
@@ -941,6 +962,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		artifactConfig,
 		maxOutput: params.maxOutput,
 		outputPath,
+		maxSubagentDepth,
 		onUpdate,
 		modelOverride,
 		skills: effectiveSkills,
@@ -1013,7 +1035,7 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			return handleManagementAction(params.action, params, ctx);
 		}
 
-		const { blocked, depth, maxDepth } = checkSubagentDepth();
+		const { blocked, depth, maxDepth } = checkSubagentDepth(deps.config.maxSubagentDepth);
 		if (blocked) {
 			return {
 				content: [

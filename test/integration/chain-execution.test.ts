@@ -224,6 +224,25 @@ describe("chain execution — sequential", { skip: !available ? "pi packages not
 		assert.ok(!result.isError);
 		assert.ok(fs.existsSync(customChainDir), "custom chainDir should exist");
 	});
+
+	it("tightens child recursion depth per agent without relaxing the inherited chain max", async () => {
+		mockPi.onCall({ echoEnv: ["PI_SUBAGENT_DEPTH", "PI_SUBAGENT_MAX_DEPTH"] });
+		const agents = [makeAgent("worker", { maxSubagentDepth: 1 })];
+
+		const result = await executeChain(
+			makeChainParams(
+				[{ agent: "worker", task: "Inspect env" }],
+				agents,
+				{ maxSubagentDepth: 3 },
+			),
+		);
+
+		assert.ok(!result.isError);
+		assert.deepEqual(JSON.parse(result.details.results[0].finalOutput ?? "{}"), {
+			PI_SUBAGENT_DEPTH: "1",
+			PI_SUBAGENT_MAX_DEPTH: "1",
+		});
+	});
 });
 
 describe("chain execution — parallel steps", { skip: !available ? "pi packages not available" : undefined }, () => {

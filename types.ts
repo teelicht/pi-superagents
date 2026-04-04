@@ -234,6 +234,7 @@ export interface RunSyncOptions {
 	sessionFile?: string;
 	share?: boolean;
 	outputPath?: string;
+	maxSubagentDepth?: number;
 	/** Override the agent's default model (format: "provider/id" or just "id") */
 	modelOverride?: string;
 	/** Skills to inject (overrides agent default if provided) */
@@ -243,6 +244,7 @@ export interface RunSyncOptions {
 export interface ExtensionConfig {
 	asyncByDefault?: boolean;
 	defaultSessionDir?: string;
+	maxSubagentDepth?: number;
 }
 
 // ============================================================================
@@ -295,19 +297,37 @@ export function wrapForkTask(task: string, preamble?: string | false): string {
 // Recursion Depth Guard
 // ============================================================================
 
-export function checkSubagentDepth(): { blocked: boolean; depth: number; maxDepth: number } {
+export function normalizeMaxSubagentDepth(value: unknown): number | undefined {
+	const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+	if (!Number.isInteger(parsed) || parsed < 0) return undefined;
+	return parsed;
+}
+
+export function resolveCurrentMaxSubagentDepth(configMaxDepth?: number): number {
+	return normalizeMaxSubagentDepth(process.env.PI_SUBAGENT_MAX_DEPTH)
+		?? normalizeMaxSubagentDepth(configMaxDepth)
+		?? DEFAULT_SUBAGENT_MAX_DEPTH;
+}
+
+export function resolveChildMaxSubagentDepth(parentMaxDepth: number, agentMaxDepth?: number): number {
+	const normalizedParent = normalizeMaxSubagentDepth(parentMaxDepth) ?? DEFAULT_SUBAGENT_MAX_DEPTH;
+	const normalizedAgent = normalizeMaxSubagentDepth(agentMaxDepth);
+	return normalizedAgent === undefined ? normalizedParent : Math.min(normalizedParent, normalizedAgent);
+}
+
+export function checkSubagentDepth(configMaxDepth?: number): { blocked: boolean; depth: number; maxDepth: number } {
 	const depth = Number(process.env.PI_SUBAGENT_DEPTH ?? "0");
-	const maxDepth = Number(process.env.PI_SUBAGENT_MAX_DEPTH ?? String(DEFAULT_SUBAGENT_MAX_DEPTH));
-	const blocked = Number.isFinite(depth) && Number.isFinite(maxDepth) && depth >= maxDepth;
+	const maxDepth = resolveCurrentMaxSubagentDepth(configMaxDepth);
+	const blocked = Number.isFinite(depth) && depth >= maxDepth;
 	return { blocked, depth, maxDepth };
 }
 
-export function getSubagentDepthEnv(): Record<string, string> {
+export function getSubagentDepthEnv(maxDepth?: number): Record<string, string> {
 	const parentDepth = Number(process.env.PI_SUBAGENT_DEPTH ?? "0");
 	const nextDepth = Number.isFinite(parentDepth) ? parentDepth + 1 : 1;
 	return {
 		PI_SUBAGENT_DEPTH: String(nextDepth),
-		PI_SUBAGENT_MAX_DEPTH: process.env.PI_SUBAGENT_MAX_DEPTH ?? String(DEFAULT_SUBAGENT_MAX_DEPTH),
+		PI_SUBAGENT_MAX_DEPTH: String(normalizeMaxSubagentDepth(maxDepth) ?? resolveCurrentMaxSubagentDepth()),
 	};
 }
 

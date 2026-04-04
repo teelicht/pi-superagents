@@ -69,6 +69,7 @@ output: context.md           # writes to {chain_dir}/context.md
 defaultReads: context.md     # comma-separated files to read
 defaultProgress: true        # maintain progress.md
 interactive: true            # (parsed but not enforced in v1)
+maxSubagentDepth: 1          # tighten nested delegation for this agent's children
 ---
 
 Your system prompt goes here (the markdown body after frontmatter).
@@ -303,7 +304,7 @@ Chains can be created from the Agents Manager template picker ("Blank Chain"), o
 - **Parallel-in-Chain**: Fan-out/fan-in patterns with `{ parallel: [...] }` steps within chains
 - **Worktree Isolation**: `worktree: true` gives each parallel agent its own git worktree, preventing filesystem conflicts during concurrent execution
 - **Chain Clarification TUI**: Interactive preview/edit of chain templates and behaviors before execution
-- **Agent Frontmatter Extensions**: Agents declare default chain behavior (`output`, `defaultReads`, `defaultProgress`, `skill`)
+- **Agent Frontmatter Extensions**: Agents declare default chain behavior (`output`, `defaultReads`, `defaultProgress`, `skill`) plus optional recursion limits via `maxSubagentDepth`
 - **Chain Artifacts**: Shared directory at `<tmpdir>/pi-chain-runs/{runId}/` for inter-step files
 - **Solo Agent Output**: Agents with `output` write to temp dir and return path to caller
 - **Live Progress Display**: Real-time visibility during sync execution showing current tool, recent output, tokens, and duration
@@ -589,7 +590,7 @@ Agent definitions are not loaded into LLM context by default. Management actions
 Notes:
 - `create` uses `config.scope` (`"user"` or `"project"`), not `agentScope`.
 - `update`/`delete` use `agentScope` only for scope disambiguation when the same name exists in both scopes.
-- Agent config mapping: `reads -> defaultReads`, `progress -> defaultProgress`, `extensions` controls extension sandboxing, and `tools` supports `mcp:` entries that map to direct MCP tools.
+- Agent config mapping: `reads -> defaultReads`, `progress -> defaultProgress`, `extensions` controls extension sandboxing, `maxSubagentDepth` maps directly to agent frontmatter, and `tools` supports `mcp:` entries that map to direct MCP tools.
 - To clear any optional field, set it to `false` or `""` (e.g., `{ model: false }` or `{ skills: "" }`). Both work for all string-typed fields.
 
 ## Parameters
@@ -749,6 +750,18 @@ Session root resolution follows this precedence:
 
 Sessions are always enabled — every subagent run gets a session directory for tracking.
 
+### `maxSubagentDepth`
+
+`maxSubagentDepth` sets the default recursion limit for nested delegation when no inherited `PI_SUBAGENT_MAX_DEPTH` is already in effect. Eg:
+
+```json
+{
+  "maxSubagentDepth": 1
+}
+```
+
+Per-agent `maxSubagentDepth` can tighten that limit further for child runs, but it does not relax an already inherited stricter limit.
+
 ## Chain Directory
 Each chain run creates `<tmpdir>/pi-chain-runs/{runId}/` containing:
 - `context.md` - Scout/context-builder output
@@ -820,6 +833,14 @@ Press **Ctrl+O** to expand the full streaming view with complete output per step
 Subagents can themselves call the `subagent` tool, which risks unbounded recursive spawning (slow, expensive, hard to observe). A depth guard prevents this.
 
 By default nesting is limited to **2 levels**: `main session → subagent → sub-subagent`. Any deeper `subagent` calls are blocked and return an error with guidance to the calling agent.
+
+You can configure the limit in three places:
+
+1. `PI_SUBAGENT_MAX_DEPTH` in the environment before starting `pi`
+2. `config.maxSubagentDepth` in `~/.pi/agent/extensions/subagent/config.json`
+3. `maxSubagentDepth` in an agent's frontmatter to tighten the limit for that agent's child runs
+
+Environment inherits downward and wins for the current process. Per-agent limits can tighten child delegation but do not relax an already inherited stricter limit.
 
 Override the limit with `PI_SUBAGENT_MAX_DEPTH` **set before starting `pi`**:
 

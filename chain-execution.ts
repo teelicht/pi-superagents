@@ -46,6 +46,7 @@ import {
 	type Details,
 	type SingleResult,
 	MAX_CONCURRENCY,
+	resolveChildMaxSubagentDepth,
 } from "./types.ts";
 
 /** Resolve a model name to its full provider/model format */
@@ -102,6 +103,7 @@ interface ParallelChainRunInput {
 	chainAgents: string[];
 	totalSteps: number;
 	worktreeSetup?: WorktreeSetup;
+	maxSubagentDepth: number;
 }
 
 function buildChainExecutionDetails(input: ChainExecutionDetailsInput): Details {
@@ -191,6 +193,7 @@ async function runParallelChainTasks(input: ParallelChainRunInput): Promise<Sing
 			const effectiveModel =
 				(task.model ? resolveModelFullId(task.model, input.availableModels) : null)
 				?? resolveModelFullId(taskAgentConfig?.model, input.availableModels);
+			const maxSubagentDepth = resolveChildMaxSubagentDepth(input.maxSubagentDepth, taskAgentConfig?.maxSubagentDepth);
 
 			const taskCwd = input.worktreeSetup
 				? input.worktreeSetup.worktrees[taskIndex]!.agentCwd
@@ -211,6 +214,7 @@ async function runParallelChainTasks(input: ParallelChainRunInput): Promise<Sing
 				artifactsDir: input.artifactConfig.enabled ? input.artifactsDir : undefined,
 				artifactConfig: input.artifactConfig,
 				outputPath,
+				maxSubagentDepth,
 				modelOverride: effectiveModel,
 				skills: behavior.skills === false ? [] : behavior.skills,
 				onUpdate: input.onUpdate
@@ -261,6 +265,7 @@ export interface ChainExecutionParams {
 	onUpdate?: (r: AgentToolResult<Details>) => void;
 	chainSkills?: string[];
 	chainDir?: string;
+	maxSubagentDepth: number;
 }
 
 export interface ChainExecutionResult {
@@ -511,6 +516,7 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 					chainAgents,
 					totalSteps,
 					worktreeSetup,
+					maxSubagentDepth: params.maxSubagentDepth,
 				});
 				globalTaskIndex += step.parallel.length;
 
@@ -637,6 +643,7 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 			const outputPath = typeof behavior.output === "string"
 				? (path.isAbsolute(behavior.output) ? behavior.output : path.join(chainDir, behavior.output))
 				: undefined;
+			const maxSubagentDepth = resolveChildMaxSubagentDepth(params.maxSubagentDepth, agentConfig.maxSubagentDepth);
 
 			const r = await runSync(ctx.cwd, agents, seqStep.agent, stepTask, {
 				cwd: seqStep.cwd ?? cwd,
@@ -649,6 +656,7 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 				artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
 				artifactConfig,
 				outputPath,
+				maxSubagentDepth,
 				modelOverride: effectiveModel,
 				skills: behavior.skills === false ? [] : behavior.skills,
 				onUpdate: onUpdate
