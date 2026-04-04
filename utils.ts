@@ -6,7 +6,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import type { Message } from "@mariozechner/pi-ai";
-import type { AsyncStatus, DisplayItem, ErrorInfo } from "./types.ts";
+import type { AsyncStatus, DisplayItem, ErrorInfo, SingleResult } from "./types.ts";
 
 // ============================================================================
 // File System Utilities
@@ -198,6 +198,10 @@ export function getFinalOutput(messages: Message[]): string {
 		}
 	}
 	return "";
+}
+
+export function getSingleResultOutput(result: Pick<SingleResult, "finalOutput" | "messages">): string {
+	return result.finalOutput ?? getFinalOutput(result.messages);
 }
 
 /**

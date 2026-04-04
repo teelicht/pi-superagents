@@ -31,6 +31,7 @@ import { buildSkillInjection, resolveSkills } from "./skills.ts";
 import { getPiSpawnCommand } from "./pi-spawn.ts";
 import { createJsonlWriter } from "./jsonl-writer.ts";
 import { applyThinkingSuffix, buildPiArgs, cleanupTempDir } from "./pi-args.ts";
+import { captureSingleOutputSnapshot, resolveSingleOutput } from "./single-output.ts";
 
 /**
  * Run a subagent synchronously (blocking until complete)
@@ -59,6 +60,7 @@ export async function runSync(
 	const sessionEnabled = Boolean(options.sessionFile || options.sessionDir) || shareEnabled;
 	const effectiveModel = modelOverride ?? agent.model;
 	const modelArg = applyThinkingSuffix(effectiveModel, agent.thinking);
+	const outputSnapshot = captureSingleOutputSnapshot(options.outputPath);
 
 	const skillNames = options.skills ?? agent.skills ?? [];
 	const { resolved: resolvedSkills, missing: missingSkills } = resolveSkills(skillNames, runtimeCwd);
@@ -299,9 +301,17 @@ export async function runSync(
 		durationMs: progress.durationMs,
 	};
 
+	let fullOutput = getFinalOutput(result.messages);
+	if (options.outputPath && result.exitCode === 0) {
+		const resolvedOutput = resolveSingleOutput(options.outputPath, fullOutput, outputSnapshot);
+		fullOutput = resolvedOutput.fullOutput;
+		result.savedOutputPath = resolvedOutput.savedPath;
+		result.outputSaveError = resolvedOutput.saveError;
+	}
+	result.finalOutput = fullOutput;
+
 	if (artifactPathsResult && artifactConfig?.enabled !== false) {
 		result.artifactPaths = artifactPathsResult;
-		const fullOutput = getFinalOutput(result.messages);
 
 		if (artifactConfig?.includeOutput !== false) {
 			writeArtifact(artifactPathsResult.outputPath, fullOutput);
@@ -332,7 +342,6 @@ export async function runSync(
 		}
 	} else if (maxOutput) {
 		const config = { ...DEFAULT_MAX_OUTPUT, ...maxOutput };
-		const fullOutput = getFinalOutput(result.messages);
 		const truncationResult = truncateOutput(fullOutput, config);
 		if (truncationResult.truncated) {
 			result.truncation = truncationResult;

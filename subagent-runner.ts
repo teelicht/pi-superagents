@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { pathToFileURL } from "node:url";
 import { appendJsonl, getArtifactPaths } from "./artifacts.ts";
 import { getPiSpawnCommand } from "./pi-spawn.ts";
-import { persistSingleOutput } from "./single-output.ts";
+import { captureSingleOutputSnapshot, resolveSingleOutput } from "./single-output.ts";
 import {
 	type ArtifactConfig,
 	type ArtifactPaths,
@@ -307,6 +307,7 @@ async function runSingleStep(
 	const task = step.task.replace(placeholderRegex, () => ctx.previousOutput);
 	const sessionEnabled = Boolean(step.sessionFile) || ctx.sessionEnabled;
 	const sessionDir = step.sessionFile ? undefined : ctx.sessionDir;
+	const outputSnapshot = captureSingleOutputSnapshot(step.outputPath);
 	const { args, env, tempDir } = buildPiArgs({
 		baseArgs: ["-p"],
 		task,
@@ -335,19 +336,20 @@ async function runSingleStep(
 	const result = await runPiStreaming(args, step.cwd ?? ctx.cwd, ctx.outputFile, env, ctx.piPackageRoot);
 	cleanupTempDir(tempDir);
 
-	const output = (result.stdout || "").trim();
+	const rawOutput = (result.stdout || "").trim();
+	const resolvedOutput = step.outputPath && result.exitCode === 0
+		? resolveSingleOutput(step.outputPath, rawOutput, outputSnapshot)
+		: { fullOutput: rawOutput };
+	const output = resolvedOutput.fullOutput;
 	let outputForSummary = output;
-	if (step.outputPath && result.exitCode === 0) {
-		const persisted = persistSingleOutput(step.outputPath, output);
-		if (persisted.savedPath) {
-			outputForSummary = output
-				? `${output}\n\n📄 Output saved to: ${persisted.savedPath}`
-				: `📄 Output saved to: ${persisted.savedPath}`;
-		} else if (persisted.error) {
-			outputForSummary = output
-				? `${output}\n\n⚠️ Failed to save output to: ${step.outputPath}\n${persisted.error}`
-				: `⚠️ Failed to save output to: ${step.outputPath}\n${persisted.error}`;
-		}
+	if (resolvedOutput.savedPath) {
+		outputForSummary = output
+			? `${output}\n\n📄 Output saved to: ${resolvedOutput.savedPath}`
+			: `📄 Output saved to: ${resolvedOutput.savedPath}`;
+	} else if (resolvedOutput.saveError && step.outputPath && result.exitCode === 0) {
+		outputForSummary = output
+			? `${output}\n\n⚠️ Failed to save output to: ${step.outputPath}\n${resolvedOutput.saveError}`
+			: `⚠️ Failed to save output to: ${step.outputPath}\n${resolvedOutput.saveError}`;
 	}
 
 	if (artifactPaths && ctx.artifactConfig?.enabled !== false) {

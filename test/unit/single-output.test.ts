@@ -3,7 +3,13 @@ import { afterEach, describe, it } from "node:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { finalizeSingleOutput, injectSingleOutputInstruction, resolveSingleOutputPath } from "../../single-output.ts";
+import {
+	captureSingleOutputSnapshot,
+	finalizeSingleOutput,
+	injectSingleOutputInstruction,
+	resolveSingleOutput,
+	resolveSingleOutputPath,
+} from "../../single-output.ts";
 
 const tempDirs: string[] = [];
 
@@ -45,39 +51,59 @@ describe("injectSingleOutputInstruction", () => {
 	});
 });
 
-describe("finalizeSingleOutput", () => {
-	it("persists full output while displaying truncated output", () => {
+describe("resolveSingleOutput", () => {
+	it("keeps agent-written file content when the file changed during the run", () => {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-output-test-"));
 		tempDirs.push(dir);
 		const outputPath = path.join(dir, "review.md");
-		const fullOutput = "line 1\nline 2\nline 3";
-		const truncatedOutput = "[TRUNCATED]\nline 1";
+		const before = captureSingleOutputSnapshot(outputPath);
 
+		fs.writeFileSync(outputPath, "real file content", "utf-8");
+
+		const result = resolveSingleOutput(outputPath, "receipt text", before);
+		assert.equal(result.fullOutput, "real file content");
+		assert.equal(result.savedPath, outputPath);
+		assert.equal(fs.readFileSync(outputPath, "utf-8"), "real file content");
+	});
+
+	it("falls back to persisting the assistant output when the file was not changed", () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-output-test-"));
+		tempDirs.push(dir);
+		const outputPath = path.join(dir, "review.md");
+
+		fs.writeFileSync(outputPath, "stale content", "utf-8");
+		const before = captureSingleOutputSnapshot(outputPath);
+		const result = resolveSingleOutput(outputPath, "fresh assistant output", before);
+
+		assert.equal(result.fullOutput, "fresh assistant output");
+		assert.equal(result.savedPath, outputPath);
+		assert.equal(fs.readFileSync(outputPath, "utf-8"), "fresh assistant output");
+	});
+});
+
+describe("finalizeSingleOutput", () => {
+	it("formats saved-path messaging around the already-resolved output", () => {
 		const result = finalizeSingleOutput({
-			fullOutput,
-			truncatedOutput,
-			outputPath,
+			fullOutput: "line 1\nline 2\nline 3",
+			truncatedOutput: "[TRUNCATED]\nline 1",
+			outputPath: "/tmp/review.md",
+			savedPath: "/tmp/review.md",
 			exitCode: 0,
 		});
 
 		assert.match(result.displayOutput, /^\[TRUNCATED\]\nline 1/);
 		assert.match(result.displayOutput, /📄 Output saved to:/);
-		assert.equal(fs.readFileSync(outputPath, "utf-8"), fullOutput);
 	});
 
-	it("does not write output file on failed runs", () => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-output-test-"));
-		tempDirs.push(dir);
-		const outputPath = path.join(dir, "review.md");
-
+	it("does not add save messaging on failed runs", () => {
 		const result = finalizeSingleOutput({
 			fullOutput: "full output",
 			truncatedOutput: "truncated output",
-			outputPath,
+			outputPath: "/tmp/review.md",
+			savedPath: "/tmp/review.md",
 			exitCode: 1,
 		});
 
 		assert.equal(result.displayOutput, "truncated output");
-		assert.equal(fs.existsSync(outputPath), false);
 	});
 });

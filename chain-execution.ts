@@ -28,7 +28,7 @@ import {
 import { discoverAvailableSkills, normalizeSkillInput } from "./skills.ts";
 import { runSync } from "./execution.ts";
 import { buildChainSummary } from "./formatters.ts";
-import { getFinalOutput, mapConcurrent } from "./utils.ts";
+import { getSingleResultOutput, mapConcurrent } from "./utils.ts";
 import { recordRun } from "./run-history.ts";
 import {
 	cleanupWorktrees,
@@ -196,6 +196,10 @@ async function runParallelChainTasks(input: ParallelChainRunInput): Promise<Sing
 				? input.worktreeSetup.worktrees[taskIndex]!.agentCwd
 				: (task.cwd ?? input.cwd);
 
+			const outputPath = typeof behavior.output === "string"
+				? (path.isAbsolute(behavior.output) ? behavior.output : path.join(input.chainDir, behavior.output))
+				: undefined;
+
 			const result = await runSync(input.ctx.cwd, input.agents, task.agent, taskStr, {
 				cwd: taskCwd,
 				signal: input.signal,
@@ -206,6 +210,7 @@ async function runParallelChainTasks(input: ParallelChainRunInput): Promise<Sing
 				share: input.shareEnabled,
 				artifactsDir: input.artifactConfig.enabled ? input.artifactsDir : undefined,
 				artifactConfig: input.artifactConfig,
+				outputPath,
 				modelOverride: effectiveModel,
 				skills: behavior.skills === false ? [] : behavior.skills,
 				onUpdate: input.onUpdate
@@ -551,7 +556,7 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 					return {
 						agent: result.agent,
 						taskIndex: i,
-						output: getFinalOutput(result.messages),
+						output: getSingleResultOutput(result),
 						exitCode: result.exitCode,
 						error: result.error,
 						outputTargetPath,
@@ -629,6 +634,10 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 				?? resolveModelFullId(agentConfig.model, availableModels);
 
 			// Run step
+			const outputPath = typeof behavior.output === "string"
+				? (path.isAbsolute(behavior.output) ? behavior.output : path.join(chainDir, behavior.output))
+				: undefined;
+
 			const r = await runSync(ctx.cwd, agents, seqStep.agent, stepTask, {
 				cwd: seqStep.cwd ?? cwd,
 				signal,
@@ -639,6 +648,7 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 				share: shareEnabled,
 				artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
 				artifactConfig,
+				outputPath,
 				modelOverride: effectiveModel,
 				skills: behavior.skills === false ? [] : behavior.skills,
 				onUpdate: onUpdate
@@ -709,7 +719,7 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 				};
 			}
 
-			prev = getFinalOutput(r.messages);
+			prev = getSingleResultOutput(r);
 		}
 	}
 

@@ -23,7 +23,7 @@ import { discoverAvailableSkills, normalizeSkillInput } from "./skills.js";
 import { executeAsyncChain, executeAsyncSingle, isAsyncAvailable } from "./async-execution.js";
 import { createForkContextResolver } from "./fork-context.js";
 import { finalizeSingleOutput, injectSingleOutputInstruction, resolveSingleOutputPath } from "./single-output.js";
-import { getFinalOutput, mapConcurrent } from "./utils.js";
+import { getSingleResultOutput, mapConcurrent } from "./utils.js";
 import {
 	cleanupWorktrees,
 	createWorktrees,
@@ -793,7 +793,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		const aggregatedOutput = aggregateParallelOutputs(
 			results.map((result) => ({
 				agent: result.agent,
-				output: result.truncation?.text || getFinalOutput(result.messages),
+				output: result.truncation?.text || getSingleResultOutput(result),
 				exitCode: result.exitCode,
 				error: result.error,
 			})),
@@ -940,6 +940,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
 		artifactConfig,
 		maxOutput: params.maxOutput,
+		outputPath,
 		onUpdate,
 		modelOverride,
 		skills: effectiveSkills,
@@ -949,12 +950,14 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	if (r.progress) allProgress.push(r.progress);
 	if (r.artifactPaths) allArtifactPaths.push(r.artifactPaths);
 
-	const fullOutput = getFinalOutput(r.messages);
+	const fullOutput = getSingleResultOutput(r);
 	const finalizedOutput = finalizeSingleOutput({
 		fullOutput,
 		truncatedOutput: r.truncation?.text,
 		outputPath,
 		exitCode: r.exitCode,
+		savedPath: r.savedOutputPath,
+		saveError: r.outputSaveError,
 	});
 
 	if (r.exitCode !== 0)

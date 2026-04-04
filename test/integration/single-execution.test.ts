@@ -191,6 +191,47 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.ok(fs.existsSync(artifactsDir), "artifacts dir should exist");
 	});
 
+	it("preserves agent-written output files instead of overwriting them with the final receipt", async () => {
+		const outputPath = path.join(tempDir, "report.md");
+		const artifactsDir = path.join(tempDir, "artifacts");
+		mockPi.onCall({ output: `Wrote to ${outputPath}`, delay: 100 });
+		const agents = makeAgentConfigs(["echo"]);
+
+		const runPromise = runSync(tempDir, agents, "echo", "Task", {
+			runId: "output-file-preserved",
+			outputPath,
+			artifactsDir,
+			artifactConfig: { enabled: true, includeInput: true, includeOutput: true, includeMetadata: true },
+		});
+
+		setTimeout(() => {
+			fs.writeFileSync(outputPath, "real file content", "utf-8");
+		}, 20);
+
+		const result = await runPromise;
+		assert.equal(result.exitCode, 0);
+		assert.equal(result.finalOutput, "real file content");
+		assert.equal(fs.readFileSync(outputPath, "utf-8"), "real file content");
+		assert.ok(result.artifactPaths, "should have artifact paths");
+		assert.equal(fs.readFileSync(result.artifactPaths.outputPath, "utf-8"), "real file content");
+	});
+
+	it("falls back to persisting assistant output when the target file was not changed", async () => {
+		const outputPath = path.join(tempDir, "report.md");
+		fs.writeFileSync(outputPath, "stale content", "utf-8");
+		mockPi.onCall({ output: "fresh assistant output" });
+		const agents = makeAgentConfigs(["echo"]);
+
+		const result = await runSync(tempDir, agents, "echo", "Task", {
+			runId: "output-file-fallback",
+			outputPath,
+		});
+
+		assert.equal(result.exitCode, 0);
+		assert.equal(result.finalOutput, "fresh assistant output");
+		assert.equal(fs.readFileSync(outputPath, "utf-8"), "fresh assistant output");
+	});
+
 	it("handles abort signal (completes faster than delay)", async () => {
 		mockPi.onCall({ delay: 10000 }); // Long delay — process should be killed before this
 		const agents = makeAgentConfigs(["slow"]);

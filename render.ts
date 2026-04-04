@@ -12,7 +12,7 @@ import {
 	WIDGET_KEY,
 } from "./types.ts";
 import { formatTokens, formatUsage, formatDuration, formatToolCall, shortenPath } from "./formatters.ts";
-import { getFinalOutput, getDisplayItems, getOutputTail, getLastActivity } from "./utils.ts";
+import { getDisplayItems, getLastActivity, getOutputTail, getSingleResultOutput } from "./utils.ts";
 
 type Theme = ExtensionContext["ui"]["theme"];
 
@@ -199,7 +199,7 @@ export function renderSubagentResult(
 				? theme.fg("success", "ok")
 				: theme.fg("error", "X");
 		const contextBadge = d.context === "fork" ? theme.fg("warning", " [fork]") : "";
-		const output = r.truncation?.text || getFinalOutput(r.messages);
+		const output = r.truncation?.text || getSingleResultOutput(r);
 
 		const progressInfo = isRunning && r.progress
 			? ` | ${r.progress.toolCount} tools, ${formatTokens(r.progress.tokens)} tok, ${formatDuration(r.progress.durationMs)}`
@@ -283,7 +283,7 @@ export function renderSubagentResult(
 	const hasEmptyWithoutTarget = d.results.some((r) =>
 		r.exitCode === 0
 		&& r.progress?.status !== "running"
-		&& hasEmptyTextOutputWithoutOutputTarget(r.task, getFinalOutput(r.messages)),
+		&& hasEmptyTextOutputWithoutOutputTarget(r.task, getSingleResultOutput(r)),
 	);
 	const icon = hasRunning
 		? theme.fg("warning", "...")
@@ -337,7 +337,7 @@ export function renderSubagentResult(
 					const isComplete = result && result.exitCode === 0 && result.progress?.status !== "running";
 					const isEmptyWithoutTarget = Boolean(result)
 						&& Boolean(isComplete)
-						&& hasEmptyTextOutputWithoutOutputTarget(result.task, getFinalOutput(result.messages));
+						&& hasEmptyTextOutputWithoutOutputTarget(result.task, getSingleResultOutput(result));
 					const isCurrent = i === (d.currentStepIndex ?? d.results.length);
 					const stepIcon = isFailed
 						? theme.fg("error", "✗")
@@ -395,7 +395,7 @@ export function renderSubagentResult(
 		const rProg = r.progress || progressFromArray || r.progressSummary;
 		const rRunning = rProg?.status === "running";
 
-		const resultOutput = getFinalOutput(r.messages);
+		const resultOutput = getSingleResultOutput(r);
 		const statusIcon = rRunning
 			? theme.fg("warning", "●")
 			: r.exitCode !== 0

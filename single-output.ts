@@ -1,6 +1,12 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+export interface SingleOutputSnapshot {
+	exists: boolean;
+	mtimeMs?: number;
+	size?: number;
+}
+
 export function resolveSingleOutputPath(
 	output: string | false | undefined,
 	runtimeCwd: string,
@@ -19,6 +25,16 @@ export function injectSingleOutputInstruction(task: string, outputPath: string |
 	return `${task}\n\n---\n**Output:** Write your findings to: ${outputPath}`;
 }
 
+export function captureSingleOutputSnapshot(outputPath: string | undefined): SingleOutputSnapshot | undefined {
+	if (!outputPath) return undefined;
+	try {
+		const stat = fs.statSync(outputPath);
+		return { exists: true, mtimeMs: stat.mtimeMs, size: stat.size };
+	} catch {
+		return { exists: false };
+	}
+}
+
 export function persistSingleOutput(
 	outputPath: string | undefined,
 	fullOutput: string,
@@ -33,23 +49,47 @@ export function persistSingleOutput(
 	}
 }
 
+export function resolveSingleOutput(
+	outputPath: string | undefined,
+	fallbackOutput: string,
+	beforeRun: SingleOutputSnapshot | undefined,
+): { fullOutput: string; savedPath?: string; saveError?: string } {
+	if (!outputPath) return { fullOutput: fallbackOutput };
+
+	try {
+		const stat = fs.statSync(outputPath);
+		const changedSinceStart = !beforeRun?.exists
+			|| stat.mtimeMs !== beforeRun.mtimeMs
+			|| stat.size !== beforeRun.size;
+		if (changedSinceStart) {
+			return {
+				fullOutput: fs.readFileSync(outputPath, "utf-8"),
+				savedPath: outputPath,
+			};
+		}
+	} catch {}
+
+	const save = persistSingleOutput(outputPath, fallbackOutput);
+	if (save.savedPath) return { fullOutput: fallbackOutput, savedPath: save.savedPath };
+	return { fullOutput: fallbackOutput, saveError: save.error };
+}
+
 export function finalizeSingleOutput(params: {
 	fullOutput: string;
 	truncatedOutput?: string;
 	outputPath?: string;
 	exitCode: number;
+	savedPath?: string;
+	saveError?: string;
 }): { displayOutput: string; savedPath?: string; saveError?: string } {
 	let displayOutput = params.truncatedOutput || params.fullOutput;
-	if (params.outputPath && params.exitCode === 0) {
-		const save = persistSingleOutput(params.outputPath, params.fullOutput);
-		if (save.savedPath) {
-			displayOutput += `\n\n📄 Output saved to: ${save.savedPath}`;
-			return { displayOutput, savedPath: save.savedPath };
-		}
-		if (save.error) {
-			displayOutput += `\n\n⚠️ Failed to save output to: ${params.outputPath}\n${save.error}`;
-			return { displayOutput, saveError: save.error };
-		}
+	if (params.exitCode === 0 && params.savedPath) {
+		displayOutput += `\n\n📄 Output saved to: ${params.savedPath}`;
+		return { displayOutput, savedPath: params.savedPath };
+	}
+	if (params.exitCode === 0 && params.saveError && params.outputPath) {
+		displayOutput += `\n\n⚠️ Failed to save output to: ${params.outputPath}\n${params.saveError}`;
+		return { displayOutput, saveError: params.saveError };
 	}
 	return { displayOutput };
 }

@@ -97,6 +97,9 @@ export interface SingleResult {
 	progressSummary?: ProgressSummary;
 	artifactPaths?: ArtifactPaths;
 	truncation?: TruncationResult;
+	finalOutput?: string;
+	savedOutputPath?: string;
+	outputSaveError?: string;
 }
 
 export interface Details {
@@ -230,6 +233,7 @@ export interface RunSyncOptions {
 	sessionDir?: string;
 	sessionFile?: string;
 	share?: boolean;
+	outputPath?: string;
 	/** Override the agent's default model (format: "provider/id" or just "id") */
 	modelOverride?: string;
 	/** Skills to inject (overrides agent default if provided) */
