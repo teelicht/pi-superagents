@@ -1,3 +1,11 @@
+/**
+ * Unit coverage for agent frontmatter parsing and built-in discovery.
+ *
+ * Responsibilities:
+ * - verify frontmatter serialization/parsing behavior
+ * - verify built-in agent discovery includes required Superpowers roles
+ */
+
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -48,5 +56,25 @@ Inspect code
 		const result = discoverAgents(dir, "project");
 		const scout = result.agents.find((agent) => agent.name === "scout");
 		assert.equal(scout?.maxSubagentDepth, 1);
+	});
+});
+
+describe("agent discovery", () => {
+	/**
+	 * Verifies built-in Superpowers agents are exposed through standard discovery.
+	 *
+	 * Inputs/outputs:
+	 * - discovers agents from the current workspace using builtin+project scopes
+	 * - expects the Superpowers review loop roles to be present
+	 *
+	 * Invariants:
+	 * - built-in discovery must include the canonical review roles
+	 */
+	it("discovers built-in superpowers agents", () => {
+		const result = discoverAgents(process.cwd(), "both");
+		const names = new Set(result.agents.map((agent) => agent.name));
+		assert.ok(names.has("sp-implementer"));
+		assert.ok(names.has("sp-spec-review"));
+		assert.ok(names.has("sp-code-review"));
 	});
 });

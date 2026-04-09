@@ -31,6 +31,12 @@ export interface StepOverrides {
 	model?: string;
 }
 
+export interface PacketDefaults {
+	reads?: string[];
+	output?: string | false;
+	progress?: boolean;
+}
+
 // =============================================================================
 // Chain Step Types
 // =============================================================================
@@ -163,30 +169,37 @@ export function resolveChainTemplates(
 
 /**
  * Resolve effective chain behavior per step.
- * Priority: step override > agent frontmatter > false (disabled)
+ * Priority: step override > packet defaults > agent frontmatter > false (disabled)
  */
 export function resolveStepBehavior(
 	agentConfig: AgentConfig,
 	stepOverrides: StepOverrides,
 	chainSkills?: string[],
+	packetDefaults?: PacketDefaults,
 ): ResolvedStepBehavior {
-	// Output: step override > frontmatter > false (no output)
+	// Output: step override > packet defaults > frontmatter > false (no output)
 	const output =
 		stepOverrides.output !== undefined
 			? stepOverrides.output
-			: agentConfig.output ?? false;
+			: packetDefaults?.output !== undefined
+				? packetDefaults.output
+				: agentConfig.output ?? false;
 
-	// Reads: step override > frontmatter defaultReads > false (no reads)
+	// Reads: step override > packet defaults > frontmatter defaultReads > false (no reads)
 	const reads =
 		stepOverrides.reads !== undefined
 			? stepOverrides.reads
-			: agentConfig.defaultReads ?? false;
+			: packetDefaults?.reads !== undefined
+				? packetDefaults.reads
+				: agentConfig.defaultReads ?? false;
 
-	// Progress: step override > frontmatter defaultProgress > false
+	// Progress: step override > packet defaults > frontmatter defaultProgress > false
 	const progress =
 		stepOverrides.progress !== undefined
 			? stepOverrides.progress
-			: agentConfig.defaultProgress ?? false;
+			: packetDefaults?.progress !== undefined
+				? packetDefaults.progress
+				: agentConfig.defaultProgress ?? false;
 
 	let skills: string[] | false;
 	if (stepOverrides.skills === false) {
