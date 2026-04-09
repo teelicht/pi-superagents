@@ -195,6 +195,38 @@ function resolveConfiguredWorktreeRoot(repoRoot: string, configuredRoot: string 
 		: path.resolve(repoRoot, configuredRoot);
 }
 
+/**
+ * Resolves a path through any existing ancestors so comparisons treat symlinked
+ * locations as their canonical on-disk targets even when the final path does
+ * not exist yet.
+ *
+ * @param targetPath Path to canonicalize for repository-local comparisons.
+ * @returns Canonical absolute path when an ancestor exists, otherwise the resolved path.
+ */
+function resolveCanonicalPath(targetPath: string): string {
+	const pendingSegments: string[] = [];
+	let candidate = path.resolve(targetPath);
+
+	for (;;) {
+		try {
+			const canonicalBase = fs.realpathSync(candidate);
+			return pendingSegments.length === 0
+				? canonicalBase
+				: path.join(canonicalBase, ...pendingSegments.reverse());
+		} catch (error) {
+			const code = error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : undefined;
+			if (code !== "ENOENT") return candidate;
+		}
+
+		const parent = path.dirname(candidate);
+		if (parent === candidate) {
+			return path.resolve(targetPath);
+		}
+		pendingSegments.push(path.basename(candidate));
+		candidate = parent;
+	}
+}
+
 function linkNodeModulesIfPresent(toplevel: string, worktreePath: string): boolean {
 	const nodeModulesPath = path.join(toplevel, "node_modules");
 	const nodeModulesLinkPath = path.join(worktreePath, "node_modules");
@@ -341,9 +373,15 @@ function runWorktreeSetupHook(
  * @throws {Error} When the configured root is inside the repository and not ignored.
  */
 function assertProjectLocalRootIgnored(repoRoot: string, rootDir: string): void {
-	const relativeRoot = path.relative(repoRoot, rootDir);
-	if (!relativeRoot || relativeRoot.startsWith("..") || path.isAbsolute(relativeRoot)) return;
-	const gitRelativeRoot = relativeRoot.split(path.sep).join("/");
+	const canonicalRepoRoot = resolveCanonicalPath(repoRoot);
+	const canonicalRootDir = resolveCanonicalPath(rootDir);
+	const relativeRoot = path.relative(canonicalRepoRoot, canonicalRootDir);
+	const isProjectLocal =
+		relativeRoot === ""
+		|| relativeRoot === "."
+		|| (!relativeRoot.startsWith("..") && !path.isAbsolute(relativeRoot));
+	if (!isProjectLocal) return;
+	const gitRelativeRoot = (relativeRoot || ".").split(path.sep).join("/");
 	const result = runGit(repoRoot, ["check-ignore", "-q", "--", gitRelativeRoot]);
 	if (result.status !== 0) {
 		throw new Error(`Configured worktree root must be ignored by git: ${gitRelativeRoot}`);
