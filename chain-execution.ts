@@ -44,7 +44,10 @@ import {
 	type ArtifactConfig,
 	type ArtifactPaths,
 	type Details,
+	type ExtensionConfig,
 	type SingleResult,
+	type SuperpowersImplementerMode,
+	type WorkflowMode,
 	MAX_CONCURRENCY,
 	resolveChildMaxSubagentDepth,
 } from "./types.ts";
@@ -104,6 +107,9 @@ interface ParallelChainRunInput {
 	totalSteps: number;
 	worktreeSetup?: WorktreeSetup;
 	maxSubagentDepth: number;
+	config: ExtensionConfig;
+	workflow: WorkflowMode;
+	implementerMode: SuperpowersImplementerMode;
 }
 
 function buildChainExecutionDetails(input: ChainExecutionDetailsInput): Details {
@@ -217,6 +223,9 @@ async function runParallelChainTasks(input: ParallelChainRunInput): Promise<Sing
 				maxSubagentDepth,
 				modelOverride: effectiveModel,
 				skills: behavior.skills === false ? [] : behavior.skills,
+				config: input.config,
+				workflow: input.workflow,
+				implementerMode: input.implementerMode,
 				onUpdate: input.onUpdate
 					? (progressUpdate) => {
 							const stepResults = progressUpdate.details?.results || [];
@@ -268,6 +277,9 @@ export interface ChainExecutionParams {
 	maxSubagentDepth: number;
 	worktreeSetupHook?: string;
 	worktreeSetupHookTimeoutMs?: number;
+	config: ExtensionConfig;
+	workflow: WorkflowMode;
+	implementerMode: SuperpowersImplementerMode;
 }
 
 export interface ChainExecutionResult {
@@ -302,6 +314,9 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 		onUpdate,
 		chainSkills: chainSkillsParam,
 		chainDir: chainDirBase,
+		config,
+		workflow,
+		implementerMode,
 	} = params;
 	const chainSkills = chainSkillsParam ?? [];
 
@@ -524,6 +539,9 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 					totalSteps,
 					worktreeSetup,
 					maxSubagentDepth: params.maxSubagentDepth,
+					config,
+					workflow,
+					implementerMode,
 				});
 				globalTaskIndex += step.parallel.length;
 
@@ -666,6 +684,9 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 				maxSubagentDepth,
 				modelOverride: effectiveModel,
 				skills: behavior.skills === false ? [] : behavior.skills,
+				config,
+				workflow,
+				implementerMode,
 				onUpdate: onUpdate
 					? (p) => {
 							// Use concat instead of spread for better performance

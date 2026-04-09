@@ -480,6 +480,9 @@ async function runChainPath(data: ExecutionContextData, deps: ExecutorDeps): Pro
 		maxSubagentDepth: currentMaxSubagentDepth,
 		worktreeSetupHook: deps.config.worktreeSetupHook,
 		worktreeSetupHookTimeoutMs: deps.config.worktreeSetupHookTimeoutMs,
+		config: deps.config,
+		workflow: data.workflow,
+		implementerMode: data.implementerMode,
 	});
 
 	if (chainResult.requestedAsync) {

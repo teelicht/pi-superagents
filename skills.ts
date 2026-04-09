@@ -375,6 +375,16 @@ export function discoverAvailableSkills(cwd: string): Array<{
 		.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/**
+ * Return the set of skill names currently discoverable for a workspace.
+ *
+ * Uses the shared cached discovery path so callers can validate overlays
+ * without paying for repeated full skill resolution.
+ */
+export function getAvailableSkillNames(cwd: string): Set<string> {
+	return new Set(getCachedSkills(cwd).map((skill) => skill.name));
+}
+
 export function clearSkillCache(): void {
 	skillCache.clear();
 	loadSkillsCache = null;
