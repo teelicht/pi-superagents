@@ -42,6 +42,19 @@ const DEFAULT_ROLE_TIERS: Record<ExecutionRole, ModelTier> = {
 	"sp-debug": "max",
 };
 
+/**
+ * Resolve the canonical Superagents settings object from config.
+ *
+ * Prefers the renamed `superagents` root while still accepting the legacy
+ * `superpowers` root so older config files remain valid.
+ *
+ * @param config Extension config for the current run.
+ * @returns Canonical settings object, if configured.
+ */
+function getSuperagentSettings(config: ExtensionConfig): ExtensionConfig["superagents"] | undefined {
+	return config.superagents ?? config.superpowers;
+}
+
 export interface ResolvedRoleModel {
 	model: string;
 	thinking?: ModelTierConfig["thinking"];
@@ -87,7 +100,7 @@ function normalizeTierSetting(entry: unknown): ResolvedRoleModel | undefined {
  * @returns Resolved model settings for the tier, if configured.
  */
 function resolveTierModelSetting(
-	settings: ExtensionConfig["superpowers"],
+	settings: ExtensionConfig["superagents"],
 	tier: ModelTier,
 ): ResolvedRoleModel | undefined {
 	const configured = settings?.modelTiers as Partial<Record<ConfiguredModelTier, ModelTierSetting>> | undefined;
@@ -128,7 +141,7 @@ export function resolveModelForRole(input: {
 	config: ExtensionConfig;
 }): ResolvedRoleModel | undefined {
 	if (input.workflow !== "superpowers") return undefined;
-	const settings = input.config.superpowers;
+	const settings = getSuperagentSettings(input.config);
 	const configuredTier = settings?.roleModelTiers?.[input.role] ?? DEFAULT_ROLE_TIERS[input.role];
 	const tier = normalizeConfiguredTier(configuredTier);
 	if (!tier) return undefined;
@@ -153,7 +166,7 @@ export function resolveRoleSkillSet(input: {
 		return [...new Set([...input.agentSkills, ...input.stepSkills])];
 	}
 
-	const overlays = input.config.superpowers?.roleSkillOverlays?.[input.role] ?? [];
+	const overlays = getSuperagentSettings(input.config)?.roleSkillOverlays?.[input.role] ?? [];
 	const merged = [...new Set([...input.agentSkills, ...input.stepSkills, ...overlays])];
 	for (const skill of merged) {
 		if (!input.availableSkills.has(skill)) {

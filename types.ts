@@ -291,6 +291,7 @@ export interface ExtensionConfig {
 	maxSubagentDepth?: number;
 	worktreeSetupHook?: string;
 	worktreeSetupHookTimeoutMs?: number;
+	superagents?: SuperpowersSettings;
 	superpowers?: SuperpowersSettings;
 }
 

@@ -72,6 +72,19 @@ function readJsonConfig(filePath: string): ExtensionConfig | undefined {
 }
 
 /**
+ * Resolve the canonical Superagents settings object from the config.
+ *
+ * Prefers the new `superagents` root and falls back to legacy `superpowers`
+ * for backward compatibility with existing user configs.
+ *
+ * @param config Extension config being normalized.
+ * @returns Canonical Superagents settings, if present.
+ */
+function getSuperagentSettings(config: ExtensionConfig): ExtensionConfig["superagents"] | undefined {
+	return config.superagents ?? config.superpowers;
+}
+
+/**
  * Merge user config over bundled defaults while keeping nested Superpowers maps.
  *
  * @param defaults Bundled config defaults shipped with the extension.
@@ -79,21 +92,23 @@ function readJsonConfig(filePath: string): ExtensionConfig | undefined {
  * @returns Effective config used by the runtime.
  */
 function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfig): ExtensionConfig {
-	const mergedSuperpowers = defaults.superpowers || overrides.superpowers
+	const defaultSuperagents = getSuperagentSettings(defaults);
+	const overrideSuperagents = getSuperagentSettings(overrides);
+	const mergedSuperagents = defaultSuperagents || overrideSuperagents
 		? {
-			...(defaults.superpowers ?? {}),
-			...(overrides.superpowers ?? {}),
+			...(defaultSuperagents ?? {}),
+			...(overrideSuperagents ?? {}),
 			modelTiers: {
-				...(defaults.superpowers?.modelTiers ?? {}),
-				...(overrides.superpowers?.modelTiers ?? {}),
+				...(defaultSuperagents?.modelTiers ?? {}),
+				...(overrideSuperagents?.modelTiers ?? {}),
 			},
 			roleModelTiers: {
-				...(defaults.superpowers?.roleModelTiers ?? {}),
-				...(overrides.superpowers?.roleModelTiers ?? {}),
+				...(defaultSuperagents?.roleModelTiers ?? {}),
+				...(overrideSuperagents?.roleModelTiers ?? {}),
 			},
 			roleSkillOverlays: {
-				...(defaults.superpowers?.roleSkillOverlays ?? {}),
-				...(overrides.superpowers?.roleSkillOverlays ?? {}),
+				...(defaultSuperagents?.roleSkillOverlays ?? {}),
+				...(overrideSuperagents?.roleSkillOverlays ?? {}),
 			},
 		}
 		: undefined;
@@ -101,7 +116,8 @@ function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfig): Ext
 	return {
 		...defaults,
 		...overrides,
-		...(mergedSuperpowers ? { superpowers: mergedSuperpowers } : {}),
+		superpowers: undefined,
+		...(mergedSuperagents ? { superagents: mergedSuperagents } : {}),
 	};
 }
 
