@@ -1,8 +1,22 @@
+/**
+ * Unit tests for public TypeBox schema metadata.
+ *
+ * Responsibilities:
+ * - verify user-visible descriptions stay aligned with supported execution modes
+ * - guard parameter metadata used by tool callers and docs
+ * - keep command-scoped Superpowers wording explicit
+ */
+
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 interface SubagentParamsSchema {
 	properties?: {
+		workflow?: {
+			type?: string;
+			enum?: string[];
+			description?: string;
+		};
 		context?: {
 			type?: string;
 			enum?: string[];
@@ -48,6 +62,16 @@ describe("SubagentParams schema", { skip: !available ? "typebox not available" :
 		assert.deepEqual(contextSchema.enum, ["fresh", "fork"]);
 		assert.match(String(contextSchema.description ?? ""), /fresh/);
 		assert.match(String(contextSchema.description ?? ""), /fork/);
+	});
+
+	it("describes workflow as command-scoped superpowers behavior", () => {
+		const workflowSchema = SubagentParams?.properties?.workflow;
+		assert.ok(workflowSchema, "workflow schema should exist");
+		assert.equal(workflowSchema.type, "string");
+		assert.deepEqual(workflowSchema.enum, ["default", "superpowers"]);
+		assert.match(String(workflowSchema.description ?? ""), /superpowers/i);
+		assert.match(String(workflowSchema.description ?? ""), /default/i);
+		assert.match(String(workflowSchema.description ?? ""), /unchanged/i);
 	});
 
 	it("includes count on top-level parallel tasks", () => {

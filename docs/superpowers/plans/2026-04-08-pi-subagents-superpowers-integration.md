@@ -841,7 +841,7 @@ git commit -m "feat: scope superpowers worktree behavior to command runs"
 - Test: `test/unit/superpowers-policy.test.ts`
 - Test: `test/integration/superpowers-packets.test.ts`
 
-- [ ] **Step 1: Add README documentation for the new command**
+- [x] **Step 1: Add README documentation for the new command**
 
 Add a section like:
 
@@ -867,7 +867,7 @@ Behavior:
 
 ````
 
-- [ ] **Step 2: Document role-based overlay config in `README.md`**
+- [x] **Step 2: Document role-based overlay config in `README.md`**
 
 ```json
 {
@@ -891,7 +891,7 @@ Behavior:
 }
 ````
 
-- [ ] **Step 3: Add a schema assertion that descriptions mention explicit command activation**
+- [x] **Step 3: Add a schema assertion that descriptions mention explicit command activation**
 
 ```ts
 it("describes workflow as command-scoped superpowers behavior", () => {
@@ -902,7 +902,7 @@ it("describes workflow as command-scoped superpowers behavior", () => {
 });
 ```
 
-- [ ] **Step 4: Run the focused regression set**
+- [x] **Step 4: Run the focused regression set**
 
 Run:
 
@@ -915,7 +915,7 @@ Expected:
 
 - all targeted tests pass
 
-- [ ] **Step 5: Run the full test suite**
+- [x] **Step 5: Run the full test suite**
 
 Run:
 
@@ -927,7 +927,7 @@ Expected:
 
 - unit, integration, and e2e suites all pass
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add README.md schemas.ts test/unit/schemas.test.ts test/unit/superpowers-policy.test.ts test/integration/slash-commands.test.ts test/integration/superpowers-packets.test.ts test/unit/worktree.test.ts test/unit/agent-frontmatter.test.ts
