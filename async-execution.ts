@@ -143,14 +143,14 @@ function spawnRunner(cfg: object, suffix: string, cwd: string): number | undefin
  * - returns packet defaults for Superpowers packet-producing roles
  *
  * Invariants:
- * - explicit default workflow never injects packet defaults
- * - when workflow metadata is unavailable, only built-in `sp-*` roles opt in
+ * - only the explicit Superpowers workflow injects packet defaults
+ * - missing or default workflow metadata never falls back to role-name heuristics
  */
 function resolveAsyncPacketDefaults(
 	agentName: string,
 	workflow?: WorkflowMode,
 ): PacketDefaults | undefined {
-	if (workflow === "default") return undefined;
+	if (workflow !== "superpowers") return undefined;
 	const role = inferExecutionRole(agentName);
 	if (role === "root-planning") return undefined;
 	const packetPlan = buildSuperpowersPacketPlan(role);
@@ -281,6 +281,8 @@ export function executeAsyncChain(
 					skill: t.skill,
 					model: t.model,
 					output: t.output,
+					reads: t.reads,
+					progress: t.progress,
 				}, nextSessionFile())),
 				concurrency: s.concurrency,
 				failFast: s.failFast,
