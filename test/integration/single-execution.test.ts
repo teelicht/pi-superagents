@@ -270,6 +270,25 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		});
 	});
 
+	it("launches superpowers recon without mutation-capable tools", async () => {
+		mockPi.onCall({ echoArgs: true });
+		const agents = [makeAgent("sp-recon")];
+
+		const result = await runSync(tempDir, agents, "sp-recon", "Inspect the repo and report findings", {
+			runId: "recon-tools",
+			workflow: "superpowers",
+		});
+
+		assert.equal(result.exitCode, 0);
+		const args = JSON.parse(result.finalOutput ?? "[]") as string[];
+		const toolsFlagIndex = args.indexOf("--tools");
+		assert.notEqual(toolsFlagIndex, -1, "should pass an explicit tools allowlist");
+		const toolsArg = args[toolsFlagIndex + 1] ?? "";
+		assert.equal(toolsArg, "read,grep,find,ls");
+		assert.doesNotMatch(toolsArg, /\bbash\b/);
+		assert.doesNotMatch(toolsArg, /\bwrite\b/);
+	});
+
 	it("handles abort signal (completes faster than delay)", async () => {
 		mockPi.onCall({ delay: 10000 }); // Long delay — process should be killed before this
 		const agents = makeAgentConfigs(["slow"]);

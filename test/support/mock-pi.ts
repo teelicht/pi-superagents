@@ -10,6 +10,7 @@ export interface MockPiResponse {
 	delay?: number;
 	jsonl?: unknown[];
 	echoEnv?: string[];
+	echoArgs?: boolean;
 }
 
 export interface MockPi {

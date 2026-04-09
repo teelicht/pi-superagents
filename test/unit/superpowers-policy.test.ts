@@ -130,7 +130,7 @@ describe("superpowers policy", () => {
 				workflow: "superpowers",
 				role: "sp-recon",
 			}),
-			["read", "grep", "find", "ls", "bash"],
+			["read", "grep", "find", "ls"],
 		);
 	});
 

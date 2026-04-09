@@ -33,12 +33,12 @@ const ROOT_ONLY_WORKFLOW_SKILLS = new Set([
 ]);
 
 const NON_DELEGATING_ROLE_TOOLS: Partial<Record<ExecutionRole, string[]>> = {
-	"sp-recon": ["read", "grep", "find", "ls", "bash"],
-	"sp-research": ["read", "grep", "find", "ls", "bash"],
+	"sp-recon": ["read", "grep", "find", "ls"],
+	"sp-research": ["read", "grep", "find", "ls"],
 	"sp-implementer": ["read", "grep", "find", "ls", "bash", "write"],
-	"sp-spec-review": ["read", "grep", "find", "ls", "bash", "write"],
-	"sp-code-review": ["read", "grep", "find", "ls", "bash", "write"],
-	"sp-debug": ["read", "grep", "find", "ls", "bash", "write"],
+	"sp-spec-review": ["read", "grep", "find", "ls"],
+	"sp-code-review": ["read", "grep", "find", "ls"],
+	"sp-debug": ["read", "grep", "find", "ls", "bash"],
 };
 
 const DELEGATION_TOOLS = new Set(["subagent", "subagent_status"]);

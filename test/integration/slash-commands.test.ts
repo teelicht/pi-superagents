@@ -30,6 +30,7 @@ interface RegisterSlashCommandsModule {
 			): void;
 			registerShortcut(key: string, spec: { handler(ctx: unknown): Promise<void> }): void;
 			sendMessage(message: unknown): void;
+			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }): void;
 		},
 		state: {
 			baseCwd: string;
@@ -102,9 +103,12 @@ function createState(cwd: string) {
 	};
 }
 
-function createCommandContext(overrides: Partial<{ hasUI: boolean; custom: (...args: unknown[]) => Promise<unknown> }> = {}) {
+function createCommandContext(
+	overrides: Partial<{ hasUI: boolean; custom: (...args: unknown[]) => Promise<unknown>; idle: boolean }> = {},
+) {
 	return {
 		cwd: process.cwd(),
+		isIdle: () => overrides.idle ?? true,
 		hasUI: overrides.hasUI ?? false,
 		ui: {
 			notify: (_message: string) => {},
@@ -147,6 +151,7 @@ describe("slash command custom message delivery", { skip: !available ? "slash-co
 			sendMessage(message: unknown) {
 				sent.push(message);
 			},
+			sendUserMessage() {},
 		};
 
 		registerSlashCommands!(pi, createState(process.cwd()));
@@ -193,6 +198,7 @@ describe("slash command custom message delivery", { skip: !available ? "slash-co
 			sendMessage(message: unknown) {
 				sent.push(message);
 			},
+			sendUserMessage() {},
 		};
 
 		registerSlashCommands!(pi, createState(process.cwd()));
@@ -212,25 +218,11 @@ describe("slash command custom message delivery", { skip: !available ? "slash-co
 		assert.equal((visibleSnapshot.result.content[0] as { text?: string }).text, "Subagent failed");
 	});
 
-	it("/superpowers emits a request with workflow and implementer mode metadata", async () => {
+	it("/superpowers sends a root-session workflow prompt instead of directly running sp-recon", async () => {
 		const sent: unknown[] = [];
+		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
 		const commands = new Map<string, { handler(args: string, ctx: unknown): Promise<void> }>();
 		const events = createEventBus();
-		let capturedRequest: unknown;
-
-		events.on(SLASH_SUBAGENT_REQUEST_EVENT, (data) => {
-			capturedRequest = data;
-			const requestId = (data as { requestId: string }).requestId;
-			events.emit(SLASH_SUBAGENT_STARTED_EVENT, { requestId });
-			events.emit(SLASH_SUBAGENT_RESPONSE_EVENT, {
-				requestId,
-				result: {
-					content: [{ type: "text", text: "Superpowers started" }],
-					details: { mode: "single", results: [] },
-				},
-				isError: false,
-			});
-		});
 
 		const pi = {
 			events,
@@ -241,13 +233,43 @@ describe("slash command custom message delivery", { skip: !available ? "slash-co
 			sendMessage(message: unknown) {
 				sent.push(message);
 			},
+			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
+				userMessages.push({ content, options });
+			},
 		};
 
 		registerSlashCommands!(pi, createState(process.cwd()));
 		await commands.get("superpowers")!.handler("tdd implement auth fix", createCommandContext());
 
-		assert.equal((capturedRequest as { params: { workflow?: string } }).params.workflow, "superpowers");
-		assert.equal((capturedRequest as { params: { implementerMode?: string } }).params.implementerMode, "tdd");
+		assert.equal(sent.length, 0);
+		assert.equal(userMessages.length, 1);
+		assert.match(String(userMessages[0]!.content), /workflow:\s*"superpowers"/);
+		assert.match(String(userMessages[0]!.content), /implementerMode:\s*"tdd"/);
+		assert.match(String(userMessages[0]!.content), /sp-recon/);
+		assert.match(String(userMessages[0]!.content), /Do not stop after the recon subagent finishes/i);
+	});
+
+	it("/superpowers queues a follow-up root prompt when the agent is busy", async () => {
+		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
+		const commands = new Map<string, { handler(args: string, ctx: unknown): Promise<void> }>();
+		const pi = {
+			events: createEventBus(),
+			registerCommand(name: string, spec: { handler(args: string, ctx: unknown): Promise<void> }) {
+				commands.set(name, spec);
+			},
+			registerShortcut() {},
+			sendMessage() {},
+			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
+				userMessages.push({ content, options });
+			},
+		};
+
+		registerSlashCommands!(pi, createState(process.cwd()));
+		await commands.get("superpowers")!.handler("direct update config", createCommandContext({ idle: false }));
+
+		assert.equal(userMessages.length, 1);
+		assert.equal(userMessages[0]!.options?.deliverAs, "followUp");
+		assert.match(String(userMessages[0]!.content), /implementerMode:\s*"direct"/);
 	});
 });
 
@@ -267,6 +289,7 @@ describe("subagents-status slash command", { skip: !available ? "slash-commands.
 			},
 			registerShortcut() {},
 			sendMessage(_message: unknown) {},
+			sendUserMessage() {},
 		};
 
 		registerSlashCommands!(pi, createState(process.cwd()));

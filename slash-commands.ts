@@ -335,6 +335,29 @@ function parseSuperpowersArgs(rawArgs: string): { implementerMode: "tdd" | "dire
 	return { implementerMode: "tdd", task: trimmed };
 }
 
+/**
+ * Build the root-session prompt injected by `/superpowers`.
+ *
+ * Inputs/outputs:
+ * - accepts the parsed implementer mode and the user task text
+ * - returns a concrete user-message prompt for the root agent
+ *
+ * Invariants:
+ * - the prompt keeps workflow ownership in the root session
+ * - the prompt explicitly activates `workflow: "superpowers"`
+ * - the prompt tells the root agent not to stop after `sp-recon`
+ *
+ * Failure modes:
+ * - none; callers validate the task text before invoking this helper
+ */
+function buildSuperpowersUserPrompt(input: { implementerMode: "tdd" | "direct"; task: string }): string {
+	return [
+		`Use the subagent tool with workflow: "superpowers" and implementerMode: "${input.implementerMode}" for this task: ${input.task}`,
+		"The root session must own the workflow. Start with the `sp-recon` agent for bounded reconnaissance, then consume its findings in the root session and continue the root-owned Superpowers loop.",
+		"Do not stop after the recon subagent finishes. Continue with the next bounded step yourself, or explain clearly what blocks progress.",
+	].join("\n\n");
+}
+
 const parseAgentArgs = (
 	state: SubagentState,
 	args: string,
@@ -459,14 +482,14 @@ export function registerSlashCommands(
 				return;
 			}
 
-			await runSlashSubagent(pi, ctx, {
-				workflow: "superpowers",
-				implementerMode: parsed.implementerMode,
-				agent: "sp-recon",
-				task: parsed.task,
-				clarify: false,
-				agentScope: "both",
-			});
+			const prompt = buildSuperpowersUserPrompt(parsed);
+			if (ctx.isIdle()) {
+				pi.sendUserMessage(prompt);
+				return;
+			}
+
+			pi.sendUserMessage(prompt, { deliverAs: "followUp" });
+			if (ctx.hasUI) ctx.ui.notify("Queued Superpowers workflow as a follow-up", "info");
 		},
 	});
 
