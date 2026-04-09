@@ -476,7 +476,7 @@ node --experimental-strip-types --test test/unit/superpowers-policy.test.ts
 Expected:
 - all `superpowers policy` tests pass
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add superpowers-policy.ts skills.ts execution.ts chain-execution.ts test/unit/superpowers-policy.test.ts
