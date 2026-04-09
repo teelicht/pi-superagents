@@ -137,6 +137,23 @@ Subagents only get direct MCP tools when `mcp:` items are explicitly listed. Eve
 
 All commands validate agent names locally and tab-complete them, then route through the tool framework for full live progress rendering. Results are sent to the conversation for the LLM to discuss.
 
+## Superpowers Command
+
+Use `/superpowers` when you want the stricter Superpowers workflow for a specific run.
+
+Examples:
+
+```text
+/superpowers fix the auth regression
+/superpowers tdd implement the cache invalidation task
+/superpowers direct update the Expo config
+```
+
+Behavior:
+- The baseline `pi` harness plus generic `pi-subagents` behavior stays unchanged unless this command is used.
+- `tdd` is the default implementer mode.
+- `direct` keeps the same review and verification loop but allows code-first implementation.
+
 ### Per-Step Tasks
 
 Use `->` to separate steps and give each step its own task with quotes or `--`:
@@ -764,6 +781,37 @@ Sessions are always enabled — every subagent run gets a session directory for 
 ```
 
 Per-agent `maxSubagentDepth` can tighten that limit further for child runs, but it does not relax an already inherited stricter limit.
+
+### `superpowers`
+
+`superpowers` configures the explicit `/superpowers` command path without changing the default `/run`, `/chain`, or `/parallel` behavior.
+
+```json
+{
+  "superpowers": {
+    "commandName": "superpowers",
+    "defaultImplementerMode": "tdd",
+    "modelTiers": {
+      "cheap": "openai/gpt-5.3-mini",
+      "standard": "openai/gpt-5.3-codex",
+      "strong": "openai/gpt-5.4",
+      "max": "anthropic/claude-opus-4-6"
+    },
+    "roleSkillOverlays": {
+      "root-planning": ["vercel-react-native-skills"],
+      "sp-implementer": ["vercel-react-native-skills"],
+      "sp-spec-review": ["vercel-react-native-skills"],
+      "sp-code-review": ["vercel-react-native-skills"],
+      "sp-debug": ["vercel-react-native-skills"]
+    }
+  }
+}
+```
+
+Notes:
+- `commandName` lets you rename the slash command if you want a different trigger.
+- `defaultImplementerMode` defaults `/superpowers <task>` to `tdd`; use `direct` when you want the same review loop with code-first implementation.
+- `modelTiers` and `roleSkillOverlays` only apply to Superpowers runs, so the generic extension remains dormant until the command is used.
 
 ### `worktreeSetupHook`
 

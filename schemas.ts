@@ -1,5 +1,10 @@
 /**
- * TypeBox schemas for subagent tool parameters
+ * TypeBox schemas for subagent tool parameters and status inspection.
+ *
+ * Responsibilities:
+ * - describe the public tool contract for single, chain, and parallel execution
+ * - keep user-facing parameter descriptions aligned with runtime behavior
+ * - expose command-scoped Superpowers metadata without changing default semantics
  */
 
 import { Type } from "@sinclair/typebox";
@@ -62,7 +67,7 @@ export const SubagentParams = Type.Object({
 	task: Type.Optional(Type.String({ description: "Task (SINGLE mode)" })),
 	workflow: Type.Optional(Type.String({
 		enum: ["default", "superpowers"],
-		description: "Execution workflow. 'default' keeps the baseline pi harness plus generic pi-subagents behavior; 'superpowers' enables the explicit Superpowers command path.",
+		description: "Execution workflow. 'default' leaves the baseline pi harness plus generic pi-subagents behavior unchanged; 'superpowers' activates the explicit Superpowers command path for that run only.",
 	})),
 	implementerMode: Type.Optional(Type.String({
 		enum: ["tdd", "direct"],
