@@ -27,11 +27,17 @@ import {
 	extractToolArgsPreview,
 	extractTextFromContent,
 } from "./utils.ts";
-import { buildSkillInjection, resolveSkills } from "./skills.ts";
+import { buildSkillInjection, getAvailableSkillNames, resolveSkills } from "./skills.ts";
 import { getPiSpawnCommand } from "./pi-spawn.ts";
 import { createJsonlWriter } from "./jsonl-writer.ts";
 import { applyThinkingSuffix, buildPiArgs, cleanupTempDir } from "./pi-args.ts";
 import { captureSingleOutputSnapshot, resolveSingleOutput } from "./single-output.ts";
+import {
+	inferExecutionRole,
+	resolveImplementerSkillSet,
+	resolveModelForRole,
+	resolveRoleSkillSet,
+} from "./superpowers-policy.ts";
 
 /**
  * Run a subagent synchronously (blocking until complete)
@@ -58,11 +64,37 @@ export async function runSync(
 
 	const shareEnabled = options.share === true;
 	const sessionEnabled = Boolean(options.sessionFile || options.sessionDir) || shareEnabled;
-	const effectiveModel = modelOverride ?? agent.model;
+	const workflow = options.workflow ?? "default";
+	const implementerMode = options.implementerMode ?? "tdd";
+	const config = options.config ?? {};
+	const role = inferExecutionRole(agent.name);
+	const tierModel = resolveModelForRole({
+		workflow,
+		role,
+		config,
+	});
+	const effectiveModel = modelOverride ?? tierModel ?? agent.model;
 	const modelArg = applyThinkingSuffix(effectiveModel, agent.thinking);
 	const outputSnapshot = captureSingleOutputSnapshot(options.outputPath);
 
-	const skillNames = options.skills ?? agent.skills ?? [];
+	const availableSkills = getAvailableSkillNames(runtimeCwd);
+	const skillNames = role === "sp-implementer"
+		? resolveImplementerSkillSet({
+			workflow,
+			implementerMode,
+			config,
+			agentSkills: agent.skills ?? [],
+			stepSkills: options.skills ?? [],
+			availableSkills,
+		})
+		: resolveRoleSkillSet({
+			workflow,
+			role,
+			config,
+			agentSkills: agent.skills ?? [],
+			stepSkills: options.skills ?? [],
+			availableSkills,
+		});
 	const { resolved: resolvedSkills, missing: missingSkills } = resolveSkills(skillNames, runtimeCwd);
 
 	let systemPrompt = agent.systemPrompt?.trim() || "";

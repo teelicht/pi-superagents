@@ -82,7 +82,7 @@ Notes:
 - Modify: `subagent-executor.ts`
 - Test: `test/integration/slash-commands.test.ts`
 
-- [ ] **Step 1: Add a failing slash-command test for the new command**
+- [x] **Step 1: Add a failing slash-command test for the new command**
 
 ```ts
 it("/superpowers emits a request with workflow and implementer mode metadata", async () => {
@@ -124,7 +124,7 @@ it("/superpowers emits a request with workflow and implementer mode metadata", a
 });
 ```
 
-- [ ] **Step 2: Run the slash-command integration test and verify it fails because the command does not exist yet**
+- [x] **Step 2: Run the slash-command integration test and verify it fails because the command does not exist yet**
 
 Run:
 
@@ -135,7 +135,7 @@ node --experimental-transform-types --import ./test/support/register-loader.mjs 
 Expected:
 - FAIL because `commands.get("superpowers")` is `undefined`
 
-- [ ] **Step 3: Add run-level workflow metadata types in `types.ts`**
+- [x] **Step 3: Add run-level workflow metadata types in `types.ts`**
 
 ```ts
 export type WorkflowMode = "default" | "superpowers";
@@ -162,7 +162,7 @@ export interface ExtensionConfig {
 }
 ```
 
-- [ ] **Step 4: Extend `SubagentParamsLike` and `schemas.ts` so workflow metadata can reach the executor**
+- [x] **Step 4: Extend `SubagentParamsLike` and `schemas.ts` so workflow metadata can reach the executor**
 
 ```ts
 export interface SubagentParamsLike {
@@ -188,7 +188,7 @@ implementerMode: Type.Optional(Type.String({
 })),
 ```
 
-- [ ] **Step 5: Register the new command in `slash-commands.ts`**
+- [x] **Step 5: Register the new command in `slash-commands.ts`**
 
 ```ts
 pi.registerCommand("superpowers", {
@@ -214,7 +214,7 @@ pi.registerCommand("superpowers", {
 });
 ```
 
-- [ ] **Step 6: Thread the new fields through `subagent-executor.ts`**
+- [x] **Step 6: Thread the new fields through `subagent-executor.ts`**
 
 ```ts
 const workflow = params.workflow ?? "default";
@@ -235,7 +235,7 @@ const result = await runSync(ctx.cwd, agents, params.agent!, task, {
 });
 ```
 
-- [ ] **Step 7: Re-run the slash-command integration test**
+- [x] **Step 7: Re-run the slash-command integration test**
 
 Run:
 
@@ -247,7 +247,7 @@ Expected:
 - new `/superpowers` test passes
 - existing `/run` and `/subagents-status` tests still pass
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add types.ts schemas.ts slash-commands.ts subagent-executor.ts test/integration/slash-commands.test.ts
@@ -263,7 +263,7 @@ git commit -m "feat: add explicit superpowers command entrypoint"
 - Modify: `chain-execution.ts`
 - Test: `test/unit/superpowers-policy.test.ts`
 
-- [ ] **Step 1: Write failing unit tests for command-scoped policy**
+- [x] **Step 1: Write failing unit tests for command-scoped policy**
 
 ```ts
 import assert from "node:assert/strict";
@@ -322,7 +322,7 @@ describe("superpowers policy", () => {
 });
 ```
 
-- [ ] **Step 2: Run the new unit test and verify it fails because the policy layer does not exist yet**
+- [x] **Step 2: Run the new unit test and verify it fails because the policy layer does not exist yet**
 
 Run:
 
@@ -333,7 +333,7 @@ node --experimental-strip-types --test test/unit/superpowers-policy.test.ts
 Expected:
 - FAIL with missing module or export errors
 
-- [ ] **Step 3: Implement `superpowers-policy.ts`**
+- [x] **Step 3: Implement `superpowers-policy.ts`**
 
 ```ts
 import type {
@@ -425,7 +425,7 @@ export function resolveImplementerSkillSet(input: {
 }
 ```
 
-- [ ] **Step 4: Add reusable available-skill helpers in `skills.ts`**
+- [x] **Step 4: Add reusable available-skill helpers in `skills.ts`**
 
 ```ts
 export function getAvailableSkillNames(cwd: string): Set<string> {
@@ -433,7 +433,7 @@ export function getAvailableSkillNames(cwd: string): Set<string> {
 }
 ```
 
-- [ ] **Step 5: Apply the policy in `execution.ts` and `chain-execution.ts` only when `workflow === "superpowers"`**
+- [x] **Step 5: Apply the policy in `execution.ts` and `chain-execution.ts` only when `workflow === "superpowers"`**
 
 ```ts
 const role = inferExecutionRole(agent.name);
@@ -465,7 +465,7 @@ const effectiveSkills =
 			});
 ```
 
-- [ ] **Step 6: Re-run the unit tests**
+- [x] **Step 6: Re-run the unit tests**
 
 Run:
 
