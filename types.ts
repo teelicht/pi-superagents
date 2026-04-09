@@ -44,7 +44,20 @@ export type WorkflowMode = "default" | "superpowers";
 
 export type SuperpowersImplementerMode = "tdd" | "direct";
 
-export type ModelTier = "cheap" | "strong" | "max";
+export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
+
+export type ModelTier = "cheap" | "balanced" | "max";
+
+export type LegacyModelTier = "strong";
+
+export type ConfiguredModelTier = ModelTier | LegacyModelTier;
+
+export interface ModelTierConfig {
+	model: string;
+	thinking?: ThinkingLevel;
+}
+
+export type ModelTierSetting = string | ModelTierConfig;
 
 export type ExecutionRole =
 	| "root-planning"
@@ -264,8 +277,8 @@ export interface RunSyncOptions {
 
 export interface SuperpowersSettings {
 	commandName?: string;
-	modelTiers?: Partial<Record<ModelTier, string>>;
-	roleModelTiers?: Partial<Record<ExecutionRole, ModelTier>>;
+	modelTiers?: Partial<Record<ConfiguredModelTier, ModelTierSetting>>;
+	roleModelTiers?: Partial<Record<ExecutionRole, ConfiguredModelTier>>;
 	roleSkillOverlays?: Partial<Record<ExecutionRole, string[]>>;
 	worktreeRoot?: string;
 	worktreeBaselineCommand?: string;

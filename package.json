@@ -29,6 +29,7 @@
     "*.ts",
     "!*.test.ts",
     "*.mjs",
+    "default-config.json",
     "agents/",
     "README.md",
     "CHANGELOG.md"

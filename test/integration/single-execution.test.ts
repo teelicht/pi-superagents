@@ -123,6 +123,28 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.equal(result.model, "openai/gpt-4o");
 	});
 
+	it("applies superpowers tier thinking when the tier config provides it", async () => {
+		mockPi.onCall({ output: "Done" });
+		const agents = [makeAgent("sp-code-review", { model: "balanced" })];
+
+		const result = await runSync(tempDir, agents, "sp-code-review", "Review task", {
+			workflow: "superpowers",
+			config: {
+				superpowers: {
+					modelTiers: {
+						balanced: {
+							model: "openai/gpt-5.4",
+							thinking: "medium",
+						},
+					},
+				},
+			},
+		});
+
+		assert.equal(result.exitCode, 0);
+		assert.equal(result.model, "openai/gpt-5.4:medium");
+	});
+
 	it("tracks usage from message events", async () => {
 		mockPi.onCall({ output: "Done" });
 		const agents = makeAgentConfigs(["echo"]);

@@ -15,6 +15,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import { type ExtensionAPI, type ExtensionContext, type ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Box, Container, Spacer, Text } from "@mariozechner/pi-tui";
@@ -59,12 +60,64 @@ function getSubagentSessionRoot(parentSessionFile: string | null): string {
 	return fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-session-"));
 }
 
+/**
+ * Read one JSON config file from disk.
+ *
+ * @param filePath Absolute path to the JSON file.
+ * @returns Parsed config object or `undefined` when the file is absent.
+ */
+function readJsonConfig(filePath: string): ExtensionConfig | undefined {
+	if (!fs.existsSync(filePath)) return undefined;
+	return JSON.parse(fs.readFileSync(filePath, "utf-8")) as ExtensionConfig;
+}
+
+/**
+ * Merge user config over bundled defaults while keeping nested Superpowers maps.
+ *
+ * @param defaults Bundled config defaults shipped with the extension.
+ * @param overrides User-authored config loaded from `config.json`.
+ * @returns Effective config used by the runtime.
+ */
+function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfig): ExtensionConfig {
+	const mergedSuperpowers = defaults.superpowers || overrides.superpowers
+		? {
+			...(defaults.superpowers ?? {}),
+			...(overrides.superpowers ?? {}),
+			modelTiers: {
+				...(defaults.superpowers?.modelTiers ?? {}),
+				...(overrides.superpowers?.modelTiers ?? {}),
+			},
+			roleModelTiers: {
+				...(defaults.superpowers?.roleModelTiers ?? {}),
+				...(overrides.superpowers?.roleModelTiers ?? {}),
+			},
+			roleSkillOverlays: {
+				...(defaults.superpowers?.roleSkillOverlays ?? {}),
+				...(overrides.superpowers?.roleSkillOverlays ?? {}),
+			},
+		}
+		: undefined;
+
+	return {
+		...defaults,
+		...overrides,
+		...(mergedSuperpowers ? { superpowers: mergedSuperpowers } : {}),
+	};
+}
+
+/**
+ * Load effective extension config, seeding missing keys from bundled defaults.
+ *
+ * @returns Effective extension config for the current runtime.
+ */
 function loadConfig(): ExtensionConfig {
+	const extensionDir = path.dirname(fileURLToPath(import.meta.url));
+	const bundledDefaultConfigPath = path.join(extensionDir, "default-config.json");
 	const configPath = path.join(os.homedir(), ".pi", "agent", "extensions", "subagent", "config.json");
 	try {
-		if (fs.existsSync(configPath)) {
-			return JSON.parse(fs.readFileSync(configPath, "utf-8")) as ExtensionConfig;
-		}
+		const bundledDefaults = readJsonConfig(bundledDefaultConfigPath) ?? {};
+		const userConfig = readJsonConfig(configPath);
+		return userConfig ? mergeConfig(bundledDefaults, userConfig) : bundledDefaults;
 	} catch (error) {
 		console.error(`Failed to load subagent config from '${configPath}':`, error);
 	}
