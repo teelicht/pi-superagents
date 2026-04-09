@@ -793,37 +793,39 @@ Per-agent `maxSubagentDepth` can tighten that limit further for child runs, but 
 ```json
 {
   "superpowers": {
-    "commandName": "superpowers",
-    "defaultImplementerMode": "tdd",
-    "modelTiers": {
-      "cheap": {
-        "model": "openai/gpt-5.3-mini",
-        "thinking": "off"
+    "superagents": {
+      "commandName": "superpowers",
+      "defaultImplementerMode": "tdd",
+      "modelTiers": {
+        "cheap": {
+          "model": "openai/gpt-5.3-mini",
+          "thinking": "off"
+        },
+        "balanced": {
+          "model": "openai/gpt-5.4",
+          "thinking": "medium"
+        },
+        "max": {
+          "model": "anthropic/claude-opus-4-6",
+          "thinking": "high"
+        }
       },
-      "balanced": {
-        "model": "openai/gpt-5.4",
-        "thinking": "medium"
+      "roleModelTiers": {
+        "root-planning": "max",
+        "sp-recon": "cheap",
+        "sp-research": "cheap",
+        "sp-implementer": "cheap",
+        "sp-spec-review": "balanced",
+        "sp-code-review": "balanced",
+        "sp-debug": "max"
       },
-      "max": {
-        "model": "anthropic/claude-opus-4-6",
-        "thinking": "high"
+      "roleSkillOverlays": {
+        "root-planning": ["vercel-react-native-skills"],
+        "sp-implementer": ["vercel-react-native-skills"],
+        "sp-spec-review": ["vercel-react-native-skills"],
+        "sp-code-review": ["vercel-react-native-skills"],
+        "sp-debug": ["vercel-react-native-skills"]
       }
-    },
-    "roleModelTiers": {
-      "root-planning": "max",
-      "sp-recon": "cheap",
-      "sp-research": "cheap",
-      "sp-implementer": "cheap",
-      "sp-spec-review": "balanced",
-      "sp-code-review": "balanced",
-      "sp-debug": "max"
-    },
-    "roleSkillOverlays": {
-      "root-planning": ["vercel-react-native-skills"],
-      "sp-implementer": ["vercel-react-native-skills"],
-      "sp-spec-review": ["vercel-react-native-skills"],
-      "sp-code-review": ["vercel-react-native-skills"],
-      "sp-debug": ["vercel-react-native-skills"]
     }
   }
 }
@@ -832,6 +834,7 @@ Per-agent `maxSubagentDepth` can tighten that limit further for child runs, but 
 Notes:
 - `commandName` lets you rename the slash command if you want a different trigger.
 - `defaultImplementerMode` defaults `/superpowers <task>` to `tdd`; use `direct` when you want the same review loop with code-first implementation.
+- The config root key is `superagents`.
 - `modelTiers` supports either string shorthand like `"cheap": "openai/gpt-5.3-mini"` or an object with `model` and optional `thinking`.
 - The supported tier names are `cheap`, `balanced`, and `max`. Legacy `strong` entries are still accepted as a backward-compatible alias for `balanced`.
 - `roleModelTiers` lets you remap individual Superpowers roles onto those tiers without editing the bundled agent frontmatter.

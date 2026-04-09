@@ -580,15 +580,15 @@ function createParallelWorktreeSetup(
 	config: ExtensionConfig,
 ): { setup?: WorktreeSetup; errorResult?: AgentToolResult<Details> } {
 	if (!enabled) return {};
-	const superpowersRoot =
+	const superagentsRoot =
 		workflow === "superpowers"
-			? config.superpowers?.worktreeRoot
+			? (config.superagents ?? config.superpowers)?.worktreeRoot
 			: undefined;
 	try {
 		return {
 			setup: createWorktrees(cwd, runId, tasks.length, {
-				rootDir: superpowersRoot,
-				requireIgnoredRoot: Boolean(superpowersRoot),
+				rootDir: superagentsRoot,
+				requireIgnoredRoot: Boolean(superagentsRoot),
 				agents: tasks.map((task) => task.agent),
 				setupHook: setupHook
 					? { hookPath: setupHook, timeoutMs: setupHookTimeoutMs }
@@ -1237,7 +1237,7 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			workflow: normalizedParams.workflow ?? "default",
 			implementerMode:
 				normalizedParams.implementerMode
-				?? deps.config.superpowers?.defaultImplementerMode
+				?? (deps.config.superagents ?? deps.config.superpowers)?.defaultImplementerMode
 				?? "tdd",
 		};
 

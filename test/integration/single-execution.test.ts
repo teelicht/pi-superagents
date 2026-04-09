@@ -130,7 +130,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		const result = await runSync(tempDir, agents, "sp-code-review", "Review task", {
 			workflow: "superpowers",
 			config: {
-				superpowers: {
+				superagents: {
 					modelTiers: {
 						balanced: {
 							model: "openai/gpt-5.4",

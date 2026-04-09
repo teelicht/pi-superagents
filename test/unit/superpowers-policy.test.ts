@@ -33,7 +33,7 @@ describe("superpowers policy", () => {
 				workflow: "superpowers",
 				role: "sp-code-review",
 				config: {
-					superpowers: {
+					superagents: {
 						modelTiers: {
 							balanced: {
 								model: "openai/gpt-5.4",
@@ -56,9 +56,30 @@ describe("superpowers policy", () => {
 				workflow: "superpowers",
 				role: "sp-code-review",
 				config: {
-					superpowers: {
+					superagents: {
 						modelTiers: {
 							balanced: "openai/gpt-5.4",
+						},
+					},
+				},
+			}),
+			{
+				model: "openai/gpt-5.4",
+			},
+		);
+	});
+
+	it("falls back to the legacy superpowers root for existing configs", () => {
+		assert.deepEqual(
+			resolveModelForRole({
+				workflow: "superpowers",
+				role: "sp-code-review",
+				config: {
+					superpowers: {
+						modelTiers: {
+							balanced: {
+								model: "openai/gpt-5.4",
+							},
 						},
 					},
 				},
@@ -74,7 +95,7 @@ describe("superpowers policy", () => {
 			workflow: "superpowers",
 			role: "sp-spec-review",
 			config: {
-				superpowers: {
+				superagents: {
 					roleSkillOverlays: {
 						"sp-spec-review": ["vercel-react-native-skills"],
 					},

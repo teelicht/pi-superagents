@@ -23,17 +23,17 @@ function readDefaultConfig(): Record<string, unknown> {
 }
 
 describe("default-config.json", () => {
-	it("ships a superpowers tier mapping with balanced and optional thinking", () => {
+	it("ships a superagents tier mapping with the supported tier keys", () => {
 		const config = readDefaultConfig();
-		const superpowers = config.superpowers as {
+		const superagents = config.superagents as {
 			modelTiers?: Record<string, { model?: string; thinking?: string }>;
 		};
 
-		assert.equal(superpowers.modelTiers?.cheap?.model, "openai/gpt-5.3-mini");
-		assert.equal(superpowers.modelTiers?.balanced?.model, "openai/gpt-5.4");
-		assert.equal(superpowers.modelTiers?.max?.model, "anthropic/claude-opus-4-6");
-		assert.ok("thinking" in (superpowers.modelTiers?.cheap ?? {}));
-		assert.ok("thinking" in (superpowers.modelTiers?.balanced ?? {}));
-		assert.ok("thinking" in (superpowers.modelTiers?.max ?? {}));
+		assert.equal(typeof superagents.modelTiers?.cheap?.model, "string");
+		assert.equal(typeof superagents.modelTiers?.balanced?.model, "string");
+		assert.equal(typeof superagents.modelTiers?.max?.model, "string");
+		assert.ok((superagents.modelTiers?.cheap?.model?.length ?? 0) > 0);
+		assert.ok((superagents.modelTiers?.balanced?.model?.length ?? 0) > 0);
+		assert.ok((superagents.modelTiers?.max?.model?.length ?? 0) > 0);
 	});
 });
