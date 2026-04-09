@@ -1,3 +1,12 @@
+/**
+ * Integration tests for slash command registration and bridge request payloads.
+ *
+ * Responsibilities:
+ * - verify slash commands register expected handlers
+ * - verify commands emit the right bridge request metadata
+ * - verify inline slash result rendering remains stable
+ */
+
 import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
 
@@ -201,6 +210,44 @@ describe("slash command custom message delivery", { skip: !available ? "slash-co
 		assert.ok(visibleDetails);
 		const visibleSnapshot = getSlashRenderableSnapshot!(visibleDetails!);
 		assert.equal((visibleSnapshot.result.content[0] as { text?: string }).text, "Subagent failed");
+	});
+
+	it("/superpowers emits a request with workflow and implementer mode metadata", async () => {
+		const sent: unknown[] = [];
+		const commands = new Map<string, { handler(args: string, ctx: unknown): Promise<void> }>();
+		const events = createEventBus();
+		let capturedRequest: unknown;
+
+		events.on(SLASH_SUBAGENT_REQUEST_EVENT, (data) => {
+			capturedRequest = data;
+			const requestId = (data as { requestId: string }).requestId;
+			events.emit(SLASH_SUBAGENT_STARTED_EVENT, { requestId });
+			events.emit(SLASH_SUBAGENT_RESPONSE_EVENT, {
+				requestId,
+				result: {
+					content: [{ type: "text", text: "Superpowers started" }],
+					details: { mode: "single", results: [] },
+				},
+				isError: false,
+			});
+		});
+
+		const pi = {
+			events,
+			registerCommand(name: string, spec: { handler(args: string, ctx: unknown): Promise<void> }) {
+				commands.set(name, spec);
+			},
+			registerShortcut() {},
+			sendMessage(message: unknown) {
+				sent.push(message);
+			},
+		};
+
+		registerSlashCommands!(pi, createState(process.cwd()));
+		await commands.get("superpowers")!.handler("tdd implement auth fix", createCommandContext());
+
+		assert.equal((capturedRequest as { params: { workflow?: string } }).params.workflow, "superpowers");
+		assert.equal((capturedRequest as { params: { implementerMode?: string } }).params.implementerMode, "tdd");
 	});
 });
 

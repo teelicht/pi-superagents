@@ -1,3 +1,12 @@
+/**
+ * Slash command registration and request bridging for subagent execution.
+ *
+ * Responsibilities:
+ * - register slash commands and shortcuts with Pi
+ * - parse command arguments into executor request payloads
+ * - stream bridge updates into inline slash result messages
+ */
+
 import { randomUUID } from "node:crypto";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { Key, matchesKey } from "@mariozechner/pi-tui";
@@ -307,6 +316,25 @@ async function openAgentManager(
 
 interface ParsedStep { name: string; config: InlineConfig; task?: string }
 
+/**
+ * Parse `/superpowers` arguments into an implementer mode plus the remaining task text.
+ *
+ * Defaults to `tdd` mode when no explicit prefix is provided. Returns `null`
+ * when the user provided only a mode token without a task body.
+ */
+function parseSuperpowersArgs(rawArgs: string): { implementerMode: "tdd" | "direct"; task: string } | null {
+	const trimmed = rawArgs.trim();
+	if (!trimmed) return null;
+	if (trimmed === "direct" || trimmed === "tdd") return null;
+	if (trimmed.startsWith("direct ")) {
+		return { implementerMode: "direct", task: trimmed.slice("direct ".length).trim() };
+	}
+	if (trimmed.startsWith("tdd ")) {
+		return { implementerMode: "tdd", task: trimmed.slice("tdd ".length).trim() };
+	}
+	return { implementerMode: "tdd", task: trimmed };
+}
+
 const parseAgentArgs = (
 	state: SubagentState,
 	args: string,
@@ -419,6 +447,26 @@ export function registerSlashCommands(
 			if (bg) params.async = true;
 			if (fork) params.context = "fork";
 			await runSlashSubagent(pi, ctx, params);
+		},
+	});
+
+	pi.registerCommand("superpowers", {
+		description: "Run the Superpowers workflow: /superpowers [tdd|direct] <task>",
+		handler: async (rawArgs, ctx) => {
+			const parsed = parseSuperpowersArgs(rawArgs);
+			if (!parsed?.task) {
+				ctx.ui.notify("Usage: /superpowers [tdd|direct] <task>", "error");
+				return;
+			}
+
+			await runSlashSubagent(pi, ctx, {
+				workflow: "superpowers",
+				implementerMode: parsed.implementerMode,
+				agent: "sp-recon",
+				task: parsed.task,
+				clarify: false,
+				agentScope: "both",
+			});
 		},
 	});
 
