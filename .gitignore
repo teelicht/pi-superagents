@@ -7,3 +7,6 @@
 # Node and package managers
 node_modules/
 
+# Planning
+/docs/todos.md
+

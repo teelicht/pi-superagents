@@ -1,5 +1,5 @@
 {
-  "name": "pi-subagents",
+  "name": "pi-superagents",
   "version": "0.12.4",
   "description": "Pi extension for delegating tasks to subagents with chains, parallel execution, and TUI clarification",
   "author": "Nico Bailon",
@@ -7,11 +7,11 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nicobailon/pi-subagents.git"
+    "url": "git+https://github.com/nicobailon/pi-superagents.git"
   },
-  "homepage": "https://github.com/nicobailon/pi-subagents#readme",
+  "homepage": "https://github.com/nicobailon/pi-superagents#readme",
   "bugs": {
-    "url": "https://github.com/nicobailon/pi-subagents/issues"
+    "url": "https://github.com/nicobailon/pi-superagents/issues"
   },
   "keywords": [
     "pi-package",
@@ -23,7 +23,7 @@
     "cli"
   ],
   "bin": {
-    "pi-subagents": "install.mjs"
+    "pi-superagents": "install.mjs"
   },
   "files": [
     "*.ts",
