@@ -8,9 +8,12 @@
  */
 
 import type {
+	ConfiguredModelTier,
 	ExecutionRole,
 	ExtensionConfig,
 	ModelTier,
+	ModelTierConfig,
+	ModelTierSetting,
 	SuperpowersImplementerMode,
 	WorkflowMode,
 } from "./types.ts";
@@ -34,10 +37,65 @@ const DEFAULT_ROLE_TIERS: Record<ExecutionRole, ModelTier> = {
 	"sp-recon": "cheap",
 	"sp-research": "cheap",
 	"sp-implementer": "cheap",
-	"sp-spec-review": "strong",
-	"sp-code-review": "strong",
+	"sp-spec-review": "balanced",
+	"sp-code-review": "balanced",
 	"sp-debug": "max",
 };
+
+export interface ResolvedRoleModel {
+	model: string;
+	thinking?: ModelTierConfig["thinking"];
+}
+
+/**
+ * Normalize configured tier names, preserving support for legacy `strong`.
+ *
+ * @param tier Raw tier name read from config.
+ * @returns Supported tier name or `undefined` when the value is invalid.
+ */
+function normalizeConfiguredTier(tier: unknown): ModelTier | undefined {
+	if (tier === "strong") return "balanced";
+	return tier === "cheap" || tier === "balanced" || tier === "max" ? tier : undefined;
+}
+
+/**
+ * Normalize a tier mapping entry into the runtime model-plus-thinking shape.
+ *
+ * @param entry Tier config entry from `superpowers.modelTiers`.
+ * @returns Normalized tier settings or `undefined` when the entry is unusable.
+ */
+function normalizeTierSetting(entry: unknown): ResolvedRoleModel | undefined {
+	if (typeof entry === "string" && entry.length > 0) {
+		return { model: entry };
+	}
+	if (!entry || typeof entry !== "object") return undefined;
+	const candidate = entry as Partial<ModelTierConfig>;
+	if (typeof candidate.model !== "string" || candidate.model.length === 0) return undefined;
+	return typeof candidate.thinking === "string"
+		? { model: candidate.model, thinking: candidate.thinking }
+		: { model: candidate.model };
+}
+
+/**
+ * Resolve the configured model entry for a normalized tier name.
+ *
+ * Falls back from `balanced` to the legacy `strong` key so older config files
+ * continue to work after the tier rename.
+ *
+ * @param settings Full Superpowers config object.
+ * @param tier Normalized tier name.
+ * @returns Resolved model settings for the tier, if configured.
+ */
+function resolveTierModelSetting(
+	settings: ExtensionConfig["superpowers"],
+	tier: ModelTier,
+): ResolvedRoleModel | undefined {
+	const configured = settings?.modelTiers as Partial<Record<ConfiguredModelTier, ModelTierSetting>> | undefined;
+	const direct = normalizeTierSetting(configured?.[tier]);
+	if (direct) return direct;
+	if (tier !== "balanced") return undefined;
+	return normalizeTierSetting(configured?.strong);
+}
 
 /**
  * Infer the execution role used for Superpowers model and skill policy.
@@ -68,11 +126,13 @@ export function resolveModelForRole(input: {
 	workflow: WorkflowMode;
 	role: ExecutionRole;
 	config: ExtensionConfig;
-}): string | undefined {
+}): ResolvedRoleModel | undefined {
 	if (input.workflow !== "superpowers") return undefined;
 	const settings = input.config.superpowers;
-	const tier = settings?.roleModelTiers?.[input.role] ?? DEFAULT_ROLE_TIERS[input.role];
-	return settings?.modelTiers?.[tier];
+	const configuredTier = settings?.roleModelTiers?.[input.role] ?? DEFAULT_ROLE_TIERS[input.role];
+	const tier = normalizeConfiguredTier(configuredTier);
+	if (!tier) return undefined;
+	return resolveTierModelSetting(settings, tier);
 }
 
 /**

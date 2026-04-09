@@ -73,8 +73,9 @@ export async function runSync(
 		role,
 		config,
 	});
-	const effectiveModel = modelOverride ?? tierModel ?? agent.model;
-	const modelArg = applyThinkingSuffix(effectiveModel, agent.thinking);
+	const effectiveModel = modelOverride ?? tierModel?.model ?? agent.model;
+	const effectiveThinking = agent.thinking ?? (modelOverride ? undefined : tierModel?.thinking);
+	const modelArg = applyThinkingSuffix(effectiveModel, effectiveThinking);
 	const outputSnapshot = captureSingleOutputSnapshot(options.outputPath);
 
 	const availableSkills = getAvailableSkillNames(runtimeCwd);
@@ -110,7 +111,7 @@ export async function runSync(
 		sessionDir: options.sessionDir,
 		sessionFile: options.sessionFile,
 		model: effectiveModel,
-		thinking: agent.thinking,
+		thinking: effectiveThinking,
 		tools: agent.tools,
 		extensions: agent.extensions,
 		skills: skillNames,

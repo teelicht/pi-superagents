@@ -1,7 +1,7 @@
 ---
 name: sp-code-review
 description: Superpowers code-quality reviewer for a single task packet
-model: strong
+model: balanced
 maxSubagentDepth: 0
 ---
 

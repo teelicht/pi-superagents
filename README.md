@@ -755,6 +755,8 @@ This aggregated output becomes `{previous}` for the next step.
 
 `pi-superagents` reads optional JSON config from `~/.pi/agent/extensions/subagent/config.json`.
 
+On install, the extension now seeds that file from the bundled `default-config.json` template when the user config is missing, so there is always an editable starting point for tier mappings.
+
 ### `defaultSessionDir`
 
 `defaultSessionDir` sets the fallback directory used for session logs. Eg:
@@ -794,10 +796,27 @@ Per-agent `maxSubagentDepth` can tighten that limit further for child runs, but 
     "commandName": "superpowers",
     "defaultImplementerMode": "tdd",
     "modelTiers": {
-      "cheap": "openai/gpt-5.3-mini",
-      "standard": "openai/gpt-5.3-codex",
-      "strong": "openai/gpt-5.4",
-      "max": "anthropic/claude-opus-4-6"
+      "cheap": {
+        "model": "openai/gpt-5.3-mini",
+        "thinking": "off"
+      },
+      "balanced": {
+        "model": "openai/gpt-5.4",
+        "thinking": "medium"
+      },
+      "max": {
+        "model": "anthropic/claude-opus-4-6",
+        "thinking": "high"
+      }
+    },
+    "roleModelTiers": {
+      "root-planning": "max",
+      "sp-recon": "cheap",
+      "sp-research": "cheap",
+      "sp-implementer": "cheap",
+      "sp-spec-review": "balanced",
+      "sp-code-review": "balanced",
+      "sp-debug": "max"
     },
     "roleSkillOverlays": {
       "root-planning": ["vercel-react-native-skills"],
@@ -813,6 +832,9 @@ Per-agent `maxSubagentDepth` can tighten that limit further for child runs, but 
 Notes:
 - `commandName` lets you rename the slash command if you want a different trigger.
 - `defaultImplementerMode` defaults `/superpowers <task>` to `tdd`; use `direct` when you want the same review loop with code-first implementation.
+- `modelTiers` supports either string shorthand like `"cheap": "openai/gpt-5.3-mini"` or an object with `model` and optional `thinking`.
+- The supported tier names are `cheap`, `balanced`, and `max`. Legacy `strong` entries are still accepted as a backward-compatible alias for `balanced`.
+- `roleModelTiers` lets you remap individual Superpowers roles onto those tiers without editing the bundled agent frontmatter.
 - `modelTiers` and `roleSkillOverlays` only apply to Superpowers runs, so the generic extension remains dormant until the command is used.
 
 ### `worktreeSetupHook`
