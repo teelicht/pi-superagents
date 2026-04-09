@@ -14,54 +14,54 @@
 
 ### Files to Create
 
-| File | Purpose |
-|------|---------|
-| `superpowers-policy.ts` | Resolve command-only workflow policy: roles, model tiers, role-based overlays, implementer mode |
-| `superpowers-packets.ts` | Build run-local packet names and instruction defaults for the Superpowers command |
-| `test/unit/superpowers-policy.test.ts` | Unit tests for command-scoped role/tier/overlay resolution and implementer mode selection |
-| `test/integration/superpowers-packets.test.ts` | Integration tests for packet naming/instruction behavior in the Superpowers command path |
-| `agents/sp-recon.md` | Superpowers recon role |
-| `agents/sp-research.md` | Superpowers research role |
-| `agents/sp-implementer.md` | Superpowers implementer role |
-| `agents/sp-spec-review.md` | Superpowers spec-review role |
-| `agents/sp-code-review.md` | Superpowers code-review role |
-| `agents/sp-debug.md` | Superpowers debug role |
-| `agents/sp-task-loop.chain.md` | Canonical per-task loop: implementer -> spec-review -> code-review |
+| File                                           | Purpose                                                                                         |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `superpowers-policy.ts`                        | Resolve command-only workflow policy: roles, model tiers, role-based overlays, implementer mode |
+| `superpowers-packets.ts`                       | Build run-local packet names and instruction defaults for the Superpowers command               |
+| `test/unit/superpowers-policy.test.ts`         | Unit tests for command-scoped role/tier/overlay resolution and implementer mode selection       |
+| `test/integration/superpowers-packets.test.ts` | Integration tests for packet naming/instruction behavior in the Superpowers command path        |
+| `agents/sp-recon.md`                           | Superpowers recon role                                                                          |
+| `agents/sp-research.md`                        | Superpowers research role                                                                       |
+| `agents/sp-implementer.md`                     | Superpowers implementer role                                                                    |
+| `agents/sp-spec-review.md`                     | Superpowers spec-review role                                                                    |
+| `agents/sp-code-review.md`                     | Superpowers code-review role                                                                    |
+| `agents/sp-debug.md`                           | Superpowers debug role                                                                          |
+| `agents/sp-task-loop.chain.md`                 | Canonical per-task loop: implementer -> spec-review -> code-review                              |
 
 ### Files to Modify
 
-| File | Purpose |
-|------|---------|
-| `types.ts` | Add run-level workflow metadata and Superpowers settings types |
-| `schemas.ts` | Add direct-tool parameters for command-driven workflow metadata if needed |
-| `index.ts` | Load Superpowers settings and keep them dormant unless command/run metadata activates them |
-| `slash-commands.ts` | Register the new Superpowers command and parse `tdd` vs `direct` options |
-| `subagent-executor.ts` | Thread workflow metadata through single/chain/parallel execution |
-| `execution.ts` | Resolve effective model and skills only when Superpowers workflow metadata is present |
-| `chain-execution.ts` | Apply role/tier/overlay/packet behavior in the Superpowers command path |
-| `settings.ts` | Support command-scoped packet defaults instead of `context.md` / `progress.md` conventions |
-| `skills.ts` | Support overlay resolution and compatibility checks for command-scoped runs |
-| `worktree.ts` | Add Superpowers-compatible worktree root/ignore/baseline behavior without changing default runtime behavior |
-| `agent-templates.ts` | Add Superpowers templates without removing generic ones |
-| `README.md` | Document the new command, implementer modes, overlays, and examples |
-| `test/integration/slash-commands.test.ts` | Cover command parsing and request payload construction |
-| `test/integration/template-resolution.test.ts` | Extend chain/prompt behavior coverage for command-scoped packets |
-| `test/unit/worktree.test.ts` | Add worktree tests for configured roots and ignore verification |
-| `test/unit/agent-frontmatter.test.ts` | Cover new built-in `sp-*` agents |
+| File                                           | Purpose                                                                                                     |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `types.ts`                                     | Add run-level workflow metadata and Superpowers settings types                                              |
+| `schemas.ts`                                   | Add direct-tool parameters for command-driven workflow metadata if needed                                   |
+| `index.ts`                                     | Load Superpowers settings and keep them dormant unless command/run metadata activates them                  |
+| `slash-commands.ts`                            | Register the new Superpowers command and parse `tdd` vs `direct` options                                    |
+| `subagent-executor.ts`                         | Thread workflow metadata through single/chain/parallel execution                                            |
+| `execution.ts`                                 | Resolve effective model and skills only when Superpowers workflow metadata is present                       |
+| `chain-execution.ts`                           | Apply role/tier/overlay/packet behavior in the Superpowers command path                                     |
+| `settings.ts`                                  | Support command-scoped packet defaults instead of `context.md` / `progress.md` conventions                  |
+| `skills.ts`                                    | Support overlay resolution and compatibility checks for command-scoped runs                                 |
+| `worktree.ts`                                  | Add Superpowers-compatible worktree root/ignore/baseline behavior without changing default runtime behavior |
+| `agent-templates.ts`                           | Add Superpowers templates without removing generic ones                                                     |
+| `README.md`                                    | Document the new command, implementer modes, overlays, and examples                                         |
+| `test/integration/slash-commands.test.ts`      | Cover command parsing and request payload construction                                                      |
+| `test/integration/template-resolution.test.ts` | Extend chain/prompt behavior coverage for command-scoped packets                                            |
+| `test/unit/worktree.test.ts`                   | Add worktree tests for configured roots and ignore verification                                             |
+| `test/unit/agent-frontmatter.test.ts`          | Cover new built-in `sp-*` agents                                                                            |
 
 ### Reference Patterns
 
-| File | Pattern |
-|------|---------|
-| `slash-commands.ts` | Existing slash-command registration and request emission |
-| `subagent-executor.ts` | Central execution entry point for single/parallel/chain requests |
-| `execution.ts` | Final model/skill injection before spawning Pi |
-| `settings.ts` | Existing reads/output/progress instruction injection |
-| `skills.ts` | Existing skill discovery and resolution |
-| `worktree.ts` | Existing git/worktree safety checks |
-| `test/integration/slash-commands.test.ts` | Good pattern for command-level tests without full runtime boot |
-| `test/integration/template-resolution.test.ts` | Good pattern for pure behavior tests |
-| `test/unit/worktree.test.ts` | Good pattern for git-backed worktree tests |
+| File                                           | Pattern                                                          |
+| ---------------------------------------------- | ---------------------------------------------------------------- |
+| `slash-commands.ts`                            | Existing slash-command registration and request emission         |
+| `subagent-executor.ts`                         | Central execution entry point for single/parallel/chain requests |
+| `execution.ts`                                 | Final model/skill injection before spawning Pi                   |
+| `settings.ts`                                  | Existing reads/output/progress instruction injection             |
+| `skills.ts`                                    | Existing skill discovery and resolution                          |
+| `worktree.ts`                                  | Existing git/worktree safety checks                              |
+| `test/integration/slash-commands.test.ts`      | Good pattern for command-level tests without full runtime boot   |
+| `test/integration/template-resolution.test.ts` | Good pattern for pure behavior tests                             |
+| `test/unit/worktree.test.ts`                   | Good pattern for git-backed worktree tests                       |
 
 ### Risk Assessment
 
@@ -70,12 +70,14 @@
 - [x] Configuration changes required
 
 Notes:
+
 - The plan intentionally keeps the baseline `pi` harness and generic `pi-subagents` extension behavior unchanged, and scopes new policy to the explicit Superpowers command.
 - Generic built-ins should remain intact in this iteration.
 
 ## Task 1: Add The Superpowers Command And Run-Level Workflow Metadata
 
 **Files:**
+
 - Modify: `types.ts`
 - Modify: `schemas.ts`
 - Modify: `slash-commands.ts`
@@ -86,41 +88,56 @@ Notes:
 
 ```ts
 it("/superpowers emits a request with workflow and implementer mode metadata", async () => {
-	const sent: unknown[] = [];
-	const commands = new Map<string, { handler(args: string, ctx: unknown): Promise<void> }>();
-	const events = createEventBus();
-	let capturedRequest: unknown;
+  const sent: unknown[] = [];
+  const commands = new Map<
+    string,
+    { handler(args: string, ctx: unknown): Promise<void> }
+  >();
+  const events = createEventBus();
+  let capturedRequest: unknown;
 
-	events.on(SLASH_SUBAGENT_REQUEST_EVENT, (data) => {
-		capturedRequest = data;
-		const requestId = (data as { requestId: string }).requestId;
-		events.emit(SLASH_SUBAGENT_STARTED_EVENT, { requestId });
-		events.emit(SLASH_SUBAGENT_RESPONSE_EVENT, {
-			requestId,
-			result: {
-				content: [{ type: "text", text: "Superpowers started" }],
-				details: { mode: "single", results: [] },
-			},
-			isError: false,
-		});
-	});
+  events.on(SLASH_SUBAGENT_REQUEST_EVENT, (data) => {
+    capturedRequest = data;
+    const requestId = (data as { requestId: string }).requestId;
+    events.emit(SLASH_SUBAGENT_STARTED_EVENT, { requestId });
+    events.emit(SLASH_SUBAGENT_RESPONSE_EVENT, {
+      requestId,
+      result: {
+        content: [{ type: "text", text: "Superpowers started" }],
+        details: { mode: "single", results: [] },
+      },
+      isError: false,
+    });
+  });
 
-	const pi = {
-		events,
-		registerCommand(name: string, spec: { handler(args: string, ctx: unknown): Promise<void> }) {
-			commands.set(name, spec);
-		},
-		registerShortcut() {},
-		sendMessage(message: unknown) {
-			sent.push(message);
-		},
-	};
+  const pi = {
+    events,
+    registerCommand(
+      name: string,
+      spec: { handler(args: string, ctx: unknown): Promise<void> },
+    ) {
+      commands.set(name, spec);
+    },
+    registerShortcut() {},
+    sendMessage(message: unknown) {
+      sent.push(message);
+    },
+  };
 
-	registerSlashCommands!(pi, createState(process.cwd()));
-	await commands.get("superpowers")!.handler("tdd implement auth fix", createCommandContext());
+  registerSlashCommands!(pi, createState(process.cwd()));
+  await commands
+    .get("superpowers")!
+    .handler("tdd implement auth fix", createCommandContext());
 
-	assert.equal((capturedRequest as { params: { workflow?: string } }).params.workflow, "superpowers");
-	assert.equal((capturedRequest as { params: { implementerMode?: string } }).params.implementerMode, "tdd");
+  assert.equal(
+    (capturedRequest as { params: { workflow?: string } }).params.workflow,
+    "superpowers",
+  );
+  assert.equal(
+    (capturedRequest as { params: { implementerMode?: string } }).params
+      .implementerMode,
+    "tdd",
+  );
 });
 ```
 
@@ -133,6 +150,7 @@ node --experimental-transform-types --import ./test/support/register-loader.mjs 
 ```
 
 Expected:
+
 - FAIL because `commands.get("superpowers")` is `undefined`
 
 - [x] **Step 3: Add run-level workflow metadata types in `types.ts`**
@@ -143,22 +161,22 @@ export type WorkflowMode = "default" | "superpowers";
 export type SuperpowersImplementerMode = "tdd" | "direct";
 
 export interface SuperpowersSettings {
-	commandName?: string;
-	modelTiers?: Partial<Record<ModelTier, string>>;
-	roleModelTiers?: Partial<Record<ExecutionRole, ModelTier>>;
-	roleSkillOverlays?: Partial<Record<ExecutionRole, string[]>>;
-	worktreeRoot?: string;
-	worktreeBaselineCommand?: string;
-	defaultImplementerMode?: SuperpowersImplementerMode;
+  commandName?: string;
+  modelTiers?: Partial<Record<ModelTier, string>>;
+  roleModelTiers?: Partial<Record<ExecutionRole, ModelTier>>;
+  roleSkillOverlays?: Partial<Record<ExecutionRole, string[]>>;
+  worktreeRoot?: string;
+  worktreeBaselineCommand?: string;
+  defaultImplementerMode?: SuperpowersImplementerMode;
 }
 
 export interface ExtensionConfig {
-	asyncByDefault?: boolean;
-	defaultSessionDir?: string;
-	maxSubagentDepth?: number;
-	worktreeSetupHook?: string;
-	worktreeSetupHookTimeoutMs?: number;
-	superpowers?: SuperpowersSettings;
+  asyncByDefault?: boolean;
+  defaultSessionDir?: string;
+  maxSubagentDepth?: number;
+  worktreeSetupHook?: string;
+  worktreeSetupHookTimeoutMs?: number;
+  superpowers?: SuperpowersSettings;
 }
 ```
 
@@ -166,14 +184,14 @@ export interface ExtensionConfig {
 
 ```ts
 export interface SubagentParamsLike {
-	action?: string;
-	agent?: string;
-	task?: string;
-	chain?: ChainStep[];
-	tasks?: TaskParam[];
-	workflow?: "default" | "superpowers";
-	implementerMode?: "tdd" | "direct";
-	// ...existing fields...
+  action?: string;
+  agent?: string;
+  task?: string;
+  chain?: ChainStep[];
+  tasks?: TaskParam[];
+  workflow?: "default" | "superpowers";
+  implementerMode?: "tdd" | "direct";
+  // ...existing fields...
 }
 ```
 
@@ -192,25 +210,23 @@ implementerMode: Type.Optional(Type.String({
 
 ```ts
 pi.registerCommand("superpowers", {
-	async handler(rawArgs, ctx) {
-		const trimmed = rawArgs.trim();
-		const implementerMode = trimmed.startsWith("direct ")
-			? "direct"
-			: "tdd";
-		const task = trimmed.startsWith("direct ")
-			? trimmed.slice("direct ".length)
-			: trimmed.startsWith("tdd ")
-				? trimmed.slice("tdd ".length)
-				: trimmed;
+  async handler(rawArgs, ctx) {
+    const trimmed = rawArgs.trim();
+    const implementerMode = trimmed.startsWith("direct ") ? "direct" : "tdd";
+    const task = trimmed.startsWith("direct ")
+      ? trimmed.slice("direct ".length)
+      : trimmed.startsWith("tdd ")
+        ? trimmed.slice("tdd ".length)
+        : trimmed;
 
-		await runSlashSubagent(pi, ctx, {
-			workflow: "superpowers",
-			implementerMode,
-			agent: "sp-recon",
-			task,
-			clarify: false,
-		});
-	},
+    await runSlashSubagent(pi, ctx, {
+      workflow: "superpowers",
+      implementerMode,
+      agent: "sp-recon",
+      task,
+      clarify: false,
+    });
+  },
 });
 ```
 
@@ -219,19 +235,19 @@ pi.registerCommand("superpowers", {
 ```ts
 const workflow = params.workflow ?? "default";
 const implementerMode =
-	params.implementerMode
-	?? deps.config.superpowers?.defaultImplementerMode
-	?? "tdd";
+  params.implementerMode ??
+  deps.config.superpowers?.defaultImplementerMode ??
+  "tdd";
 ```
 
 Use these values later when resolving policy:
 
 ```ts
 const result = await runSync(ctx.cwd, agents, params.agent!, task, {
-	// existing fields...
-	config: deps.config,
-	workflow,
-	implementerMode,
+  // existing fields...
+  config: deps.config,
+  workflow,
+  implementerMode,
 });
 ```
 
@@ -244,6 +260,7 @@ node --experimental-transform-types --import ./test/support/register-loader.mjs 
 ```
 
 Expected:
+
 - new `/superpowers` test passes
 - existing `/run` and `/subagents-status` tests still pass
 
@@ -257,6 +274,7 @@ git commit -m "feat: add explicit superpowers command entrypoint"
 ### Task 2: Add Command-Scoped Superpowers Policy And Skill Overlay Resolution
 
 **Files:**
+
 - Create: `superpowers-policy.ts`
 - Modify: `skills.ts`
 - Modify: `execution.ts`
@@ -269,56 +287,56 @@ git commit -m "feat: add explicit superpowers command entrypoint"
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-	resolveModelForRole,
-	resolveRoleSkillSet,
-	resolveImplementerSkillSet,
-	type SuperpowersPolicyInput,
+  resolveModelForRole,
+  resolveRoleSkillSet,
+  resolveImplementerSkillSet,
+  type SuperpowersPolicyInput,
 } from "../../superpowers-policy.ts";
 
 describe("superpowers policy", () => {
-	it("does nothing when workflow is default", () => {
-		assert.equal(
-			resolveModelForRole({
-				workflow: "default",
-				role: "sp-code-review",
-				config: {},
-			}),
-			undefined,
-		);
-	});
+  it("does nothing when workflow is default", () => {
+    assert.equal(
+      resolveModelForRole({
+        workflow: "default",
+        role: "sp-code-review",
+        config: {},
+      }),
+      undefined,
+    );
+  });
 
-	it("resolves overlays only for command-scoped superpowers runs", () => {
-		const skills = resolveRoleSkillSet({
-			workflow: "superpowers",
-			role: "sp-spec-review",
-			config: {
-				superpowers: {
-					roleSkillOverlays: {
-						"sp-spec-review": ["vercel-react-native-skills"],
-					},
-				},
-			},
-			agentSkills: [],
-			stepSkills: [],
-			availableSkills: new Set(["vercel-react-native-skills"]),
-		});
+  it("resolves overlays only for command-scoped superpowers runs", () => {
+    const skills = resolveRoleSkillSet({
+      workflow: "superpowers",
+      role: "sp-spec-review",
+      config: {
+        superpowers: {
+          roleSkillOverlays: {
+            "sp-spec-review": ["vercel-react-native-skills"],
+          },
+        },
+      },
+      agentSkills: [],
+      stepSkills: [],
+      availableSkills: new Set(["vercel-react-native-skills"]),
+    });
 
-		assert.deepEqual(skills, ["vercel-react-native-skills"]);
-	});
+    assert.deepEqual(skills, ["vercel-react-native-skills"]);
+  });
 
-	it("adds test-driven-development only in tdd implementer mode", () => {
-		assert.deepEqual(
-			resolveImplementerSkillSet({
-				workflow: "superpowers",
-				implementerMode: "tdd",
-				config: {},
-				agentSkills: [],
-				stepSkills: [],
-				availableSkills: new Set(["test-driven-development"]),
-			}),
-			["test-driven-development"],
-		);
-	});
+  it("adds test-driven-development only in tdd implementer mode", () => {
+    assert.deepEqual(
+      resolveImplementerSkillSet({
+        workflow: "superpowers",
+        implementerMode: "tdd",
+        config: {},
+        agentSkills: [],
+        stepSkills: [],
+        availableSkills: new Set(["test-driven-development"]),
+      }),
+      ["test-driven-development"],
+    );
+  });
 });
 ```
 
@@ -331,97 +349,108 @@ node --experimental-strip-types --test test/unit/superpowers-policy.test.ts
 ```
 
 Expected:
+
 - FAIL with missing module or export errors
 
 - [x] **Step 3: Implement `superpowers-policy.ts`**
 
 ```ts
 import type {
-	ExecutionRole,
-	ExtensionConfig,
-	SuperpowersImplementerMode,
-	WorkflowMode,
+  ExecutionRole,
+  ExtensionConfig,
+  SuperpowersImplementerMode,
+  WorkflowMode,
 } from "./types.ts";
 
 const ROOT_ONLY_WORKFLOW_SKILLS = new Set([
-	"using-superpowers",
-	"brainstorming",
-	"writing-plans",
-	"requesting-code-review",
-	"receiving-code-review",
-	"subagent-driven-development",
-	"executing-plans",
-	"verification-before-completion",
-	"using-git-worktrees",
-	"dispatching-parallel-agents",
-	"finishing-a-development-branch",
+  "using-superpowers",
+  "brainstorming",
+  "writing-plans",
+  "requesting-code-review",
+  "receiving-code-review",
+  "subagent-driven-development",
+  "executing-plans",
+  "verification-before-completion",
+  "using-git-worktrees",
+  "dispatching-parallel-agents",
+  "finishing-a-development-branch",
 ]);
 
 const DEFAULT_ROLE_TIERS: Record<ExecutionRole, ModelTier> = {
-	"root-planning": "max",
-	"sp-recon": "cheap",
-	"sp-research": "cheap",
-	"sp-implementer": "cheap",
-	"sp-spec-review": "strong",
-	"sp-code-review": "strong",
-	"sp-debug": "max",
+  "root-planning": "max",
+  "sp-recon": "cheap",
+  "sp-research": "cheap",
+  "sp-implementer": "cheap",
+  "sp-spec-review": "strong",
+  "sp-code-review": "strong",
+  "sp-debug": "max",
 };
 
 export function resolveModelForRole(input: {
-	workflow: WorkflowMode;
-	role: ExecutionRole;
-	config: ExtensionConfig;
+  workflow: WorkflowMode;
+  role: ExecutionRole;
+  config: ExtensionConfig;
 }): string | undefined {
-	if (input.workflow !== "superpowers") return undefined;
-	const settings = input.config.superpowers;
-	const tier = settings?.roleModelTiers?.[input.role] ?? DEFAULT_ROLE_TIERS[input.role];
-	return settings?.modelTiers?.[tier];
+  if (input.workflow !== "superpowers") return undefined;
+  const settings = input.config.superpowers;
+  const tier =
+    settings?.roleModelTiers?.[input.role] ?? DEFAULT_ROLE_TIERS[input.role];
+  return settings?.modelTiers?.[tier];
 }
 
 export function resolveRoleSkillSet(input: {
-	workflow: WorkflowMode;
-	role: ExecutionRole;
-	config: ExtensionConfig;
-	agentSkills: string[];
-	stepSkills: string[];
-	availableSkills: ReadonlySet<string>;
+  workflow: WorkflowMode;
+  role: ExecutionRole;
+  config: ExtensionConfig;
+  agentSkills: string[];
+  stepSkills: string[];
+  availableSkills: ReadonlySet<string>;
 }): string[] {
-	if (input.workflow !== "superpowers") {
-		return [...new Set([...input.agentSkills, ...input.stepSkills])];
-	}
+  if (input.workflow !== "superpowers") {
+    return [...new Set([...input.agentSkills, ...input.stepSkills])];
+  }
 
-	const overlays = input.config.superpowers?.roleSkillOverlays?.[input.role] ?? [];
-	const merged = [...new Set([...input.agentSkills, ...input.stepSkills, ...overlays])];
-	for (const skill of merged) {
-		if (!input.availableSkills.has(skill)) {
-			throw new Error(`Unknown overlay skill: ${skill}`);
-		}
-		if (input.role !== "root-planning" && ROOT_ONLY_WORKFLOW_SKILLS.has(skill)) {
-			throw new Error(`Role ${input.role} cannot receive root-only workflow skill '${skill}'`);
-		}
-	}
-	return merged;
+  const overlays =
+    input.config.superpowers?.roleSkillOverlays?.[input.role] ?? [];
+  const merged = [
+    ...new Set([...input.agentSkills, ...input.stepSkills, ...overlays]),
+  ];
+  for (const skill of merged) {
+    if (!input.availableSkills.has(skill)) {
+      throw new Error(`Unknown overlay skill: ${skill}`);
+    }
+    if (
+      input.role !== "root-planning" &&
+      ROOT_ONLY_WORKFLOW_SKILLS.has(skill)
+    ) {
+      throw new Error(
+        `Role ${input.role} cannot receive root-only workflow skill '${skill}'`,
+      );
+    }
+  }
+  return merged;
 }
 
 export function resolveImplementerSkillSet(input: {
-	workflow: WorkflowMode;
-	implementerMode: SuperpowersImplementerMode;
-	config: ExtensionConfig;
-	agentSkills: string[];
-	stepSkills: string[];
-	availableSkills: ReadonlySet<string>;
+  workflow: WorkflowMode;
+  implementerMode: SuperpowersImplementerMode;
+  config: ExtensionConfig;
+  agentSkills: string[];
+  stepSkills: string[];
+  availableSkills: ReadonlySet<string>;
 }): string[] {
-	const base = resolveRoleSkillSet({
-		workflow: input.workflow,
-		role: "sp-implementer",
-		config: input.config,
-		agentSkills: input.agentSkills,
-		stepSkills: input.stepSkills,
-		availableSkills: input.availableSkills,
-	});
-	if (input.workflow !== "superpowers" || input.implementerMode !== "tdd") return base;
-	if (!input.availableSkills.has("test-driven-development")) return base;
-	return [...new Set([...base, "test-driven-development"])];
+  const base = resolveRoleSkillSet({
+    workflow: input.workflow,
+    role: "sp-implementer",
+    config: input.config,
+    agentSkills: input.agentSkills,
+    stepSkills: input.stepSkills,
+    availableSkills: input.availableSkills,
+  });
+  if (input.workflow !== "superpowers" || input.implementerMode !== "tdd")
+    return base;
+  if (!input.availableSkills.has("test-driven-development")) return base;
+  return [...new Set([...base, "test-driven-development"])];
 }
 ```
 
@@ -429,7 +458,7 @@ export function resolveImplementerSkillSet(input: {
 
 ```ts
 export function getAvailableSkillNames(cwd: string): Set<string> {
-	return new Set(getCachedSkills(cwd).map((skill) => skill.name));
+  return new Set(getCachedSkills(cwd).map((skill) => skill.name));
 }
 ```
 
@@ -438,31 +467,31 @@ export function getAvailableSkillNames(cwd: string): Set<string> {
 ```ts
 const role = inferExecutionRole(agent.name);
 const tierModel = resolveModelForRole({
-	workflow: options.workflow ?? "default",
-	role,
-	config: options.config,
+  workflow: options.workflow ?? "default",
+  role,
+  config: options.config,
 });
 const effectiveModel = modelOverride ?? tierModel ?? agent.model;
 
 const availableSkills = getAvailableSkillNames(runtimeCwd);
 const effectiveSkills =
-	role === "sp-implementer"
-		? resolveImplementerSkillSet({
-				workflow: options.workflow ?? "default",
-				implementerMode: options.implementerMode ?? "tdd",
-				config: options.config,
-				agentSkills: agent.skills ?? [],
-				stepSkills: options.skills ?? [],
-				availableSkills,
-			})
-		: resolveRoleSkillSet({
-				workflow: options.workflow ?? "default",
-				role,
-				config: options.config,
-				agentSkills: agent.skills ?? [],
-				stepSkills: options.skills ?? [],
-				availableSkills,
-			});
+  role === "sp-implementer"
+    ? resolveImplementerSkillSet({
+        workflow: options.workflow ?? "default",
+        implementerMode: options.implementerMode ?? "tdd",
+        config: options.config,
+        agentSkills: agent.skills ?? [],
+        stepSkills: options.skills ?? [],
+        availableSkills,
+      })
+    : resolveRoleSkillSet({
+        workflow: options.workflow ?? "default",
+        role,
+        config: options.config,
+        agentSkills: agent.skills ?? [],
+        stepSkills: options.skills ?? [],
+        availableSkills,
+      });
 ```
 
 - [x] **Step 6: Re-run the unit tests**
@@ -474,6 +503,7 @@ node --experimental-strip-types --test test/unit/superpowers-policy.test.ts
 ```
 
 Expected:
+
 - all `superpowers policy` tests pass
 
 - [x] **Step 7: Commit**
@@ -486,6 +516,7 @@ git commit -m "feat: add command-scoped superpowers policy"
 ### Task 3: Add Packet Conventions And `sp-*` Role Library For The Command Path
 
 **Files:**
+
 - Create: `superpowers-packets.ts`
 - Create: `agents/sp-recon.md`
 - Create: `agents/sp-research.md`
@@ -499,7 +530,7 @@ git commit -m "feat: add command-scoped superpowers policy"
 - Test: `test/integration/superpowers-packets.test.ts`
 - Test: `test/unit/agent-frontmatter.test.ts`
 
-- [ ] **Step 1: Add a failing packet-behavior test**
+- [x] **Step 1: Add a failing packet-behavior test**
 
 ```ts
 import { describe, it } from "node:test";
@@ -507,16 +538,16 @@ import assert from "node:assert/strict";
 import { buildSuperpowersPacketPlan } from "../../superpowers-packets.ts";
 
 describe("superpowers packets", () => {
-	it("uses task and review packet names instead of context.md/plan.md/progress.md", () => {
-		const packets = buildSuperpowersPacketPlan("sp-implementer");
-		assert.deepEqual(packets.reads, ["task-brief.md"]);
-		assert.equal(packets.output, "implementer-report.md");
-		assert.equal(packets.progress, false);
-	});
+  it("uses task and review packet names instead of context.md/plan.md/progress.md", () => {
+    const packets = buildSuperpowersPacketPlan("sp-implementer");
+    assert.deepEqual(packets.reads, ["task-brief.md"]);
+    assert.equal(packets.output, "implementer-report.md");
+    assert.equal(packets.progress, false);
+  });
 });
 ```
 
-- [ ] **Step 2: Run the packet integration test and verify it fails**
+- [x] **Step 2: Run the packet integration test and verify it fails**
 
 Run:
 
@@ -525,34 +556,51 @@ node --experimental-transform-types --import ./test/support/register-loader.mjs 
 ```
 
 Expected:
+
 - FAIL because the packet helper does not exist yet
 
-- [ ] **Step 3: Implement `superpowers-packets.ts`**
+- [x] **Step 3: Implement `superpowers-packets.ts`**
 
 ```ts
 import type { ExecutionRole } from "./types.ts";
 
 export function buildSuperpowersPacketPlan(role: ExecutionRole): {
-	reads: string[];
-	output: string | false;
-	progress: false;
+  reads: string[];
+  output: string | false;
+  progress: false;
 } {
-	switch (role) {
-		case "sp-implementer":
-			return { reads: ["task-brief.md"], output: "implementer-report.md", progress: false };
-		case "sp-spec-review":
-			return { reads: ["task-brief.md", "implementer-report.md"], output: "spec-review.md", progress: false };
-		case "sp-code-review":
-			return { reads: ["task-brief.md", "spec-review.md"], output: "code-review.md", progress: false };
-		case "sp-debug":
-			return { reads: ["debug-brief.md"], output: "debug-brief.md", progress: false };
-		default:
-			return { reads: [], output: false, progress: false };
-	}
+  switch (role) {
+    case "sp-implementer":
+      return {
+        reads: ["task-brief.md"],
+        output: "implementer-report.md",
+        progress: false,
+      };
+    case "sp-spec-review":
+      return {
+        reads: ["task-brief.md", "implementer-report.md"],
+        output: "spec-review.md",
+        progress: false,
+      };
+    case "sp-code-review":
+      return {
+        reads: ["task-brief.md", "spec-review.md"],
+        output: "code-review.md",
+        progress: false,
+      };
+    case "sp-debug":
+      return {
+        reads: ["debug-brief.md"],
+        output: "debug-brief.md",
+        progress: false,
+      };
+    default:
+      return { reads: [], output: false, progress: false };
+  }
 }
 ```
 
-- [ ] **Step 4: Extend `settings.ts` to accept packet defaults for command-scoped Superpowers runs**
+- [x] **Step 4: Extend `settings.ts` to accept packet defaults for command-scoped Superpowers runs**
 
 ```ts
 export function resolveStepBehavior(
@@ -583,7 +631,7 @@ export function resolveStepBehavior(
 				: agentConfig.defaultProgress ?? false;
 ```
 
-- [ ] **Step 5: Add the new built-in agents and canonical chain**
+- [x] **Step 5: Add the new built-in agents and canonical chain**
 
 `agents/sp-implementer.md`
 
@@ -613,6 +661,7 @@ description: Superpowers per-task execution loop
 ---
 
 ## sp-implementer
+
 reads: task-brief.md
 output: implementer-report.md
 progress: false
@@ -620,6 +669,7 @@ progress: false
 Implement the extracted task.
 
 ## sp-spec-review
+
 reads: task-brief.md, implementer-report.md
 output: spec-review.md
 progress: false
@@ -627,6 +677,7 @@ progress: false
 Review the implementation for spec compliance.
 
 ## sp-code-review
+
 reads: task-brief.md, spec-review.md
 output: code-review.md
 progress: false
@@ -634,19 +685,19 @@ progress: false
 Review the implementation for code quality.
 ```
 
-- [ ] **Step 6: Add a discovery test for the new built-in agents**
+- [x] **Step 6: Add a discovery test for the new built-in agents**
 
 ```ts
 it("discovers built-in superpowers agents", () => {
-	const result = discoverAgents(process.cwd(), "both");
-	const names = new Set(result.agents.map((agent) => agent.name));
-	assert.ok(names.has("sp-implementer"));
-	assert.ok(names.has("sp-spec-review"));
-	assert.ok(names.has("sp-code-review"));
+  const result = discoverAgents(process.cwd(), "both");
+  const names = new Set(result.agents.map((agent) => agent.name));
+  assert.ok(names.has("sp-implementer"));
+  assert.ok(names.has("sp-spec-review"));
+  assert.ok(names.has("sp-code-review"));
 });
 ```
 
-- [ ] **Step 7: Re-run packet and agent-discovery tests**
+- [x] **Step 7: Re-run packet and agent-discovery tests**
 
 Run:
 
@@ -656,10 +707,11 @@ node --experimental-strip-types --test test/unit/agent-frontmatter.test.ts
 ```
 
 Expected:
+
 - packet tests pass
 - built-in `sp-*` discovery test passes
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add superpowers-packets.ts settings.ts agents/sp-recon.md agents/sp-research.md agents/sp-implementer.md agents/sp-spec-review.md agents/sp-code-review.md agents/sp-debug.md agents/sp-task-loop.chain.md agent-templates.ts test/integration/superpowers-packets.test.ts test/unit/agent-frontmatter.test.ts
@@ -669,6 +721,7 @@ git commit -m "feat: add superpowers role library and packet conventions"
 ### Task 4: Align Worktree And Parallel Behavior For The Command Path Only
 
 **Files:**
+
 - Modify: `worktree.ts`
 - Modify: `subagent-executor.ts`
 - Test: `test/unit/worktree.test.ts`
@@ -677,23 +730,27 @@ git commit -m "feat: add superpowers role library and packet conventions"
 
 ```ts
 it("createWorktrees uses a configured project-local worktree root when provided", () => {
-	const repoDir = createRepo("pi-worktree-configured-root-");
-	let setup: WorktreeSetup | undefined;
-	try {
-		fs.mkdirSync(path.join(repoDir, ".worktrees"), { recursive: true });
-		fs.writeFileSync(path.join(repoDir, ".gitignore"), ".worktrees/\nnode_modules/\n", "utf-8");
-		git(repoDir, ["add", ".gitignore"]);
-		git(repoDir, ["commit", "-m", "ignore worktrees"]);
+  const repoDir = createRepo("pi-worktree-configured-root-");
+  let setup: WorktreeSetup | undefined;
+  try {
+    fs.mkdirSync(path.join(repoDir, ".worktrees"), { recursive: true });
+    fs.writeFileSync(
+      path.join(repoDir, ".gitignore"),
+      ".worktrees/\nnode_modules/\n",
+      "utf-8",
+    );
+    git(repoDir, ["add", ".gitignore"]);
+    git(repoDir, ["commit", "-m", "ignore worktrees"]);
 
-		setup = createWorktrees(repoDir, "configured", 1, {
-			rootDir: path.join(repoDir, ".worktrees"),
-			requireIgnoredRoot: true,
-		});
-		assert.match(setup.worktrees[0]!.path, /\.worktrees/);
-	} finally {
-		if (setup) cleanupWorktrees(setup);
-		cleanupRepo(repoDir);
-	}
+    setup = createWorktrees(repoDir, "configured", 1, {
+      rootDir: path.join(repoDir, ".worktrees"),
+      requireIgnoredRoot: true,
+    });
+    assert.match(setup.worktrees[0]!.path, /\.worktrees/);
+  } finally {
+    if (setup) cleanupWorktrees(setup);
+    cleanupRepo(repoDir);
+  }
 });
 ```
 
@@ -706,25 +763,31 @@ node --experimental-strip-types --test test/unit/worktree.test.ts
 ```
 
 Expected:
+
 - FAIL because `rootDir` / `requireIgnoredRoot` are not supported yet
 
 - [ ] **Step 3: Extend `worktree.ts` with explicit root-dir and ignore checks**
 
 ```ts
 export interface CreateWorktreesOptions {
-	agents?: string[];
-	setupHook?: WorktreeSetupHookConfig;
-	rootDir?: string;
-	requireIgnoredRoot?: boolean;
+  agents?: string[];
+  setupHook?: WorktreeSetupHookConfig;
+  rootDir?: string;
+  requireIgnoredRoot?: boolean;
 }
 
-function assertProjectLocalRootIgnored(repoRoot: string, rootDir: string): void {
-	const relativeRoot = path.relative(repoRoot, rootDir);
-	if (!relativeRoot || relativeRoot.startsWith("..")) return;
-	const result = runGit(repoRoot, ["check-ignore", "-q", relativeRoot]);
-	if (result.status !== 0) {
-		throw new Error(`Configured worktree root must be ignored by git: ${relativeRoot}`);
-	}
+function assertProjectLocalRootIgnored(
+  repoRoot: string,
+  rootDir: string,
+): void {
+  const relativeRoot = path.relative(repoRoot, rootDir);
+  if (!relativeRoot || relativeRoot.startsWith("..")) return;
+  const result = runGit(repoRoot, ["check-ignore", "-q", relativeRoot]);
+  if (result.status !== 0) {
+    throw new Error(
+      `Configured worktree root must be ignored by git: ${relativeRoot}`,
+    );
+  }
 }
 ```
 
@@ -732,19 +795,19 @@ function assertProjectLocalRootIgnored(repoRoot: string, rootDir: string): void 
 
 ```ts
 const superpowersRoot =
-	params.workflow === "superpowers"
-		? deps.config.superpowers?.worktreeRoot
-		: undefined;
+  params.workflow === "superpowers"
+    ? deps.config.superpowers?.worktreeRoot
+    : undefined;
 ```
 
 Then pass that into worktree setup:
 
 ```ts
 createWorktrees(repoDir, runId, taskCount, {
-	rootDir: superpowersRoot,
-	requireIgnoredRoot: Boolean(superpowersRoot),
-	agents,
-	setupHook,
+  rootDir: superpowersRoot,
+  requireIgnoredRoot: Boolean(superpowersRoot),
+  agents,
+  setupHook,
 });
 ```
 
@@ -757,6 +820,7 @@ node --experimental-strip-types --test test/unit/worktree.test.ts
 ```
 
 Expected:
+
 - all worktree tests pass
 
 - [ ] **Step 6: Commit**
@@ -769,6 +833,7 @@ git commit -m "feat: scope superpowers worktree behavior to command runs"
 ### Task 5: Document Command Usage, Implementer Modes, And Overlays
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `schemas.ts`
 - Test: `test/unit/schemas.test.ts`
@@ -780,7 +845,7 @@ git commit -m "feat: scope superpowers worktree behavior to command runs"
 
 Add a section like:
 
-```md
+````md
 ## Superpowers Command
 
 Use `/superpowers` when you want the stricter Superpowers workflow for a run.
@@ -792,13 +857,15 @@ Examples:
 /superpowers tdd implement the cache invalidation task
 /superpowers direct update the Expo config
 ```
+````
 
 Behavior:
 
 - the baseline `pi` harness plus generic `pi-subagents` behavior stays unchanged unless this command is used
 - `tdd` is the default implementer mode
 - `direct` keeps the same review and verification loop but allows code-first implementation
-```
+
+````
 
 - [ ] **Step 2: Document role-based overlay config in `README.md`**
 
@@ -822,16 +889,16 @@ Behavior:
     }
   }
 }
-```
+````
 
 - [ ] **Step 3: Add a schema assertion that descriptions mention explicit command activation**
 
 ```ts
 it("describes workflow as command-scoped superpowers behavior", () => {
-	const workflowSchema = SubagentParams?.properties?.workflow;
-	assert.ok(workflowSchema, "workflow schema should exist");
-	assert.match(String(workflowSchema.description ?? ""), /superpowers/i);
-	assert.match(String(workflowSchema.description ?? ""), /default/i);
+  const workflowSchema = SubagentParams?.properties?.workflow;
+  assert.ok(workflowSchema, "workflow schema should exist");
+  assert.match(String(workflowSchema.description ?? ""), /superpowers/i);
+  assert.match(String(workflowSchema.description ?? ""), /default/i);
 });
 ```
 
@@ -845,6 +912,7 @@ node --experimental-transform-types --import ./test/support/register-loader.mjs 
 ```
 
 Expected:
+
 - all targeted tests pass
 
 - [ ] **Step 5: Run the full test suite**
@@ -856,6 +924,7 @@ npm run test:all
 ```
 
 Expected:
+
 - unit, integration, and e2e suites all pass
 
 - [ ] **Step 6: Commit**
