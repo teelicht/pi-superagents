@@ -724,6 +724,9 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 	const skillOverrides: (string[] | false | undefined)[] = tasks.map((t) =>
 		normalizeSkillInput(t.skill),
 	);
+	const outputOverrides: (string | false | undefined)[] = tasks.map((t) => t.output);
+	const readsOverrides: (string[] | false | undefined)[] = tasks.map((t) => t.reads);
+	const progressOverrides: (boolean | undefined)[] = tasks.map((t) => t.progress);
 
 	if (params.clarify === true && ctx.hasUI) {
 		const availableModels: ModelInfo[] = ctx.modelRegistry.getAvailable().map((m) => ({
@@ -763,6 +766,9 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 			const override = result.behaviorOverrides[i];
 			if (override?.model) modelOverrides[i] = override.model;
 			if (override?.skills !== undefined) skillOverrides[i] = override.skills;
+			if (override?.output !== undefined) outputOverrides[i] = override.output;
+			if (override?.reads !== undefined) readsOverrides[i] = override.reads;
+			if (override?.progress !== undefined) progressOverrides[i] = override.progress;
 		}
 
 		if (result.runInBackground) {
@@ -781,6 +787,9 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 				cwd: t.cwd,
 				...(modelOverrides[i] ? { model: modelOverrides[i] } : {}),
 				...(skillOverrides[i] !== undefined ? { skill: skillOverrides[i] } : {}),
+				...(outputOverrides[i] !== undefined ? { output: outputOverrides[i] } : {}),
+				...(readsOverrides[i] !== undefined ? { reads: readsOverrides[i] } : {}),
+				...(progressOverrides[i] !== undefined ? { progress: progressOverrides[i] } : {}),
 			}));
 			return executeAsyncChain(id, {
 				chain: [{ parallel: parallelTasks, worktree: params.worktree }],
