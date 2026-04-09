@@ -4,3 +4,6 @@
 # Git Worktrees
 .worktrees/
 
+# Node and package managers
+node_modules/
+
