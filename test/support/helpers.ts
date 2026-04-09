@@ -19,6 +19,77 @@ export type { MockPi };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+interface HarnessCompatibleAgent {
+	state?: {
+		tools?: unknown[];
+	};
+	setTools?: (tools: unknown[]) => void;
+}
+
+interface HarnessCompatibleSession {
+	session?: {
+		_modelRegistry?: {
+			hasConfiguredAuth?: (model: unknown) => boolean;
+			getApiKeyAndHeaders?: (model: unknown) => Promise<{ ok: boolean; apiKey?: string; headers?: Record<string, string> }>;
+			getApiKeyForProvider?: (provider: string) => Promise<string | undefined>;
+			getApiKey?: (provider: string) => Promise<string | undefined>;
+		};
+		agent?: HarnessCompatibleAgent;
+	};
+}
+
+/**
+ * Add a `setTools()` compatibility shim for newer Pi agent objects.
+ *
+ * The current pi-test-harness still calls `session.agent.setTools(...)`, while
+ * newer Pi releases expose direct tool replacement through `session.agent.state.tools`.
+ * This shim keeps the test harness working without changing production code paths.
+ */
+function ensureHarnessAgentCompatibility(testSession: HarnessCompatibleSession): HarnessCompatibleSession {
+	const agent = testSession.session?.agent;
+	if (!agent?.state || typeof agent.setTools === "function") return testSession;
+	agent.setTools = (tools: unknown[]) => {
+		agent.state!.tools = [...tools];
+	};
+	return testSession;
+}
+
+/**
+ * Add auth-resolution compatibility for newer Pi model registry APIs.
+ *
+ * Recent Pi versions validate auth through `hasConfiguredAuth()` and
+ * `getApiKeyAndHeaders()`. The current harness still patches older
+ * `getApiKey*()` methods only, so playbook-backed tests fail before any
+ * extension code runs. We provide stable in-memory auth for the synthetic
+ * `openai/gpt-4o` test model here.
+ */
+function ensureHarnessAuthCompatibility(testSession: HarnessCompatibleSession): HarnessCompatibleSession {
+	const modelRegistry = testSession.session?._modelRegistry;
+	if (!modelRegistry) return testSession;
+	modelRegistry.hasConfiguredAuth = () => true;
+	modelRegistry.getApiKeyAndHeaders = async () => ({ ok: true, apiKey: "test-key" });
+	modelRegistry.getApiKeyForProvider = async () => "test-key";
+	modelRegistry.getApiKey = async () => "test-key";
+	return testSession;
+}
+
+/**
+ * Patch the pi-test-harness module for Pi agent API compatibility.
+ *
+ * Only wraps `createTestSession()` and leaves all other exports unchanged.
+ */
+function patchPiTestHarnessModule<T>(module: T): T {
+	const harness = module as T & { createTestSession?: (...args: unknown[]) => Promise<HarnessCompatibleSession> };
+	if (typeof harness.createTestSession !== "function") return module;
+	return {
+		...harness,
+		async createTestSession(...args: unknown[]) {
+			const testSession = await harness.createTestSession!(...args);
+			return ensureHarnessAuthCompatibility(ensureHarnessAgentCompatibility(testSession));
+		},
+	};
+}
+
 // ---------------------------------------------------------------------------
 // Mock Pi setup
 // ---------------------------------------------------------------------------
@@ -143,7 +214,11 @@ export async function tryImport<T>(specifier: string): Promise<T | null> {
 			return await import(url) as T;
 		}
 		// Bare specifier — import directly (node_modules resolution)
-		return await import(specifier) as T;
+		const imported = await import(specifier) as T;
+		if (specifier === "@marcfargas/pi-test-harness") {
+			return patchPiTestHarnessModule(imported);
+		}
+		return imported;
 	} catch (error: any) {
 		const code = error?.code;
 		const isModuleNotFound = code === "MODULE_NOT_FOUND" || code === "ERR_MODULE_NOT_FOUND";
