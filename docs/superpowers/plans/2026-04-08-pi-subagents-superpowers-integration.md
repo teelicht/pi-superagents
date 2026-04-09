@@ -726,7 +726,7 @@ git commit -m "feat: add superpowers role library and packet conventions"
 - Modify: `subagent-executor.ts`
 - Test: `test/unit/worktree.test.ts`
 
-- [ ] **Step 1: Add a failing worktree test for configured command-scoped roots**
+- [x] **Step 1: Add a failing worktree test for configured command-scoped roots**
 
 ```ts
 it("createWorktrees uses a configured project-local worktree root when provided", () => {
@@ -754,7 +754,7 @@ it("createWorktrees uses a configured project-local worktree root when provided"
 });
 ```
 
-- [ ] **Step 2: Run the worktree unit test and verify it fails**
+- [x] **Step 2: Run the worktree unit test and verify it fails**
 
 Run:
 
@@ -766,7 +766,7 @@ Expected:
 
 - FAIL because `rootDir` / `requireIgnoredRoot` are not supported yet
 
-- [ ] **Step 3: Extend `worktree.ts` with explicit root-dir and ignore checks**
+- [x] **Step 3: Extend `worktree.ts` with explicit root-dir and ignore checks**
 
 ```ts
 export interface CreateWorktreesOptions {
@@ -791,7 +791,7 @@ function assertProjectLocalRootIgnored(
 }
 ```
 
-- [ ] **Step 4: Only apply the configured worktree root when `workflow === "superpowers"`**
+- [x] **Step 4: Only apply the configured worktree root when `workflow === "superpowers"`**
 
 ```ts
 const superpowersRoot =
@@ -811,7 +811,7 @@ createWorktrees(repoDir, runId, taskCount, {
 });
 ```
 
-- [ ] **Step 5: Re-run the worktree tests**
+- [x] **Step 5: Re-run the worktree tests**
 
 Run:
 
@@ -823,7 +823,7 @@ Expected:
 
 - all worktree tests pass
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add worktree.ts subagent-executor.ts test/unit/worktree.test.ts
