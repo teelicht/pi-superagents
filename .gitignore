@@ -1,1 +1,6 @@
-.pi/todos/
+# macOS
+.DS_Store
+
+# Git Worktrees
+.worktrees/
+
