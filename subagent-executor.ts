@@ -1,3 +1,12 @@
+/**
+ * Request validation and execution orchestration for subagent runs.
+ *
+ * Responsibilities:
+ * - normalize slash/tool parameters into concrete execution modes
+ * - route single, parallel, chain, and management requests
+ * - thread shared execution metadata into lower-level runners
+ */
+
 import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -42,6 +51,8 @@ import {
 	type MaxOutputConfig,
 	type SingleResult,
 	type SubagentState,
+	type SuperpowersImplementerMode,
+	type WorkflowMode,
 	DEFAULT_ARTIFACT_CONFIG,
 	MAX_CONCURRENCY,
 	MAX_PARALLEL,
@@ -69,6 +80,8 @@ export interface SubagentParamsLike {
 	task?: string;
 	chain?: ChainStep[];
 	tasks?: TaskParam[];
+	workflow?: WorkflowMode;
+	implementerMode?: SuperpowersImplementerMode;
 	worktree?: boolean;
 	context?: "fresh" | "fork";
 	async?: boolean;
@@ -112,6 +125,8 @@ interface ExecutionContextData {
 	artifactsDir: string;
 	parallelDowngraded: boolean;
 	effectiveAsync: boolean;
+	workflow: WorkflowMode;
+	implementerMode: SuperpowersImplementerMode;
 }
 
 function validateExecutionInput(
@@ -521,6 +536,9 @@ interface ForegroundParallelRunInput {
 	liveProgress: (AgentProgress | undefined)[];
 	onUpdate?: (r: AgentToolResult<Details>) => void;
 	worktreeSetup?: WorktreeSetup;
+	config: ExtensionConfig;
+	workflow: WorkflowMode;
+	implementerMode: SuperpowersImplementerMode;
 }
 
 function buildParallelModeError(message: string): AgentToolResult<Details> {
@@ -617,6 +635,9 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 			maxSubagentDepth: input.maxSubagentDepths[index],
 			modelOverride: input.modelOverrides[index],
 			skills: effectiveSkills === false ? [] : effectiveSkills,
+			config: input.config,
+			workflow: input.workflow,
+			implementerMode: input.implementerMode,
 			onUpdate: input.onUpdate
 				? (progressUpdate) => {
 						const stepResults = progressUpdate.details?.results || [];
@@ -655,6 +676,8 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		parallelDowngraded,
 		onUpdate,
 		sessionRoot,
+		workflow,
+		implementerMode,
 	} = data;
 	const allProgress: AgentProgress[] = [];
 	const allArtifactPaths: ArtifactPaths[] = [];
@@ -815,6 +838,9 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 			liveProgress,
 			onUpdate,
 			worktreeSetup,
+			config: deps.config,
+			workflow,
+			implementerMode,
 		});
 		for (let i = 0; i < results.length; i++) {
 			const run = results[i]!;
@@ -872,6 +898,8 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		artifactsDir,
 		onUpdate,
 		sessionRoot,
+		workflow,
+		implementerMode,
 	} = data;
 	const allProgress: AgentProgress[] = [];
 	const allArtifactPaths: ArtifactPaths[] = [];
@@ -989,6 +1017,9 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		onUpdate,
 		modelOverride,
 		skills: effectiveSkills,
+		config: deps.config,
+		workflow,
+		implementerMode,
 	});
 	recordRun(params.agent!, cleanTask, r.exitCode, r.progressSummary?.durationMs ?? 0);
 
@@ -1163,6 +1194,11 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			artifactsDir,
 			parallelDowngraded,
 			effectiveAsync,
+			workflow: normalizedParams.workflow ?? "default",
+			implementerMode:
+				normalizedParams.implementerMode
+				?? deps.config.superpowers?.defaultImplementerMode
+				?? "tdd",
 		};
 
 		try {

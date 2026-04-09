@@ -40,6 +40,21 @@ export interface TokenUsage {
 	total: number;
 }
 
+export type WorkflowMode = "default" | "superpowers";
+
+export type SuperpowersImplementerMode = "tdd" | "direct";
+
+export type ModelTier = "cheap" | "strong" | "max";
+
+export type ExecutionRole =
+	| "root-planning"
+	| "sp-recon"
+	| "sp-research"
+	| "sp-implementer"
+	| "sp-spec-review"
+	| "sp-code-review"
+	| "sp-debug";
+
 // ============================================================================
 // Skills
 // ============================================================================
@@ -239,6 +254,22 @@ export interface RunSyncOptions {
 	modelOverride?: string;
 	/** Skills to inject (overrides agent default if provided) */
 	skills?: string[];
+	/** Extension config for command-scoped execution policy resolution. */
+	config?: ExtensionConfig;
+	/** Execution workflow mode. */
+	workflow?: WorkflowMode;
+	/** Superpowers implementer behavior mode. */
+	implementerMode?: SuperpowersImplementerMode;
+}
+
+export interface SuperpowersSettings {
+	commandName?: string;
+	modelTiers?: Partial<Record<ModelTier, string>>;
+	roleModelTiers?: Partial<Record<ExecutionRole, ModelTier>>;
+	roleSkillOverlays?: Partial<Record<ExecutionRole, string[]>>;
+	worktreeRoot?: string;
+	worktreeBaselineCommand?: string;
+	defaultImplementerMode?: SuperpowersImplementerMode;
 }
 
 export interface ExtensionConfig {
@@ -247,6 +278,7 @@ export interface ExtensionConfig {
 	maxSubagentDepth?: number;
 	worktreeSetupHook?: string;
 	worktreeSetupHookTimeoutMs?: number;
+	superpowers?: SuperpowersSettings;
 }
 
 // ============================================================================
