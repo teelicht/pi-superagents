@@ -35,6 +35,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
+    "debug:pi-local": "node --experimental-transform-types ./scripts/local-extension-install.ts",
     "test": "npm run test:unit",
     "test:unit": "node --experimental-strip-types --test test/unit/*.test.ts",
     "test:integration": "node --experimental-transform-types --import ./test/support/register-loader.mjs --test test/integration/*.test.ts",
