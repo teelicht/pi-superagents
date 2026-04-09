@@ -170,7 +170,6 @@ async function requestSlashRun(
 			unsubResponse();
 			unsubUpdate();
 			onTerminalInput?.();
-			if (ctx.hasUI) ctx.ui.setStatus("subagent-slash", undefined);
 			next();
 		};
 
@@ -221,6 +220,9 @@ async function runSlashSubagent(
 			display: false,
 			details: finalDetails,
 		});
+		if (ctx.hasUI) {
+			ctx.ui.setStatus("subagent-slash", undefined);
+		}
 		if (response.isError && ctx.hasUI) {
 			ctx.ui.notify(response.errorText || "Subagent failed", "error");
 		}
@@ -233,6 +235,9 @@ async function runSlashSubagent(
 			display: false,
 			details: failedDetails,
 		});
+		if (ctx.hasUI) {
+			ctx.ui.setStatus("subagent-slash", undefined);
+		}
 		if (message === "Cancelled") {
 			if (ctx.hasUI) ctx.ui.notify("Cancelled", "warning");
 			return;

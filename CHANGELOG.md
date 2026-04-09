@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.12.5] - 2026-04-09
+
+### Fixed
+- Slash-command result cards now finalize through the extension's own snapshot timing instead of relying on core to treat hidden custom messages as in-place updates. The final slash snapshot and hidden persisted message are written before the last status-clear redraw, so live `/run`, `/chain`, and `/parallel` cards update to their final state more reliably.
+- Added focused slash-command regression coverage for the success/error ordering around visible placeholder messages, hidden final messages, and the final status-clear redraw.
+
 ## [0.12.4] - 2026-04-04
 
 ### Added
