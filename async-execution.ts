@@ -12,14 +12,25 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import type { AgentConfig } from "./agents.ts";
 import { applyThinkingSuffix } from "./pi-args.ts";
 import { injectSingleOutputInstruction, resolveSingleOutputPath } from "./single-output.ts";
-import { isParallelStep, resolveStepBehavior, type ChainStep, type SequentialStep, type StepOverrides } from "./settings.ts";
+import {
+	buildChainInstructions,
+	isParallelStep,
+	resolveStepBehavior,
+	type ChainStep,
+	type PacketDefaults,
+	type SequentialStep,
+	type StepOverrides,
+} from "./settings.ts";
 import type { RunnerStep } from "./parallel-utils.ts";
 import { resolvePiPackageRoot } from "./pi-spawn.ts";
 import { buildSkillInjection, normalizeSkillInput, resolveSkills } from "./skills.ts";
+import { buildSuperpowersPacketPlan } from "./superpowers-packets.ts";
+import { inferExecutionRole } from "./superpowers-policy.ts";
 import {
 	type ArtifactConfig,
 	type Details,
 	type MaxOutputConfig,
+	type WorkflowMode,
 	ASYNC_DIR,
 	RESULTS_DIR,
 	resolveChildMaxSubagentDepth,
@@ -69,6 +80,7 @@ export interface AsyncChainParams {
 	maxSubagentDepth: number;
 	worktreeSetupHook?: string;
 	worktreeSetupHookTimeoutMs?: number;
+	workflow?: WorkflowMode;
 }
 
 export interface AsyncSingleParams {
@@ -124,6 +136,31 @@ function spawnRunner(cfg: object, suffix: string, cwd: string): number | undefin
 }
 
 /**
+ * Resolves packet defaults for async chain steps.
+ *
+ * Inputs/outputs:
+ * - accepts an agent name and optional workflow mode
+ * - returns packet defaults for Superpowers packet-producing roles
+ *
+ * Invariants:
+ * - explicit default workflow never injects packet defaults
+ * - when workflow metadata is unavailable, only built-in `sp-*` roles opt in
+ */
+function resolveAsyncPacketDefaults(
+	agentName: string,
+	workflow?: WorkflowMode,
+): PacketDefaults | undefined {
+	if (workflow === "default") return undefined;
+	const role = inferExecutionRole(agentName);
+	if (role === "root-planning") return undefined;
+	const packetPlan = buildSuperpowersPacketPlan(role);
+	if (packetPlan.reads.length === 0 && packetPlan.output === false && packetPlan.progress === false) {
+		return undefined;
+	}
+	return packetPlan;
+}
+
+/**
  * Execute a chain asynchronously
  */
 export function executeAsyncChain(
@@ -144,6 +181,7 @@ export function executeAsyncChain(
 		maxSubagentDepth,
 		worktreeSetupHook,
 		worktreeSetupHookTimeoutMs,
+		workflow,
 	} = params;
 	const chainSkills = params.chainSkills ?? [];
 
@@ -179,8 +217,18 @@ export function executeAsyncChain(
 	const buildSeqStep = (s: SequentialStep, sessionFile?: string) => {
 		const a = agents.find((x) => x.name === s.agent)!;
 		const stepSkillInput = normalizeSkillInput(s.skill);
-		const stepOverrides: StepOverrides = { skills: stepSkillInput };
-		const behavior = resolveStepBehavior(a, stepOverrides, chainSkills);
+		const stepOverrides: StepOverrides = {
+			output: s.output,
+			reads: s.reads,
+			progress: s.progress,
+			skills: stepSkillInput,
+		};
+		const behavior = resolveStepBehavior(
+			a,
+			stepOverrides,
+			chainSkills,
+			resolveAsyncPacketDefaults(s.agent, workflow),
+		);
 		const skillNames = behavior.skills === false ? [] : behavior.skills;
 		const { resolved: resolvedSkills } = resolveSkills(skillNames, ctx.cwd);
 
@@ -190,10 +238,13 @@ export function executeAsyncChain(
 			systemPrompt = systemPrompt ? `${systemPrompt}\n\n${injection}` : injection;
 		}
 
-		// Resolve output path and inject instruction into task
-		// Use step's cwd if specified, otherwise fall back to chain-level cwd
-		const outputPath = resolveSingleOutputPath(s.output, ctx.cwd, s.cwd ?? cwd);
-		const task = injectSingleOutputInstruction(s.task ?? "{previous}", outputPath);
+		const chainDir = asyncDir;
+		const outputPath = typeof behavior.output === "string"
+			? resolveSingleOutputPath(behavior.output, chainDir, chainDir)
+			: undefined;
+		const templateTask = (s.task ?? "{previous}").replace(/\{chain_dir\}/g, chainDir);
+		const { prefix, suffix } = buildChainInstructions(behavior, chainDir, false);
+		const task = `${prefix}${templateTask}${suffix}`;
 
 		return {
 			agent: s.agent,

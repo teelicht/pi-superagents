@@ -295,17 +295,19 @@ export function resolveParallelBehaviors(
 	agentConfigs: AgentConfig[],
 	stepIndex: number,
 	chainSkills?: string[],
+	packetDefaultsForAgent?: (agentName: string) => PacketDefaults | undefined,
 ): ResolvedStepBehavior[] {
 	return tasks.map((task, taskIndex) => {
 		const config = agentConfigs.find((a) => a.name === task.agent);
 		if (!config) {
 			throw new Error(`Unknown agent: ${task.agent}`);
 		}
+		const packetDefaults = packetDefaultsForAgent?.(task.agent);
 
 		// Build subdirectory path for this parallel task
 		const subdir = path.join(`parallel-${stepIndex}`, `${taskIndex}-${task.agent}`);
 
-		// Output: task override > agent default (namespaced) > false
+		// Output: task override > packet default (namespaced) > agent default (namespaced) > false
 		// Absolute paths pass through unchanged; relative paths get namespaced under subdir
 		let output: string | false = false;
 		if (task.output !== undefined) {
@@ -316,20 +318,30 @@ export function resolveParallelBehaviors(
 			} else {
 				output = path.join(subdir, task.output); // Relative: namespace under subdir
 			}
+		} else if (packetDefaults?.output) {
+			output = path.isAbsolute(packetDefaults.output)
+				? packetDefaults.output
+				: path.join(subdir, packetDefaults.output);
 		} else if (config.output) {
 			// Agent defaults are always relative, so namespace them
 			output = path.join(subdir, config.output);
 		}
 
-		// Reads: task override > agent default > false
+		// Reads: task override > packet defaults > agent default > false
 		const reads =
-			task.reads !== undefined ? task.reads : config.defaultReads ?? false;
+			task.reads !== undefined
+				? task.reads
+				: packetDefaults?.reads !== undefined
+					? packetDefaults.reads
+					: config.defaultReads ?? false;
 
-		// Progress: task override > agent default > false
+		// Progress: task override > packet defaults > agent default > false
 		const progress =
 			task.progress !== undefined
 				? task.progress
-				: config.defaultProgress ?? false;
+				: packetDefaults?.progress !== undefined
+					? packetDefaults.progress
+					: config.defaultProgress ?? false;
 
 		const taskSkillInput = normalizeSkillInput(task.skill);
 		let skills: string[] | false;

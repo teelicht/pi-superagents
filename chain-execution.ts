@@ -22,6 +22,7 @@ import {
 	type ChainStep,
 	type SequentialStep,
 	type ParallelTaskResult,
+	type PacketDefaults,
 	type ResolvedStepBehavior,
 	type ResolvedTemplates,
 } from "./settings.ts";
@@ -30,6 +31,8 @@ import { runSync } from "./execution.ts";
 import { buildChainSummary } from "./formatters.ts";
 import { getSingleResultOutput, mapConcurrent } from "./utils.ts";
 import { recordRun } from "./run-history.ts";
+import { buildSuperpowersPacketPlan } from "./superpowers-packets.ts";
+import { inferExecutionRole } from "./superpowers-policy.ts";
 import {
 	cleanupWorktrees,
 	createWorktrees,
@@ -156,6 +159,31 @@ function appendParallelWorktreeSummary(
 	const diffSummary = formatWorktreeDiffSummary(diffs);
 	if (!diffSummary) return output;
 	return `${output}\n\n${diffSummary}`;
+}
+
+/**
+ * Resolves packet defaults for a chain agent when the Superpowers workflow is active.
+ *
+ * Inputs/outputs:
+ * - accepts the current workflow mode and agent name
+ * - returns packet defaults for Superpowers packet-producing roles
+ *
+ * Invariants:
+ * - default workflow never injects packet defaults
+ * - inert packet plans collapse to `undefined`
+ */
+function resolvePacketDefaultsForChainAgent(
+	workflow: WorkflowMode,
+	agentName: string,
+): PacketDefaults | undefined {
+	if (workflow !== "superpowers") return undefined;
+	const role = inferExecutionRole(agentName);
+	if (role === "root-planning") return undefined;
+	const packetPlan = buildSuperpowersPacketPlan(role);
+	if (packetPlan.reads.length === 0 && packetPlan.output === false && packetPlan.progress === false) {
+		return undefined;
+	}
+	return packetPlan;
 }
 
 async function runParallelChainTasks(input: ParallelChainRunInput): Promise<SingleResult[]> {
@@ -389,7 +417,12 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 
 		// Pre-resolve behaviors for TUI display
 		const resolvedBehaviors = agentConfigs.map((config, i) =>
-			resolveStepBehavior(config, stepOverrides[i]!, chainSkills),
+			resolveStepBehavior(
+				config,
+				stepOverrides[i]!,
+				chainSkills,
+				resolvePacketDefaultsForChainAgent(workflow, seqSteps[i]!.agent),
+			),
 		);
 
 		// Flatten templates for TUI (all strings for sequential)
@@ -508,7 +541,13 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 
 			try {
 				const agentNames = step.parallel.map((task) => task.agent);
-				const parallelBehaviors = resolveParallelBehaviors(step.parallel, agents, stepIndex, chainSkills);
+				const parallelBehaviors = resolveParallelBehaviors(
+					step.parallel,
+					agents,
+					stepIndex,
+					chainSkills,
+					(taskAgent) => resolvePacketDefaultsForChainAgent(workflow, taskAgent),
+				);
 				progressCreated = ensureParallelProgressFile(chainDir, progressCreated, parallelBehaviors);
 				createParallelDirs(chainDir, stepIndex, step.parallel.length, agentNames);
 
@@ -631,7 +670,12 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 						? tuiOverride.skills
 						: normalizeSkillInput(seqStep.skill),
 			};
-			const behavior = resolveStepBehavior(agentConfig, stepOverride, chainSkills);
+			const behavior = resolveStepBehavior(
+				agentConfig,
+				stepOverride,
+				chainSkills,
+				resolvePacketDefaultsForChainAgent(workflow, seqStep.agent),
+			);
 
 			// Determine if this is the first agent to create progress.md
 			const isFirstProgress = behavior.progress && !progressCreated;

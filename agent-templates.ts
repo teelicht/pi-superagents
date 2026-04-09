@@ -77,9 +77,4 @@ export const TEMPLATE_ITEMS: TemplateItem[] = [
 	},
 	{ type: "separator", label: "Chains" },
 	{ type: "chain", name: "Blank Chain", description: "Empty chain to configure" },
-	{
-		type: "chain",
-		name: "Superpowers Task Loop",
-		description: "Implementer -> spec review -> code review Superpowers loop",
-	},
 ];
