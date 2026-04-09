@@ -2,6 +2,7 @@
 name: sp-recon
 description: Superpowers reconnaissance specialist for bounded task discovery
 model: cheap
+tools: read, grep, find, ls, bash
 maxSubagentDepth: 0
 ---
 

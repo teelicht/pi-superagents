@@ -13,6 +13,7 @@ import {
 	resolveModelForRole,
 	resolveRoleSkillSet,
 	resolveImplementerSkillSet,
+	resolveRoleTools,
 } from "../../superpowers-policy.ts";
 
 describe("superpowers policy", () => {
@@ -120,6 +121,27 @@ describe("superpowers policy", () => {
 				availableSkills: new Set(["test-driven-development"]),
 			}),
 			["test-driven-development"],
+		);
+	});
+
+	it("assigns a non-delegating default tool set to bounded superpowers roles", () => {
+		assert.deepEqual(
+			resolveRoleTools({
+				workflow: "superpowers",
+				role: "sp-recon",
+			}),
+			["read", "grep", "find", "ls", "bash"],
+		);
+	});
+
+	it("strips subagent tools from explicit bounded-role tool lists", () => {
+		assert.deepEqual(
+			resolveRoleTools({
+				workflow: "superpowers",
+				role: "sp-implementer",
+				agentTools: ["read", "subagent", "write", "subagent_status", "bash"],
+			}),
+			["read", "write", "bash"],
 		);
 	});
 });

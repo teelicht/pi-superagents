@@ -25,7 +25,7 @@ import type { RunnerStep } from "./parallel-utils.ts";
 import { resolvePiPackageRoot } from "./pi-spawn.ts";
 import { buildSkillInjection, normalizeSkillInput, resolveSkills } from "./skills.ts";
 import { buildSuperpowersPacketPlan } from "./superpowers-packets.ts";
-import { inferExecutionRole } from "./superpowers-policy.ts";
+import { inferExecutionRole, resolveRoleTools } from "./superpowers-policy.ts";
 import {
 	type ArtifactConfig,
 	type Details,
@@ -100,6 +100,7 @@ export interface AsyncSingleParams {
 	maxSubagentDepth: number;
 	worktreeSetupHook?: string;
 	worktreeSetupHookTimeoutMs?: number;
+	workflow?: WorkflowMode;
 }
 
 export interface AsyncExecutionResult {
@@ -231,6 +232,7 @@ export function executeAsyncChain(
 		);
 		const skillNames = behavior.skills === false ? [] : behavior.skills;
 		const { resolved: resolvedSkills } = resolveSkills(skillNames, ctx.cwd);
+		const role = inferExecutionRole(s.agent);
 
 		let systemPrompt = a.systemPrompt?.trim() || null;
 		if (resolvedSkills.length > 0) {
@@ -251,7 +253,11 @@ export function executeAsyncChain(
 			task,
 			cwd: s.cwd,
 			model: applyThinkingSuffix(s.model ?? a.model, a.thinking),
-			tools: a.tools,
+			tools: resolveRoleTools({
+				workflow: workflow ?? "default",
+				role,
+				agentTools: a.tools,
+			}),
 			extensions: a.extensions,
 			mcpDirectTools: a.mcpDirectTools,
 			systemPrompt,
@@ -370,9 +376,11 @@ export function executeAsyncSingle(
 		maxSubagentDepth,
 		worktreeSetupHook,
 		worktreeSetupHookTimeoutMs,
+		workflow,
 	} = params;
 	const skillNames = params.skills ?? agentConfig.skills ?? [];
 	const { resolved: resolvedSkills } = resolveSkills(skillNames, ctx.cwd);
+	const role = inferExecutionRole(agent);
 	let systemPrompt = agentConfig.systemPrompt?.trim() || null;
 	if (resolvedSkills.length > 0) {
 		const injection = buildSkillInjection(resolvedSkills);
@@ -403,7 +411,11 @@ export function executeAsyncSingle(
 					task: taskWithOutputInstruction,
 					cwd,
 					model: applyThinkingSuffix(agentConfig.model, agentConfig.thinking),
-					tools: agentConfig.tools,
+					tools: resolveRoleTools({
+						workflow: workflow ?? "default",
+						role,
+						agentTools: agentConfig.tools,
+					}),
 					extensions: agentConfig.extensions,
 					mcpDirectTools: agentConfig.mcpDirectTools,
 					systemPrompt,

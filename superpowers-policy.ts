@@ -32,6 +32,17 @@ const ROOT_ONLY_WORKFLOW_SKILLS = new Set([
 	"finishing-a-development-branch",
 ]);
 
+const NON_DELEGATING_ROLE_TOOLS: Partial<Record<ExecutionRole, string[]>> = {
+	"sp-recon": ["read", "grep", "find", "ls", "bash"],
+	"sp-research": ["read", "grep", "find", "ls", "bash"],
+	"sp-implementer": ["read", "grep", "find", "ls", "bash", "write"],
+	"sp-spec-review": ["read", "grep", "find", "ls", "bash", "write"],
+	"sp-code-review": ["read", "grep", "find", "ls", "bash", "write"],
+	"sp-debug": ["read", "grep", "find", "ls", "bash", "write"],
+};
+
+const DELEGATION_TOOLS = new Set(["subagent", "subagent_status"]);
+
 const DEFAULT_ROLE_TIERS: Record<ExecutionRole, ModelTier> = {
 	"root-planning": "max",
 	"sp-recon": "cheap",
@@ -177,6 +188,34 @@ export function resolveRoleSkillSet(input: {
 		}
 	}
 	return merged;
+}
+
+/**
+ * Resolve the effective tool allowlist for a Superpowers execution role.
+ *
+ * Inputs/outputs:
+ * - accepts the active workflow, inferred role, and any agent-declared tools
+ * - returns the unchanged tool list for default/root runs, or a bounded list for `sp-*` roles
+ *
+ * Invariants:
+ * - bounded Superpowers roles never receive delegation tools
+ * - root-planning keeps orchestration access
+ *
+ * Failure modes:
+ * - none; missing tool declarations fall back to a safe built-in allowlist
+ */
+export function resolveRoleTools(input: {
+	workflow: WorkflowMode;
+	role: ExecutionRole;
+	agentTools?: string[];
+}): string[] | undefined {
+	if (input.workflow !== "superpowers" || input.role === "root-planning") {
+		return input.agentTools;
+	}
+
+	const explicitTools = input.agentTools?.filter((tool) => !DELEGATION_TOOLS.has(tool));
+	if (explicitTools && explicitTools.length > 0) return explicitTools;
+	return NON_DELEGATING_ROLE_TOOLS[input.role];
 }
 
 /**

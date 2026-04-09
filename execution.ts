@@ -37,6 +37,7 @@ import {
 	resolveImplementerSkillSet,
 	resolveModelForRole,
 	resolveRoleSkillSet,
+	resolveRoleTools,
 } from "./superpowers-policy.ts";
 
 /**
@@ -77,6 +78,11 @@ export async function runSync(
 	const effectiveThinking = agent.thinking ?? (modelOverride ? undefined : tierModel?.thinking);
 	const modelArg = applyThinkingSuffix(effectiveModel, effectiveThinking);
 	const outputSnapshot = captureSingleOutputSnapshot(options.outputPath);
+	const effectiveTools = resolveRoleTools({
+		workflow,
+		role,
+		agentTools: agent.tools,
+	});
 
 	const availableSkills = getAvailableSkillNames(runtimeCwd);
 	const skillNames = role === "sp-implementer"
@@ -112,7 +118,7 @@ export async function runSync(
 		sessionFile: options.sessionFile,
 		model: effectiveModel,
 		thinking: effectiveThinking,
-		tools: agent.tools,
+		tools: effectiveTools,
 		extensions: agent.extensions,
 		skills: skillNames,
 		systemPrompt,

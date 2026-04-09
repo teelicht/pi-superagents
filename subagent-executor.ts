@@ -435,6 +435,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			maxSubagentDepth,
 			worktreeSetupHook: deps.config.worktreeSetupHook,
 			worktreeSetupHookTimeoutMs: deps.config.worktreeSetupHookTimeoutMs,
+			workflow: data.workflow,
 		});
 	}
 
@@ -1024,6 +1025,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 				maxSubagentDepth,
 				worktreeSetupHook: deps.config.worktreeSetupHook,
 				worktreeSetupHookTimeoutMs: deps.config.worktreeSetupHookTimeoutMs,
+				workflow,
 			});
 		}
 	}
