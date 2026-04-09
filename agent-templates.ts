@@ -1,3 +1,12 @@
+/**
+ * Built-in agent and chain templates shown in the management UI.
+ *
+ * Responsibilities:
+ * - provide starter templates for creating agents and chains
+ * - expose generic and Superpowers-oriented presets without removing existing options
+ * - keep template configs aligned with supported agent frontmatter fields
+ */
+
 import type { AgentConfig } from "./agents.ts";
 
 export interface AgentTemplate {
@@ -55,6 +64,22 @@ export const TEMPLATE_ITEMS: TemplateItem[] = [
 			defaultProgress: true,
 		},
 	},
+	{ type: "separator", label: "Superpowers" },
+	{
+		type: "agent",
+		name: "Superpowers Implementer",
+		config: {
+			description: "Bounded implementer for one Superpowers task packet",
+			systemPrompt: "You are a bounded implementer. Implement exactly one extracted task, respect the provided implementer mode, and return one of DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, or BLOCKED.",
+			model: "cheap",
+			maxSubagentDepth: 0,
+		},
+	},
 	{ type: "separator", label: "Chains" },
 	{ type: "chain", name: "Blank Chain", description: "Empty chain to configure" },
+	{
+		type: "chain",
+		name: "Superpowers Task Loop",
+		description: "Implementer -> spec review -> code review Superpowers loop",
+	},
 ];
