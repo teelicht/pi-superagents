@@ -1,8 +1,8 @@
 {
   "name": "pi-superagents",
   "version": "0.12.4",
-  "description": "Pi extension for delegating tasks to subagents with chains, parallel execution, and TUI clarification",
-  "author": "Nico Bailon",
+  "description": "Pi extension for delegating tasks to subagents to implement the superpowers development workflow",
+  "author": "Thomas Lichtenecker, Nico Bailon",
   "license": "MIT",
   "type": "module",
   "repository": {
