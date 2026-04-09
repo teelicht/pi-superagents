@@ -67,7 +67,7 @@ export const SubagentParams = Type.Object({
 	task: Type.Optional(Type.String({ description: "Task (SINGLE mode)" })),
 	workflow: Type.Optional(Type.String({
 		enum: ["default", "superpowers"],
-		description: "Execution workflow. 'default' leaves the baseline pi harness plus generic pi-subagents behavior unchanged; 'superpowers' activates the explicit Superpowers command path for that run only.",
+		description: "Execution workflow. 'default' leaves the baseline pi harness plus generic pi-superagents behavior unchanged; 'superpowers' activates the explicit Superpowers command path for that run only.",
 	})),
 	implementerMode: Type.Optional(Type.String({
 		enum: ["tdd", "direct"],

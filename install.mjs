@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 /**
- * pi-subagents installer
+ * pi-superagents installer
  * 
  * Usage:
- *   npx pi-subagents          # Install to ~/.pi/agent/extensions/subagent
- *   npx pi-subagents --remove # Remove the extension
+ *   npx pi-superagents          # Install to ~/.pi/agent/extensions/subagent
+ *   npx pi-superagents --remove # Remove the extension
  */
 
 import { execSync } from "node:child_process";
@@ -14,7 +14,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 
 const EXTENSION_DIR = path.join(os.homedir(), ".pi", "agent", "extensions", "subagent");
-const REPO_URL = "https://github.com/nicobailon/pi-subagents.git";
+const REPO_URL = "https://github.com/nicobailon/pi-superagents.git";
 
 const args = process.argv.slice(2);
 const isRemove = args.includes("--remove") || args.includes("-r");
@@ -22,12 +22,12 @@ const isHelp = args.includes("--help") || args.includes("-h");
 
 if (isHelp) {
 	console.log(`
-pi-subagents - Pi extension for delegating tasks to subagents
+pi-superagents - Pi extension for delegating tasks to subagents
 
 Usage:
-  npx pi-subagents          Install the extension
-  npx pi-subagents --remove Remove the extension
-  npx pi-subagents --help   Show this help
+  npx pi-superagents          Install the extension
+  npx pi-superagents --remove Remove the extension
+  npx pi-superagents --help   Show this help
 
 Installation directory: ${EXTENSION_DIR}
 `);
@@ -38,15 +38,15 @@ if (isRemove) {
 	if (fs.existsSync(EXTENSION_DIR)) {
 		console.log(`Removing ${EXTENSION_DIR}...`);
 		fs.rmSync(EXTENSION_DIR, { recursive: true });
-		console.log("✓ pi-subagents removed");
+		console.log("✓ pi-superagents removed");
 	} else {
-		console.log("pi-subagents is not installed");
+		console.log("pi-superagents is not installed");
 	}
 	process.exit(0);
 }
 
 // Install
-console.log("Installing pi-subagents...\n");
+console.log("Installing pi-superagents...\n");
 
 // Ensure parent directory exists
 const parentDir = path.dirname(EXTENSION_DIR);
@@ -61,15 +61,15 @@ if (fs.existsSync(EXTENSION_DIR)) {
 		console.log("Updating existing installation...");
 		try {
 			execSync("git pull", { cwd: EXTENSION_DIR, stdio: "inherit" });
-			console.log("\n✓ pi-subagents updated");
+			console.log("\n✓ pi-superagents updated");
 		} catch (err) {
 			console.error("Failed to update. Try removing and reinstalling:");
-			console.error("  npx pi-subagents --remove && npx pi-subagents");
+			console.error("  npx pi-superagents --remove && npx pi-superagents");
 			process.exit(1);
 		}
 	} else {
 		console.log(`Directory exists but is not a git repo: ${EXTENSION_DIR}`);
-		console.log("Remove it first with: npx pi-subagents --remove");
+		console.log("Remove it first with: npx pi-superagents --remove");
 		process.exit(1);
 	}
 } else {
@@ -77,7 +77,7 @@ if (fs.existsSync(EXTENSION_DIR)) {
 	console.log(`Cloning to ${EXTENSION_DIR}...`);
 	try {
 		execSync(`git clone ${REPO_URL} "${EXTENSION_DIR}"`, { stdio: "inherit" });
-		console.log("\n✓ pi-subagents installed");
+		console.log("\n✓ pi-superagents installed");
 	} catch (err) {
 		console.error("Failed to clone repository");
 		process.exit(1);

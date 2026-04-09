@@ -16,8 +16,8 @@ describe("path.isAbsolute vs startsWith('/')", () => {
 	// On Windows, absolute paths look like "C:\\..." or "C:/..." — neither starts with "/".
 
 	it("startsWith('/') misses Windows absolute paths", () => {
-		const windowsAbsolute = "C:\\dev\\pi-subagents\\output.md";
-		const windowsAbsoluteForward = "C:/dev/pi-subagents/output.md";
+		const windowsAbsolute = "C:\\dev\\pi-superagents\\output.md";
+		const windowsAbsoluteForward = "C:/dev/pi-superagents/output.md";
 
 		// This is what the current code does (chain-execution.ts:496):
 		assert.equal(windowsAbsolute.startsWith("/"), false,
@@ -110,4 +110,3 @@ describe("path.join vs template string concatenation", () => {
 		assert.equal(windowsJoin, path.join("parallel-0", "0-_code-reviewer", output));
 	});
 });
-

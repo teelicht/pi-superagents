@@ -1,23 +1,25 @@
 <p>
-  <img src="banner.png" alt="pi-subagents" width="1100">
+  <img src="banner.png" alt="pi-superagents" width="1100">
 </p>
 
-# pi-subagents
+# pi-superagents
 
 Pi extension for delegating tasks to subagents with chains, parallel execution, TUI clarification, and async support.
+
+> `pi-superagents` is a fork of `pi-subagents`, rebranded to reflect the combination of Superpowers workflow ideas and subagent-based execution.
 
 https://github.com/user-attachments/assets/702554ec-faaf-4635-80aa-fb5d6e292fd1
 
 ## Installation
 
 ```bash
-pi install npm:pi-subagents
+pi install npm:pi-superagents
 ```
 
 To remove:
 
 ```bash
-npx pi-subagents --remove
+npx pi-superagents --remove
 ```
 
 If you use [pi-prompt-template-model](https://github.com/nicobailon/pi-prompt-template-model), you can wrap subagent delegation in a slash command:
@@ -34,7 +36,7 @@ Use url in the prompt to take screenshot: $@
 
 Then `/take-screenshot https://example.com` switches to Sonnet, delegates to the `browser-screenshoter` agent with `/tmp/screenshots` as the working directory, and restores your model when done. Runtime overrides like `--cwd=<path>` and `--subagent=<name>` work too.
 
-pi-prompt-template-model is entirely optional — pi-subagents works standalone through the `subagent` tool and slash commands. If you want reusable prompt-template workflows on top of subagents, including `/chain-prompts` and compare-style prompts like `pi-prompt-template-model`'s `/best-of-n` example, install [pi-prompt-template-model](https://github.com/nicobailon/pi-prompt-template-model) separately and copy any example prompts you want from its `examples/` directory into `~/.pi/agent/prompts/`.
+pi-prompt-template-model is entirely optional — pi-superagents works standalone through the `subagent` tool and slash commands. If you want reusable prompt-template workflows on top of subagents, including `/chain-prompts` and compare-style prompts like `pi-prompt-template-model`'s `/best-of-n` example, install [pi-prompt-template-model](https://github.com/nicobailon/pi-prompt-template-model) separately and copy any example prompts you want from its `examples/` directory into `~/.pi/agent/prompts/`.
 
 ## Agents
 
@@ -150,7 +152,7 @@ Examples:
 ```
 
 Behavior:
-- The baseline `pi` harness plus generic `pi-subagents` behavior stays unchanged unless this command is used.
+- The baseline `pi` harness plus generic `pi-superagents` behavior stays unchanged unless this command is used.
 - `tdd` is the default implementer mode.
 - `direct` keeps the same review and verification loop but allows code-first implementation.
 
@@ -751,7 +753,7 @@ This aggregated output becomes `{previous}` for the next step.
 
 ## Extension Configuration
 
-`pi-subagents` reads optional JSON config from `~/.pi/agent/extensions/subagent/config.json`.
+`pi-superagents` reads optional JSON config from `~/.pi/agent/extensions/subagent/config.json`.
 
 ### `defaultSessionDir`
 

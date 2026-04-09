@@ -40,7 +40,7 @@ describe("agent frontmatter maxSubagentDepth", () => {
 	});
 
 	it("parses maxSubagentDepth from discovered agent frontmatter", () => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagents-agent-frontmatter-"));
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-superagents-agent-frontmatter-"));
 		tempDirs.push(dir);
 		const agentsDir = path.join(dir, ".pi", "agents");
 		fs.mkdirSync(agentsDir, { recursive: true });
