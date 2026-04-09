@@ -554,6 +554,21 @@ function buildParallelModeError(message: string): AgentToolResult<Details> {
 	};
 }
 
+/**
+ * Creates git worktrees for a parallel run when the caller enables worktree
+ * isolation, while scoping any configured Superpowers root override to the
+ * explicit Superpowers workflow only.
+ *
+ * @param enabled Whether parallel worktree isolation is enabled for the run.
+ * @param cwd Shared working directory for the parallel tasks.
+ * @param runId Unique identifier for the current run.
+ * @param tasks Parallel task definitions used to label worktrees.
+ * @param setupHook Optional setup hook path to execute in each worktree.
+ * @param setupHookTimeoutMs Optional setup hook timeout.
+ * @param workflow Execution workflow metadata for the current run.
+ * @param config Extension configuration, including optional Superpowers settings.
+ * @returns A created worktree setup or an error result suitable for the caller.
+ */
 function createParallelWorktreeSetup(
 	enabled: boolean | undefined,
 	cwd: string,
@@ -561,11 +576,19 @@ function createParallelWorktreeSetup(
 	tasks: TaskParam[],
 	setupHook: ExtensionConfig["worktreeSetupHook"],
 	setupHookTimeoutMs: ExtensionConfig["worktreeSetupHookTimeoutMs"],
+	workflow: WorkflowMode,
+	config: ExtensionConfig,
 ): { setup?: WorktreeSetup; errorResult?: AgentToolResult<Details> } {
 	if (!enabled) return {};
+	const superpowersRoot =
+		workflow === "superpowers"
+			? config.superpowers?.worktreeRoot
+			: undefined;
 	try {
 		return {
 			setup: createWorktrees(cwd, runId, tasks.length, {
+				rootDir: superpowersRoot,
+				requireIgnoredRoot: Boolean(superpowersRoot),
 				agents: tasks.map((task) => task.agent),
 				setupHook: setupHook
 					? { hookPath: setupHook, timeoutMs: setupHookTimeoutMs }
@@ -821,6 +844,8 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		tasks,
 		deps.config.worktreeSetupHook,
 		deps.config.worktreeSetupHookTimeoutMs,
+		workflow,
+		deps.config,
 	);
 	if (errorResult) return errorResult;
 

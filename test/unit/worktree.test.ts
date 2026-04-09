@@ -1,3 +1,12 @@
+/**
+ * Unit coverage for git-backed worktree setup, cleanup, and diff behavior.
+ *
+ * Responsibilities:
+ * - create temporary repositories that exercise real git worktree flows
+ * - verify setup hooks, synthetic paths, and configured worktree roots
+ * - protect default worktree isolation behavior from regressions
+ */
+
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import * as fs from "node:fs";
@@ -85,6 +94,30 @@ describe("worktree", () => {
 		try {
 			setup = createWorktrees(nestedDir, "subdir", 1);
 			assert.equal(setup.worktrees[0]!.agentCwd, path.join(setup.worktrees[0]!.path, "packages", "app"));
+		} finally {
+			if (setup) cleanupWorktrees(setup);
+			cleanupRepo(repoDir);
+		}
+	});
+
+	it("createWorktrees uses a configured project-local worktree root when provided", () => {
+		const repoDir = createRepo("pi-worktree-configured-root-");
+		let setup: WorktreeSetup | undefined;
+		try {
+			fs.mkdirSync(path.join(repoDir, ".worktrees"), { recursive: true });
+			fs.writeFileSync(
+				path.join(repoDir, ".gitignore"),
+				".worktrees/\nnode_modules/\n",
+				"utf-8",
+			);
+			git(repoDir, ["add", ".gitignore"]);
+			git(repoDir, ["commit", "-m", "ignore worktrees"]);
+
+			setup = createWorktrees(repoDir, "configured", 1, {
+				rootDir: path.join(repoDir, ".worktrees"),
+				requireIgnoredRoot: true,
+			});
+			assert.match(setup.worktrees[0]!.path, /\.worktrees/);
 		} finally {
 			if (setup) cleanupWorktrees(setup);
 			cleanupRepo(repoDir);

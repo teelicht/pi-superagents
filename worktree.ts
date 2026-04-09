@@ -1,3 +1,12 @@
+/**
+ * Git worktree lifecycle helpers for parallel subagent execution.
+ *
+ * Responsibilities:
+ * - create isolated worktrees from a clean repository state
+ * - enforce synthetic-path and setup-hook safety checks
+ * - capture diffs and clean up temporary worktree resources
+ */
+
 import { spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -43,6 +52,8 @@ export interface WorktreeSetupHookConfig {
 export interface CreateWorktreesOptions {
 	agents?: string[];
 	setupHook?: WorktreeSetupHookConfig;
+	rootDir?: string;
+	requireIgnoredRoot?: boolean;
 }
 
 interface ResolvedWorktreeSetupHook {
@@ -157,8 +168,31 @@ function buildWorktreeBranch(runId: string, index: number): string {
 	return `pi-parallel-${runId}-${index}`;
 }
 
-function buildWorktreePath(runId: string, index: number): string {
-	return path.join(os.tmpdir(), `pi-worktree-${runId}-${index}`);
+/**
+ * Builds the filesystem path for a worktree under either the configured root
+ * or the operating system temp directory when no override is provided.
+ *
+ * @param runId Unique identifier for the current worktree batch.
+ * @param index Zero-based worktree index within the batch.
+ * @param rootDir Optional configured directory that should contain worktrees.
+ * @returns Absolute path for the new worktree.
+ */
+function buildWorktreePath(runId: string, index: number, rootDir?: string): string {
+	return path.join(rootDir ?? os.tmpdir(), `pi-worktree-${runId}-${index}`);
+}
+
+/**
+ * Resolves an optional configured worktree root into an absolute path.
+ *
+ * @param repoRoot Absolute repository root used to anchor relative paths.
+ * @param configuredRoot Optional configured root directory for worktrees.
+ * @returns Absolute worktree root when configured, otherwise `undefined`.
+ */
+function resolveConfiguredWorktreeRoot(repoRoot: string, configuredRoot: string | undefined): string | undefined {
+	if (!configuredRoot) return undefined;
+	return path.isAbsolute(configuredRoot)
+		? path.resolve(configuredRoot)
+		: path.resolve(repoRoot, configuredRoot);
 }
 
 function linkNodeModulesIfPresent(toplevel: string, worktreePath: string): boolean {
@@ -298,6 +332,39 @@ function runWorktreeSetupHook(
 	return [...uniquePaths];
 }
 
+/**
+ * Ensures a configured project-local worktree root is ignored by git before it
+ * is used, preventing new worktree directories from polluting repository status.
+ *
+ * @param repoRoot Absolute repository root for the current checkout.
+ * @param rootDir Absolute configured worktree root.
+ * @throws {Error} When the configured root is inside the repository and not ignored.
+ */
+function assertProjectLocalRootIgnored(repoRoot: string, rootDir: string): void {
+	const relativeRoot = path.relative(repoRoot, rootDir);
+	if (!relativeRoot || relativeRoot.startsWith("..") || path.isAbsolute(relativeRoot)) return;
+	const gitRelativeRoot = relativeRoot.split(path.sep).join("/");
+	const result = runGit(repoRoot, ["check-ignore", "-q", "--", gitRelativeRoot]);
+	if (result.status !== 0) {
+		throw new Error(`Configured worktree root must be ignored by git: ${gitRelativeRoot}`);
+	}
+}
+
+/**
+ * Creates one git worktree plus any synthetic setup artifacts required for the
+ * assigned agent.
+ *
+ * @param toplevel Repository root used for git commands.
+ * @param cwdRelative Original working directory relative to the repository root.
+ * @param runId Unique identifier for the current parallel run.
+ * @param index Zero-based index of the worktree being created.
+ * @param baseCommit Commit SHA used as the diff baseline.
+ * @param setupHook Optional setup hook to run inside the worktree.
+ * @param agent Optional agent name for hook context.
+ * @param rootDir Optional directory that should contain the worktree.
+ * @returns Created worktree metadata.
+ * @throws {Error} When git or hook setup fails.
+ */
 function createSingleWorktree(
 	toplevel: string,
 	cwdRelative: string,
@@ -306,9 +373,10 @@ function createSingleWorktree(
 	baseCommit: string,
 	setupHook: ResolvedWorktreeSetupHook | undefined,
 	agent: string | undefined,
+	rootDir: string | undefined,
 ): WorktreeInfo {
 	const branch = buildWorktreeBranch(runId, index);
-	const worktreePath = buildWorktreePath(runId, index);
+	const worktreePath = buildWorktreePath(runId, index, rootDir);
 	const add = runGit(toplevel, ["worktree", "add", worktreePath, "-b", branch, "HEAD"]);
 	if (add.status !== 0) {
 		const message = add.stderr.trim() || add.stdout.trim() || `failed to create worktree ${worktreePath}`;
@@ -465,10 +533,28 @@ function hasWorktreeChanges(diff: WorktreeDiff): boolean {
 	return diff.filesChanged > 0 || diff.insertions > 0 || diff.deletions > 0 || diff.diffStat.trim().length > 0;
 }
 
+/**
+ * Creates one or more isolated worktrees for a clean repository checkout.
+ *
+ * @param cwd Working directory that must live inside the target repository.
+ * @param runId Unique identifier used for worktree branch and path names.
+ * @param count Number of worktrees to create.
+ * @param options Optional agent names, setup hook, and root-directory policy.
+ * @returns Worktree setup metadata for downstream execution and cleanup.
+ * @throws {Error} When the repository is dirty, the root policy is invalid, or git setup fails.
+ */
 export function createWorktrees(cwd: string, runId: string, count: number, options?: CreateWorktreesOptions): WorktreeSetup {
 	const repo = resolveRepoState(cwd);
+	const rootDir = resolveConfiguredWorktreeRoot(repo.toplevel, options?.rootDir);
 	const setupHook = resolveWorktreeSetupHook(repo.toplevel, options?.setupHook);
 	const worktrees: WorktreeInfo[] = [];
+
+	if (rootDir && options?.requireIgnoredRoot) {
+		assertProjectLocalRootIgnored(repo.toplevel, rootDir);
+	}
+	if (rootDir) {
+		fs.mkdirSync(rootDir, { recursive: true });
+	}
 
 	try {
 		for (let index = 0; index < count; index++) {
@@ -480,6 +566,7 @@ export function createWorktrees(cwd: string, runId: string, count: number, optio
 				repo.baseCommit,
 				setupHook,
 				options?.agents?.[index],
+				rootDir,
 			));
 		}
 	} catch (error) {
