@@ -124,6 +124,45 @@ describe("worktree", () => {
 		}
 	});
 
+	it("createWorktrees rejects using the repository root when ignored roots are required", () => {
+		const repoDir = createRepo("pi-worktree-repo-root-");
+		try {
+			assert.throws(
+				() => createWorktrees(repoDir, "repo-root", 1, {
+					rootDir: repoDir,
+					requireIgnoredRoot: true,
+				}),
+				/Configured worktree root must be ignored by git/i,
+			);
+		} finally {
+			cleanupRepo(repoDir);
+		}
+	});
+
+	it("createWorktrees rejects symlinked absolute roots that resolve inside the repository", {
+		skip: process.platform === "win32" ? "Symlink behavior differs on Windows CI environments." : undefined,
+	}, () => {
+		const repoDir = createRepo("pi-worktree-symlinked-root-");
+		const actualRoot = path.join(repoDir, "local-worktrees");
+		const symlinkParent = fs.mkdtempSync(path.join(os.tmpdir(), "pi-worktree-symlink-parent-"));
+		const symlinkRoot = path.join(symlinkParent, "worktrees-link");
+		try {
+			fs.mkdirSync(actualRoot, { recursive: true });
+			fs.symlinkSync(actualRoot, symlinkRoot);
+
+			assert.throws(
+				() => createWorktrees(repoDir, "symlinked-root", 1, {
+					rootDir: symlinkRoot,
+					requireIgnoredRoot: true,
+				}),
+				/Configured worktree root must be ignored by git/i,
+			);
+		} finally {
+			try { fs.rmSync(symlinkParent, { recursive: true, force: true }); } catch {}
+			cleanupRepo(repoDir);
+		}
+	});
+
 	it("createWorktrees rejects dirty repositories", () => {
 		const repoDir = createRepo("pi-worktree-dirty-");
 		try {
