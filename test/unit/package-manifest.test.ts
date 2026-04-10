@@ -32,6 +32,7 @@ describe("package.json manifest", () => {
 			"src/",
 			"scripts/",
 			"agents/",
+			"docs/",
 			"default-config.json",
 			"*.mjs",
 			"README.md",

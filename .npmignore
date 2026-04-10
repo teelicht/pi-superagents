@@ -1,0 +1,15 @@
+# Internal planning — not for consumers
+docs/superpowers/
+docs/todos.md
+
+# Dev-only scripts
+scripts/
+
+# Tests
+test/
+
+# CI
+.github/
+
+# Dev configs
+.gitignore

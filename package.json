@@ -1,6 +1,6 @@
 {
   "name": "pi-superagents",
-  "version": "0.12.4",
+  "version": "0.1.0",
   "description": "Pi extension for delegating tasks to subagents to implement the superpowers development workflow",
   "author": "Thomas Lichtenecker, Nico Bailon",
   "license": "MIT",
@@ -29,12 +29,14 @@
     "src/",
     "scripts/",
     "agents/",
+    "docs/",
     "default-config.json",
     "*.mjs",
     "README.md",
     "CHANGELOG.md"
   ],
   "scripts": {
+    "prepublishOnly": "npm test",
     "debug:pi-local": "node --experimental-transform-types ./scripts/local-extension-install.ts",
     "test": "npm run test:unit",
     "test:unit": "node --experimental-strip-types --test test/unit/*.test.ts",
@@ -59,6 +61,8 @@
     "@marcfargas/pi-test-harness": "^0.5.0",
     "@mariozechner/pi-agent-core": "^0.65.0",
     "@mariozechner/pi-ai": "^0.65.0",
-    "@mariozechner/pi-coding-agent": "^0.65.0"
+    "@mariozechner/pi-coding-agent": "^0.65.0",
+    "@mariozechner/pi-tui": "^0.66.1",
+    "@sinclair/typebox": "^0.34.49"
   }
 }
