@@ -401,6 +401,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			worktreeSetupHook: deps.config.worktreeSetupHook,
 			worktreeSetupHookTimeoutMs: deps.config.worktreeSetupHookTimeoutMs,
 			workflow: data.workflow,
+			config: deps.config,
 		});
 	}
 
@@ -436,6 +437,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			worktreeSetupHook: deps.config.worktreeSetupHook,
 			worktreeSetupHookTimeoutMs: deps.config.worktreeSetupHookTimeoutMs,
 			workflow: data.workflow,
+			config: deps.config,
 		});
 	}
 
@@ -514,6 +516,7 @@ async function runChainPath(data: ExecutionContextData, deps: ExecutorDeps): Pro
 			worktreeSetupHook: deps.config.worktreeSetupHook,
 			worktreeSetupHookTimeoutMs: deps.config.worktreeSetupHookTimeoutMs,
 			workflow: data.workflow,
+			config: deps.config,
 		});
 	}
 
@@ -831,6 +834,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 				worktreeSetupHook: deps.config.worktreeSetupHook,
 				worktreeSetupHookTimeoutMs: deps.config.worktreeSetupHookTimeoutMs,
 				workflow,
+				config: deps.config,
 			});
 		}
 	}
@@ -1026,6 +1030,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 				worktreeSetupHook: deps.config.worktreeSetupHook,
 				worktreeSetupHookTimeoutMs: deps.config.worktreeSetupHookTimeoutMs,
 				workflow,
+				config: deps.config,
 			});
 		}
 	}

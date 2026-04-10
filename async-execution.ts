@@ -25,10 +25,11 @@ import type { RunnerStep } from "./parallel-utils.ts";
 import { resolvePiPackageRoot } from "./pi-spawn.ts";
 import { buildSkillInjection, normalizeSkillInput, resolveSkills } from "./skills.ts";
 import { buildSuperpowersPacketPlan } from "./superpowers-packets.ts";
-import { inferExecutionRole, resolveRoleTools } from "./superpowers-policy.ts";
+import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./superpowers-policy.ts";
 import {
 	type ArtifactConfig,
 	type Details,
+	type ExtensionConfig,
 	type MaxOutputConfig,
 	type WorkflowMode,
 	ASYNC_DIR,
@@ -81,6 +82,7 @@ export interface AsyncChainParams {
 	worktreeSetupHook?: string;
 	worktreeSetupHookTimeoutMs?: number;
 	workflow?: WorkflowMode;
+	config?: ExtensionConfig;
 }
 
 export interface AsyncSingleParams {
@@ -101,6 +103,7 @@ export interface AsyncSingleParams {
 	worktreeSetupHook?: string;
 	worktreeSetupHookTimeoutMs?: number;
 	workflow?: WorkflowMode;
+	config?: ExtensionConfig;
 }
 
 export interface AsyncExecutionResult {
@@ -162,6 +165,34 @@ function resolveAsyncPacketDefaults(
 }
 
 /**
+ * Resolve the concrete model string for an async Superpowers step.
+ *
+ * Inputs/outputs:
+ * - accepts an optional explicit model override plus the agent default model/thinking
+ * - returns a concrete `provider/model[:thinking]` string when resolution succeeds
+ *
+ * Invariants:
+ * - explicit model overrides win over agent defaults
+ * - Superpowers tier aliases resolve through `config.superagents.modelTiers`
+ *
+ * Failure modes:
+ * - unresolved tiers fall back to the raw configured model string
+ */
+function resolveAsyncModel(input: {
+	workflow?: WorkflowMode;
+	config?: ExtensionConfig;
+	model?: string;
+	thinking?: string;
+}): string | undefined {
+	const tierModel = resolveModelForAgent({
+		workflow: input.workflow ?? "default",
+		agentModel: input.model,
+		config: input.config ?? {},
+	});
+	return applyThinkingSuffix(tierModel?.model ?? input.model, input.thinking ?? tierModel?.thinking);
+}
+
+/**
  * Execute a chain asynchronously
  */
 export function executeAsyncChain(
@@ -183,6 +214,7 @@ export function executeAsyncChain(
 		worktreeSetupHook,
 		worktreeSetupHookTimeoutMs,
 		workflow,
+		config,
 	} = params;
 	const chainSkills = params.chainSkills ?? [];
 
@@ -252,7 +284,12 @@ export function executeAsyncChain(
 			agent: s.agent,
 			task,
 			cwd: s.cwd,
-			model: applyThinkingSuffix(s.model ?? a.model, a.thinking),
+			model: resolveAsyncModel({
+				workflow,
+				config,
+				model: s.model ?? a.model,
+				thinking: s.model ? undefined : a.thinking,
+			}),
 			tools: resolveRoleTools({
 				workflow: workflow ?? "default",
 				role,
@@ -377,6 +414,7 @@ export function executeAsyncSingle(
 		worktreeSetupHook,
 		worktreeSetupHookTimeoutMs,
 		workflow,
+		config,
 	} = params;
 	const skillNames = params.skills ?? agentConfig.skills ?? [];
 	const { resolved: resolvedSkills } = resolveSkills(skillNames, ctx.cwd);
@@ -410,7 +448,12 @@ export function executeAsyncSingle(
 					agent,
 					task: taskWithOutputInstruction,
 					cwd,
-					model: applyThinkingSuffix(agentConfig.model, agentConfig.thinking),
+					model: resolveAsyncModel({
+						workflow,
+						config,
+						model: agentConfig.model,
+						thinking: agentConfig.thinking,
+					}),
 					tools: resolveRoleTools({
 						workflow: workflow ?? "default",
 						role,

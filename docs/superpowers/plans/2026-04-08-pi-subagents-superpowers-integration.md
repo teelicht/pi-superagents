@@ -163,7 +163,6 @@ export type SuperpowersImplementerMode = "tdd" | "direct";
 export interface SuperpowersSettings {
   commandName?: string;
   modelTiers?: Partial<Record<ModelTier, string>>;
-  roleModelTiers?: Partial<Record<ExecutionRole, ModelTier>>;
   roleSkillOverlays?: Partial<Record<ExecutionRole, string[]>>;
   worktreeRoot?: string;
   worktreeBaselineCommand?: string;
@@ -287,7 +286,7 @@ git commit -m "feat: add explicit superpowers command entrypoint"
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  resolveModelForRole,
+  resolveModelForAgent,
   resolveRoleSkillSet,
   resolveImplementerSkillSet,
   type SuperpowersPolicyInput,
@@ -296,9 +295,9 @@ import {
 describe("superpowers policy", () => {
   it("does nothing when workflow is default", () => {
     assert.equal(
-      resolveModelForRole({
+      resolveModelForAgent({
         workflow: "default",
-        role: "sp-code-review",
+        agentModel: "balanced",
         config: {},
       }),
       undefined,
@@ -376,25 +375,20 @@ const ROOT_ONLY_WORKFLOW_SKILLS = new Set([
   "finishing-a-development-branch",
 ]);
 
-const DEFAULT_ROLE_TIERS: Record<ExecutionRole, ModelTier> = {
-  "root-planning": "max",
-  "sp-recon": "cheap",
-  "sp-research": "cheap",
-  "sp-implementer": "cheap",
-  "sp-spec-review": "strong",
-  "sp-code-review": "strong",
-  "sp-debug": "max",
-};
-
-export function resolveModelForRole(input: {
+export function resolveModelForAgent(input: {
   workflow: WorkflowMode;
-  role: ExecutionRole;
+  agentModel?: string;
   config: ExtensionConfig;
 }): string | undefined {
   if (input.workflow !== "superpowers") return undefined;
   const settings = input.config.superpowers;
   const tier =
-    settings?.roleModelTiers?.[input.role] ?? DEFAULT_ROLE_TIERS[input.role];
+    input.agentModel === "cheap" ||
+    input.agentModel === "balanced" ||
+    input.agentModel === "max"
+      ? input.agentModel
+      : undefined;
+  if (!tier) return undefined;
   return settings?.modelTiers?.[tier];
 }
 
@@ -466,9 +460,9 @@ export function getAvailableSkillNames(cwd: string): Set<string> {
 
 ```ts
 const role = inferExecutionRole(agent.name);
-const tierModel = resolveModelForRole({
+const tierModel = resolveModelForAgent({
   workflow: options.workflow ?? "default",
-  role,
+  agentModel: agent.model,
   config: options.config,
 });
 const effectiveModel = modelOverride ?? tierModel ?? agent.model;

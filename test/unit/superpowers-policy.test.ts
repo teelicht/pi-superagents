@@ -10,29 +10,52 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-	resolveModelForRole,
+	resolveModelForAgent,
 	resolveRoleSkillSet,
 	resolveImplementerSkillSet,
 	resolveRoleTools,
 } from "../../superpowers-policy.ts";
 
 describe("superpowers policy", () => {
-	it("does nothing when workflow is default", () => {
-		assert.equal(
-			resolveModelForRole({
+	it("resolves tiers in default workflow when configured", () => {
+		assert.deepEqual(
+			resolveModelForAgent({
 				workflow: "default",
-				role: "sp-code-review",
+				agentModel: "balanced",
+				config: {
+					superagents: {
+						modelTiers: {
+							balanced: {
+								model: "openai/gpt-5.4",
+								thinking: "medium",
+							},
+						},
+					},
+				},
+			}),
+			{
+				model: "openai/gpt-5.4",
+				thinking: "medium",
+			},
+		);
+	});
+
+	it("returns undefined for unconfigured tiers", () => {
+		assert.equal(
+			resolveModelForAgent({
+				workflow: "default",
+				agentModel: "unconfigured-tier",
 				config: {},
 			}),
 			undefined,
 		);
 	});
 
-	it("resolves balanced tier model and thinking for superpowers roles", () => {
+	it("resolves balanced tier model and thinking from agent frontmatter", () => {
 		assert.deepEqual(
-			resolveModelForRole({
+			resolveModelForAgent({
 				workflow: "superpowers",
-				role: "sp-code-review",
+				agentModel: "balanced",
 				config: {
 					superagents: {
 						modelTiers: {
@@ -53,9 +76,9 @@ describe("superpowers policy", () => {
 
 	it("supports string shorthand tier mappings without thinking", () => {
 		assert.deepEqual(
-			resolveModelForRole({
+			resolveModelForAgent({
 				workflow: "superpowers",
-				role: "sp-code-review",
+				agentModel: "balanced",
 				config: {
 					superagents: {
 						modelTiers: {
@@ -70,23 +93,43 @@ describe("superpowers policy", () => {
 		);
 	});
 
-	it("does not resolve the removed legacy strong tier alias", () => {
+	it("supports custom tier names when configured", () => {
 		assert.deepEqual(
-			resolveModelForRole({
+			resolveModelForAgent({
 				workflow: "superpowers",
-				role: "sp-code-review",
+				agentModel: "creative",
 				config: {
 					superagents: {
-						roleModelTiers: {
-							"sp-code-review": "strong",
+						modelTiers: {
+							creative: {
+								model: "openai/gpt-5.4",
+								thinking: "high",
+							},
 						},
+					},
+				},
+			}),
+			{
+				model: "openai/gpt-5.4",
+				thinking: "high",
+			},
+		);
+	});
+
+	it("returns undefined for unconfigured custom tiers", () => {
+		assert.deepEqual(
+			resolveModelForAgent({
+				workflow: "superpowers",
+				agentModel: "unconfigured-custom",
+				config: {
+					superagents: {
 						modelTiers: {
 							balanced: {
 								model: "openai/gpt-5.4",
 							},
 						},
 					},
-				} as never,
+				},
 			}),
 			undefined,
 		);

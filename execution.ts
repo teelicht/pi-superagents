@@ -35,7 +35,7 @@ import { captureSingleOutputSnapshot, resolveSingleOutput } from "./single-outpu
 import {
 	inferExecutionRole,
 	resolveImplementerSkillSet,
-	resolveModelForRole,
+	resolveModelForAgent,
 	resolveRoleSkillSet,
 	resolveRoleTools,
 } from "./superpowers-policy.ts";
@@ -69,9 +69,9 @@ export async function runSync(
 	const implementerMode = options.implementerMode ?? "tdd";
 	const config = options.config ?? {};
 	const role = inferExecutionRole(agent.name);
-	const tierModel = resolveModelForRole({
+	const tierModel = resolveModelForAgent({
 		workflow,
-		role,
+		agentModel: agent.model,
 		config,
 	});
 	const effectiveModel = modelOverride ?? tierModel?.model ?? agent.model;

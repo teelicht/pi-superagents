@@ -792,40 +792,29 @@ Per-agent `maxSubagentDepth` can tighten that limit further for child runs, but 
 
 ```json
 {
-  "superpowers": {
-    "superagents": {
-      "commandName": "superpowers",
-      "defaultImplementerMode": "tdd",
-      "modelTiers": {
-        "cheap": {
-          "model": "openai/gpt-5.3-mini",
-          "thinking": "off"
-        },
-        "balanced": {
-          "model": "openai/gpt-5.4",
-          "thinking": "medium"
-        },
-        "max": {
-          "model": "anthropic/claude-opus-4-6",
-          "thinking": "high"
-        }
+  "superagents": {
+    "commandName": "superpowers",
+    "defaultImplementerMode": "tdd",
+    "modelTiers": {
+      "cheap": {
+        "model": "openai/gpt-5.3-mini",
+        "thinking": "off"
       },
-      "roleModelTiers": {
-        "root-planning": "max",
-        "sp-recon": "cheap",
-        "sp-research": "cheap",
-        "sp-implementer": "cheap",
-        "sp-spec-review": "balanced",
-        "sp-code-review": "balanced",
-        "sp-debug": "max"
+      "balanced": {
+        "model": "openai/gpt-5.4",
+        "thinking": "medium"
       },
-      "roleSkillOverlays": {
-        "root-planning": ["vercel-react-native-skills"],
-        "sp-implementer": ["vercel-react-native-skills"],
-        "sp-spec-review": ["vercel-react-native-skills"],
-        "sp-code-review": ["vercel-react-native-skills"],
-        "sp-debug": ["vercel-react-native-skills"]
+      "max": {
+        "model": "anthropic/claude-opus-4-6",
+        "thinking": "high"
       }
+    },
+    "roleSkillOverlays": {
+      "root-planning": ["vercel-react-native-skills"],
+      "sp-implementer": ["vercel-react-native-skills"],
+      "sp-spec-review": ["vercel-react-native-skills"],
+      "sp-code-review": ["vercel-react-native-skills"],
+      "sp-debug": ["vercel-react-native-skills"]
     }
   }
 }
@@ -836,9 +825,41 @@ Notes:
 - `defaultImplementerMode` defaults `/superpowers <task>` to `tdd`; use `direct` when you want the same review loop with code-first implementation.
 - The config root key is `superagents`.
 - `modelTiers` supports either string shorthand like `"cheap": "openai/gpt-5.3-mini"` or an object with `model` and optional `thinking`.
-- The supported tier names are `cheap`, `balanced`, and `max`. Legacy `strong` entries are still accepted as a backward-compatible alias for `balanced`.
-- `roleModelTiers` lets you remap individual Superpowers roles onto those tiers without editing the bundled agent frontmatter.
-- `modelTiers` and `roleSkillOverlays` only apply to Superpowers runs, so the generic extension remains dormant until the command is used.
+- **Custom tiers:** You can define your own tier names beyond the built-in `cheap`, `balanced`, and `max`. For example, add a `"creative"` tier with a model optimized for creative writing, or a `"free"` tier with a cost-effective model.
+- **General-purpose:** Tier resolution works in all workflows (`/run`, `/chain`, `/parallel`, and `/superpowers`). Set `model: "creative"` in any agent's frontmatter to use your custom tier.
+- Built-in Superpowers agents read their tier from the agent Markdown frontmatter, so editing an agent `.md` file changes which tier that role uses.
+- `roleSkillOverlays` only apply to Superpowers runs.
+
+**Example with custom tiers:**
+
+```json
+{
+  "superagents": {
+    "modelTiers": {
+      "cheap": { "model": "openai/gpt-5.3-mini" },
+      "balanced": { "model": "openai/gpt-5.4" },
+      "max": { "model": "anthropic/claude-opus-4-6" },
+      "creative": {
+        "model": "anthropic/claude-sonnet-4",
+        "thinking": "high"
+      },
+      "free": {
+        "model": "google/gemini-flash"
+      }
+    }
+  }
+}
+```
+
+Then use custom tiers in agent frontmatter:
+
+```yaml
+---
+name: writer
+model: creative
+description: Creative writing assistant
+---
+```
 
 ### `worktreeSetupHook`
 

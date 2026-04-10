@@ -46,7 +46,13 @@ export type SuperpowersImplementerMode = "tdd" | "direct";
 
 export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
-export type ModelTier = "cheap" | "balanced" | "max";
+/**
+ * Model tier identifier.
+ *
+ * Built-in tiers: cheap, balanced, max
+ * Users can define custom tiers (e.g., "creative", "free") in config.json.
+ */
+export type ModelTier = string;
 
 export interface ModelTierConfig {
 	model: string;
@@ -273,8 +279,8 @@ export interface RunSyncOptions {
 
 export interface SuperpowersSettings {
 	commandName?: string;
-	modelTiers?: Partial<Record<ModelTier, ModelTierSetting>>;
-	roleModelTiers?: Partial<Record<ExecutionRole, ModelTier>>;
+	/** Model configuration for each tier. Supports built-in (cheap, balanced, max) and custom tiers. */
+	modelTiers?: Record<string, ModelTierSetting>;
 	roleSkillOverlays?: Partial<Record<ExecutionRole, string[]>>;
 	worktreeRoot?: string;
 	worktreeBaselineCommand?: string;

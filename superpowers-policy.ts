@@ -2,7 +2,7 @@
  * Command-scoped policy helpers for the Superpowers workflow.
  *
  * Responsibilities:
- * - resolve model tiers for Superpowers execution roles
+ * - resolve Markdown-declared Superpowers model tiers into concrete models
  * - merge role-specific skill overlays safely
  * - add TDD behavior for the implementer role when requested
  */
@@ -10,9 +10,7 @@
 import type {
 	ExecutionRole,
 	ExtensionConfig,
-	ModelTier,
 	ModelTierConfig,
-	ModelTierSetting,
 	SuperpowersImplementerMode,
 	WorkflowMode,
 } from "./types.ts";
@@ -42,16 +40,6 @@ const NON_DELEGATING_ROLE_TOOLS: Partial<Record<ExecutionRole, string[]>> = {
 
 const DELEGATION_TOOLS = new Set(["subagent", "subagent_status"]);
 
-const DEFAULT_ROLE_TIERS: Record<ExecutionRole, ModelTier> = {
-	"root-planning": "max",
-	"sp-recon": "cheap",
-	"sp-research": "cheap",
-	"sp-implementer": "cheap",
-	"sp-spec-review": "balanced",
-	"sp-code-review": "balanced",
-	"sp-debug": "max",
-};
-
 /**
  * Resolve the canonical Superagents settings object from config.
  *
@@ -71,13 +59,19 @@ export interface ResolvedRoleModel {
 }
 
 /**
- * Normalize configured tier names to the supported Superpowers tier set.
+ * Normalize configured tier names.
  *
- * @param tier Raw tier name read from config.
- * @returns Supported tier name or `undefined` when the value is invalid.
+ * Accepts any non-empty string as a valid tier name, enabling users to
+ * define custom tiers (e.g., "creative", "free") in their config.
+ *
+ * @param tier Raw tier name read from config or agent frontmatter.
+ * @returns Valid tier name or `undefined` when the value is invalid.
  */
-function normalizeConfiguredTier(tier: unknown): ModelTier | undefined {
-	return tier === "cheap" || tier === "balanced" || tier === "max" ? tier : undefined;
+function normalizeConfiguredTier(tier: unknown): string | undefined {
+	if (typeof tier === "string" && tier.length > 0) {
+		return tier;
+	}
+	return undefined;
 }
 
 /**
@@ -107,7 +101,7 @@ function normalizeTierSetting(entry: unknown): ResolvedRoleModel | undefined {
  */
 function resolveTierModelSetting(
 	settings: ExtensionConfig["superagents"],
-	tier: ModelTier,
+	tier: string,
 ): ResolvedRoleModel | undefined {
 	return normalizeTierSetting(settings?.modelTiers?.[tier]);
 }
@@ -133,19 +127,27 @@ export function inferExecutionRole(agentName: string): ExecutionRole {
 }
 
 /**
- * Resolve the effective model for a role when the Superpowers workflow is active.
+ * Resolve the effective model for an agent using tier configuration.
  *
- * Returns `undefined` for the default workflow so existing model resolution stays unchanged.
+ * Inputs/outputs:
+ * - accepts the current workflow, extension config, and the agent frontmatter `model` value
+ * - returns the configured concrete model when that value names a configured tier
+ *
+ * Invariants:
+ * - tier resolution works in all workflows, not just Superpowers
+ * - non-tier model values (concrete model IDs) stay owned by agent frontmatter and return `undefined`
+ * - unknown tier names resolve to `undefined`, falling back to agent default
+ *
+ * Failure modes:
+ * - unconfigured tier names resolve to `undefined`
  */
-export function resolveModelForRole(input: {
+export function resolveModelForAgent(input: {
 	workflow: WorkflowMode;
-	role: ExecutionRole;
+	agentModel?: string;
 	config: ExtensionConfig;
 }): ResolvedRoleModel | undefined {
-	if (input.workflow !== "superpowers") return undefined;
 	const settings = getSuperagentSettings(input.config);
-	const configuredTier = settings?.roleModelTiers?.[input.role] ?? DEFAULT_ROLE_TIERS[input.role];
-	const tier = normalizeConfiguredTier(configuredTier);
+	const tier = normalizeConfiguredTier(input.agentModel);
 	if (!tier) return undefined;
 	return resolveTierModelSetting(settings, tier);
 }

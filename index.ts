@@ -102,10 +102,6 @@ function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfig): Ext
 				...(defaultSuperagents?.modelTiers ?? {}),
 				...(overrideSuperagents?.modelTiers ?? {}),
 			},
-			roleModelTiers: {
-				...(defaultSuperagents?.roleModelTiers ?? {}),
-				...(overrideSuperagents?.roleModelTiers ?? {}),
-			},
 			roleSkillOverlays: {
 				...(defaultSuperagents?.roleSkillOverlays ?? {}),
 				...(overrideSuperagents?.roleSkillOverlays ?? {}),
