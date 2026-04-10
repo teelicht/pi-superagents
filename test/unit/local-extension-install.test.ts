@@ -8,6 +8,7 @@
  */
 
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -35,6 +36,25 @@ function removeTempDir(dir: string): void {
 	} catch {}
 }
 
+/**
+ * Read the repository package file list from `npm pack --dry-run --json`.
+ *
+ * @param sourceRoot Repository root to inspect.
+ * @returns Sorted packaged file paths.
+ */
+function readPackDryRunPaths(sourceRoot: string): string[] {
+	const stdout = execFileSync("npm", ["pack", "--dry-run", "--json"], {
+		cwd: sourceRoot,
+		encoding: "utf-8",
+	});
+	const parsed = JSON.parse(stdout) as Array<{ files?: Array<{ path?: string }> }>;
+	const fileEntries = parsed[0]?.files ?? [];
+	return fileEntries
+		.map((entry) => entry.path)
+		.filter((entry): entry is string => typeof entry === "string" && entry.length > 0)
+		.sort();
+}
+
 describe("installLocalExtensionFiles", () => {
 	const tempDirs: string[] = [];
 
@@ -50,9 +70,10 @@ describe("installLocalExtensionFiles", () => {
 		const targetRoot = createTempDir("pi-local-install-dst-");
 		tempDirs.push(sourceRoot, targetRoot);
 
+		fs.mkdirSync(path.join(sourceRoot, "src", "extension"), { recursive: true });
 		fs.mkdirSync(path.join(sourceRoot, "agents"), { recursive: true });
-		fs.writeFileSync(path.join(sourceRoot, "index.ts"), "export default {};\n", "utf-8");
-		fs.writeFileSync(path.join(sourceRoot, "notify.ts"), "export default {};\n", "utf-8");
+		fs.writeFileSync(path.join(sourceRoot, "src", "extension", "index.ts"), "export default {};\n", "utf-8");
+		fs.writeFileSync(path.join(sourceRoot, "src", "extension", "notify.ts"), "export default {};\n", "utf-8");
 		fs.writeFileSync(path.join(sourceRoot, "package.json"), "{\n  \"name\": \"pi-superagents\"\n}\n", "utf-8");
 		fs.writeFileSync(path.join(sourceRoot, "README.md"), "# Readme\n", "utf-8");
 		fs.writeFileSync(path.join(sourceRoot, "agents", "worker.md"), "# Worker\n", "utf-8");
@@ -61,8 +82,8 @@ describe("installLocalExtensionFiles", () => {
 			sourceRoot,
 			targetRoot,
 			relativePaths: [
-				"index.ts",
-				"notify.ts",
+				"src/extension/index.ts",
+				"src/extension/notify.ts",
 				"package.json",
 				"README.md",
 				"agents/worker.md",
@@ -72,11 +93,11 @@ describe("installLocalExtensionFiles", () => {
 		assert.deepEqual(copied, [
 			"README.md",
 			"agents/worker.md",
-			"index.ts",
-			"notify.ts",
 			"package.json",
+			"src/extension/index.ts",
+			"src/extension/notify.ts",
 		]);
-		assert.equal(fs.readFileSync(path.join(targetRoot, "index.ts"), "utf-8"), "export default {};\n");
+		assert.equal(fs.readFileSync(path.join(targetRoot, "src", "extension", "index.ts"), "utf-8"), "export default {};\n");
 		assert.equal(fs.readFileSync(path.join(targetRoot, "agents", "worker.md"), "utf-8"), "# Worker\n");
 	});
 
@@ -85,17 +106,35 @@ describe("installLocalExtensionFiles", () => {
 		const targetRoot = createTempDir("pi-local-install-dst-");
 		tempDirs.push(sourceRoot, targetRoot);
 
-		fs.writeFileSync(path.join(sourceRoot, "index.ts"), "export default 1;\n", "utf-8");
+		fs.mkdirSync(path.join(sourceRoot, "src", "extension"), { recursive: true });
+		fs.writeFileSync(path.join(sourceRoot, "src", "extension", "index.ts"), "export default 1;\n", "utf-8");
 		fs.writeFileSync(path.join(sourceRoot, "package.json"), "{\n  \"name\": \"pi-superagents\"\n}\n", "utf-8");
 		fs.writeFileSync(path.join(targetRoot, "stale.ts"), "old\n", "utf-8");
 
 		installLocalExtensionFiles({
 			sourceRoot,
 			targetRoot,
-			relativePaths: ["index.ts", "package.json"],
+			relativePaths: ["src/extension/index.ts", "package.json"],
 		});
 
 		assert.equal(fs.existsSync(path.join(targetRoot, "stale.ts")), false);
-		assert.equal(fs.readFileSync(path.join(targetRoot, "index.ts"), "utf-8"), "export default 1;\n");
+		assert.equal(fs.readFileSync(path.join(targetRoot, "src", "extension", "index.ts"), "utf-8"), "export default 1;\n");
+	});
+
+	it("copies the repository package using the src-based extension layout", () => {
+		const sourceRoot = path.resolve(".");
+		const targetRoot = createTempDir("pi-local-install-dst-");
+		tempDirs.push(targetRoot);
+
+		const copied = installLocalExtensionFiles({
+			sourceRoot,
+			targetRoot,
+			relativePaths: readPackDryRunPaths(sourceRoot),
+		});
+
+		assert.ok(copied.includes("src/extension/index.ts"));
+		assert.ok(copied.includes("src/extension/notify.ts"));
+		assert.equal(fs.existsSync(path.join(targetRoot, "src", "extension", "index.ts")), true);
+		assert.equal(fs.existsSync(path.join(targetRoot, "src", "extension", "notify.ts")), true);
 	});
 });

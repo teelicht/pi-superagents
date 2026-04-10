@@ -2,7 +2,8 @@
  * E2E test: npm pack + install sandbox verification.
  *
  * Uses pi-test-harness verifySandboxInstall() to ensure the published package
- * can be installed cleanly and loads expected extensions/tools.
+ * can be installed cleanly with the package directory layout and loads
+ * expected extensions/tools.
  */
 
 import { describe, it } from "node:test";

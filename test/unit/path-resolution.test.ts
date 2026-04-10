@@ -1,10 +1,19 @@
-import { describe, test, before, after } from "node:test";
+/**
+ * Unit coverage for project and user path resolution.
+ *
+ * Responsibilities:
+ * - verify skills resolve from project-local and user-global `.agents` folders
+ * - verify agents resolve from project-local and user-global `.agents` folders
+ * - preserve existing path resolution behavior during the src-layout refactor
+ */
+
+import { after, before, describe, test } from "node:test";
 import * as assert from "node:assert";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { discoverAgents, discoverAgentsAll } from "./agents.js";
-import { resolveSkillPath, clearSkillCache, discoverAvailableSkills } from "./skills.js";
+import { discoverAgents, discoverAgentsAll } from "../../src/agents/agents.js";
+import { resolveSkillPath, clearSkillCache, discoverAvailableSkills } from "../../src/shared/skills.js";
 
 const tmpDir = path.join(os.tmpdir(), "pi-path-resolution-test");
 const cwdDir = path.join(tmpDir, "cwd");
@@ -15,20 +24,20 @@ const userAgentsDirBackup = path.join(tmpDir, ".agents_backup");
 
 before(() => {
 	fs.mkdirSync(cwdDir, { recursive: true });
-	
-	// Backup existing ~/.agents if any
+
+	// Backup existing ~/.agents if any.
 	if (fs.existsSync(realUserAgentsDir)) {
 		fs.cpSync(realUserAgentsDir, userAgentsDirBackup, { recursive: true });
 	}
 });
 
 after(() => {
-	// Restore ~/.agents
+	// Restore ~/.agents.
 	if (fs.existsSync(userAgentsDirBackup)) {
 		fs.rmSync(realUserAgentsDir, { recursive: true, force: true });
 		fs.cpSync(userAgentsDirBackup, realUserAgentsDir, { recursive: true });
 	} else {
-		// If it didn't exist before, just remove what we created
+		// If it didn't exist before, just remove what we created.
 		fs.rmSync(realUserAgentsDir, { recursive: true, force: true });
 	}
 	fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -70,11 +79,11 @@ describe("Path resolution for .agents and ~/.agents", () => {
 		fs.mkdirSync(agentsDir, { recursive: true });
 		fs.writeFileSync(
 			path.join(agentsDir, "test-agent-1.md"),
-			"---\nname: test-agent-1\ndescription: Test agent\n---\nAgent content"
+			"---\nname: test-agent-1\ndescription: Test agent\n---\nAgent content",
 		);
 
 		const result = discoverAgents(cwdDir, "project");
-		const agent = result.agents.find((a) => a.name === "test-agent-1");
+		const agent = result.agents.find((candidate) => candidate.name === "test-agent-1");
 		assert.ok(agent);
 		assert.strictEqual(agent?.filePath, path.join(agentsDir, "test-agent-1.md"));
 	});
@@ -84,12 +93,25 @@ describe("Path resolution for .agents and ~/.agents", () => {
 		fs.mkdirSync(userAgentsDir, { recursive: true });
 		fs.writeFileSync(
 			path.join(userAgentsDir, "test-agent-2.md"),
-			"---\nname: test-agent-2\ndescription: Test agent\n---\nAgent content"
+			"---\nname: test-agent-2\ndescription: Test agent\n---\nAgent content",
 		);
 
 		const result = discoverAgents(cwdDir, "user");
-		const agent = result.agents.find((a) => a.name === "test-agent-2");
+		const agent = result.agents.find((candidate) => candidate.name === "test-agent-2");
 		assert.ok(agent);
 		assert.strictEqual(agent?.filePath, path.join(userAgentsDir, "test-agent-2.md"));
+	});
+
+	test("should expose all discovered agents through the aggregate helper", () => {
+		const projectAgentsDir = path.join(cwdDir, ".agents");
+		fs.mkdirSync(projectAgentsDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(projectAgentsDir, "test-agent-aggregate.md"),
+			"---\nname: test-agent-aggregate\ndescription: Test agent\n---\nAgent content",
+		);
+
+		const result = discoverAgentsAll(cwdDir);
+		const agent = result.agents.find((candidate) => candidate.name === "test-agent-aggregate");
+		assert.ok(agent);
 	});
 });
