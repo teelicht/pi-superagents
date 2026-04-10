@@ -20,7 +20,7 @@ type RenderSubagentResult = (
 let renderSubagentResult: RenderSubagentResult | undefined;
 let available = true;
 try {
-	({ renderSubagentResult } = await import("../../render.ts") as {
+	({ renderSubagentResult } = await import("../../src/ui/render.ts") as {
 		renderSubagentResult?: RenderSubagentResult;
 	});
 } catch {

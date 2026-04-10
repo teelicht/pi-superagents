@@ -9,7 +9,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import type { AgentConfig } from "./src/agents/agents.ts";
+import type { AgentConfig } from "../agents/agents.ts";
 import { applyThinkingSuffix } from "./pi-args.ts";
 import { injectSingleOutputInstruction, resolveSingleOutputPath } from "./single-output.ts";
 import {
@@ -31,7 +31,7 @@ import {
 	buildSkillInjection,
 	normalizeSkillInput,
 	resolveExecutionSkills,
-} from "./src/shared/skills.ts";
+} from "../shared/skills.ts";
 import { buildSuperpowersPacketPlan } from "./superpowers-packets.ts";
 import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./superpowers-policy.ts";
 import {
@@ -44,7 +44,7 @@ import {
 	ASYNC_DIR,
 	RESULTS_DIR,
 	resolveChildMaxSubagentDepth,
-} from "./src/shared/types.ts";
+} from "../shared/types.ts";
 
 const require = createRequire(import.meta.url);
 const piPackageRoot = resolvePiPackageRoot();

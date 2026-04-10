@@ -13,8 +13,8 @@ import * as path from "node:path";
 import { createTempDir, removeTempDir, tryImport } from "../support/helpers.ts";
 
 // Top-level await
-const settings = await tryImport<any>("./settings.ts");
-const skills = await tryImport<any>("./skills.ts");
+const settings = await tryImport<any>("./src/execution/settings.ts");
+const skills = await tryImport<any>("./src/shared/skills.ts");
 const available = !!(settings && skills);
 
 const resolveChainTemplates = settings?.resolveChainTemplates;

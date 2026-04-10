@@ -5,8 +5,8 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import type { AgentConfig } from "./src/agents/agents.ts";
-import { normalizeSkillInput } from "./src/shared/skills.ts";
+import type { AgentConfig } from "../agents/agents.ts";
+import { normalizeSkillInput } from "../shared/skills.ts";
 
 const CHAIN_RUNS_DIR = path.join(os.tmpdir(), "pi-chain-runs");
 const CHAIN_DIR_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours

@@ -5,8 +5,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { Usage, SingleResult } from "./types.ts";
-import type { ChainStep, SequentialStep } from "../../settings.ts";
-import { isParallelStep } from "../../settings.ts";
+import type { ChainStep, SequentialStep } from "../execution/settings.ts";
+import { isParallelStep } from "../execution/settings.ts";
 
 /**
  * Format token count with k suffix for large numbers

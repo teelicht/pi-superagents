@@ -25,8 +25,8 @@ import {
 } from "../support/helpers.ts";
 
 // Top-level await: try importing pi-dependent modules
-const execution = await tryImport<any>("./execution.ts");
-const utils = await tryImport<any>("./utils.ts");
+const execution = await tryImport<any>("./src/execution/execution.ts");
+const utils = await tryImport<any>("./src/shared/utils.ts");
 const available = !!(execution && utils);
 
 const runSync = execution?.runSync;

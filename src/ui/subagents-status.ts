@@ -1,10 +1,10 @@
 import type { Theme } from "@mariozechner/pi-coding-agent";
 import type { Component, TUI } from "@mariozechner/pi-tui";
 import { matchesKey, truncateToWidth } from "@mariozechner/pi-tui";
-import { type AsyncRunOverlayData, type AsyncRunSummary, listAsyncRunsForOverlay } from "./async-status.js";
-import { ASYNC_DIR } from "./types.js";
-import { formatDuration, formatTokens, shortenPath } from "./formatters.js";
-import { formatScrollInfo, renderFooter, renderHeader, row } from "./render-helpers.js";
+import { type AsyncRunOverlayData, type AsyncRunSummary, listAsyncRunsForOverlay } from "./async-status.ts";
+import { ASYNC_DIR } from "../shared/types.ts";
+import { formatDuration, formatTokens, shortenPath } from "../shared/formatters.ts";
+import { formatScrollInfo, renderFooter, renderHeader, row } from "./render-helpers.ts";
 
 const AUTO_REFRESH_MS = 2000;
 

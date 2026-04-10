@@ -2,11 +2,11 @@ import type { Theme } from "@mariozechner/pi-coding-agent";
 import { matchesKey, truncateToWidth } from "@mariozechner/pi-tui";
 import type { AgentConfig } from "./agents.ts";
 import { formatDuration } from "../shared/formatters.ts";
-import type { RunEntry } from "../../run-history.ts";
+import type { RunEntry } from "../execution/run-history.ts";
 import { buildSkillInjection, resolveSkills } from "../shared/skills.ts";
-import { ensureCursorVisible, getCursorDisplayPos, renderEditor, wrapText } from "../../text-editor.ts";
-import type { TextEditorState } from "../../text-editor.ts";
-import { pad, row, renderHeader, renderFooter, formatPath, formatScrollInfo } from "../../render-helpers.ts";
+import { ensureCursorVisible, getCursorDisplayPos, renderEditor, wrapText } from "../ui/text-editor.ts";
+import type { TextEditorState } from "../ui/text-editor.ts";
+import { pad, row, renderHeader, renderFooter, formatPath, formatScrollInfo } from "../ui/render-helpers.ts";
 
 export interface DetailState {
 	resolved: boolean;

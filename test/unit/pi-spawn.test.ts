@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import * as path from "node:path";
 import { describe, it } from "node:test";
-import { getPiSpawnCommand, resolveWindowsPiCliScript, type PiSpawnDeps } from "../../pi-spawn.ts";
+import { getPiSpawnCommand, resolveWindowsPiCliScript, type PiSpawnDeps } from "../../src/execution/pi-spawn.ts";
 
 function makeDeps(input: {
 	platform?: NodeJS.Platform;

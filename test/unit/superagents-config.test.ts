@@ -14,7 +14,7 @@ import {
 	getSuperagentSettings,
 	resolveSuperagentWorktreeCreateOptions,
 	resolveSuperagentWorktreeEnabled,
-} from "../../superagents-config.ts";
+} from "../../src/execution/superagents-config.ts";
 
 describe("superagents config helpers", () => {
 	/**

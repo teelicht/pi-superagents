@@ -27,7 +27,7 @@ if (available) {
 	process.on("exit", () => mockPi?.uninstall());
 }
 
-const EXTENSION = path.resolve("index.ts");
+const EXTENSION = path.resolve("src/extension/index.ts");
 
 /**
  * Write test agent definitions as .md files with YAML frontmatter.

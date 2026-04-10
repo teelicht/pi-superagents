@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { SubagentsStatusComponent } from "../../subagents-status.ts";
-import type { AsyncRunOverlayData } from "../../async-status.ts";
+import { SubagentsStatusComponent } from "../../src/ui/subagents-status.ts";
+import type { AsyncRunOverlayData } from "../../src/ui/async-status.ts";
 
 function wait(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));

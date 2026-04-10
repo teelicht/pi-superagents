@@ -12,7 +12,7 @@ import * as fs from "node:fs";
 import { createRequire } from "node:module";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
-import { appendJsonl, getArtifactPaths } from "./src/shared/artifacts.ts";
+import { appendJsonl, getArtifactPaths } from "../shared/artifacts.ts";
 import { getPiSpawnCommand } from "./pi-spawn.ts";
 import { captureSingleOutputSnapshot, resolveSingleOutput } from "./single-output.ts";
 import {
@@ -22,7 +22,7 @@ import {
 	type MaxOutputConfig,
 	truncateOutput,
 	getSubagentDepthEnv,
-} from "./src/shared/types.ts";
+} from "../shared/types.ts";
 import {
 	type RunnerSubagentStep as SubagentStep,
 	type RunnerStep,

@@ -10,9 +10,9 @@ import {
 	type Details,
 	MAX_WIDGET_JOBS,
 	WIDGET_KEY,
-} from "./src/shared/types.ts";
-import { formatTokens, formatUsage, formatDuration, formatToolCall, shortenPath } from "./src/shared/formatters.ts";
-import { getDisplayItems, getLastActivity, getOutputTail, getSingleResultOutput } from "./src/shared/utils.ts";
+} from "../shared/types.ts";
+import { formatTokens, formatUsage, formatDuration, formatToolCall, shortenPath } from "../shared/formatters.ts";
+import { getDisplayItems, getLastActivity, getOutputTail, getSingleResultOutput } from "../shared/utils.ts";
 
 type Theme = ExtensionContext["ui"]["theme"];
 

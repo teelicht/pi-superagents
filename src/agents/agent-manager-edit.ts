@@ -1,9 +1,9 @@
 import type { Theme } from "@mariozechner/pi-coding-agent";
 import { matchesKey, truncateToWidth } from "@mariozechner/pi-tui";
 import type { AgentConfig } from "./agents.ts";
-import { createEditorState, ensureCursorVisible, getCursorDisplayPos, handleEditorInput, renderEditor, wrapText } from "../../text-editor.ts";
-import type { TextEditorState } from "../../text-editor.ts";
-import { pad, row, renderHeader, renderFooter, formatScrollInfo } from "../../render-helpers.ts";
+import { createEditorState, ensureCursorVisible, getCursorDisplayPos, handleEditorInput, renderEditor, wrapText } from "../ui/text-editor.ts";
+import type { TextEditorState } from "../ui/text-editor.ts";
+import { pad, row, renderHeader, renderFooter, formatScrollInfo } from "../ui/render-helpers.ts";
 
 export interface ModelInfo { provider: string; id: string; fullId: string; }
 export interface SkillInfo { name: string; source: string; description?: string; }

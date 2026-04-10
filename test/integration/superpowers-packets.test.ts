@@ -12,8 +12,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
-import { resolveStepBehavior } from "../../settings.ts";
-import { buildSuperpowersPacketPlan } from "../../superpowers-packets.ts";
+import { resolveStepBehavior } from "../../src/execution/settings.ts";
+import { buildSuperpowersPacketPlan } from "../../src/execution/superpowers-packets.ts";
 import type { MockPi } from "../support/helpers.ts";
 import {
 	createMockPi,
@@ -23,9 +23,9 @@ import {
 	tryImport,
 } from "../support/helpers.ts";
 
-const chainMod = await tryImport<any>("./chain-execution.ts");
-const asyncMod = await tryImport<any>("./async-execution.ts");
-const executorMod = await tryImport<any>("./subagent-executor.ts");
+const chainMod = await tryImport<any>("./src/execution/chain-execution.ts");
+const asyncMod = await tryImport<any>("./src/execution/async-execution.ts");
+const executorMod = await tryImport<any>("./src/execution/subagent-executor.ts");
 const chainAvailable = !!chainMod;
 const asyncAvailable = !!asyncMod;
 const executeChain = chainMod?.executeChain;

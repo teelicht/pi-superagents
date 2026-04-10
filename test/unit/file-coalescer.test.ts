@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createFileCoalescer } from "../../file-coalescer.ts";
+import { createFileCoalescer } from "../../src/ui/file-coalescer.ts";
 
 type TimerTask = { id: number; cb: () => void; delay: number };
 

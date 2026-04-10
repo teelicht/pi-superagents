@@ -23,7 +23,7 @@ import {
 } from "../support/helpers.ts";
 
 // Top-level await: try importing pi-dependent modules
-const chainMod = await tryImport<any>("./chain-execution.ts");
+const chainMod = await tryImport<any>("./src/execution/chain-execution.ts");
 const available = !!chainMod;
 const executeChain = chainMod?.executeChain;
 

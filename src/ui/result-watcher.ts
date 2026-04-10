@@ -1,9 +1,9 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { buildCompletionKey, markSeenWithTtl } from "./completion-dedupe.js";
-import { createFileCoalescer } from "./file-coalescer.js";
-import type { SubagentState } from "./types.js";
+import { buildCompletionKey, markSeenWithTtl } from "./completion-dedupe.ts";
+import { createFileCoalescer } from "./file-coalescer.ts";
+import type { SubagentState } from "../shared/types.ts";
 
 function isNotFoundError(error: unknown): boolean {
 	return typeof error === "object"

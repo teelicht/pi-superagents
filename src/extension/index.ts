@@ -19,21 +19,21 @@ import { fileURLToPath } from "node:url";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import { type ExtensionAPI, type ExtensionContext, type ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Box, Container, Spacer, Text } from "@mariozechner/pi-tui";
-import { discoverAgents } from "./src/agents/agents.ts";
-import { cleanupAllArtifactDirs, cleanupOldArtifacts, getArtifactsDir } from "./src/shared/artifacts.ts";
-import { cleanupOldChainDirs } from "./settings.ts";
-import { renderWidget, renderSubagentResult } from "./render.ts";
-import { SubagentParams, StatusParams } from "./src/shared/schemas.ts";
-import { findByPrefix, readStatus } from "./src/shared/utils.ts";
-import { getSuperagentSettings } from "./superagents-config.ts";
-import { createSubagentExecutor } from "./subagent-executor.ts";
-import { createAsyncJobTracker } from "./async-job-tracker.ts";
-import { createResultWatcher } from "./result-watcher.ts";
-import { registerSlashCommands } from "./slash-commands.ts";
-import { registerPromptTemplateDelegationBridge } from "./prompt-template-bridge.ts";
-import { registerSlashSubagentBridge } from "./slash-bridge.ts";
-import { clearSlashSnapshots, getSlashRenderableSnapshot, resolveSlashMessageDetails, restoreSlashFinalSnapshots, type SlashMessageDetails } from "./slash-live-state.ts";
-import { formatAsyncRunList, listAsyncRuns } from "./async-status.ts";
+import { discoverAgents } from "../agents/agents.ts";
+import { cleanupAllArtifactDirs, cleanupOldArtifacts, getArtifactsDir } from "../shared/artifacts.ts";
+import { cleanupOldChainDirs } from "../execution/settings.ts";
+import { renderWidget, renderSubagentResult } from "../ui/render.ts";
+import { SubagentParams, StatusParams } from "../shared/schemas.ts";
+import { findByPrefix, readStatus } from "../shared/utils.ts";
+import { getSuperagentSettings } from "../execution/superagents-config.ts";
+import { createSubagentExecutor } from "../execution/subagent-executor.ts";
+import { createAsyncJobTracker } from "../ui/async-job-tracker.ts";
+import { createResultWatcher } from "../ui/result-watcher.ts";
+import { registerSlashCommands } from "../slash/slash-commands.ts";
+import { registerPromptTemplateDelegationBridge } from "../slash/prompt-template-bridge.ts";
+import { registerSlashSubagentBridge } from "../slash/slash-bridge.ts";
+import { clearSlashSnapshots, getSlashRenderableSnapshot, resolveSlashMessageDetails, restoreSlashFinalSnapshots, type SlashMessageDetails } from "../slash/slash-live-state.ts";
+import { formatAsyncRunList, listAsyncRuns } from "../ui/async-status.ts";
 import {
 	type Details,
 	type ExtensionConfig,
@@ -43,7 +43,7 @@ import {
 	RESULTS_DIR,
 	SLASH_RESULT_TYPE,
 	WIDGET_KEY,
-} from "./src/shared/types.ts";
+} from "../shared/types.ts";
 
 /**
  * Derive subagent session base directory from parent session file.

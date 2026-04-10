@@ -10,7 +10,7 @@ import { loadSkills, type Skill } from "@mariozechner/pi-coding-agent";
 import {
 	resolveImplementerSkillSet,
 	resolveRoleSkillSet,
-} from "../../superpowers-policy.ts";
+} from "../execution/superpowers-policy.ts";
 import type {
 	ExecutionRole,
 	ExtensionConfig,

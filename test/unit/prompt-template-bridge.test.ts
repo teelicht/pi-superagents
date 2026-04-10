@@ -9,7 +9,7 @@ import {
 	PROMPT_TEMPLATE_SUBAGENT_UPDATE_EVENT,
 	registerPromptTemplateDelegationBridge,
 	type PromptTemplateBridgeEvents,
-} from "../../prompt-template-bridge.ts";
+} from "../../src/slash/prompt-template-bridge.ts";
 
 class FakeEvents implements PromptTemplateBridgeEvents {
 	private handlers = new Map<string, Array<(data: unknown) => void>>();

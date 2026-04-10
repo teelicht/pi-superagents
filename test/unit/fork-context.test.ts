@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createForkContextResolver, resolveSubagentContext } from "../../fork-context.ts";
+import { createForkContextResolver, resolveSubagentContext } from "../../src/execution/fork-context.ts";
 
 describe("resolveSubagentContext", () => {
 	it("defaults to fresh", () => {

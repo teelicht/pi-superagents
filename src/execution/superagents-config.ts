@@ -8,7 +8,7 @@
  */
 
 import { isParallelStep, type ChainStep } from "./settings.ts";
-import type { ExtensionConfig, WorkflowMode } from "./src/shared/types.ts";
+import type { ExtensionConfig, WorkflowMode } from "../shared/types.ts";
 import type { CreateWorktreesOptions } from "./worktree.ts";
 
 /**

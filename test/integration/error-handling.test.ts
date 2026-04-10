@@ -23,9 +23,9 @@ import {
 } from "../support/helpers.ts";
 
 // Top-level await
-const utils = await tryImport<any>("./utils.ts");
-const execution = await tryImport<any>("./execution.ts");
-const chainMod = await tryImport<any>("./chain-execution.ts");
+const utils = await tryImport<any>("./src/shared/utils.ts");
+const execution = await tryImport<any>("./src/execution/execution.ts");
+const chainMod = await tryImport<any>("./src/execution/chain-execution.ts");
 
 const piAvailable = !!(execution && utils);
 const chainAvailable = !!chainMod;
