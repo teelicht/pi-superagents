@@ -12,10 +12,10 @@ import { createParallelState, handleParallelInput, renderParallel, formatParalle
 import { renderDetail, handleDetailInput, renderTaskInput, type DetailState, type DetailAction } from "./agent-manager-detail.ts";
 import { renderChainDetail, handleChainDetailInput, type ChainDetailAction, type ChainDetailState } from "./agent-manager-chain-detail.ts";
 import { createEditState, handleEditInput, renderEdit, type EditScreen, type EditState, type ModelInfo, type SkillInfo } from "./agent-manager-edit.ts";
-import { createEditorState, ensureCursorVisible, getCursorDisplayPos, handleEditorInput, renderEditor, wrapText } from "../../text-editor.ts";
-import type { TextEditorState } from "../../text-editor.ts";
-import { loadRunsForAgent } from "../../run-history.ts";
-import { pad, row, renderHeader, renderFooter } from "../../render-helpers.ts";
+import { createEditorState, ensureCursorVisible, getCursorDisplayPos, handleEditorInput, renderEditor, wrapText } from "../ui/text-editor.ts";
+import type { TextEditorState } from "../ui/text-editor.ts";
+import { loadRunsForAgent } from "../execution/run-history.ts";
+import { pad, row, renderHeader, renderFooter } from "../ui/render-helpers.ts";
 
 export type ManagerResult =
 	| { action: "launch"; agent: string; task: string; skipClarify?: boolean }

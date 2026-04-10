@@ -11,12 +11,12 @@ import { matchesKey, visibleWidth, truncateToWidth } from "@mariozechner/pi-tui"
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import type { AgentConfig, ChainConfig, ChainStepConfig } from "./src/agents/agents.ts";
-import type { ResolvedStepBehavior } from "./settings.ts";
+import type { AgentConfig, ChainConfig, ChainStepConfig } from "../agents/agents.ts";
+import type { ResolvedStepBehavior } from "../execution/settings.ts";
 import type { TextEditorState } from "./text-editor.ts";
 import { createEditorState, ensureCursorVisible, getCursorDisplayPos, handleEditorInput, renderEditor, wrapText } from "./text-editor.ts";
-import { updateFrontmatterField } from "./src/agents/agent-serializer.ts";
-import { serializeChain } from "./src/agents/chain-serializer.ts";
+import { updateFrontmatterField } from "../agents/agent-serializer.ts";
+import { serializeChain } from "../agents/chain-serializer.ts";
 
 /** Clarify TUI mode */
 export type ClarifyMode = 'single' | 'parallel' | 'chain';

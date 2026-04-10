@@ -25,7 +25,7 @@ try {
 		finalizeSlashResult,
 		getSlashRenderableSnapshot,
 		restoreSlashFinalSnapshots,
-	} = await import("../../slash-live-state.ts") as SlashLiveStateModule);
+	} = await import("../../src/slash/slash-live-state.ts") as SlashLiveStateModule);
 } catch {
 	available = false;
 }

@@ -14,7 +14,7 @@ import {
 	resolveRoleSkillSet,
 	resolveImplementerSkillSet,
 	resolveRoleTools,
-} from "../../superpowers-policy.ts";
+} from "../../src/execution/superpowers-policy.ts";
 
 describe("superpowers policy", () => {
 	it("resolves tiers in default workflow when configured", () => {

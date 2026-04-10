@@ -26,11 +26,11 @@
     "pi-superagents": "install.mjs"
   },
   "files": [
-    "*.ts",
-    "!*.test.ts",
-    "*.mjs",
-    "default-config.json",
+    "src/",
+    "scripts/",
     "agents/",
+    "default-config.json",
+    "*.mjs",
     "README.md",
     "CHANGELOG.md"
   ],
@@ -44,8 +44,8 @@
   },
   "pi": {
     "extensions": [
-      "./index.ts",
-      "./notify.ts"
+      "./src/extension/index.ts",
+      "./src/extension/notify.ts"
     ]
   },
   "peerDependencies": {

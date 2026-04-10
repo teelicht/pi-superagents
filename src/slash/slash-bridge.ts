@@ -1,6 +1,6 @@
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
-import type { SubagentParamsLike } from "./subagent-executor.js";
+import type { SubagentParamsLike } from "../execution/subagent-executor.ts";
 import {
 	SLASH_SUBAGENT_CANCEL_EVENT,
 	SLASH_SUBAGENT_REQUEST_EVENT,
@@ -8,7 +8,7 @@ import {
 	SLASH_SUBAGENT_STARTED_EVENT,
 	SLASH_SUBAGENT_UPDATE_EVENT,
 	type Details,
-} from "./types.js";
+} from "../shared/types.ts";
 
 export interface SlashSubagentRequest {
 	requestId: string;

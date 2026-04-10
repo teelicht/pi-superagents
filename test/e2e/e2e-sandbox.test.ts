@@ -13,7 +13,7 @@ import { tryImport } from "../support/helpers.ts";
 const harness = await tryImport<any>("@marcfargas/pi-test-harness");
 const available = !!harness;
 
-const EXTENSION = path.resolve("index.ts");
+const EXTENSION = path.resolve("src/extension/index.ts");
 
 describe("extension loading", { skip: !available ? "pi-test-harness not available" : undefined }, () => {
 	const { createTestSession, when, calls, says } = harness;

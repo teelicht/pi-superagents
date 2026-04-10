@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildCompletionKey, getGlobalSeenMap, markSeenWithTtl } from "../../completion-dedupe.ts";
+import { buildCompletionKey, getGlobalSeenMap, markSeenWithTtl } from "../../src/ui/completion-dedupe.ts";
 
 describe("buildCompletionKey", () => {
 	it("uses id as canonical key when present", () => {

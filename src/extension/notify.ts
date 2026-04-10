@@ -3,7 +3,7 @@
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { buildCompletionKey, getGlobalSeenMap, markSeenWithTtl } from "./completion-dedupe.ts";
+import { buildCompletionKey, getGlobalSeenMap, markSeenWithTtl } from "../ui/completion-dedupe.ts";
 
 interface ChainStepResult {
 	agent: string;

@@ -9,7 +9,7 @@ import {
 	injectSingleOutputInstruction,
 	resolveSingleOutput,
 	resolveSingleOutputPath,
-} from "../../single-output.ts";
+} from "../../src/execution/single-output.ts";
 
 const tempDirs: string[] = [];
 

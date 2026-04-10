@@ -1,11 +1,11 @@
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import * as path from "node:path";
-import { renderWidget } from "./render.js";
+import { renderWidget } from "./render.ts";
 import {
 	type SubagentState,
 	POLL_INTERVAL_MS,
-} from "./types.js";
-import { readStatus } from "./utils.js";
+} from "../shared/types.ts";
+import { readStatus } from "../shared/utils.ts";
 
 export function createAsyncJobTracker(state: SubagentState, asyncDirRoot: string): {
 	ensurePoller: () => void;

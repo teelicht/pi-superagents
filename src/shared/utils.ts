@@ -363,4 +363,4 @@ export function extractTextFromContent(content: unknown): string {
 // Concurrency Utilities
 // ============================================================================
 
-export { mapConcurrent } from "./parallel-utils.js";
+export { mapConcurrent } from "../execution/parallel-utils.ts";

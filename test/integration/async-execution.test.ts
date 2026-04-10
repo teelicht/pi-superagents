@@ -21,8 +21,8 @@ import {
 } from "../support/helpers.ts";
 
 // Top-level await
-const asyncMod = await tryImport<any>("./async-execution.ts");
-const utils = await tryImport<any>("./utils.ts");
+const asyncMod = await tryImport<any>("./src/execution/async-execution.ts");
+const utils = await tryImport<any>("./src/shared/utils.ts");
 const available = !!(asyncMod && utils);
 
 const isAsyncAvailable = asyncMod?.isAsyncAvailable;

@@ -12,32 +12,32 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { type AgentConfig, type AgentScope } from "./agents.js";
-import { getArtifactsDir } from "./artifacts.js";
-import { ChainClarifyComponent, type ChainClarifyResult, type ModelInfo } from "./chain-clarify.js";
-import { executeChain } from "./chain-execution.js";
-import { resolveExecutionAgentScope } from "./agent-scope.js";
-import { handleManagementAction } from "./agent-management.js";
-import { runSync } from "./execution.js";
-import { aggregateParallelOutputs } from "./parallel-utils.js";
-import { recordRun } from "./run-history.js";
+import { type AgentConfig, type AgentScope } from "../agents/agents.ts";
+import { getArtifactsDir } from "../shared/artifacts.ts";
+import { ChainClarifyComponent, type ChainClarifyResult, type ModelInfo } from "../ui/chain-clarify.ts";
+import { executeChain } from "./chain-execution.ts";
+import { resolveExecutionAgentScope } from "../agents/agent-scope.ts";
+import { handleManagementAction } from "../agents/agent-management.ts";
+import { runSync } from "./execution.ts";
+import { aggregateParallelOutputs } from "./parallel-utils.ts";
+import { recordRun } from "./run-history.ts";
 import {
 	getStepAgents,
 	isParallelStep,
 	resolveStepBehavior,
 	type ChainStep,
 	type SequentialStep,
-} from "./settings.js";
-import { discoverAvailableSkills, normalizeSkillInput } from "./skills.js";
-import { executeAsyncChain, executeAsyncSingle, isAsyncAvailable } from "./async-execution.js";
-import { createForkContextResolver } from "./fork-context.js";
-import { finalizeSingleOutput, injectSingleOutputInstruction, resolveSingleOutputPath } from "./single-output.js";
+} from "./settings.ts";
+import { discoverAvailableSkills, normalizeSkillInput } from "../shared/skills.ts";
+import { executeAsyncChain, executeAsyncSingle, isAsyncAvailable } from "./async-execution.ts";
+import { createForkContextResolver } from "./fork-context.ts";
+import { finalizeSingleOutput, injectSingleOutputInstruction, resolveSingleOutputPath } from "./single-output.ts";
 import {
 	applySuperagentWorktreeDefaultsToChain,
 	resolveSuperagentWorktreeCreateOptions,
 	resolveSuperagentWorktreeEnabled,
-} from "./superagents-config.js";
-import { getSingleResultOutput, mapConcurrent } from "./utils.js";
+} from "./superagents-config.ts";
+import { getSingleResultOutput, mapConcurrent } from "../shared/utils.ts";
 import {
 	cleanupWorktrees,
 	createWorktrees,
@@ -46,7 +46,7 @@ import {
 	formatWorktreeDiffSummary,
 	formatWorktreeTaskCwdConflict,
 	type WorktreeSetup,
-} from "./worktree.js";
+} from "./worktree.ts";
 import {
 	type AgentProgress,
 	type ArtifactConfig,
@@ -65,7 +65,7 @@ import {
 	resolveChildMaxSubagentDepth,
 	resolveCurrentMaxSubagentDepth,
 	wrapForkTask,
-} from "./types.js";
+} from "../shared/types.ts";
 
 interface TaskParam {
 	agent: string;

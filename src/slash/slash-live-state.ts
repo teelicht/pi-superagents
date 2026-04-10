@@ -1,8 +1,8 @@
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { Message } from "@mariozechner/pi-ai";
-import type { SubagentParamsLike } from "./subagent-executor.js";
-import type { SlashSubagentResponse, SlashSubagentUpdate } from "./slash-bridge.js";
-import { type Details, type SingleResult, type Usage, SLASH_RESULT_TYPE } from "./types.js";
+import type { SubagentParamsLike } from "../execution/subagent-executor.ts";
+import type { SlashSubagentResponse, SlashSubagentUpdate } from "./slash-bridge.ts";
+import { type Details, type SingleResult, type Usage, SLASH_RESULT_TYPE } from "../shared/types.ts";
 
 export interface SlashMessageDetails {
 	requestId: string;
