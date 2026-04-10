@@ -27,16 +27,14 @@ import {
 	extractToolArgsPreview,
 	extractTextFromContent,
 } from "./utils.ts";
-import { buildSkillInjection, getAvailableSkillNames, resolveSkills } from "./skills.ts";
+import { buildSkillInjection, resolveExecutionSkills } from "./skills.ts";
 import { getPiSpawnCommand } from "./pi-spawn.ts";
 import { createJsonlWriter } from "./jsonl-writer.ts";
 import { applyThinkingSuffix, buildPiArgs, cleanupTempDir } from "./pi-args.ts";
 import { captureSingleOutputSnapshot, resolveSingleOutput } from "./single-output.ts";
 import {
 	inferExecutionRole,
-	resolveImplementerSkillSet,
 	resolveModelForAgent,
-	resolveRoleSkillSet,
 	resolveRoleTools,
 } from "./superpowers-policy.ts";
 
@@ -83,26 +81,15 @@ export async function runSync(
 		role,
 		agentTools: agent.tools,
 	});
-
-	const availableSkills = getAvailableSkillNames(runtimeCwd);
-	const skillNames = role === "sp-implementer"
-		? resolveImplementerSkillSet({
-			workflow,
-			implementerMode,
-			config,
-			agentSkills: agent.skills ?? [],
-			stepSkills: options.skills ?? [],
-			availableSkills,
-		})
-		: resolveRoleSkillSet({
-			workflow,
-			role,
-			config,
-			agentSkills: agent.skills ?? [],
-			stepSkills: options.skills ?? [],
-			availableSkills,
-		});
-	const { resolved: resolvedSkills, missing: missingSkills } = resolveSkills(skillNames, runtimeCwd);
+	const configuredSkills = options.skills !== undefined ? options.skills : (agent.skills ?? []);
+	const { skillNames, resolvedSkills, missingSkills } = resolveExecutionSkills({
+		cwd: runtimeCwd,
+		workflow,
+		role,
+		config,
+		implementerMode,
+		skills: configuredSkills,
+	});
 
 	let systemPrompt = agent.systemPrompt?.trim() || "";
 	if (resolvedSkills.length > 0) {

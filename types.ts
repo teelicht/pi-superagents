@@ -267,8 +267,8 @@ export interface RunSyncOptions {
 	maxSubagentDepth?: number;
 	/** Override the agent's default model (format: "provider/id" or just "id") */
 	modelOverride?: string;
-	/** Skills to inject (overrides agent default if provided) */
-	skills?: string[];
+	/** Skills to inject; `false` disables all configured skills for this run. */
+	skills?: string[] | false;
 	/** Extension config for command-scoped execution policy resolution. */
 	config?: ExtensionConfig;
 	/** Execution workflow mode. */

@@ -359,6 +359,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 		artifactsDir,
 		effectiveAsync,
 		workflow,
+		implementerMode,
 	} = data;
 	const hasChain = (params.chain?.length ?? 0) > 0;
 	const hasTasks = (params.tasks?.length ?? 0) > 0;
@@ -413,6 +414,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			sessionFilesByFlatIndex: collectChainSessionFiles(chain, sessionFileForIndex),
 			maxSubagentDepth: currentMaxSubagentDepth,
 			workflow: data.workflow,
+			implementerMode: data.implementerMode,
 			config: deps.config,
 		});
 	}
@@ -450,6 +452,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			sessionFilesByFlatIndex: params.tasks.map((_, index) => sessionFileForIndex(index)),
 			maxSubagentDepth: currentMaxSubagentDepth,
 			workflow,
+			implementerMode,
 			config: deps.config,
 		});
 	}
@@ -465,8 +468,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 		}
 		const rawOutput = params.output !== undefined ? params.output : a.output;
 		const effectiveOutput: string | false | undefined = rawOutput === true ? a.output : (rawOutput as string | false | undefined);
-		const normalizedSkills = normalizeSkillInput(params.skill);
-		const skills = normalizedSkills === false ? [] : normalizedSkills;
+		const skills = normalizeSkillInput(params.skill);
 		const maxSubagentDepth = resolveChildMaxSubagentDepth(currentMaxSubagentDepth, a.maxSubagentDepth);
 		return executeAsyncSingle(id, {
 			agent: params.agent!,
@@ -484,6 +486,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			output: effectiveOutput,
 			maxSubagentDepth,
 			workflow: data.workflow,
+			implementerMode: data.implementerMode,
 			config: deps.config,
 		});
 	}
@@ -559,6 +562,7 @@ async function runChainPath(data: ExecutionContextData, deps: ExecutorDeps): Pro
 			sessionFilesByFlatIndex: collectChainSessionFiles(asyncChain, sessionFileForIndex),
 			maxSubagentDepth: currentMaxSubagentDepth,
 			workflow: data.workflow,
+			implementerMode: data.implementerMode,
 			config: deps.config,
 		});
 	}
@@ -700,7 +704,7 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 			maxOutput: input.maxOutput,
 			maxSubagentDepth: input.maxSubagentDepths[index],
 			modelOverride: input.modelOverrides[index],
-			skills: effectiveSkills === false ? [] : effectiveSkills,
+			skills: effectiveSkills,
 			config: input.config,
 			workflow: input.workflow,
 			implementerMode: input.implementerMode,
@@ -866,6 +870,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 				sessionFilesByFlatIndex: tasks.map((_, index) => sessionFileForIndex(index)),
 				maxSubagentDepth: currentMaxSubagentDepth,
 				workflow,
+				implementerMode,
 				config: deps.config,
 			});
 		}
@@ -1053,10 +1058,11 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 				shareEnabled,
 				sessionRoot,
 				sessionFile: sessionFileForIndex(0),
-				skills: skillOverride === false ? [] : skillOverride,
+				skills: skillOverride,
 				output: effectiveOutput,
 				maxSubagentDepth,
 				workflow,
+				implementerMode,
 				config: deps.config,
 			});
 		}
@@ -1069,12 +1075,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	const outputPath = resolveSingleOutputPath(effectiveOutput, ctx.cwd, params.cwd);
 	task = injectSingleOutputInstruction(task, outputPath);
 
-	let effectiveSkills: string[] | undefined;
-	if (skillOverride === false) {
-		effectiveSkills = [];
-	} else {
-		effectiveSkills = skillOverride;
-	}
+	const effectiveSkills = skillOverride;
 
 	const r = await runSync(ctx.cwd, agents, params.agent!, task, {
 		cwd: params.cwd,

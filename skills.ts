@@ -7,6 +7,16 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { loadSkills, type Skill } from "@mariozechner/pi-coding-agent";
+import {
+	resolveImplementerSkillSet,
+	resolveRoleSkillSet,
+} from "./superpowers-policy.ts";
+import type {
+	ExecutionRole,
+	ExtensionConfig,
+	SuperpowersImplementerMode,
+	WorkflowMode,
+} from "./types.ts";
 
 export type SkillSource =
 	| "project"
@@ -24,6 +34,12 @@ export interface ResolvedSkill {
 	path: string;
 	content: string;
 	source: SkillSource;
+}
+
+export interface ExecutionSkillResolution {
+	skillNames: string[];
+	resolvedSkills: ResolvedSkill[];
+	missingSkills: string[];
 }
 
 interface SkillCacheEntry {
@@ -324,6 +340,55 @@ export function resolveSkills(
 	}
 
 	return { resolved, missing };
+}
+
+/**
+ * Resolve the final skill list for one execution after caller-side overrides are applied.
+ *
+ * Inputs/outputs:
+ * - accepts the already-selected skill set for a run, plus workflow/role policy inputs
+ * - returns validated skill names, resolved skill contents, and any missing skills
+ *
+ * Invariants:
+ * - `skills: false` disables all configured skills for this execution
+ * - Superpowers roles reuse the same validation and implementer-mode injection in sync and async paths
+ *
+ * Failure modes:
+ * - throws when Superpowers policy rejects the selected skills for the role
+ */
+export function resolveExecutionSkills(input: {
+	cwd: string;
+	workflow: WorkflowMode;
+	role: ExecutionRole;
+	config?: ExtensionConfig;
+	implementerMode?: SuperpowersImplementerMode;
+	skills?: string[] | false;
+}): ExecutionSkillResolution {
+	const configuredSkills = input.skills === false ? [] : (input.skills ?? []);
+	const availableSkills = getAvailableSkillNames(input.cwd);
+	const skillNames = input.role === "sp-implementer"
+		? resolveImplementerSkillSet({
+			workflow: input.workflow,
+			implementerMode: input.implementerMode ?? "tdd",
+			config: input.config ?? {},
+			agentSkills: [],
+			stepSkills: configuredSkills,
+			availableSkills,
+		})
+		: resolveRoleSkillSet({
+			workflow: input.workflow,
+			role: input.role,
+			config: input.config ?? {},
+			agentSkills: [],
+			stepSkills: configuredSkills,
+			availableSkills,
+		});
+	const { resolved, missing } = resolveSkills(skillNames, input.cwd);
+	return {
+		skillNames,
+		resolvedSkills: resolved,
+		missingSkills: missing,
+	};
 }
 
 export function buildSkillInjection(skills: ResolvedSkill[]): string {

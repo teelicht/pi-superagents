@@ -27,7 +27,11 @@ import {
 } from "./settings.ts";
 import type { RunnerStep } from "./parallel-utils.ts";
 import { resolvePiPackageRoot } from "./pi-spawn.ts";
-import { buildSkillInjection, normalizeSkillInput, resolveSkills } from "./skills.ts";
+import {
+	buildSkillInjection,
+	normalizeSkillInput,
+	resolveExecutionSkills,
+} from "./skills.ts";
 import { buildSuperpowersPacketPlan } from "./superpowers-packets.ts";
 import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./superpowers-policy.ts";
 import {
@@ -35,6 +39,7 @@ import {
 	type Details,
 	type ExtensionConfig,
 	type MaxOutputConfig,
+	type SuperpowersImplementerMode,
 	type WorkflowMode,
 	ASYNC_DIR,
 	RESULTS_DIR,
@@ -84,6 +89,7 @@ export interface AsyncChainParams {
 	sessionFilesByFlatIndex?: (string | undefined)[];
 	maxSubagentDepth: number;
 	workflow?: WorkflowMode;
+	implementerMode?: SuperpowersImplementerMode;
 	config?: ExtensionConfig;
 }
 
@@ -99,10 +105,11 @@ export interface AsyncSingleParams {
 	shareEnabled: boolean;
 	sessionRoot?: string;
 	sessionFile?: string;
-	skills?: string[];
+	skills?: string[] | false;
 	output?: string | false;
 	maxSubagentDepth: number;
 	workflow?: WorkflowMode;
+	implementerMode?: SuperpowersImplementerMode;
 	config?: ExtensionConfig;
 }
 
@@ -212,6 +219,7 @@ export function executeAsyncChain(
 		sessionFilesByFlatIndex,
 		maxSubagentDepth,
 		workflow,
+		implementerMode,
 		config,
 	} = params;
 	const chainSkills = params.chainSkills ?? [];
@@ -263,9 +271,15 @@ export function executeAsyncChain(
 			chainSkills,
 			resolveAsyncPacketDefaults(s.agent, workflow),
 		);
-		const skillNames = behavior.skills === false ? [] : behavior.skills;
-		const { resolved: resolvedSkills } = resolveSkills(skillNames, ctx.cwd);
 		const role = inferExecutionRole(s.agent);
+		const { skillNames, resolvedSkills } = resolveExecutionSkills({
+			cwd: ctx.cwd,
+			workflow: effectiveWorkflow,
+			role,
+			config: effectiveConfig,
+			implementerMode,
+			skills: behavior.skills,
+		});
 
 		let systemPrompt = a.systemPrompt?.trim() || null;
 		if (resolvedSkills.length > 0) {
@@ -416,11 +430,19 @@ export function executeAsyncSingle(
 		sessionFile,
 		maxSubagentDepth,
 		workflow,
+		implementerMode,
 		config,
 	} = params;
-	const skillNames = params.skills ?? agentConfig.skills ?? [];
-	const { resolved: resolvedSkills } = resolveSkills(skillNames, ctx.cwd);
 	const role = inferExecutionRole(agent);
+	const configuredSkills = params.skills !== undefined ? params.skills : (agentConfig.skills ?? []);
+	const { skillNames, resolvedSkills } = resolveExecutionSkills({
+		cwd: ctx.cwd,
+		workflow: workflow ?? "default",
+		role,
+		config,
+		implementerMode,
+		skills: configuredSkills,
+	});
 	let systemPrompt = agentConfig.systemPrompt?.trim() || null;
 	if (resolvedSkills.length > 0) {
 		const injection = buildSkillInjection(resolvedSkills);

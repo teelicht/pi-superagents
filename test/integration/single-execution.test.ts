@@ -32,6 +32,22 @@ const available = !!(execution && utils);
 const runSync = execution?.runSync;
 const getFinalOutput = utils?.getFinalOutput;
 
+/**
+ * Write a test skill into the workspace-local skill directory.
+ *
+ * @param cwd Workspace root used for runtime skill discovery.
+ * @param name Skill name to make available for the test.
+ */
+function writeSkill(cwd: string, name: string): void {
+	const skillsDir = path.join(cwd, ".agents", "skills");
+	fs.mkdirSync(skillsDir, { recursive: true });
+	fs.writeFileSync(
+		path.join(skillsDir, `${name}.md`),
+		`---\nname: ${name}\ndescription: test skill\n---\nUse ${name}.`,
+		"utf-8",
+	);
+}
+
 describe("single sync execution", { skip: !available ? "pi packages not available" : undefined }, () => {
 	let tempDir: string;
 	let mockPi: MockPi;
@@ -287,6 +303,33 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.equal(toolsArg, "read,grep,find,ls");
 		assert.doesNotMatch(toolsArg, /\bbash\b/);
 		assert.doesNotMatch(toolsArg, /\bwrite\b/);
+	});
+
+	it("replaces agent default skills when a runtime skill override is provided", async () => {
+		mockPi.onCall({ output: "Done" });
+		writeSkill(tempDir, "default-skill");
+		writeSkill(tempDir, "override-skill");
+		const agents = [makeAgent("worker", { skills: ["default-skill"] })];
+
+		const result = await runSync(tempDir, agents, "worker", "Task", {
+			skills: ["override-skill"],
+		});
+
+		assert.equal(result.exitCode, 0);
+		assert.deepEqual(result.skills, ["override-skill"]);
+	});
+
+	it("disables agent default skills when runtime skills are explicitly false", async () => {
+		mockPi.onCall({ output: "Done" });
+		writeSkill(tempDir, "default-skill");
+		const agents = [makeAgent("worker", { skills: ["default-skill"] })];
+
+		const result = await runSync(tempDir, agents, "worker", "Task", {
+			skills: false,
+		});
+
+		assert.equal(result.exitCode, 0);
+		assert.equal(result.skills, undefined);
 	});
 
 	it("handles abort signal (completes faster than delay)", async () => {
