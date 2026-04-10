@@ -2,7 +2,7 @@
  * Superagents configuration helpers.
  *
  * Responsibilities:
- * - resolve the canonical Superagents settings object from extension config
+ * - resolve the Superagents settings object from extension config
  * - apply Superpowers-only worktree defaults in one shared place
  * - build scoped git-worktree options for sync and async execution paths
  */
@@ -11,19 +11,14 @@ import { isParallelStep, type ChainStep } from "./settings.ts";
 import type { ExtensionConfig, WorkflowMode } from "./types.ts";
 import type { CreateWorktreesOptions } from "./worktree.ts";
 
-interface LegacyWorktreeConfig {
-	worktreeSetupHook?: string;
-	worktreeSetupHookTimeoutMs?: number;
-}
-
 /**
- * Resolve the canonical Superagents settings object from config.
+ * Resolve the Superagents settings object from config.
  *
  * @param config Extension config being normalized.
- * @returns Canonical Superagents settings, if present.
+ * @returns Superagents settings, if present.
  */
 export function getSuperagentSettings(config: ExtensionConfig): ExtensionConfig["superagents"] | undefined {
-	return config.superagents ?? config.superpowers;
+	return config.superagents;
 }
 
 /**
@@ -49,7 +44,7 @@ export function resolveSuperagentWorktreeEnabled(
 ): boolean | undefined {
 	if (requested !== undefined) return requested;
 	if (workflow !== "superpowers") return undefined;
-	return getSuperagentSettings(config)?.worktreeEnabled ?? true;
+	return getSuperagentSettings(config)?.worktrees?.enabled ?? true;
 }
 
 /**
@@ -85,23 +80,20 @@ export function resolveSuperagentWorktreeRuntimeOptions(
 	workflow: WorkflowMode,
 	config: ExtensionConfig,
 ): Omit<CreateWorktreesOptions, "agents"> {
+	if (workflow !== "superpowers") return {};
+
+	const worktrees = getSuperagentSettings(config)?.worktrees;
 	const options: Omit<CreateWorktreesOptions, "agents"> = {};
-	if (workflow !== "superpowers") return options;
 
-	const settings = getSuperagentSettings(config);
-	const legacy = config as ExtensionConfig & LegacyWorktreeConfig;
-	const hookPath = settings?.worktreeSetupHook ?? legacy.worktreeSetupHook;
-	const timeoutMs = settings?.worktreeSetupHookTimeoutMs ?? legacy.worktreeSetupHookTimeoutMs;
-
-	if (settings?.worktreeRoot) {
-		options.rootDir = settings.worktreeRoot;
+	if (worktrees?.root) {
+		options.rootDir = worktrees.root;
 		options.requireIgnoredRoot = true;
 	}
 
-	if (hookPath) {
+	if (worktrees?.setupHook) {
 		options.setupHook = {
-			hookPath,
-			timeoutMs,
+			hookPath: worktrees.setupHook,
+			timeoutMs: worktrees.setupHookTimeoutMs,
 		};
 	}
 

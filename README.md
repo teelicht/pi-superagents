@@ -31,6 +31,7 @@ model: claude-sonnet-4-20250514
 subagent: browser-screenshoter
 cwd: /tmp/screenshots
 ---
+
 Use url in the prompt to take screenshot: $@
 ```
 
@@ -44,11 +45,11 @@ Agents are markdown files with YAML frontmatter that define specialized subagent
 
 **Agent file locations:**
 
-| Scope | Path | Priority |
-|-------|------|----------|
-| Builtin | `~/.pi/agent/extensions/subagent/agents/` | Lowest |
-| User | `~/.pi/agent/agents/{name}.md` | Medium |
-| Project | `.pi/agents/{name}.md` (searches up directory tree) | Highest |
+| Scope   | Path                                                | Priority |
+| ------- | --------------------------------------------------- | -------- |
+| Builtin | `~/.pi/agent/extensions/subagent/agents/`           | Lowest   |
+| User    | `~/.pi/agent/agents/{name}.md`                      | Medium   |
+| Project | `.pi/agents/{name}.md` (searches up directory tree) | Highest  |
 
 Use `agentScope` parameter to control discovery: `"user"`, `"project"`, or `"both"` (default; project takes priority).
 
@@ -62,18 +63,17 @@ Use `agentScope` parameter to control discovery: `"user"`, `"project"`, or `"bot
 ---
 name: scout
 description: Fast codebase recon
-tools: read, grep, find, ls, bash, mcp:chrome-devtools  # mcp: requires pi-mcp-adapter
-extensions:                 # absent=all, empty=none, csv=allowlist
+tools: read, grep, find, ls, bash, mcp:chrome-devtools # mcp: requires pi-mcp-adapter
+extensions: # absent=all, empty=none, csv=allowlist
 model: claude-haiku-4-5
-thinking: high               # off, minimal, low, medium, high, xhigh
-skill: safe-bash, chrome-devtools  # comma-separated skills to inject
-output: context.md           # writes to {chain_dir}/context.md
-defaultReads: context.md     # comma-separated files to read
-defaultProgress: true        # maintain progress.md
-interactive: true            # (parsed but not enforced in v1)
-maxSubagentDepth: 1          # tighten nested delegation for this agent's children
+thinking: high # off, minimal, low, medium, high, xhigh
+skill: safe-bash, chrome-devtools # comma-separated skills to inject
+output: context.md # writes to {chain_dir}/context.md
+defaultReads: context.md # comma-separated files to read
+defaultProgress: true # maintain progress.md
+interactive: true # (parsed but not enforced in v1)
+maxSubagentDepth: 1 # tighten nested delegation for this agent's children
 ---
-
 Your system prompt goes here (the markdown body after frontmatter).
 ```
 
@@ -94,6 +94,7 @@ extensions: /abs/path/to/ext-a.ts, /abs/path/to/ext-b.ts
 ```
 
 Semantics:
+
 - `extensions` absent → all extensions load
 - `extensions:` empty → `--no-extensions`
 - `extensions: a,b` → `--no-extensions --extension a --extension b`
@@ -114,10 +115,10 @@ tools: read, bash, mcp:chrome-devtools
 tools: read, bash, mcp:github/search_repositories, mcp:github/get_file_contents
 ```
 
-| Syntax | Effect |
-|--------|--------|
-| `mcp:server-name` | All tools from that MCP server |
-| `mcp:server-name/tool_name` | One specific tool |
+| Syntax                      | Effect                         |
+| --------------------------- | ------------------------------ |
+| `mcp:server-name`           | All tools from that MCP server |
+| `mcp:server-name/tool_name` | One specific tool              |
 
 The `mcp:` items are additive — they don't affect which builtins the agent gets. `tools: mcp:chrome-devtools` (with no regular tools listed) gives the agent all default builtins plus chrome-devtools tools. To restrict builtins, list them explicitly: `tools: read, bash, mcp:chrome-devtools`.
 
@@ -129,13 +130,13 @@ Subagents only get direct MCP tools when `mcp:` items are explicitly listed. Eve
 
 ## Quick Commands
 
-| Command | Description |
-|---------|-------------|
-| `/run <agent> <task>` | Run a single agent with a task |
-| `/chain agent1 "task1" -> agent2 "task2"` | Run agents in sequence with per-step tasks |
-| `/parallel agent1 "task1" -> agent2 "task2"` | Run agents in parallel with per-step tasks |
-| `/subagents-status` | Open the async status overlay for active and recent runs |
-| `/agents` | Open the Agents Manager overlay |
+| Command                                      | Description                                              |
+| -------------------------------------------- | -------------------------------------------------------- |
+| `/run <agent> <task>`                        | Run a single agent with a task                           |
+| `/chain agent1 "task1" -> agent2 "task2"`    | Run agents in sequence with per-step tasks               |
+| `/parallel agent1 "task1" -> agent2 "task2"` | Run agents in parallel with per-step tasks               |
+| `/subagents-status`                          | Open the async status overlay for active and recent runs |
+| `/agents`                                    | Open the Agents Manager overlay                          |
 
 All commands validate agent names locally and tab-complete them, then route through the tool framework for full live progress rendering. Results are sent to the conversation for the LLM to discuss.
 
@@ -152,6 +153,7 @@ Examples:
 ```
 
 Behavior:
+
 - The baseline `pi` harness plus generic `pi-superagents` behavior stays unchanged unless this command is used.
 - `tdd` is the default implementer mode.
 - `direct` keeps the same review and verification loop but allows code-first implementation.
@@ -191,13 +193,13 @@ Append `[key=value,...]` to any agent name to override its defaults:
 /parallel scanner[output=scan.md] "find issues" -> reviewer[output=review.md] "check style"
 ```
 
-| Key | Example | Description |
-|-----|---------|-------------|
-| `output` | `output=context.md` | Write results to file (relative to chain dir for `/chain`/`/parallel`; for `/run`, absolute paths are used as-is and relative paths resolve against cwd) |
-| `reads` | `reads=a.md+b.md` | Read files before executing (`+` separates multiple) |
-| `model` | `model=anthropic/claude-sonnet-4` | Override model for this step |
-| `skills` | `skills=planning+review` | Override skills (`+` separates multiple) |
-| `progress` | `progress` | Enable progress tracking |
+| Key        | Example                           | Description                                                                                                                                              |
+| ---------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `output`   | `output=context.md`               | Write results to file (relative to chain dir for `/chain`/`/parallel`; for `/run`, absolute paths are used as-is and relative paths resolve against cwd) |
+| `reads`    | `reads=a.md+b.md`                 | Read files before executing (`+` separates multiple)                                                                                                     |
+| `model`    | `model=anthropic/claude-sonnet-4` | Override model for this step                                                                                                                             |
+| `skills`   | `skills=planning+review`          | Override skills (`+` separates multiple)                                                                                                                 |
+| `progress` | `progress`                        | Enable progress tracking                                                                                                                                 |
 
 Set `output=false`, `reads=false`, or `skills=false` to explicitly disable.
 
@@ -236,17 +238,18 @@ Press **Ctrl+Shift+A** or type `/agents` to open the Agents Manager overlay — 
 
 **Screens:**
 
-| Screen | Description |
-|--------|-------------|
-| List | Browse all agents and chains with search/filter, scope badges, chain badges |
-| Detail | View resolved prompt, frontmatter fields, recent run history |
-| Edit | Edit fields with specialized pickers (model, thinking, skills, prompt editor) |
-| Chain Detail | View chain steps with flow visualization and dependency map |
+| Screen           | Description                                                                            |
+| ---------------- | -------------------------------------------------------------------------------------- |
+| List             | Browse all agents and chains with search/filter, scope badges, chain badges            |
+| Detail           | View resolved prompt, frontmatter fields, recent run history                           |
+| Edit             | Edit fields with specialized pickers (model, thinking, skills, prompt editor)          |
+| Chain Detail     | View chain steps with flow visualization and dependency map                            |
 | Parallel Builder | Build parallel execution slots, add same agent multiple times, per-slot task overrides |
-| Task Input | Enter task and launch with optional skip-clarify toggle |
-| New Agent | Create from templates (Blank, Scout, Planner, Implementer, Code Reviewer, Blank Chain) |
+| Task Input       | Enter task and launch with optional skip-clarify toggle                                |
+| New Agent        | Create from templates (Blank, Scout, Planner, Implementer, Code Reviewer, Blank Chain) |
 
 **List screen keybindings:**
+
 - `↑↓` — navigate agents/chains
 - `Enter` — view detail
 - Type any character — search/filter
@@ -259,6 +262,7 @@ Press **Ctrl+Shift+A** or type `/agents` to open the Agents Manager overlay — 
 - `Esc` — clear query, then selection, then close overlay
 
 **Parallel builder keybindings:**
+
 - `↑↓` — navigate slots
 - `Ctrl+A` — add agent (opens search picker)
 - `Del` or `Ctrl+D` — remove slot
@@ -267,6 +271,7 @@ Press **Ctrl+Shift+A** or type `/agents` to open the Agents Manager overlay — 
 - `Esc` — back to list
 
 **Task input keybindings:**
+
 - `Enter` — launch (or quick run if skip-clarify is on)
 - `Tab` — toggle skip-clarify (defaults to on for all manager launches)
 - `Esc` — back
@@ -279,10 +284,10 @@ Chains are `.chain.md` files stored alongside agent files. They define reusable 
 
 **Chain file locations:**
 
-| Scope | Path |
-|-------|------|
-| User | `~/.pi/agent/agents/{name}.chain.md` |
-| Project | `.pi/agents/{name}.chain.md` |
+| Scope   | Path                                 |
+| ------- | ------------------------------------ |
+| User    | `~/.pi/agent/agents/{name}.chain.md` |
+| Project | `.pi/agents/{name}.chain.md`         |
 
 **Format:**
 
@@ -293,11 +298,13 @@ description: Gather context then plan implementation
 ---
 
 ## scout
+
 output: context.md
 
 Analyze the codebase for {task}
 
 ## planner
+
 reads: context.md
 model: anthropic/claude-sonnet-4-5:high
 progress: true
@@ -336,11 +343,11 @@ Chains can be created from the Agents Manager template picker ("Blank Chain"), o
 
 ## Modes
 
-| Mode | Async Support | Notes |
-|------|---------------|-------|
-| Single | Yes | `{ agent, task }` - agents with `output` write to temp dir |
-| Chain | Yes | `{ chain: [{agent, task}...] }` with `{task}`, `{previous}`, `{chain_dir}` variables |
-| Parallel | Yes | `{ tasks: [{agent, task}...] }` - via TUI toggle or converted to chain for async |
+| Mode     | Async Support | Notes                                                                                |
+| -------- | ------------- | ------------------------------------------------------------------------------------ |
+| Single   | Yes           | `{ agent, task }` - agents with `output` write to temp dir                           |
+| Chain    | Yes           | `{ chain: [{agent, task}...] }` with `{task}`, `{previous}`, `{chain_dir}` variables |
+| Parallel | Yes           | `{ tasks: [{agent, task}...] }` - via TUI toggle or converted to chain for async     |
 
 Execution context defaults to `context: "fresh"`, which starts each child run from a clean session. Set `context: "fork"` to start each child from a real branched session created from the parent's current leaf.
 
@@ -360,7 +367,8 @@ Single and parallel modes also support the clarify TUI for previewing/editing pa
 
 **Clarification TUI keybindings:**
 
-*Navigation mode:*
+_Navigation mode:_
+
 - `Enter` - Run (foreground) or launch in background if `b` is toggled on
 - `Esc` - Cancel
 - `↑↓` - Navigate between steps/tasks (parallel, chain)
@@ -375,25 +383,29 @@ Single and parallel modes also support the clarify TUI for previewing/editing pa
 - `S` - Save current overrides to agent's frontmatter file (all modes)
 - `W` - Save chain configuration to a `.chain.md` file (chain only)
 
-*Model selector mode:*
+_Model selector mode:_
+
 - `↑↓` - Navigate model list
 - `Enter` - Select model
 - `Esc` - Cancel (keep current model)
 - Type to filter (fuzzy search by model name or provider)
 
-*Thinking level selector mode:*
+_Thinking level selector mode:_
+
 - `↑↓` - Navigate level list
 - `Enter` - Select level
 - `Esc` - Cancel (keep current level)
 
-*Skill selector mode:*
+_Skill selector mode:_
+
 - `↑↓` - Navigate skill list
 - `Space` - Toggle skill selection
 - `Enter` - Confirm selection
 - `Esc` - Cancel (keep current skills)
 - Type to filter (fuzzy search by name or description)
 
-*Edit mode (full-screen editor with word wrapping):*
+_Edit mode (full-screen editor with word wrapping):_
+
 - `Esc` - Save changes and exit
 - `Ctrl+C` - Discard changes and exit
 - `←→` - Move cursor left/right
@@ -410,6 +422,7 @@ Single and parallel modes also support the clarify TUI for previewing/editing pa
 Skills are specialized instructions loaded from SKILL.md files and injected into the agent's system prompt.
 
 **Skill locations (project-first precedence):**
+
 - Project: `.pi/skills/{name}/SKILL.md`
 - Project packages: `.pi/npm/node_modules/*` via `package.json -> pi.skills`
 - Project settings: `.pi/settings.json -> skills`
@@ -418,6 +431,7 @@ Skills are specialized instructions loaded from SKILL.md files and injected into
 - User settings: `~/.pi/agent/settings.json -> skills`
 
 **Usage:**
+
 ```typescript
 // Agent with skills from frontmatter
 { agent: "scout", task: "..." }  // uses agent's default skills
@@ -439,6 +453,7 @@ Skills are specialized instructions loaded from SKILL.md files and injected into
 ```
 
 **Skill injection format:**
+
 ```xml
 <skill name="safe-bash">
 [skill content from SKILL.md, frontmatter stripped]
@@ -452,6 +467,7 @@ Skills are specialized instructions loaded from SKILL.md files and injected into
 These are the parameters the **LLM agent** passes when it calls the `subagent` tool — not something you type directly. The agent decides to use these based on your conversation. For user-facing commands, see [Quick Commands](#quick-commands) above.
 
 **subagent tool parameters:**
+
 ```typescript
 // Single agent
 { agent: "worker", task: "refactor auth" }
@@ -541,10 +557,17 @@ These are the parameters the **LLM agent** passes when it calls the `subagent` t
 ```
 
 **subagent_status tool:**
+
 ```typescript
-{ action: "list" }                    // active async runs only
-{ id: "a53ebe46" }                    // inspect one run
-{ dir: "<tmpdir>/pi-async-subagent-runs/a53ebe46-..." }
+{
+  action: "list";
+} // active async runs only
+{
+  id: "a53ebe46";
+} // inspect one run
+{
+  dir: "<tmpdir>/pi-async-subagent-runs/a53ebe46-...";
+}
 ```
 
 **/subagents-status slash command:**
@@ -607,6 +630,7 @@ Agent definitions are not loaded into LLM context by default. Management actions
 ```
 
 Notes:
+
 - `create` uses `config.scope` (`"user"` or `"project"`), not `agentScope`.
 - `update`/`delete` use `agentScope` only for scope disambiguation when the same name exists in both scopes.
 - Agent config mapping: `reads -> defaultReads`, `progress -> defaultProgress`, `extensions` controls extension sandboxing, `maxSubagentDepth` maps directly to agent frontmatter, and `tools` supports `mcp:` entries that map to direct MCP tools.
@@ -614,75 +638,75 @@ Notes:
 
 ## Parameters
 
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| `agent` | string | - | Agent name (single mode) or target for management get/update/delete |
-| `task` | string | - | Task string (single mode) |
-| `action` | string | - | Management action: `list`, `get`, `create`, `update`, `delete` |
-| `chainName` | string | - | Chain name for management get/update/delete |
-| `config` | object | - | Agent or chain config for management create/update |
-| `output` | `string \| false` | agent default | Override output file for single agent (absolute path as-is, relative path resolved against cwd) |
-| `skill` | `string \| string[] \| false` | agent default | Override skills (comma-separated string, array, or false to disable) |
-| `model` | string | agent default | Override model for single agent |
-| `tasks` | `{agent, task, cwd?, count?, skill?}[]` | - | Parallel tasks. Foreground runs directly; background requests are converted to an equivalent chain. `count` repeats one task entry N times with the same settings. |
-| `worktree` | boolean | false | Create isolated git worktrees for each parallel task. Requires clean git state. Per-worktree diffs included in output. |
-| `chain` | ChainItem[] | - | Sequential steps with behavior overrides (see below) |
-| `context` | `"fresh" \| "fork"` | `fresh` | Execution context mode. `fork` uses a real branched session from the parent's current leaf for each child run |
-| `chainDir` | string | `<tmpdir>/pi-chain-runs/` | Persistent directory for chain artifacts (default auto-cleaned after 24h) |
-| `clarify` | boolean | true (chains) | Show TUI to preview/edit chain; implies sync mode |
-| `agentScope` | `"user" \| "project" \| "both"` | `both` | Agent discovery scope (project wins on name collisions) |
-| `async` | boolean | false | Background execution (requires `clarify: false` for chains) |
-| `cwd` | string | - | Override working directory |
-| `maxOutput` | `{bytes?, lines?}` | 200KB, 5000 lines | Truncation limits for final output |
-| `artifacts` | boolean | true | Write debug artifacts |
-| `includeProgress` | boolean | false | Include full progress in result |
-| `share` | boolean | false | Upload session to GitHub Gist (see [Session Sharing](#session-sharing)) |
-| `sessionDir` | string | - | Override session log directory (takes precedence over `defaultSessionDir` and parent-session-derived path) |
+| Param             | Type                                    | Default                   | Description                                                                                                                                                        |
+| ----------------- | --------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `agent`           | string                                  | -                         | Agent name (single mode) or target for management get/update/delete                                                                                                |
+| `task`            | string                                  | -                         | Task string (single mode)                                                                                                                                          |
+| `action`          | string                                  | -                         | Management action: `list`, `get`, `create`, `update`, `delete`                                                                                                     |
+| `chainName`       | string                                  | -                         | Chain name for management get/update/delete                                                                                                                        |
+| `config`          | object                                  | -                         | Agent or chain config for management create/update                                                                                                                 |
+| `output`          | `string \| false`                       | agent default             | Override output file for single agent (absolute path as-is, relative path resolved against cwd)                                                                    |
+| `skill`           | `string \| string[] \| false`           | agent default             | Override skills (comma-separated string, array, or false to disable)                                                                                               |
+| `model`           | string                                  | agent default             | Override model for single agent                                                                                                                                    |
+| `tasks`           | `{agent, task, cwd?, count?, skill?}[]` | -                         | Parallel tasks. Foreground runs directly; background requests are converted to an equivalent chain. `count` repeats one task entry N times with the same settings. |
+| `worktree`        | boolean                                 | false                     | Create isolated git worktrees for each parallel task. Requires clean git state. Per-worktree diffs included in output.                                             |
+| `chain`           | ChainItem[]                             | -                         | Sequential steps with behavior overrides (see below)                                                                                                               |
+| `context`         | `"fresh" \| "fork"`                     | `fresh`                   | Execution context mode. `fork` uses a real branched session from the parent's current leaf for each child run                                                      |
+| `chainDir`        | string                                  | `<tmpdir>/pi-chain-runs/` | Persistent directory for chain artifacts (default auto-cleaned after 24h)                                                                                          |
+| `clarify`         | boolean                                 | true (chains)             | Show TUI to preview/edit chain; implies sync mode                                                                                                                  |
+| `agentScope`      | `"user" \| "project" \| "both"`         | `both`                    | Agent discovery scope (project wins on name collisions)                                                                                                            |
+| `async`           | boolean                                 | false                     | Background execution (requires `clarify: false` for chains)                                                                                                        |
+| `cwd`             | string                                  | -                         | Override working directory                                                                                                                                         |
+| `maxOutput`       | `{bytes?, lines?}`                      | 200KB, 5000 lines         | Truncation limits for final output                                                                                                                                 |
+| `artifacts`       | boolean                                 | true                      | Write debug artifacts                                                                                                                                              |
+| `includeProgress` | boolean                                 | false                     | Include full progress in result                                                                                                                                    |
+| `share`           | boolean                                 | false                     | Upload session to GitHub Gist (see [Session Sharing](#session-sharing))                                                                                            |
+| `sessionDir`      | string                                  | -                         | Override session log directory (takes precedence over `defaultSessionDir` and parent-session-derived path)                                                         |
 
 `context: "fork"` fails fast when the parent session is not persisted, the current leaf is missing, or a branched child session cannot be created. It never silently downgrades to `fresh`.
 
 **ChainItem** can be either a sequential step or a parallel step:
 
-*Sequential step fields:*
+_Sequential step fields:_
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `agent` | string | required | Agent name |
-| `task` | string | `{task}` or `{previous}` | Task template (required for first step) |
-| `cwd` | string | - | Override working directory |
-| `output` | `string \| false` | agent default | Override output filename or disable |
-| `reads` | `string[] \| false` | agent default | Override files to read from chain dir |
-| `progress` | boolean | agent default | Override progress.md tracking |
-| `skill` | `string \| string[] \| false` | agent default | Override skills or disable all |
-| `model` | string | agent default | Override model for this step |
+| Field      | Type                          | Default                  | Description                             |
+| ---------- | ----------------------------- | ------------------------ | --------------------------------------- |
+| `agent`    | string                        | required                 | Agent name                              |
+| `task`     | string                        | `{task}` or `{previous}` | Task template (required for first step) |
+| `cwd`      | string                        | -                        | Override working directory              |
+| `output`   | `string \| false`             | agent default            | Override output filename or disable     |
+| `reads`    | `string[] \| false`           | agent default            | Override files to read from chain dir   |
+| `progress` | boolean                       | agent default            | Override progress.md tracking           |
+| `skill`    | `string \| string[] \| false` | agent default            | Override skills or disable all          |
+| `model`    | string                        | agent default            | Override model for this step            |
 
-*Parallel step fields:*
+_Parallel step fields:_
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `parallel` | ParallelTask[] | required | Array of tasks to run concurrently |
-| `concurrency` | number | 4 | Max concurrent tasks |
-| `failFast` | boolean | false | Stop remaining tasks on first failure |
-| `worktree` | boolean | false | Create isolated git worktrees for each parallel task |
+| Field         | Type           | Default  | Description                                          |
+| ------------- | -------------- | -------- | ---------------------------------------------------- |
+| `parallel`    | ParallelTask[] | required | Array of tasks to run concurrently                   |
+| `concurrency` | number         | 4        | Max concurrent tasks                                 |
+| `failFast`    | boolean        | false    | Stop remaining tasks on first failure                |
+| `worktree`    | boolean        | false    | Create isolated git worktrees for each parallel task |
 
-*ParallelTask fields:* (same as sequential step)
+_ParallelTask fields:_ (same as sequential step)
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `agent` | string | required | Agent name |
-| `task` | string | `{previous}` | Task template |
-| `cwd` | string | - | Override working directory |
-| `count` | number | 1 | Repeat this parallel task N times with the same settings |
-| `output` | `string \| false` | agent default | Override output (namespaced to parallel-N/M-agent/) |
-| `reads` | `string[] \| false` | agent default | Override files to read |
-| `progress` | boolean | agent default | Override progress tracking |
-| `skill` | `string \| string[] \| false` | agent default | Override skills or disable all |
-| `model` | string | agent default | Override model for this task |
+| Field      | Type                          | Default       | Description                                              |
+| ---------- | ----------------------------- | ------------- | -------------------------------------------------------- |
+| `agent`    | string                        | required      | Agent name                                               |
+| `task`     | string                        | `{previous}`  | Task template                                            |
+| `cwd`      | string                        | -             | Override working directory                               |
+| `count`    | number                        | 1             | Repeat this parallel task N times with the same settings |
+| `output`   | `string \| false`             | agent default | Override output (namespaced to parallel-N/M-agent/)      |
+| `reads`    | `string[] \| false`           | agent default | Override files to read                                   |
+| `progress` | boolean                       | agent default | Override progress tracking                               |
+| `skill`    | `string \| string[] \| false` | agent default | Override skills or disable all                           |
+| `model`    | string                        | agent default | Override model for this task                             |
 
 Status tool:
 
-| Tool | Description |
-|------|-------------|
+| Tool              | Description                                            |
+| ----------------- | ------------------------------------------------------ |
 | `subagent_status` | List active async runs or inspect one run by id or dir |
 
 ## Worktree Isolation
@@ -715,12 +739,12 @@ After the parallel step completes, per-agent diff stats are appended to the outp
 - Working tree must be clean (no uncommitted changes) — commit or stash first
 - `node_modules/` is symlinked into each worktree to avoid reinstalling
 - Worktree runs use the shared parallel/step `cwd`. Task-level `cwd` overrides must be omitted or match that shared `cwd`; if you need different working directories, disable `worktree` or split the run.
-- If `worktreeSetupHook` is configured, it must return valid JSON and complete before timeout
+- If `superagents.worktrees.setupHook` is configured for a Superpowers run, it must return valid JSON and complete before timeout
 
 **What happens under the hood:**
 
 1. `git worktree add` creates a temporary worktree per agent in `<tmpdir>/pi-worktree-*`
-2. Optional `worktreeSetupHook` runs once per worktree (JSON in on stdin, JSON out on stdout)
+2. Optional `superagents.worktrees.setupHook` runs once per worktree for Superpowers runs (JSON in on stdin, JSON out on stdout)
 3. Each agent runs in its worktree's cwd (preserving subdirectory context)
 4. Before diff capture, declared synthetic helper paths (for example `.venv` or copied local config files) are removed
 5. After execution, `git add -A && git diff --cached` captures all real changes (committed, modified, and new files)
@@ -733,11 +757,11 @@ If you use [pi-prompt-template-model](https://github.com/nicobailon/pi-prompt-te
 
 Templates support three variables:
 
-| Variable | Description |
-|----------|-------------|
-| `{task}` | Original task from first step (use in subsequent steps) |
-| `{previous}` | Output from prior step (or aggregated outputs from parallel step) |
-| `{chain_dir}` | Path to chain artifacts directory |
+| Variable      | Description                                                       |
+| ------------- | ----------------------------------------------------------------- |
+| `{task}`      | Original task from first step (use in subsequent steps)           |
+| `{previous}`  | Output from prior step (or aggregated outputs from parallel step) |
+| `{chain_dir}` | Path to chain artifacts directory                                 |
 
 **Parallel output aggregation:** When a parallel step completes, all outputs are concatenated with clear separators:
 
@@ -755,7 +779,12 @@ This aggregated output becomes `{previous}` for the next step.
 
 `pi-superagents` reads optional JSON config from `~/.pi/agent/extensions/subagent/config.json`.
 
-On install, the extension now seeds that file from the bundled `default-config.json` template when the user config is missing, so there is always an editable starting point for all supported options. The starter config includes short inline descriptions for every supported key.
+Runtime config precedence:
+- The extension always loads its bundled [default-config.json](/Users/thomas/Documents/Dev/pi-superagents/default-config.json) first.
+- If `~/.pi/agent/extensions/subagent/config.json` exists, its values override the bundled defaults.
+- If `config.json` does not exist, the bundled defaults are used as-is.
+
+On install, the extension seeds `config.json` from the bundled template when the user config is missing, so there is always an editable starting point for all supported options.
 
 ### `defaultSessionDir`
 
@@ -768,6 +797,7 @@ On install, the extension now seeds that file from the bundled `default-config.j
 ```
 
 Session root resolution follows this precedence:
+
 1. `params.sessionDir` from the `subagent` tool call
 2. `config.defaultSessionDir`
 3. Derived from parent session (stored alongside parent session file)
@@ -804,10 +834,12 @@ Per-agent `maxSubagentDepth` can tighten that limit further for child runs, but 
 {
   "superagents": {
     "defaultImplementerMode": "tdd",
-    "worktreeEnabled": true,
-    "worktreeRoot": null,
-    "worktreeSetupHook": "./scripts/setup-worktree.mjs",
-    "worktreeSetupHookTimeoutMs": 45000,
+    "worktrees": {
+      "enabled": true,
+      "root": null,
+      "setupHook": "./scripts/setup-worktree.mjs",
+      "setupHookTimeoutMs": 45000
+    },
     "modelTiers": {
       "cheap": {
         "model": "openai/gpt-5.3-mini",
@@ -834,18 +866,28 @@ Per-agent `maxSubagentDepth` can tighten that limit further for child runs, but 
 ```
 
 Notes:
+
 - `defaultImplementerMode` defaults `/superpowers <task>` to `tdd`; use `direct` when you want the same review loop with code-first implementation.
-- `worktreeEnabled` defaults Superpowers parallel execution to `worktree: true`. Set it to `false` if you want `/superpowers` parallel steps to share the normal cwd unless a run explicitly opts in.
-- `worktreeRoot` sets the directory for Superpowers parallel worktrees (default: temp directory).
-- `worktreeSetupHook` runs once per created Superpowers worktree after `git worktree add` succeeds and before the agent starts.
-- `worktreeSetupHookTimeoutMs` sets the per-worktree setup hook timeout in milliseconds. Default: `30000`.
 - The config root key is `superagents`.
-- `modelTiers` supports either string shorthand like `"cheap": "openai/gpt-5.3-mini"` or an object with `model` and optional `thinking`.
-- **Custom tiers:** You can define your own tier names beyond the built-in `cheap`, `balanced`, and `max`. For example, add a `"creative"` tier with a model optimized for creative writing, or a `"free"` tier with a cost-effective model.
+- `superagents.worktrees.enabled` defaults Superpowers parallel execution to `worktree: true`. Set it to `false` if you want `/superpowers` parallel steps to share the normal cwd unless a run explicitly opts in.
+- `superagents.worktrees.root` sets the directory for Superpowers parallel worktrees (default: temp directory).
+- `superagents.worktrees.setupHook` runs once per created Superpowers worktree after `git worktree add` succeeds and before the agent starts.
+- `superagents.worktrees.setupHookTimeoutMs` sets the per-worktree setup hook timeout in milliseconds. Default: `30000`.
+- `modelTiers` maps tier names to either a model string or an object with `model` and optional `thinking`.
+- **Custom tiers:** You can define your own tier names beyond the built-in `cheap`, `balanced`, and `max`. For example, add a `"creative"` tier with a model optimized for creative writing, or a `"free"` tier with a free model.
 - **General-purpose:** Tier resolution works in all workflows (`/run`, `/chain`, `/parallel`, and `/superpowers`). Set `model: "creative"` in any agent's frontmatter to use your custom tier.
-- Built-in Superpowers agents read their tier from the agent Markdown frontmatter, so editing an agent `.md` file changes which tier that role uses. There is no separate `roleModelTiers` map in config.
-- `roleSkillOverlays` only apply to Superpowers runs.
-- The legacy top-level `superpowers` config root is still accepted at runtime for backward compatibility, but the supported starter config uses `superagents`.
+- Built-in Superpowers agents read their tier from the agent Markdown frontmatter, so editing an agent `.md` file changes which tier that role uses.
+- `roleSkillOverlays` maps Superpowers role names to additional skill names and only applies to Superpowers runs.
+
+Supported keys under `superagents`:
+
+- `defaultImplementerMode`
+- `worktrees.enabled`
+- `worktrees.root`
+- `worktrees.setupHook`
+- `worktrees.setupHookTimeoutMs`
+- `modelTiers`
+- `roleSkillOverlays`
 
 **Example with custom tiers:**
 
@@ -880,14 +922,16 @@ description: Creative writing assistant
 
 #### Worktree Hook Contract
 
-`superagents.worktreeSetupHook` runs once per created Superpowers worktree, after `git worktree add` succeeds and before the agent starts.
+`superagents.worktrees.setupHook` runs once per created Superpowers worktree, after `git worktree add` succeeds and before the agent starts.
 
 Path rules:
+
 - Must be an absolute path or a repo-relative path
 - Bare command names from `PATH` are rejected
 - `~/...` is supported for home-directory hooks
 
 Hook I/O contract (JSON only):
+
 - stdin: one JSON object with `repoRoot`, `worktreePath`, `agentCwd`, `branch`, `index`, `runId`, and `baseCommit`
 - stdout: one JSON object, e.g. `{ "syntheticPaths": [".venv", ".env.local"] }`
 
@@ -896,7 +940,9 @@ Hook I/O contract (JSON only):
 Tracked-file edits are never excluded. If the hook tries to mark tracked paths as synthetic, setup fails.
 
 ## Chain Directory
+
 Each chain run creates `<tmpdir>/pi-chain-runs/{runId}/` containing:
+
 - `context.md` - Scout/context-builder output
 - `plan.md` - Planner output
 - `progress.md` - Worker/reviewer shared progress
@@ -912,6 +958,7 @@ Directories older than 24 hours are cleaned up on extension startup.
 Location: `{sessionDir}/subagent-artifacts/` or `<tmpdir>/pi-subagent-artifacts/`
 
 Files per task:
+
 - `{runId}_{agent}_input.md` - Task prompt
 - `{runId}_{agent}_output.md` - Full output (untruncated)
 - `{runId}_{agent}.jsonl` - Event stream (sync only)
@@ -934,11 +981,13 @@ When `share: true` is passed, the extension will:
 **This is disabled by default.** Session data may contain sensitive information like source code, file paths, environment variables, or credentials that appear in tool outputs.
 
 To enable sharing for a specific run:
+
 ```typescript
 { agent: "scout", task: "...", share: true }
 ```
 
 Requirements:
+
 - GitHub CLI (`gh`) must be installed and authenticated (`gh auth login`)
 - Gists are created as "secret" (unlisted but accessible to anyone with the URL)
 
@@ -947,12 +996,14 @@ Requirements:
 During sync execution, the collapsed view shows real-time progress for single, chain, and parallel modes.
 
 **Chains:**
+
 - Header: `... chain 1/2 | 8 tools, 1.4k tok, 38s`
 - Chain visualization with status: `✓scout → ●planner` (✓=done, ●=running, ○=pending, ✗=failed)
 - Current tool: `> read: packages/tui/src/...`
 - Recent output lines (last 2-3 lines)
 
 **Parallel:**
+
 - Header: `... parallel 2/4 | 12 tools, 2.1k tok, 15s`
 - Per-task step cards showing status icon, agent name, model, tool count, and duration
 - Current tool and recent output for each running task
@@ -1001,9 +1052,9 @@ Async runs write a dedicated observability folder:
 For programmatic access:
 
 ```typescript
-subagent_status({ action: "list" })
-subagent_status({ id: "<id>" })
-subagent_status({ dir: "<tmpdir>/pi-async-subagent-runs/<id>" })
+subagent_status({ action: "list" });
+subagent_status({ id: "<id>" });
+subagent_status({ dir: "<tmpdir>/pi-async-subagent-runs/<id>" });
 ```
 
 For an interactive overview, run the `/subagents-status` slash command to open the overlay listing active runs and recent completed/failed runs. The overlay auto-refreshes every 2 seconds while it is open.
@@ -1011,6 +1062,7 @@ For an interactive overview, run the `/subagents-status` slash command to open t
 ## Events
 
 Async events:
+
 - `subagent:started`
 - `subagent:complete`
 
