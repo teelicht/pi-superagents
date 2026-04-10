@@ -200,7 +200,7 @@ describe("superpowers packets in real execution paths", {
 	 * - accepts the agent inventory available to the executor
 	 * - returns a configured executor with async enabled
 	 */
-	function makeAsyncExecutor(agents: any[]) {
+	function makeAsyncExecutor(agents: any[], config: Record<string, unknown> = {}) {
 		return createSubagentExecutor({
 			pi: { events: new EventEmitter() },
 			state: {
@@ -218,7 +218,7 @@ describe("superpowers packets in real execution paths", {
 					clear: () => {},
 				},
 			},
-			config: {},
+			config,
 			asyncByDefault: false,
 			tempArtifactsDir: tempDir,
 			getSubagentSessionRoot: () => tempDir,
@@ -520,9 +520,53 @@ describe("superpowers packets in real execution paths", {
 		assert.match(cfg.steps[0].parallel[0].task, /custom-brief\.md/);
 		assert.match(cfg.steps[0].parallel[0].task, /custom-report\.md/);
 		assert.match(cfg.steps[0].parallel[0].task, /progress\.md/);
-		assert.ok(
-			String(cfg.steps[0].parallel[0].outputPath).endsWith(path.join("custom-report.md")),
-			String(cfg.steps[0].parallel[0].outputPath),
-		);
+			assert.ok(
+				String(cfg.steps[0].parallel[0].outputPath).endsWith(path.join("custom-report.md")),
+				String(cfg.steps[0].parallel[0].outputPath),
+			);
+		});
+
+		it("defaults async top-level parallel worktrees on for superpowers using superagents config", async () => {
+			const agents = [
+				{
+					name: "sp-implementer",
+					description: "Test agent: sp-implementer",
+					systemPrompt: "Implement the task.",
+					source: "builtin",
+					filePath: "/tmp/sp-implementer.md",
+					output: "context.md",
+					defaultReads: ["plan.md"],
+					defaultProgress: false,
+				},
+			];
+			const executor = makeAsyncExecutor(agents, {
+				superagents: {
+					worktreeEnabled: true,
+					worktreeRoot: ".worktrees",
+					worktreeSetupHook: "./scripts/setup-worktree.mjs",
+					worktreeSetupHookTimeoutMs: 45000,
+				},
+			});
+
+			const result = await executor.execute(
+				"packet-parallel-worktree-default",
+				{
+					async: true,
+					clarify: false,
+					workflow: "superpowers",
+					tasks: [{ agent: "sp-implementer", task: "Implement the selected task." }],
+				},
+				new AbortController().signal,
+				undefined,
+				makeExecutorCtx(),
+			);
+
+			assert.ok(!result.isError, JSON.stringify(result.content));
+			const cfg = readAsyncConfig(result.details.asyncId);
+			assert.equal(cfg.steps[0].worktree, true);
+			assert.equal(cfg.worktreeRootDir, ".worktrees");
+			assert.equal(cfg.worktreeRequireIgnoredRoot, true);
+			assert.equal(cfg.worktreeSetupHook, "./scripts/setup-worktree.mjs");
+			assert.equal(cfg.worktreeSetupHookTimeoutMs, 45000);
+		});
 	});
-});

@@ -755,7 +755,7 @@ This aggregated output becomes `{previous}` for the next step.
 
 `pi-superagents` reads optional JSON config from `~/.pi/agent/extensions/subagent/config.json`.
 
-On install, the extension now seeds that file from the bundled `default-config.json` template when the user config is missing, so there is always an editable starting point for tier mappings.
+On install, the extension now seeds that file from the bundled `default-config.json` template when the user config is missing, so there is always an editable starting point for all supported options. The starter config includes short inline descriptions for every supported key.
 
 ### `defaultSessionDir`
 
@@ -786,15 +786,28 @@ Sessions are always enabled — every subagent run gets a session directory for 
 
 Per-agent `maxSubagentDepth` can tighten that limit further for child runs, but it does not relax an already inherited stricter limit.
 
-### `superpowers`
+### `asyncByDefault`
 
-`superpowers` configures the explicit `/superpowers` command path without changing the default `/run`, `/chain`, or `/parallel` behavior.
+`asyncByDefault` runs subagents in the background by default without blocking. When `true`, all `/run`, `/chain`, and `/parallel` commands (and tool calls without explicit `async`) run asynchronously. Use `--bg` flag or explicit `async: false` to override per-run.
+
+```json
+{
+  "asyncByDefault": true
+}
+```
+
+### `superagents`
+
+`superagents` configures the explicit `/superpowers` command path without changing the default `/run`, `/chain`, or `/parallel` behavior.
 
 ```json
 {
   "superagents": {
-    "commandName": "superpowers",
     "defaultImplementerMode": "tdd",
+    "worktreeEnabled": true,
+    "worktreeRoot": null,
+    "worktreeSetupHook": "./scripts/setup-worktree.mjs",
+    "worktreeSetupHookTimeoutMs": 45000,
     "modelTiers": {
       "cheap": {
         "model": "openai/gpt-5.3-mini",
@@ -821,14 +834,18 @@ Per-agent `maxSubagentDepth` can tighten that limit further for child runs, but 
 ```
 
 Notes:
-- `commandName` lets you rename the slash command if you want a different trigger.
 - `defaultImplementerMode` defaults `/superpowers <task>` to `tdd`; use `direct` when you want the same review loop with code-first implementation.
+- `worktreeEnabled` defaults Superpowers parallel execution to `worktree: true`. Set it to `false` if you want `/superpowers` parallel steps to share the normal cwd unless a run explicitly opts in.
+- `worktreeRoot` sets the directory for Superpowers parallel worktrees (default: temp directory).
+- `worktreeSetupHook` runs once per created Superpowers worktree after `git worktree add` succeeds and before the agent starts.
+- `worktreeSetupHookTimeoutMs` sets the per-worktree setup hook timeout in milliseconds. Default: `30000`.
 - The config root key is `superagents`.
 - `modelTiers` supports either string shorthand like `"cheap": "openai/gpt-5.3-mini"` or an object with `model` and optional `thinking`.
 - **Custom tiers:** You can define your own tier names beyond the built-in `cheap`, `balanced`, and `max`. For example, add a `"creative"` tier with a model optimized for creative writing, or a `"free"` tier with a cost-effective model.
 - **General-purpose:** Tier resolution works in all workflows (`/run`, `/chain`, `/parallel`, and `/superpowers`). Set `model: "creative"` in any agent's frontmatter to use your custom tier.
-- Built-in Superpowers agents read their tier from the agent Markdown frontmatter, so editing an agent `.md` file changes which tier that role uses.
+- Built-in Superpowers agents read their tier from the agent Markdown frontmatter, so editing an agent `.md` file changes which tier that role uses. There is no separate `roleModelTiers` map in config.
 - `roleSkillOverlays` only apply to Superpowers runs.
+- The legacy top-level `superpowers` config root is still accepted at runtime for backward compatibility, but the supported starter config uses `superagents`.
 
 **Example with custom tiers:**
 
@@ -861,15 +878,9 @@ description: Creative writing assistant
 ---
 ```
 
-### `worktreeSetupHook`
+#### Worktree Hook Contract
 
-`worktreeSetupHook` configures an optional setup hook for worktree-isolated parallel runs. The hook runs once per created worktree, after `git worktree add` succeeds and before the agent starts.
-
-```json
-{
-  "worktreeSetupHook": "./scripts/setup-worktree.mjs"
-}
-```
+`superagents.worktreeSetupHook` runs once per created Superpowers worktree, after `git worktree add` succeeds and before the agent starts.
 
 Path rules:
 - Must be an absolute path or a repo-relative path
@@ -883,19 +894,6 @@ Hook I/O contract (JSON only):
 `syntheticPaths` must be relative to the worktree root. These paths are removed before diff capture so helper files/symlinks do not pollute generated patches.
 
 Tracked-file edits are never excluded. If the hook tries to mark tracked paths as synthetic, setup fails.
-
-### `worktreeSetupHookTimeoutMs`
-
-Optional timeout (milliseconds) for each worktree hook invocation.
-
-```json
-{
-  "worktreeSetupHook": "./scripts/setup-worktree.mjs",
-  "worktreeSetupHookTimeoutMs": 45000
-}
-```
-
-Default: `30000` ms.
 
 ## Chain Directory
 Each chain run creates `<tmpdir>/pi-chain-runs/{runId}/` containing:
