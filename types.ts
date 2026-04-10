@@ -287,7 +287,6 @@ export interface SuperpowersSettings {
 	};
 	/** Model configuration for each tier. Supports built-in (cheap, balanced, max) and custom tiers. */
 	modelTiers?: Record<string, ModelTierSetting>;
-	roleSkillOverlays?: Partial<Record<ExecutionRole, string[]>>;
 	defaultImplementerMode?: SuperpowersImplementerMode;
 }
 

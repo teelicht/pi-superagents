@@ -5,7 +5,7 @@
   "superagents": {
     "defaultImplementerMode": "tdd",
     "worktrees": {
-      "enabled": true,
+      "enabled": false,
       "root": null,
       "setupHook": null,
       "setupHookTimeoutMs": 30000
@@ -20,15 +20,6 @@
       "max": {
         "model": "openai/gpt-5.4"
       }
-    },
-    "roleSkillOverlays": {
-      "root-planning": [],
-      "sp-recon": [],
-      "sp-research": [],
-      "sp-implementer": [],
-      "sp-spec-review": [],
-      "sp-code-review": [],
-      "sp-debug": []
     }
   }
 }

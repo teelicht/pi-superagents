@@ -1,14 +1,8 @@
-<p>
-  <img src="banner.png" alt="pi-superagents" width="1100">
-</p>
-
 # pi-superagents
 
 Pi extension for delegating tasks to subagents with chains, parallel execution, TUI clarification, and async support.
 
 > `pi-superagents` is a fork of `pi-subagents`, rebranded to reflect the combination of Superpowers workflow ideas and subagent-based execution.
-
-https://github.com/user-attachments/assets/702554ec-faaf-4635-80aa-fb5d6e292fd1
 
 ## Installation
 
@@ -780,6 +774,7 @@ This aggregated output becomes `{previous}` for the next step.
 `pi-superagents` reads optional JSON config from `~/.pi/agent/extensions/subagent/config.json`.
 
 Runtime config precedence:
+
 - The extension always loads its bundled [default-config.json](/Users/thomas/Documents/Dev/pi-superagents/default-config.json) first.
 - If `~/.pi/agent/extensions/subagent/config.json` exists, its values override the bundled defaults.
 - If `config.json` does not exist, the bundled defaults are used as-is.
@@ -853,13 +848,6 @@ Per-agent `maxSubagentDepth` can tighten that limit further for child runs, but 
         "model": "anthropic/claude-opus-4-6",
         "thinking": "high"
       }
-    },
-    "roleSkillOverlays": {
-      "root-planning": ["vercel-react-native-skills"],
-      "sp-implementer": ["vercel-react-native-skills"],
-      "sp-spec-review": ["vercel-react-native-skills"],
-      "sp-code-review": ["vercel-react-native-skills"],
-      "sp-debug": ["vercel-react-native-skills"]
     }
   }
 }
@@ -877,7 +865,8 @@ Notes:
 - **Custom tiers:** You can define your own tier names beyond the built-in `cheap`, `balanced`, and `max`. For example, add a `"creative"` tier with a model optimized for creative writing, or a `"free"` tier with a free model.
 - **General-purpose:** Tier resolution works in all workflows (`/run`, `/chain`, `/parallel`, and `/superpowers`). Set `model: "creative"` in any agent's frontmatter to use your custom tier.
 - Built-in Superpowers agents read their tier from the agent Markdown frontmatter, so editing an agent `.md` file changes which tier that role uses.
-- `roleSkillOverlays` maps Superpowers role names to additional skill names and only applies to Superpowers runs.
+- Superpowers role-specific skills also come from agent Markdown frontmatter. Add them with `skills: skill-a, skill-b` in the relevant `agents/sp-*.md` file.
+- There is no separate `root-planning` skill overlay config. Root-session workflow skills stay root-owned through policy rather than a configurable per-role overlay.
 
 Supported keys under `superagents`:
 
@@ -887,7 +876,6 @@ Supported keys under `superagents`:
 - `worktrees.setupHook`
 - `worktrees.setupHookTimeoutMs`
 - `modelTiers`
-- `roleSkillOverlays`
 
 **Example with custom tiers:**
 

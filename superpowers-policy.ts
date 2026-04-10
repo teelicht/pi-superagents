@@ -3,7 +3,7 @@
  *
  * Responsibilities:
  * - resolve Markdown-declared Superpowers model tiers into concrete models
- * - merge role-specific skill overlays safely
+ * - merge agent-declared and step-injected skills safely
  * - add TDD behavior for the implementer role when requested
  */
 
@@ -141,9 +141,9 @@ export function resolveModelForAgent(input: {
 }
 
 /**
- * Merge agent skills, step overrides, and role overlays for a given execution role.
+ * Merge agent skills and step overrides for a given execution role.
  *
- * Throws when a configured overlay skill is unavailable or when a non-root role
+ * Throws when a merged skill is unavailable or when a non-root role
  * receives a workflow-orchestration skill that should stay root-owned.
  */
 export function resolveRoleSkillSet(input: {
@@ -158,11 +158,10 @@ export function resolveRoleSkillSet(input: {
 		return [...new Set([...input.agentSkills, ...input.stepSkills])];
 	}
 
-	const overlays = getSuperagentSettings(input.config)?.roleSkillOverlays?.[input.role] ?? [];
-	const merged = [...new Set([...input.agentSkills, ...input.stepSkills, ...overlays])];
+	const merged = [...new Set([...input.agentSkills, ...input.stepSkills])];
 	for (const skill of merged) {
 		if (!input.availableSkills.has(skill)) {
-			throw new Error(`Unknown overlay skill: ${skill}`);
+			throw new Error(`Unknown skill: ${skill}`);
 		}
 		if (input.role !== "root-planning" && ROOT_ONLY_WORKFLOW_SKILLS.has(skill)) {
 			throw new Error(`Role ${input.role} cannot receive root-only workflow skill '${skill}'`);

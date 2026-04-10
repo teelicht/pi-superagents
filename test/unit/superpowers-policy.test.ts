@@ -3,7 +3,7 @@
  *
  * Responsibilities:
  * - verify workflow gating for role-specific model resolution
- * - verify role overlay skill merging for Superpowers runs
+ * - verify role skill merging for Superpowers runs
  * - verify implementer mode skill injection behavior
  */
 
@@ -135,23 +135,27 @@ describe("superpowers policy", () => {
 		);
 	});
 
-	it("resolves overlays only for command-scoped superpowers runs", () => {
+	it("ignores config overlays and merges only agent and step skills for superpowers runs", () => {
 		const skills = resolveRoleSkillSet({
 			workflow: "superpowers",
 			role: "sp-spec-review",
 			config: {
 				superagents: {
 					roleSkillOverlays: {
-						"sp-spec-review": ["vercel-react-native-skills"],
+						"sp-spec-review": ["ignored-config-skill"],
 					},
 				},
-			},
-			agentSkills: [],
-			stepSkills: [],
-			availableSkills: new Set(["vercel-react-native-skills"]),
+			} as never,
+			agentSkills: ["vercel-react-native-skills"],
+			stepSkills: ["react-native-best-practices"],
+			availableSkills: new Set([
+				"ignored-config-skill",
+				"vercel-react-native-skills",
+				"react-native-best-practices",
+			]),
 		});
 
-		assert.deepEqual(skills, ["vercel-react-native-skills"]);
+		assert.deepEqual(skills, ["vercel-react-native-skills", "react-native-best-practices"]);
 	});
 
 	it("adds test-driven-development only in tdd implementer mode", () => {
