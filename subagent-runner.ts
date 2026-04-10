@@ -1,3 +1,12 @@
+/**
+ * Background subagent runner entrypoint.
+ *
+ * Responsibilities:
+ * - execute serialized async single/chain plans in a detached process
+ * - maintain status/event artifacts for polling and UI updates
+ * - apply already-resolved worktree options to parallel background steps
+ */
+
 import { spawn, spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import { createRequire } from "node:module";
@@ -50,6 +59,8 @@ interface SubagentRunConfig {
 	asyncDir: string;
 	sessionId?: string | null;
 	piPackageRoot?: string;
+	worktreeRootDir?: string;
+	worktreeRequireIgnoredRoot?: boolean;
 	worktreeSetupHook?: string;
 	worktreeSetupHookTimeoutMs?: number;
 }
@@ -586,6 +597,8 @@ async function runSubagent(config: SubagentRunConfig): Promise<void> {
 				}
 				try {
 					worktreeSetup = createWorktrees(cwd, `${id}-s${stepIndex}`, group.parallel.length, {
+						rootDir: config.worktreeRootDir,
+						requireIgnoredRoot: config.worktreeRequireIgnoredRoot,
 						agents: group.parallel.map((task) => task.agent),
 						setupHook: config.worktreeSetupHook
 							? { hookPath: config.worktreeSetupHook, timeoutMs: config.worktreeSetupHookTimeoutMs }

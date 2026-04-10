@@ -32,6 +32,11 @@ import { discoverAvailableSkills, normalizeSkillInput } from "./skills.js";
 import { executeAsyncChain, executeAsyncSingle, isAsyncAvailable } from "./async-execution.js";
 import { createForkContextResolver } from "./fork-context.js";
 import { finalizeSingleOutput, injectSingleOutputInstruction, resolveSingleOutputPath } from "./single-output.js";
+import {
+	applySuperagentWorktreeDefaultsToChain,
+	resolveSuperagentWorktreeCreateOptions,
+	resolveSuperagentWorktreeEnabled,
+} from "./superagents-config.js";
 import { getSingleResultOutput, mapConcurrent } from "./utils.js";
 import {
 	cleanupWorktrees,
@@ -123,7 +128,6 @@ interface ExecutionContextData {
 	sessionFileForIndex: (idx?: number) => string | undefined;
 	artifactConfig: ArtifactConfig;
 	artifactsDir: string;
-	parallelDowngraded: boolean;
 	effectiveAsync: boolean;
 	workflow: WorkflowMode;
 	implementerMode: SuperpowersImplementerMode;
@@ -354,13 +358,20 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 		artifactConfig,
 		artifactsDir,
 		effectiveAsync,
+		workflow,
 	} = data;
 	const hasChain = (params.chain?.length ?? 0) > 0;
+	const hasTasks = (params.tasks?.length ?? 0) > 0;
 	const hasSingle = Boolean(params.agent && params.task);
 	if (!effectiveAsync) return null;
 
 	if (hasChain && params.chain) {
-		const chainWorktreeTaskCwdError = buildChainWorktreeTaskCwdError(params.chain as ChainStep[], params.cwd ?? ctx.cwd);
+		const chain = applySuperagentWorktreeDefaultsToChain(
+			params.chain as ChainStep[],
+			data.workflow,
+			deps.config,
+		);
+		const chainWorktreeTaskCwdError = buildChainWorktreeTaskCwdError(chain, params.cwd ?? ctx.cwd);
 		if (chainWorktreeTaskCwdError) {
 			return {
 				content: [{ type: "text", text: chainWorktreeTaskCwdError }],
@@ -384,7 +395,10 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 	if (hasChain && params.chain) {
 		const normalized = normalizeSkillInput(params.skill);
 		const chainSkills = normalized === false ? [] : (normalized ?? []);
-		const chain = wrapChainTasksForFork(params.chain as ChainStep[], params.context);
+		const chain = wrapChainTasksForFork(
+			applySuperagentWorktreeDefaultsToChain(params.chain as ChainStep[], data.workflow, deps.config),
+			params.context,
+		);
 		return executeAsyncChain(id, {
 			chain,
 			agents,
@@ -398,9 +412,44 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			chainSkills,
 			sessionFilesByFlatIndex: collectChainSessionFiles(chain, sessionFileForIndex),
 			maxSubagentDepth: currentMaxSubagentDepth,
-			worktreeSetupHook: deps.config.worktreeSetupHook,
-			worktreeSetupHookTimeoutMs: deps.config.worktreeSetupHookTimeoutMs,
 			workflow: data.workflow,
+			config: deps.config,
+		});
+	}
+
+	if (hasTasks && params.tasks) {
+		const effectiveWorktree = resolveSuperagentWorktreeEnabled(params.worktree, workflow, deps.config);
+		if (effectiveWorktree) {
+			const worktreeTaskCwdError = buildParallelWorktreeTaskCwdError(params.tasks, params.cwd ?? ctx.cwd);
+			if (worktreeTaskCwdError) {
+				return buildParallelModeError(worktreeTaskCwdError);
+			}
+		}
+
+		const parallelTasks = params.tasks.map((task) => ({
+			agent: task.agent,
+			task: params.context === "fork" ? wrapForkTask(task.task) : task.task,
+			cwd: task.cwd,
+			...(task.model ? { model: task.model } : {}),
+			...(task.skill !== undefined ? { skill: task.skill } : {}),
+			...(task.output !== undefined ? { output: task.output } : {}),
+			...(task.reads !== undefined ? { reads: task.reads } : {}),
+			...(task.progress !== undefined ? { progress: task.progress } : {}),
+		}));
+		return executeAsyncChain(id, {
+			chain: [{ parallel: parallelTasks, worktree: effectiveWorktree }],
+			agents,
+			ctx: asyncCtx,
+			cwd: params.cwd,
+			maxOutput: params.maxOutput,
+			artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
+			artifactConfig,
+			shareEnabled,
+			sessionRoot,
+			chainSkills: [],
+			sessionFilesByFlatIndex: params.tasks.map((_, index) => sessionFileForIndex(index)),
+			maxSubagentDepth: currentMaxSubagentDepth,
+			workflow,
 			config: deps.config,
 		});
 	}
@@ -434,8 +483,6 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			skills,
 			output: effectiveOutput,
 			maxSubagentDepth,
-			worktreeSetupHook: deps.config.worktreeSetupHook,
-			worktreeSetupHookTimeoutMs: deps.config.worktreeSetupHookTimeoutMs,
 			workflow: data.workflow,
 			config: deps.config,
 		});
@@ -482,8 +529,6 @@ async function runChainPath(data: ExecutionContextData, deps: ExecutorDeps): Pro
 		chainSkills,
 		chainDir: params.chainDir,
 		maxSubagentDepth: currentMaxSubagentDepth,
-		worktreeSetupHook: deps.config.worktreeSetupHook,
-		worktreeSetupHookTimeoutMs: deps.config.worktreeSetupHookTimeoutMs,
 		config: deps.config,
 		workflow: data.workflow,
 		implementerMode: data.implementerMode,
@@ -513,8 +558,6 @@ async function runChainPath(data: ExecutionContextData, deps: ExecutorDeps): Pro
 			chainSkills: chainResult.requestedAsync.chainSkills,
 			sessionFilesByFlatIndex: collectChainSessionFiles(asyncChain, sessionFileForIndex),
 			maxSubagentDepth: currentMaxSubagentDepth,
-			worktreeSetupHook: deps.config.worktreeSetupHook,
-			worktreeSetupHookTimeoutMs: deps.config.worktreeSetupHookTimeoutMs,
 			workflow: data.workflow,
 			config: deps.config,
 		});
@@ -567,8 +610,6 @@ function buildParallelModeError(message: string): AgentToolResult<Details> {
  * @param cwd Shared working directory for the parallel tasks.
  * @param runId Unique identifier for the current run.
  * @param tasks Parallel task definitions used to label worktrees.
- * @param setupHook Optional setup hook path to execute in each worktree.
- * @param setupHookTimeoutMs Optional setup hook timeout.
  * @param workflow Execution workflow metadata for the current run.
  * @param config Extension configuration, including optional Superpowers settings.
  * @returns A created worktree setup or an error result suitable for the caller.
@@ -578,25 +619,18 @@ function createParallelWorktreeSetup(
 	cwd: string,
 	runId: string,
 	tasks: TaskParam[],
-	setupHook: ExtensionConfig["worktreeSetupHook"],
-	setupHookTimeoutMs: ExtensionConfig["worktreeSetupHookTimeoutMs"],
 	workflow: WorkflowMode,
 	config: ExtensionConfig,
 ): { setup?: WorktreeSetup; errorResult?: AgentToolResult<Details> } {
 	if (!enabled) return {};
-	const superagentsRoot =
-		workflow === "superpowers"
-			? (config.superagents ?? config.superpowers)?.worktreeRoot
-			: undefined;
 	try {
 		return {
 			setup: createWorktrees(cwd, runId, tasks.length, {
-				rootDir: superagentsRoot,
-				requireIgnoredRoot: Boolean(superagentsRoot),
-				agents: tasks.map((task) => task.agent),
-				setupHook: setupHook
-					? { hookPath: setupHook, timeoutMs: setupHookTimeoutMs }
-					: undefined,
+				...resolveSuperagentWorktreeCreateOptions({
+					workflow,
+					config,
+					agents: tasks.map((task) => task.agent),
+				}),
 			}),
 		};
 	} catch (error) {
@@ -705,7 +739,6 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		shareEnabled,
 		artifactConfig,
 		artifactsDir,
-		parallelDowngraded,
 		onUpdate,
 		sessionRoot,
 		workflow,
@@ -739,9 +772,10 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 	const maxSubagentDepths = agentConfigs.map((config) =>
 		resolveChildMaxSubagentDepth(currentMaxSubagentDepth, config.maxSubagentDepth),
 	);
+	const effectiveWorktree = resolveSuperagentWorktreeEnabled(params.worktree, workflow, deps.config);
 
 	const effectiveCwd = params.cwd ?? ctx.cwd;
-	if (params.worktree) {
+	if (effectiveWorktree) {
 		const worktreeTaskCwdError = buildParallelWorktreeTaskCwdError(tasks, effectiveCwd);
 		if (worktreeTaskCwdError) return buildParallelModeError(worktreeTaskCwdError);
 	}
@@ -819,7 +853,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 				...(progressOverrides[i] !== undefined ? { progress: progressOverrides[i] } : {}),
 			}));
 			return executeAsyncChain(id, {
-				chain: [{ parallel: parallelTasks, worktree: params.worktree }],
+				chain: [{ parallel: parallelTasks, worktree: effectiveWorktree }],
 				agents,
 				ctx: asyncCtx,
 				cwd: params.cwd,
@@ -831,8 +865,6 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 				chainSkills: [],
 				sessionFilesByFlatIndex: tasks.map((_, index) => sessionFileForIndex(index)),
 				maxSubagentDepth: currentMaxSubagentDepth,
-				worktreeSetupHook: deps.config.worktreeSetupHook,
-				worktreeSetupHookTimeoutMs: deps.config.worktreeSetupHookTimeoutMs,
 				workflow,
 				config: deps.config,
 			});
@@ -843,12 +875,10 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 	const liveResults: (SingleResult | undefined)[] = new Array(tasks.length).fill(undefined);
 	const liveProgress: (AgentProgress | undefined)[] = new Array(tasks.length).fill(undefined);
 	const { setup: worktreeSetup, errorResult } = createParallelWorktreeSetup(
-		params.worktree,
+		effectiveWorktree,
 		effectiveCwd,
 		runId,
 		tasks,
-		deps.config.worktreeSetupHook,
-		deps.config.worktreeSetupHookTimeoutMs,
 		workflow,
 		deps.config,
 	);
@@ -899,7 +929,6 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 
 		const worktreeSuffix = buildParallelWorktreeSuffix(worktreeSetup, artifactsDir, tasks);
 		const ok = results.filter((result) => result.exitCode === 0).length;
-		const downgradeNote = parallelDowngraded ? " (async not supported for parallel)" : "";
 		const aggregatedOutput = aggregateParallelOutputs(
 			results.map((result) => ({
 				agent: result.agent,
@@ -910,7 +939,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 			(i, agent) => `=== Task ${i + 1}: ${agent} ===`,
 		);
 
-		const summary = `${ok}/${results.length} succeeded${downgradeNote}`;
+		const summary = `${ok}/${results.length} succeeded`;
 		const fullContent = worktreeSuffix
 			? `${summary}\n\n${aggregatedOutput}\n\n${worktreeSuffix}`
 			: `${summary}\n\n${aggregatedOutput}`;
@@ -1027,8 +1056,6 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 				skills: skillOverride === false ? [] : skillOverride,
 				output: effectiveOutput,
 				maxSubagentDepth,
-				worktreeSetupHook: deps.config.worktreeSetupHook,
-				worktreeSetupHookTimeoutMs: deps.config.worktreeSetupHookTimeoutMs,
 				workflow,
 				config: deps.config,
 			});
@@ -1189,10 +1216,13 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 		}
 
 		const requestedAsync = normalizedParams.async ?? deps.asyncByDefault;
-		const parallelDowngraded = hasTasks && requestedAsync;
 		let effectiveAsync = false;
-		if (requestedAsync && !hasTasks) {
-			effectiveAsync = hasChain ? normalizedParams.clarify === false : normalizedParams.clarify !== true;
+		if (requestedAsync) {
+			if (hasChain) {
+				effectiveAsync = normalizedParams.clarify === false;
+			} else {
+				effectiveAsync = normalizedParams.clarify !== true;
+			}
 		}
 
 		const artifactConfig: ArtifactConfig = {
@@ -1239,7 +1269,6 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			sessionFileForIndex,
 			artifactConfig,
 			artifactsDir,
-			parallelDowngraded,
 			effectiveAsync,
 			workflow: normalizedParams.workflow ?? "default",
 			implementerMode:

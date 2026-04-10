@@ -13,6 +13,10 @@ import type { AgentConfig } from "./agents.ts";
 import { applyThinkingSuffix } from "./pi-args.ts";
 import { injectSingleOutputInstruction, resolveSingleOutputPath } from "./single-output.ts";
 import {
+	applySuperagentWorktreeDefaultsToChain,
+	resolveSuperagentWorktreeRuntimeOptions,
+} from "./superagents-config.ts";
+import {
 	buildChainInstructions,
 	isParallelStep,
 	resolveStepBehavior,
@@ -79,8 +83,6 @@ export interface AsyncChainParams {
 	chainSkills?: string[];
 	sessionFilesByFlatIndex?: (string | undefined)[];
 	maxSubagentDepth: number;
-	worktreeSetupHook?: string;
-	worktreeSetupHookTimeoutMs?: number;
 	workflow?: WorkflowMode;
 	config?: ExtensionConfig;
 }
@@ -100,8 +102,6 @@ export interface AsyncSingleParams {
 	skills?: string[];
 	output?: string | false;
 	maxSubagentDepth: number;
-	worktreeSetupHook?: string;
-	worktreeSetupHookTimeoutMs?: number;
 	workflow?: WorkflowMode;
 	config?: ExtensionConfig;
 }
@@ -200,7 +200,7 @@ export function executeAsyncChain(
 	params: AsyncChainParams,
 ): AsyncExecutionResult {
 	const {
-		chain,
+		chain: rawChain,
 		agents,
 		ctx,
 		cwd,
@@ -211,12 +211,13 @@ export function executeAsyncChain(
 		sessionRoot,
 		sessionFilesByFlatIndex,
 		maxSubagentDepth,
-		worktreeSetupHook,
-		worktreeSetupHookTimeoutMs,
 		workflow,
 		config,
 	} = params;
 	const chainSkills = params.chainSkills ?? [];
+	const effectiveWorkflow = workflow ?? "default";
+	const effectiveConfig = config ?? {};
+	const chain = applySuperagentWorktreeDefaultsToChain(rawChain, effectiveWorkflow, effectiveConfig);
 
 	// Validate all agents exist before building steps
 	for (const s of chain) {
@@ -285,13 +286,13 @@ export function executeAsyncChain(
 			task,
 			cwd: s.cwd,
 			model: resolveAsyncModel({
-				workflow,
-				config,
+				workflow: effectiveWorkflow,
+				config: effectiveConfig,
 				model: s.model ?? a.model,
 				thinking: s.model ? undefined : a.thinking,
 			}),
 			tools: resolveRoleTools({
-				workflow: workflow ?? "default",
+				workflow: effectiveWorkflow,
 				role,
 				agentTools: a.tools,
 			}),
@@ -336,6 +337,7 @@ export function executeAsyncChain(
 	});
 
 	const runnerCwd = cwd ?? ctx.cwd;
+	const worktreeOptions = resolveSuperagentWorktreeRuntimeOptions(effectiveWorkflow, effectiveConfig);
 	const pid = spawnRunner(
 		{
 			id,
@@ -351,8 +353,10 @@ export function executeAsyncChain(
 			asyncDir,
 			sessionId: ctx.currentSessionId,
 			piPackageRoot,
-			worktreeSetupHook,
-			worktreeSetupHookTimeoutMs,
+			worktreeRootDir: worktreeOptions.rootDir,
+			worktreeRequireIgnoredRoot: worktreeOptions.requireIgnoredRoot,
+			worktreeSetupHook: worktreeOptions.setupHook?.hookPath,
+			worktreeSetupHookTimeoutMs: worktreeOptions.setupHook?.timeoutMs,
 		},
 		id,
 		runnerCwd,
@@ -411,8 +415,6 @@ export function executeAsyncSingle(
 		sessionRoot,
 		sessionFile,
 		maxSubagentDepth,
-		worktreeSetupHook,
-		worktreeSetupHookTimeoutMs,
 		workflow,
 		config,
 	} = params;
@@ -479,8 +481,6 @@ export function executeAsyncSingle(
 			asyncDir,
 			sessionId: ctx.currentSessionId,
 			piPackageRoot,
-			worktreeSetupHook,
-			worktreeSetupHookTimeoutMs,
 		},
 		id,
 		runnerCwd,

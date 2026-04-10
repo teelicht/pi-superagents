@@ -34,6 +34,10 @@ import { recordRun } from "./run-history.ts";
 import { buildSuperpowersPacketPlan } from "./superpowers-packets.ts";
 import { inferExecutionRole } from "./superpowers-policy.ts";
 import {
+	applySuperagentWorktreeDefaultsToChain,
+	resolveSuperagentWorktreeCreateOptions,
+} from "./superagents-config.ts";
+import {
 	cleanupWorktrees,
 	createWorktrees,
 	diffWorktrees,
@@ -303,8 +307,6 @@ export interface ChainExecutionParams {
 	chainSkills?: string[];
 	chainDir?: string;
 	maxSubagentDepth: number;
-	worktreeSetupHook?: string;
-	worktreeSetupHookTimeoutMs?: number;
 	config: ExtensionConfig;
 	workflow: WorkflowMode;
 	implementerMode: SuperpowersImplementerMode;
@@ -326,7 +328,7 @@ export interface ChainExecutionResult {
  */
 export async function executeChain(params: ChainExecutionParams): Promise<ChainExecutionResult> {
 	const {
-		chain: chainSteps,
+		chain: rawChainSteps,
 		agents,
 		ctx,
 		signal,
@@ -346,6 +348,7 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 		workflow,
 		implementerMode,
 	} = params;
+	const chainSteps = applySuperagentWorktreeDefaultsToChain(rawChainSteps, workflow, config);
 	const chainSkills = chainSkillsParam ?? [];
 
 	const allProgress: AgentProgress[] = [];
@@ -518,11 +521,13 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 					);
 				}
 				try {
-					worktreeSetup = createWorktrees(parallelCwd, `${runId}-s${stepIndex}`, step.parallel.length, {
+					const worktreeOptions = resolveSuperagentWorktreeCreateOptions({
+						workflow,
+						config,
 						agents: step.parallel.map((task) => task.agent),
-						setupHook: params.worktreeSetupHook
-							? { hookPath: params.worktreeSetupHook, timeoutMs: params.worktreeSetupHookTimeoutMs }
-							: undefined,
+					});
+					worktreeSetup = createWorktrees(parallelCwd, `${runId}-s${stepIndex}`, step.parallel.length, {
+						...worktreeOptions,
 					});
 				} catch (error) {
 					const message = error instanceof Error ? error.message : String(error);

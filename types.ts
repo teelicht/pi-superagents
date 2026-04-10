@@ -278,12 +278,13 @@ export interface RunSyncOptions {
 }
 
 export interface SuperpowersSettings {
-	commandName?: string;
 	/** Model configuration for each tier. Supports built-in (cheap, balanced, max) and custom tiers. */
 	modelTiers?: Record<string, ModelTierSetting>;
 	roleSkillOverlays?: Partial<Record<ExecutionRole, string[]>>;
+	worktreeEnabled?: boolean;
 	worktreeRoot?: string;
-	worktreeBaselineCommand?: string;
+	worktreeSetupHook?: string;
+	worktreeSetupHookTimeoutMs?: number;
 	defaultImplementerMode?: SuperpowersImplementerMode;
 }
 
@@ -291,8 +292,6 @@ export interface ExtensionConfig {
 	asyncByDefault?: boolean;
 	defaultSessionDir?: string;
 	maxSubagentDepth?: number;
-	worktreeSetupHook?: string;
-	worktreeSetupHookTimeoutMs?: number;
 	superagents?: SuperpowersSettings;
 	superpowers?: SuperpowersSettings;
 }

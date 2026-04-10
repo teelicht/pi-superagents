@@ -9,7 +9,7 @@
  * Toggle: async parameter (default: false, configurable via config.json)
  *
  * Config file: ~/.pi/agent/extensions/subagent/config.json
- *   { "asyncByDefault": true, "maxSubagentDepth": 1, "worktreeSetupHook": "./scripts/setup-worktree.mjs" }
+ *   { "asyncByDefault": true, "maxSubagentDepth": 1, "superagents": { "worktreeEnabled": true } }
  */
 
 import * as fs from "node:fs";
@@ -25,6 +25,7 @@ import { cleanupOldChainDirs } from "./settings.ts";
 import { renderWidget, renderSubagentResult } from "./render.ts";
 import { SubagentParams, StatusParams } from "./schemas.ts";
 import { findByPrefix, readStatus } from "./utils.ts";
+import { getSuperagentSettings } from "./superagents-config.ts";
 import { createSubagentExecutor } from "./subagent-executor.ts";
 import { createAsyncJobTracker } from "./async-job-tracker.ts";
 import { createResultWatcher } from "./result-watcher.ts";
@@ -69,19 +70,6 @@ function getSubagentSessionRoot(parentSessionFile: string | null): string {
 function readJsonConfig(filePath: string): ExtensionConfig | undefined {
 	if (!fs.existsSync(filePath)) return undefined;
 	return JSON.parse(fs.readFileSync(filePath, "utf-8")) as ExtensionConfig;
-}
-
-/**
- * Resolve the canonical Superagents settings object from the config.
- *
- * Prefers the new `superagents` root and falls back to legacy `superpowers`
- * for backward compatibility with existing user configs.
- *
- * @param config Extension config being normalized.
- * @returns Canonical Superagents settings, if present.
- */
-function getSuperagentSettings(config: ExtensionConfig): ExtensionConfig["superagents"] | undefined {
-	return config.superagents ?? config.superpowers;
 }
 
 /**

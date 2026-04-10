@@ -14,6 +14,7 @@ import type {
 	SuperpowersImplementerMode,
 	WorkflowMode,
 } from "./types.ts";
+import { getSuperagentSettings } from "./superagents-config.ts";
 
 const ROOT_ONLY_WORKFLOW_SKILLS = new Set([
 	"using-superpowers",
@@ -39,19 +40,6 @@ const NON_DELEGATING_ROLE_TOOLS: Partial<Record<ExecutionRole, string[]>> = {
 };
 
 const DELEGATION_TOOLS = new Set(["subagent", "subagent_status"]);
-
-/**
- * Resolve the canonical Superagents settings object from config.
- *
- * Prefers the renamed `superagents` root while still accepting the legacy
- * `superpowers` root so older config files remain valid.
- *
- * @param config Extension config for the current run.
- * @returns Canonical settings object, if configured.
- */
-function getSuperagentSettings(config: ExtensionConfig): ExtensionConfig["superagents"] | undefined {
-	return config.superagents ?? config.superpowers;
-}
 
 export interface ResolvedRoleModel {
 	model: string;
