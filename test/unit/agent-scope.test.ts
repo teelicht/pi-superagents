@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { resolveExecutionAgentScope } from "../../agent-scope.ts";
+import { resolveExecutionAgentScope } from "../../src/agents/agent-scope.ts";
 
 describe("resolveExecutionAgentScope", () => {
 	it("defaults to both when scope is omitted", () => {

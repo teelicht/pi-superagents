@@ -6,7 +6,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
-import type { AgentConfig } from "./agents.ts";
+import type { AgentConfig } from "./src/agents/agents.ts";
 import { ChainClarifyComponent, type ChainClarifyResult, type BehaviorOverride, type ModelInfo } from "./chain-clarify.ts";
 import {
 	resolveChainTemplates,
@@ -26,10 +26,10 @@ import {
 	type ResolvedStepBehavior,
 	type ResolvedTemplates,
 } from "./settings.ts";
-import { discoverAvailableSkills, normalizeSkillInput } from "./skills.ts";
+import { discoverAvailableSkills, normalizeSkillInput } from "./src/shared/skills.ts";
 import { runSync } from "./execution.ts";
-import { buildChainSummary } from "./formatters.ts";
-import { getSingleResultOutput, mapConcurrent } from "./utils.ts";
+import { buildChainSummary } from "./src/shared/formatters.ts";
+import { getSingleResultOutput, mapConcurrent } from "./src/shared/utils.ts";
 import { recordRun } from "./run-history.ts";
 import { buildSuperpowersPacketPlan } from "./superpowers-packets.ts";
 import { inferExecutionRole } from "./superpowers-policy.ts";
@@ -57,7 +57,7 @@ import {
 	type WorkflowMode,
 	MAX_CONCURRENCY,
 	resolveChildMaxSubagentDepth,
-} from "./types.ts";
+} from "./src/shared/types.ts";
 
 /** Resolve a model name to its full provider/model format */
 function resolveModelFullId(modelName: string | undefined, availableModels: ModelInfo[]): string | undefined {

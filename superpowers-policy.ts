@@ -13,7 +13,7 @@ import type {
 	ModelTierConfig,
 	SuperpowersImplementerMode,
 	WorkflowMode,
-} from "./types.ts";
+} from "./src/shared/types.ts";
 import { getSuperagentSettings } from "./superagents-config.ts";
 
 const ROOT_ONLY_WORKFLOW_SKILLS = new Set([

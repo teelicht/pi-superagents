@@ -12,8 +12,8 @@ import {
 } from "./agents.ts";
 import { serializeAgent } from "./agent-serializer.ts";
 import { serializeChain } from "./chain-serializer.ts";
-import { discoverAvailableSkills } from "./skills.ts";
-import type { Details } from "./types.ts";
+import { discoverAvailableSkills } from "../shared/skills.ts";
+import type { Details } from "../shared/types.ts";
 
 type ManagementAction = "list" | "get" | "create" | "update" | "delete";
 type ManagementScope = "user" | "project";
