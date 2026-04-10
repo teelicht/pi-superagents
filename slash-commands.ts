@@ -317,29 +317,42 @@ async function openAgentManager(
 interface ParsedStep { name: string; config: InlineConfig; task?: string }
 
 /**
- * Parse `/superpowers` arguments into an implementer mode plus the remaining task text.
+ * Parse `/superpowers` arguments into execution flags, implementer mode, and task text.
  *
  * Defaults to `tdd` mode when no explicit prefix is provided. Returns `null`
  * when the user provided only a mode token without a task body.
  */
-function parseSuperpowersArgs(rawArgs: string): { implementerMode: "tdd" | "direct"; task: string } | null {
-	const trimmed = rawArgs.trim();
+function parseSuperpowersArgs(
+	rawArgs: string,
+): { implementerMode: "tdd" | "direct"; task: string; bg: boolean; fork: boolean } | null {
+	const { args: cleanedArgs, bg, fork } = extractExecutionFlags(rawArgs);
+	const trimmed = cleanedArgs.trim();
 	if (!trimmed) return null;
 	if (trimmed === "direct" || trimmed === "tdd") return null;
 	if (trimmed.startsWith("direct ")) {
-		return { implementerMode: "direct", task: trimmed.slice("direct ".length).trim() };
+		return {
+			implementerMode: "direct",
+			task: trimmed.slice("direct ".length).trim(),
+			bg,
+			fork,
+		};
 	}
 	if (trimmed.startsWith("tdd ")) {
-		return { implementerMode: "tdd", task: trimmed.slice("tdd ".length).trim() };
+		return {
+			implementerMode: "tdd",
+			task: trimmed.slice("tdd ".length).trim(),
+			bg,
+			fork,
+		};
 	}
-	return { implementerMode: "tdd", task: trimmed };
+	return { implementerMode: "tdd", task: trimmed, bg, fork };
 }
 
 /**
  * Build the root-session prompt injected by `/superpowers`.
  *
  * Inputs/outputs:
- * - accepts the parsed implementer mode and the user task text
+ * - accepts the parsed implementer mode, execution flags, and the user task text
  * - returns a concrete user-message prompt for the root agent
  *
  * Invariants:
@@ -350,11 +363,29 @@ function parseSuperpowersArgs(rawArgs: string): { implementerMode: "tdd" | "dire
  * Failure modes:
  * - none; callers validate the task text before invoking this helper
  */
-function buildSuperpowersUserPrompt(input: { implementerMode: "tdd" | "direct"; task: string }): string {
+function buildSuperpowersUserPrompt(input: {
+	implementerMode: "tdd" | "direct";
+	task: string;
+	bg: boolean;
+	fork: boolean;
+}): string {
+	const subagentArgs = [
+		'workflow: "superpowers"',
+		`implementerMode: "${input.implementerMode}"`,
+		...(input.bg ? ["async: true", "clarify: false"] : []),
+		...(input.fork ? ['context: "fork"'] : []),
+	].join(", ");
+
 	return [
-		`Use the subagent tool with workflow: "superpowers" and implementerMode: "${input.implementerMode}" for this task: ${input.task}`,
+		`Use the subagent tool with ${subagentArgs} for this task: ${input.task}`,
 		"The root session must own the workflow. Start with the `sp-recon` agent for bounded reconnaissance, then consume its findings in the root session and continue the root-owned Superpowers loop.",
 		"Do not stop after the recon subagent finishes. Continue with the next bounded step yourself, or explain clearly what blocks progress.",
+		...(input.bg
+			? ["Honor the requested background mode for subagent launches unless a concrete blocker makes that impossible."]
+			: []),
+		...(input.fork
+			? ['Honor the requested forked execution context by passing `context: "fork"` to subagent runs unless a concrete blocker makes that impossible.']
+			: []),
 	].join("\n\n");
 }
 
@@ -474,11 +505,11 @@ export function registerSlashCommands(
 	});
 
 	pi.registerCommand("superpowers", {
-		description: "Run the Superpowers workflow: /superpowers [tdd|direct] <task>",
+		description: "Run the Superpowers workflow: /superpowers [tdd|direct] <task> [--bg] [--fork]",
 		handler: async (rawArgs, ctx) => {
 			const parsed = parseSuperpowersArgs(rawArgs);
 			if (!parsed?.task) {
-				ctx.ui.notify("Usage: /superpowers [tdd|direct] <task>", "error");
+				ctx.ui.notify("Usage: /superpowers [tdd|direct] <task> [--bg] [--fork]", "error");
 				return;
 			}
 

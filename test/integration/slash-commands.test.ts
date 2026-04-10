@@ -249,6 +249,57 @@ describe("slash command custom message delivery", { skip: !available ? "slash-co
 		assert.match(String(userMessages[0]!.content), /Do not stop after the recon subagent finishes/i);
 	});
 
+	it("/superpowers carries --bg and --fork through the root prompt contract", async () => {
+		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
+		const commands = new Map<string, { handler(args: string, ctx: unknown): Promise<void> }>();
+		const pi = {
+			events: createEventBus(),
+			registerCommand(name: string, spec: { handler(args: string, ctx: unknown): Promise<void> }) {
+				commands.set(name, spec);
+			},
+			registerShortcut() {},
+			sendMessage() {},
+			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
+				userMessages.push({ content, options });
+			},
+		};
+
+		registerSlashCommands!(pi, createState(process.cwd()));
+		await commands.get("superpowers")!.handler("direct harden auth flow --fork --bg", createCommandContext());
+
+		assert.equal(userMessages.length, 1);
+		const prompt = String(userMessages[0]!.content);
+		assert.match(prompt, /workflow:\s*"superpowers"/);
+		assert.match(prompt, /implementerMode:\s*"direct"/);
+		assert.match(prompt, /async:\s*true/);
+		assert.match(prompt, /clarify:\s*false/);
+		assert.match(prompt, /context:\s*"fork"/);
+	});
+
+	it("/superpowers accepts flags in either order", async () => {
+		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
+		const commands = new Map<string, { handler(args: string, ctx: unknown): Promise<void> }>();
+		const pi = {
+			events: createEventBus(),
+			registerCommand(name: string, spec: { handler(args: string, ctx: unknown): Promise<void> }) {
+				commands.set(name, spec);
+			},
+			registerShortcut() {},
+			sendMessage() {},
+			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
+				userMessages.push({ content, options });
+			},
+		};
+
+		registerSlashCommands!(pi, createState(process.cwd()));
+		await commands.get("superpowers")!.handler("tdd stabilize cache invalidation --bg --fork", createCommandContext());
+
+		assert.equal(userMessages.length, 1);
+		const prompt = String(userMessages[0]!.content);
+		assert.match(prompt, /async:\s*true/);
+		assert.match(prompt, /context:\s*"fork"/);
+	});
+
 	it("/superpowers queues a follow-up root prompt when the agent is busy", async () => {
 		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
 		const commands = new Map<string, { handler(args: string, ctx: unknown): Promise<void> }>();

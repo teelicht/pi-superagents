@@ -144,6 +144,8 @@ Examples:
 /superpowers fix the auth regression
 /superpowers tdd implement the cache invalidation task
 /superpowers direct update the Expo config
+/superpowers direct update the Expo config --bg
+/superpowers tdd review the release branch --fork
 ```
 
 Behavior:
@@ -205,18 +207,20 @@ Add `--bg` at the end of any slash command to run in the background:
 /run scout "full security audit of the codebase" --bg
 /chain scout "analyze auth system" -> planner "design refactor plan" -> worker --bg
 /parallel scout "scan frontend" -> scout "scan backend" -> scout "scan infra" --bg
+/superpowers direct update the Expo config --bg
 ```
 
 Without `--bg`, the run is foreground: the tool call stays active and streams progress until completion. With `--bg`, the run is launched asynchronously: control returns immediately, and completion arrives later via notification. In both cases subagents run as separate processes. Check status with the `subagent_status` tool, or open the `/subagents-status` slash command for a read-only overlay listing active runs and recent completions.
 
 ### Forked Context Execution
 
-Add `--fork` at the end of `/run`, `/chain`, or `/parallel` to run with `context: "fork"`:
+Add `--fork` at the end of `/run`, `/chain`, `/parallel`, or `/superpowers` to run with `context: "fork"`:
 
 ```
 /run reviewer "review this diff" --fork
 /chain scout "analyze this branch" -> planner "plan next steps" --fork
 /parallel scout "audit frontend" -> reviewer "audit backend" --fork
+/superpowers tdd harden the release workflow --fork
 ```
 
 You can combine `--fork` and `--bg` in any order:
@@ -224,6 +228,7 @@ You can combine `--fork` and `--bg` in any order:
 ```
 /run reviewer "review this diff" --fork --bg
 /run reviewer "review this diff" --bg --fork
+/superpowers direct stabilize auth rollout --fork --bg
 ```
 
 ## Agents Manager
