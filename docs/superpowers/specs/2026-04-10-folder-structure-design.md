@@ -134,14 +134,6 @@ The dependency map suggests a few targeted simplifications are worth doing along
 
 That is not inherently wrong, but after the move it should live in `src/agents/` and remain the public agent-domain entry module. The simplification is architectural rather than behavioral: consumers will import agent concerns from one place instead of the repository root.
 
-If a separate follow-up refactor is approved, the clean split would be:
-
-- `agent-types.ts`
-- `agent-discovery.ts`
-- `agents.ts` as a thin facade
-
-That split is optional for this refactor. The folder move alone already makes the dependency graph more legible.
-
 ### 2. Tighten the UI/runtime boundary
 
 Three files are especially broad today:
