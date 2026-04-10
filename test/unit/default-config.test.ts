@@ -3,7 +3,7 @@
  *
  * Responsibilities:
  * - ensure installers have a concrete starter config to copy
- * - verify every supported starter option is exposed and documented inline
+ * - verify every supported starter option is exposed in the shipped template
  * - keep starter model tier defaults documented in machine-readable form
  */
 
@@ -21,12 +21,16 @@ const TOP_LEVEL_OPTION_KEYS = [
 
 const SUPERAGENTS_OPTION_KEYS = [
 	"defaultImplementerMode",
-	"worktreeEnabled",
-	"worktreeRoot",
-	"worktreeSetupHook",
-	"worktreeSetupHookTimeoutMs",
+	"worktrees",
 	"modelTiers",
 	"roleSkillOverlays",
+] as const;
+
+const WORKTREE_OPTION_KEYS = [
+	"enabled",
+	"root",
+	"setupHook",
+	"setupHookTimeoutMs",
 ] as const;
 
 const ROLE_KEYS = [
@@ -49,73 +53,47 @@ function readDefaultConfig(): Record<string, unknown> {
 	return JSON.parse(fs.readFileSync(filePath, "utf-8")) as Record<string, unknown>;
 }
 
-/**
- * Assert that each option key is present and has a non-empty sibling description.
- *
- * @param config Object containing supported option keys.
- * @param optionKeys Supported keys that must be documented inline.
- */
-function assertDescriptionsPresent(
-	config: Record<string, unknown>,
-	optionKeys: readonly string[],
-): void {
-	for (const key of optionKeys) {
-		assert.ok(key in config, `Expected option '${key}' to be present in default-config.json`);
-		const descriptionKey = `_${key}_description`;
-		assert.equal(
-			typeof config[descriptionKey],
-			"string",
-			`Expected '${descriptionKey}' to document '${key}'`,
-		);
-		assert.ok(
-			String(config[descriptionKey]).trim().length > 0,
-			`Expected '${descriptionKey}' to be non-empty`,
-		);
-	}
-}
-
 describe("default-config.json", () => {
-	it("ships all supported user config options with inline descriptions", () => {
+	it("ships all supported user config options", () => {
 		const config = readDefaultConfig();
 		const superagents = config.superagents as {
 			[key: string]: unknown;
 			modelTiers?: Record<string, unknown>;
 			roleSkillOverlays?: Record<string, unknown>;
-			roleModelTiers?: unknown;
-			commandName?: unknown;
-			worktreeBaselineCommand?: unknown;
+			worktrees?: Record<string, unknown>;
 		};
+		const worktrees = superagents.worktrees as Record<string, unknown>;
 		const roleSkillOverlays = superagents.roleSkillOverlays as Record<string, unknown>;
 		const modelTiers = superagents.modelTiers as Record<string, unknown>;
 		const cheapTier = modelTiers.cheap as Record<string, unknown>;
 		const balancedTier = modelTiers.balanced as Record<string, unknown>;
 		const maxTier = modelTiers.max as Record<string, unknown>;
+		const metadataKeys = Object.keys(config).filter((key) => key.startsWith("_"));
 
-		assertDescriptionsPresent(config, TOP_LEVEL_OPTION_KEYS);
-		assertDescriptionsPresent(superagents, SUPERAGENTS_OPTION_KEYS);
-		assertDescriptionsPresent(roleSkillOverlays, ROLE_KEYS);
+		for (const key of TOP_LEVEL_OPTION_KEYS) {
+			assert.ok(key in config, `Expected option '${key}' to be present in default-config.json`);
+		}
+		for (const key of SUPERAGENTS_OPTION_KEYS) {
+			assert.ok(key in superagents, `Expected superagents option '${key}' to be present`);
+		}
+		for (const key of WORKTREE_OPTION_KEYS) {
+			assert.ok(key in worktrees, `Expected superagents.worktrees option '${key}' to be present`);
+		}
+		for (const key of ROLE_KEYS) {
+			assert.ok(key in roleSkillOverlays, `Expected role overlay '${key}' to be present`);
+		}
 
-		assert.equal(superagents.commandName, undefined);
-		assert.equal(superagents.worktreeBaselineCommand, undefined);
-		assert.equal(config.superpowers, undefined);
 		assert.equal(superagents.defaultImplementerMode, "tdd");
-		assert.equal(superagents.worktreeEnabled, true);
-		assert.equal(superagents.worktreeRoot, null);
-		assert.equal(superagents.worktreeSetupHook, null);
-		assert.equal(superagents.worktreeSetupHookTimeoutMs, 30000);
-
-		assert.equal(typeof modelTiers._cheap_description, "string");
-		assert.equal(typeof modelTiers._balanced_description, "string");
-		assert.equal(typeof modelTiers._max_description, "string");
-		assert.equal(typeof cheapTier._description, "string");
-		assert.equal(typeof balancedTier._description, "string");
-		assert.equal(typeof maxTier._description, "string");
+		assert.equal(worktrees.enabled, true);
+		assert.equal(worktrees.root, null);
+		assert.equal(worktrees.setupHook, null);
+		assert.equal(worktrees.setupHookTimeoutMs, 30000);
 		assert.equal(typeof cheapTier.model, "string");
 		assert.equal(typeof balancedTier.model, "string");
 		assert.equal(typeof maxTier.model, "string");
 		assert.ok(String(cheapTier.model).length > 0);
 		assert.ok(String(balancedTier.model).length > 0);
 		assert.ok(String(maxTier.model).length > 0);
-		assert.equal(superagents.roleModelTiers, undefined);
+		assert.deepEqual(metadataKeys, []);
 	});
 });

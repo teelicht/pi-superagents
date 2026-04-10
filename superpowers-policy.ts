@@ -65,7 +65,7 @@ function normalizeConfiguredTier(tier: unknown): string | undefined {
 /**
  * Normalize a tier mapping entry into the runtime model-plus-thinking shape.
  *
- * @param entry Tier config entry from `superpowers.modelTiers`.
+ * @param entry Tier config entry from `superagents.modelTiers`.
  * @returns Normalized tier settings or `undefined` when the entry is unusable.
  */
 function normalizeTierSetting(entry: unknown): ResolvedRoleModel | undefined {

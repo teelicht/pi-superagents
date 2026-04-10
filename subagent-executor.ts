@@ -1273,7 +1273,7 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			workflow: normalizedParams.workflow ?? "default",
 			implementerMode:
 				normalizedParams.implementerMode
-				?? (deps.config.superagents ?? deps.config.superpowers)?.defaultImplementerMode
+				?? deps.config.superagents?.defaultImplementerMode
 				?? "tdd",
 		};
 

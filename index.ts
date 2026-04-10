@@ -9,7 +9,7 @@
  * Toggle: async parameter (default: false, configurable via config.json)
  *
  * Config file: ~/.pi/agent/extensions/subagent/config.json
- *   { "asyncByDefault": true, "maxSubagentDepth": 1, "superagents": { "worktreeEnabled": true } }
+ *   { "asyncByDefault": true, "maxSubagentDepth": 1, "superagents": { "worktrees": { "enabled": true } } }
  */
 
 import * as fs from "node:fs";
@@ -73,7 +73,7 @@ function readJsonConfig(filePath: string): ExtensionConfig | undefined {
 }
 
 /**
- * Merge user config over bundled defaults while keeping nested Superpowers maps.
+ * Merge user config over bundled defaults while keeping nested Superagents maps.
  *
  * @param defaults Bundled config defaults shipped with the extension.
  * @param overrides User-authored config loaded from `config.json`.
@@ -86,6 +86,10 @@ function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfig): Ext
 		? {
 			...(defaultSuperagents ?? {}),
 			...(overrideSuperagents ?? {}),
+			worktrees: {
+				...(defaultSuperagents?.worktrees ?? {}),
+				...(overrideSuperagents?.worktrees ?? {}),
+			},
 			modelTiers: {
 				...(defaultSuperagents?.modelTiers ?? {}),
 				...(overrideSuperagents?.modelTiers ?? {}),
@@ -100,7 +104,6 @@ function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfig): Ext
 	return {
 		...defaults,
 		...overrides,
-		superpowers: undefined,
 		...(mergedSuperagents ? { superagents: mergedSuperagents } : {}),
 	};
 }

@@ -541,10 +541,12 @@ describe("superpowers packets in real execution paths", {
 			];
 			const executor = makeAsyncExecutor(agents, {
 				superagents: {
-					worktreeEnabled: true,
-					worktreeRoot: ".worktrees",
-					worktreeSetupHook: "./scripts/setup-worktree.mjs",
-					worktreeSetupHookTimeoutMs: 45000,
+					worktrees: {
+						enabled: true,
+						root: ".worktrees",
+						setupHook: "./scripts/setup-worktree.mjs",
+						setupHookTimeoutMs: 45000,
+					},
 				},
 			});
 

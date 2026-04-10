@@ -18,23 +18,23 @@ import {
 
 describe("superagents config helpers", () => {
 	/**
-	 * Verifies the canonical settings accessor accepts both supported config roots.
+	 * Verifies the canonical settings accessor returns the configured Superagents settings.
 	 *
 	 * @returns Nothing; asserts canonical lookup behavior.
 	 */
-	it("prefers superagents and falls back to legacy superpowers", () => {
+	it("returns only the configured superagents settings", () => {
 		assert.deepEqual(
 			getSuperagentSettings({
 				superagents: { defaultImplementerMode: "direct" },
-				superpowers: { defaultImplementerMode: "tdd" },
 			}),
 			{ defaultImplementerMode: "direct" },
 		);
-		assert.deepEqual(
+		assert.equal(getSuperagentSettings({}), undefined);
+		assert.equal(
 			getSuperagentSettings({
 				superpowers: { defaultImplementerMode: "tdd" },
-			}),
-			{ defaultImplementerMode: "tdd" },
+			} as unknown as Parameters<typeof getSuperagentSettings>[0]),
+			undefined,
 		);
 	});
 
@@ -47,7 +47,7 @@ describe("superagents config helpers", () => {
 		assert.equal(resolveSuperagentWorktreeEnabled(undefined, "superpowers", {}), true);
 		assert.equal(
 			resolveSuperagentWorktreeEnabled(undefined, "superpowers", {
-				superagents: { worktreeEnabled: false },
+				superagents: { worktrees: { enabled: false } },
 			}),
 			false,
 		);
@@ -87,13 +87,15 @@ describe("superagents config helpers", () => {
 		assert.deepEqual(
 			resolveSuperagentWorktreeCreateOptions({
 				workflow: "superpowers",
-				config: {
-					superagents: {
-						worktreeRoot: ".worktrees",
-						worktreeSetupHook: "./scripts/setup-worktree.mjs",
-						worktreeSetupHookTimeoutMs: 45000,
+					config: {
+						superagents: {
+							worktrees: {
+								root: ".worktrees",
+								setupHook: "./scripts/setup-worktree.mjs",
+								setupHookTimeoutMs: 45000,
+							},
+						},
 					},
-				},
 				agents: ["sp-implementer", "sp-code-review"],
 			}),
 			{
@@ -110,13 +112,15 @@ describe("superagents config helpers", () => {
 		assert.deepEqual(
 			resolveSuperagentWorktreeCreateOptions({
 				workflow: "default",
-				config: {
-					superagents: {
-						worktreeRoot: ".worktrees",
-						worktreeSetupHook: "./scripts/setup-worktree.mjs",
-						worktreeSetupHookTimeoutMs: 45000,
+					config: {
+						superagents: {
+							worktrees: {
+								root: ".worktrees",
+								setupHook: "./scripts/setup-worktree.mjs",
+								setupHookTimeoutMs: 45000,
+							},
+						},
 					},
-				},
 				agents: ["worker"],
 			}),
 			{
