@@ -12,39 +12,80 @@ import * as assert from "node:assert";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { discoverAgents } from "../../src/agents/agents.js";
-import { resolveSkillPath, clearSkillCache, discoverAvailableSkills } from "../../src/shared/skills.js";
+type AgentScope = "project" | "user" | "both";
 
-const tmpDir = path.join(os.tmpdir(), "pi-path-resolution-test");
-const cwdDir = path.join(tmpDir, "cwd");
+interface DiscoveredAgent {
+	name: string;
+	filePath?: string;
+}
 
-const realHomeDir = os.homedir();
-const realUserAgentsDir = path.join(realHomeDir, ".agents");
-const userAgentsDirBackup = path.join(tmpDir, ".agents_backup");
+interface AgentDiscoveryResult {
+	agents: DiscoveredAgent[];
+}
 
-before(() => {
+interface ResolvedSkill {
+	path: string;
+}
+
+let discoverAgents:
+	| ((cwd: string, scope: AgentScope) => AgentDiscoveryResult)
+	| undefined;
+let resolveSkillPath:
+	| ((skillName: string, cwd: string) => ResolvedSkill | null | undefined)
+	| undefined;
+let clearSkillCache: (() => void) | undefined;
+let discoverAvailableSkills:
+	| ((cwd: string) => Array<{ name: string; path: string }>)
+	| undefined;
+let moduleLoadError: unknown;
+
+const originalHome = process.env.HOME;
+const originalUserProfile = process.env.USERPROFILE;
+const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pi-path-resolution-test-"));
+const cwdDir = path.join(tempRoot, "cwd");
+const fakeHomeDir = path.join(tempRoot, "home");
+const fakeUserAgentsDir = path.join(fakeHomeDir, ".agents");
+
+/**
+ * Throw the deferred module-load error if the refactored modules are still absent.
+ *
+ * @throws The original dynamic import error.
+ */
+function assertModulesLoaded(): void {
+	if (moduleLoadError) throw moduleLoadError;
+	if (!discoverAgents || !resolveSkillPath || !clearSkillCache || !discoverAvailableSkills) {
+		throw new Error("Path resolution test modules were not initialized.");
+	}
+}
+
+before(async () => {
 	fs.mkdirSync(cwdDir, { recursive: true });
+	fs.mkdirSync(fakeHomeDir, { recursive: true });
+	process.env.HOME = fakeHomeDir;
+	process.env.USERPROFILE = fakeHomeDir;
 
-	// Backup existing ~/.agents if any.
-	if (fs.existsSync(realUserAgentsDir)) {
-		fs.cpSync(realUserAgentsDir, userAgentsDirBackup, { recursive: true });
+	try {
+		({ discoverAgents } = await import("../../src/agents/agents.js"));
+		({ resolveSkillPath, clearSkillCache, discoverAvailableSkills } = await import("../../src/shared/skills.js"));
+	} catch (error) {
+		moduleLoadError = error;
 	}
 });
 
 after(() => {
-	// Restore ~/.agents.
-	if (fs.existsSync(userAgentsDirBackup)) {
-		fs.rmSync(realUserAgentsDir, { recursive: true, force: true });
-		fs.cpSync(userAgentsDirBackup, realUserAgentsDir, { recursive: true });
-	} else {
-		// If it didn't exist before, just remove what we created.
-		fs.rmSync(realUserAgentsDir, { recursive: true, force: true });
-	}
-	fs.rmSync(tmpDir, { recursive: true, force: true });
+	if (originalHome === undefined) delete process.env.HOME;
+	else process.env.HOME = originalHome;
+
+	if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+	else process.env.USERPROFILE = originalUserProfile;
+
+	fs.rmSync(tempRoot, { recursive: true, force: true });
 });
 
 describe("Path resolution for .agents and ~/.agents", () => {
 	test("should resolve skills in .agents/skills", () => {
+		assertModulesLoaded();
+
 		const skillsDir = path.join(cwdDir, ".agents", "skills");
 		fs.mkdirSync(skillsDir, { recursive: true });
 		fs.writeFileSync(path.join(skillsDir, "test-skill-1.md"), "---\nname: test-skill-1\ndescription: test desc\n---\nSkill content");
@@ -60,7 +101,9 @@ describe("Path resolution for .agents and ~/.agents", () => {
 	});
 
 	test("should resolve skills in ~/.agents/skills", () => {
-		const userSkillsDir = path.join(realHomeDir, ".agents", "skills");
+		assertModulesLoaded();
+
+		const userSkillsDir = path.join(fakeUserAgentsDir, "skills");
 		fs.mkdirSync(userSkillsDir, { recursive: true });
 		fs.writeFileSync(path.join(userSkillsDir, "test-skill-2.md"), "---\nname: test-skill-2\ndescription: test desc\n---\nSkill content");
 
@@ -75,6 +118,8 @@ describe("Path resolution for .agents and ~/.agents", () => {
 	});
 
 	test("should resolve agents in .agents", () => {
+		assertModulesLoaded();
+
 		const agentsDir = path.join(cwdDir, ".agents");
 		fs.mkdirSync(agentsDir, { recursive: true });
 		fs.writeFileSync(
@@ -89,7 +134,9 @@ describe("Path resolution for .agents and ~/.agents", () => {
 	});
 
 	test("should resolve agents in ~/.agents", () => {
-		const userAgentsDir = path.join(realHomeDir, ".agents");
+		assertModulesLoaded();
+
+		const userAgentsDir = fakeUserAgentsDir;
 		fs.mkdirSync(userAgentsDir, { recursive: true });
 		fs.writeFileSync(
 			path.join(userAgentsDir, "test-agent-2.md"),
