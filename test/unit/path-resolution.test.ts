@@ -65,8 +65,8 @@ before(async () => {
 	process.env.USERPROFILE = fakeHomeDir;
 
 	try {
-		({ discoverAgents } = await import("../../src/agents/agents.js"));
-		({ resolveSkillPath, clearSkillCache, discoverAvailableSkills } = await import("../../src/shared/skills.js"));
+		({ discoverAgents } = await import("../../src/agents/agents.ts"));
+		({ resolveSkillPath, clearSkillCache, discoverAvailableSkills } = await import("../../src/shared/skills.ts"));
 	} catch (error) {
 		moduleLoadError = error;
 	}
