@@ -78,6 +78,7 @@ describe("installLocalExtensionFiles", () => {
 			"src/extension/notify.ts",
 		]);
 		assert.equal(fs.readFileSync(path.join(targetRoot, "src", "extension", "index.ts"), "utf-8"), "export default {};\n");
+		assert.equal(fs.readFileSync(path.join(targetRoot, "src", "extension", "notify.ts"), "utf-8"), "export default {};\n");
 		assert.equal(fs.readFileSync(path.join(targetRoot, "agents", "worker.md"), "utf-8"), "# Worker\n");
 	});
 
