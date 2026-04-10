@@ -8,7 +8,6 @@
  */
 
 import type {
-	ConfiguredModelTier,
 	ExecutionRole,
 	ExtensionConfig,
 	ModelTier,
@@ -72,13 +71,12 @@ export interface ResolvedRoleModel {
 }
 
 /**
- * Normalize configured tier names, preserving support for legacy `strong`.
+ * Normalize configured tier names to the supported Superpowers tier set.
  *
  * @param tier Raw tier name read from config.
  * @returns Supported tier name or `undefined` when the value is invalid.
  */
 function normalizeConfiguredTier(tier: unknown): ModelTier | undefined {
-	if (tier === "strong") return "balanced";
 	return tier === "cheap" || tier === "balanced" || tier === "max" ? tier : undefined;
 }
 
@@ -103,9 +101,6 @@ function normalizeTierSetting(entry: unknown): ResolvedRoleModel | undefined {
 /**
  * Resolve the configured model entry for a normalized tier name.
  *
- * Falls back from `balanced` to the legacy `strong` key so older config files
- * continue to work after the tier rename.
- *
  * @param settings Full Superpowers config object.
  * @param tier Normalized tier name.
  * @returns Resolved model settings for the tier, if configured.
@@ -114,11 +109,7 @@ function resolveTierModelSetting(
 	settings: ExtensionConfig["superagents"],
 	tier: ModelTier,
 ): ResolvedRoleModel | undefined {
-	const configured = settings?.modelTiers as Partial<Record<ConfiguredModelTier, ModelTierSetting>> | undefined;
-	const direct = normalizeTierSetting(configured?.[tier]);
-	if (direct) return direct;
-	if (tier !== "balanced") return undefined;
-	return normalizeTierSetting(configured?.strong);
+	return normalizeTierSetting(settings?.modelTiers?.[tier]);
 }
 
 /**

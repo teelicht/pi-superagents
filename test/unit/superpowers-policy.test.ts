@@ -70,24 +70,25 @@ describe("superpowers policy", () => {
 		);
 	});
 
-	it("falls back to the legacy superpowers root for existing configs", () => {
+	it("does not resolve the removed legacy strong tier alias", () => {
 		assert.deepEqual(
 			resolveModelForRole({
 				workflow: "superpowers",
 				role: "sp-code-review",
 				config: {
-					superpowers: {
+					superagents: {
+						roleModelTiers: {
+							"sp-code-review": "strong",
+						},
 						modelTiers: {
 							balanced: {
 								model: "openai/gpt-5.4",
 							},
 						},
 					},
-				},
+				} as never,
 			}),
-			{
-				model: "openai/gpt-5.4",
-			},
+			undefined,
 		);
 	});
 

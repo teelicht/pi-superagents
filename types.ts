@@ -48,10 +48,6 @@ export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhi
 
 export type ModelTier = "cheap" | "balanced" | "max";
 
-export type LegacyModelTier = "strong";
-
-export type ConfiguredModelTier = ModelTier | LegacyModelTier;
-
 export interface ModelTierConfig {
 	model: string;
 	thinking?: ThinkingLevel;
@@ -277,8 +273,8 @@ export interface RunSyncOptions {
 
 export interface SuperpowersSettings {
 	commandName?: string;
-	modelTiers?: Partial<Record<ConfiguredModelTier, ModelTierSetting>>;
-	roleModelTiers?: Partial<Record<ExecutionRole, ConfiguredModelTier>>;
+	modelTiers?: Partial<Record<ModelTier, ModelTierSetting>>;
+	roleModelTiers?: Partial<Record<ExecutionRole, ModelTier>>;
 	roleSkillOverlays?: Partial<Record<ExecutionRole, string[]>>;
 	worktreeRoot?: string;
 	worktreeBaselineCommand?: string;
