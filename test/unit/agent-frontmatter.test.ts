@@ -11,7 +11,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, describe, it } from "node:test";
-import { serializeAgent } from "../../agent-serializer.ts";
+import { serializeAgent, updateFrontmatterField } from "../../agent-serializer.ts";
 import { discoverAgents, type AgentConfig } from "../../agents.ts";
 
 const tempDirs: string[] = [];
@@ -56,6 +56,46 @@ Inspect code
 		const result = discoverAgents(dir, "project");
 		const scout = result.agents.find((agent) => agent.name === "scout");
 		assert.equal(scout?.maxSubagentDepth, 1);
+	});
+});
+
+describe("agent frontmatter skills", () => {
+	it("ignores the legacy skill field during discovery", () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-superagents-agent-frontmatter-"));
+		tempDirs.push(dir);
+		const agentsDir = path.join(dir, ".agents");
+		fs.mkdirSync(agentsDir, { recursive: true });
+		fs.writeFileSync(path.join(agentsDir, "scout.md"), `---
+name: scout
+description: Scout
+skill: web-search, pdf
+---
+
+Inspect code
+`, "utf-8");
+
+		const result = discoverAgents(dir, "project");
+		const scout = result.agents.find((agent) => agent.name === "scout");
+		assert.equal(scout?.skills, undefined);
+	});
+
+	it("rejects updates that try to write the legacy skill field", () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-superagents-agent-frontmatter-"));
+		tempDirs.push(dir);
+		const agentPath = path.join(dir, "scout.md");
+		fs.writeFileSync(agentPath, `---
+name: scout
+description: Scout
+skills: web-search
+---
+
+Inspect code
+`, "utf-8");
+
+		assert.throws(
+			() => updateFrontmatterField(agentPath, "skill", "pdf"),
+			/legacy 'skill' field is not supported/i,
+		);
 	});
 });
 

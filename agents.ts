@@ -116,7 +116,7 @@ function loadAgentsFromDir(dir: string, source: AgentSource): AgentConfig[] {
 			.map((f) => f.trim())
 			.filter(Boolean);
 
-		const skillStr = frontmatter.skill || frontmatter.skills;
+		const skillStr = frontmatter.skills;
 		const skills = skillStr
 			?.split(",")
 			.map((s) => s.trim())

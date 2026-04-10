@@ -1,3 +1,12 @@
+/**
+ * Agent frontmatter serialization helpers.
+ *
+ * Responsibilities:
+ * - serialize agent configs into canonical markdown frontmatter
+ * - update individual frontmatter fields in-place
+ * - enforce the supported frontmatter field contract
+ */
+
 import * as fs from "node:fs";
 import type { AgentConfig } from "./agents.ts";
 
@@ -7,7 +16,6 @@ export const KNOWN_FIELDS = new Set([
 	"tools",
 	"model",
 	"thinking",
-	"skill",
 	"skills",
 	"extensions",
 	"output",
@@ -17,11 +25,23 @@ export const KNOWN_FIELDS = new Set([
 	"maxSubagentDepth",
 ]);
 
+/**
+ * Join an optional string list into the canonical frontmatter CSV representation.
+ *
+ * @param values Optional ordered values to serialize.
+ * @returns A comma-separated string, or `undefined` when no values are present.
+ */
 function joinComma(values: string[] | undefined): string | undefined {
 	if (!values || values.length === 0) return undefined;
 	return values.join(", ");
 }
 
+/**
+ * Serialize one agent config into canonical markdown frontmatter.
+ *
+ * @param config Agent configuration to persist.
+ * @returns Markdown contents ready to write to an agent definition file.
+ */
 export function serializeAgent(config: AgentConfig): string {
 	const lines: string[] = [];
 	lines.push("---");
@@ -70,7 +90,20 @@ export function serializeAgent(config: AgentConfig): string {
 	return `${lines.join("\n")}\n\n${body}\n`;
 }
 
+/**
+ * Update one supported frontmatter field inside an existing agent definition file.
+ *
+ * @param filePath Absolute or workspace-relative path to the markdown file.
+ * @param field Canonical frontmatter field name to update.
+ * @param value Replacement value, or `undefined` to remove the field.
+ * @throws When the file has no frontmatter block.
+ * @throws When callers try to write the removed legacy `skill` alias.
+ */
 export function updateFrontmatterField(filePath: string, field: string, value: string | undefined): void {
+	if (field === "skill") {
+		throw new Error("Legacy 'skill' field is not supported. Use 'skills' instead.");
+	}
+
 	const raw = fs.readFileSync(filePath, "utf-8");
 	const normalized = raw.replace(/\r\n/g, "\n");
 	if (!normalized.startsWith("---")) {
@@ -86,16 +119,14 @@ export function updateFrontmatterField(filePath: string, field: string, value: s
 	const rest = normalized.slice(endIndex + 4);
 	const lines = frontmatterBlock.split("\n");
 
-	const normalizedField = field === "skill" || field === "skills" ? "skills" : field;
-	const targetKeys = field === "skills" ? new Set(["skill", "skills"]) : new Set([field]);
 	let found = false;
 	const updated: string[] = [];
 
 	for (const line of lines) {
 		const match = line.match(/^([\w-]+):\s*(.*)$/);
-		if (match && targetKeys.has(match[1])) {
+		if (match && match[1] === field) {
 			if (value !== undefined) {
-				if (!found) updated.push(`${normalizedField}: ${value}`);
+				if (!found) updated.push(`${field}: ${value}`);
 				found = true;
 			}
 			continue;
@@ -104,7 +135,7 @@ export function updateFrontmatterField(filePath: string, field: string, value: s
 	}
 
 	if (value !== undefined && !found) {
-		updated.push(`${normalizedField}: ${value}`);
+		updated.push(`${field}: ${value}`);
 	}
 
 	const frontmatter = `---\n${updated.join("\n")}\n---`;
