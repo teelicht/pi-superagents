@@ -23,7 +23,6 @@ const SUPERAGENTS_OPTION_KEYS = [
 	"defaultImplementerMode",
 	"worktrees",
 	"modelTiers",
-	"roleSkillOverlays",
 ] as const;
 
 const WORKTREE_OPTION_KEYS = [
@@ -31,16 +30,6 @@ const WORKTREE_OPTION_KEYS = [
 	"root",
 	"setupHook",
 	"setupHookTimeoutMs",
-] as const;
-
-const ROLE_KEYS = [
-	"root-planning",
-	"sp-recon",
-	"sp-research",
-	"sp-implementer",
-	"sp-spec-review",
-	"sp-code-review",
-	"sp-debug",
 ] as const;
 
 /**
@@ -59,11 +48,9 @@ describe("default-config.json", () => {
 		const superagents = config.superagents as {
 			[key: string]: unknown;
 			modelTiers?: Record<string, unknown>;
-			roleSkillOverlays?: Record<string, unknown>;
 			worktrees?: Record<string, unknown>;
 		};
 		const worktrees = superagents.worktrees as Record<string, unknown>;
-		const roleSkillOverlays = superagents.roleSkillOverlays as Record<string, unknown>;
 		const modelTiers = superagents.modelTiers as Record<string, unknown>;
 		const cheapTier = modelTiers.cheap as Record<string, unknown>;
 		const balancedTier = modelTiers.balanced as Record<string, unknown>;
@@ -79,12 +66,9 @@ describe("default-config.json", () => {
 		for (const key of WORKTREE_OPTION_KEYS) {
 			assert.ok(key in worktrees, `Expected superagents.worktrees option '${key}' to be present`);
 		}
-		for (const key of ROLE_KEYS) {
-			assert.ok(key in roleSkillOverlays, `Expected role overlay '${key}' to be present`);
-		}
 
 		assert.equal(superagents.defaultImplementerMode, "tdd");
-		assert.equal(worktrees.enabled, true);
+		assert.equal(worktrees.enabled, false);
 		assert.equal(worktrees.root, null);
 		assert.equal(worktrees.setupHook, null);
 		assert.equal(worktrees.setupHookTimeoutMs, 30000);
