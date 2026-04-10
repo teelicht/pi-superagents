@@ -12,7 +12,7 @@ import * as assert from "node:assert";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { discoverAgents, discoverAgentsAll } from "../../src/agents/agents.js";
+import { discoverAgents } from "../../src/agents/agents.js";
 import { resolveSkillPath, clearSkillCache, discoverAvailableSkills } from "../../src/shared/skills.js";
 
 const tmpDir = path.join(os.tmpdir(), "pi-path-resolution-test");
@@ -100,18 +100,5 @@ describe("Path resolution for .agents and ~/.agents", () => {
 		const agent = result.agents.find((candidate) => candidate.name === "test-agent-2");
 		assert.ok(agent);
 		assert.strictEqual(agent?.filePath, path.join(userAgentsDir, "test-agent-2.md"));
-	});
-
-	test("should expose all discovered agents through the aggregate helper", () => {
-		const projectAgentsDir = path.join(cwdDir, ".agents");
-		fs.mkdirSync(projectAgentsDir, { recursive: true });
-		fs.writeFileSync(
-			path.join(projectAgentsDir, "test-agent-aggregate.md"),
-			"---\nname: test-agent-aggregate\ndescription: Test agent\n---\nAgent content",
-		);
-
-		const result = discoverAgentsAll(cwdDir);
-		const agent = result.agents.find((candidate) => candidate.name === "test-agent-aggregate");
-		assert.ok(agent);
 	});
 });

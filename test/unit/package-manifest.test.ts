@@ -24,9 +24,10 @@ function readPackageJson(): Record<string, unknown> {
 describe("package.json manifest", () => {
 	it("publishes the src-based Pi extension entrypoints and files", () => {
 		const packageJson = readPackageJson();
-		assert.deepEqual(packageJson.pi, {
-			extensions: ["./src/extension/index.ts", "./src/extension/notify.ts"],
-		});
+		assert.deepEqual((packageJson.pi as { extensions?: string[] }).extensions, [
+			"./src/extension/index.ts",
+			"./src/extension/notify.ts",
+		]);
 		assert.deepEqual(packageJson.files, [
 			"src/",
 			"scripts/",

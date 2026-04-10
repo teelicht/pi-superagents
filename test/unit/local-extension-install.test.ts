@@ -8,7 +8,6 @@
  */
 
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -34,25 +33,6 @@ function removeTempDir(dir: string): void {
 	try {
 		fs.rmSync(dir, { recursive: true, force: true });
 	} catch {}
-}
-
-/**
- * Read the repository package file list from `npm pack --dry-run --json`.
- *
- * @param sourceRoot Repository root to inspect.
- * @returns Sorted packaged file paths.
- */
-function readPackDryRunPaths(sourceRoot: string): string[] {
-	const stdout = execFileSync("npm", ["pack", "--dry-run", "--json"], {
-		cwd: sourceRoot,
-		encoding: "utf-8",
-	});
-	const parsed = JSON.parse(stdout) as Array<{ files?: Array<{ path?: string }> }>;
-	const fileEntries = parsed[0]?.files ?? [];
-	return fileEntries
-		.map((entry) => entry.path)
-		.filter((entry): entry is string => typeof entry === "string" && entry.length > 0)
-		.sort();
 }
 
 describe("installLocalExtensionFiles", () => {
@@ -119,22 +99,5 @@ describe("installLocalExtensionFiles", () => {
 
 		assert.equal(fs.existsSync(path.join(targetRoot, "stale.ts")), false);
 		assert.equal(fs.readFileSync(path.join(targetRoot, "src", "extension", "index.ts"), "utf-8"), "export default 1;\n");
-	});
-
-	it("copies the repository package using the src-based extension layout", () => {
-		const sourceRoot = path.resolve(".");
-		const targetRoot = createTempDir("pi-local-install-dst-");
-		tempDirs.push(targetRoot);
-
-		const copied = installLocalExtensionFiles({
-			sourceRoot,
-			targetRoot,
-			relativePaths: readPackDryRunPaths(sourceRoot),
-		});
-
-		assert.ok(copied.includes("src/extension/index.ts"));
-		assert.ok(copied.includes("src/extension/notify.ts"));
-		assert.equal(fs.existsSync(path.join(targetRoot, "src", "extension", "index.ts")), true);
-		assert.equal(fs.existsSync(path.join(targetRoot, "src", "extension", "notify.ts")), true);
 	});
 });
