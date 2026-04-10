@@ -19,12 +19,12 @@ import { fileURLToPath } from "node:url";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import { type ExtensionAPI, type ExtensionContext, type ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Box, Container, Spacer, Text } from "@mariozechner/pi-tui";
-import { discoverAgents } from "./agents.ts";
-import { cleanupAllArtifactDirs, cleanupOldArtifacts, getArtifactsDir } from "./artifacts.ts";
+import { discoverAgents } from "./src/agents/agents.ts";
+import { cleanupAllArtifactDirs, cleanupOldArtifacts, getArtifactsDir } from "./src/shared/artifacts.ts";
 import { cleanupOldChainDirs } from "./settings.ts";
 import { renderWidget, renderSubagentResult } from "./render.ts";
-import { SubagentParams, StatusParams } from "./schemas.ts";
-import { findByPrefix, readStatus } from "./utils.ts";
+import { SubagentParams, StatusParams } from "./src/shared/schemas.ts";
+import { findByPrefix, readStatus } from "./src/shared/utils.ts";
 import { getSuperagentSettings } from "./superagents-config.ts";
 import { createSubagentExecutor } from "./subagent-executor.ts";
 import { createAsyncJobTracker } from "./async-job-tracker.ts";
@@ -43,7 +43,7 @@ import {
 	RESULTS_DIR,
 	SLASH_RESULT_TYPE,
 	WIDGET_KEY,
-} from "./types.ts";
+} from "./src/shared/types.ts";
 
 /**
  * Derive subagent session base directory from parent session file.

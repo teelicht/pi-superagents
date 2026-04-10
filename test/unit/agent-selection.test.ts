@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { mergeAgentsForScope } from "../../agent-selection.ts";
+import { mergeAgentsForScope } from "../../src/agents/agent-selection.ts";
 
 type TestAgent = {
 	name: string;

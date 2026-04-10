@@ -7,7 +7,7 @@
  * - avoid fallback to legacy context/plan/progress conventions in the command path
  */
 
-import type { ExecutionRole } from "./types.ts";
+import type { ExecutionRole } from "./src/shared/types.ts";
 
 export interface SuperpowersPacketPlan {
 	reads: string[];
