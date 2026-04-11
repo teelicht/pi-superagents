@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { formatDuration, formatTokens, shortenPath } from "../shared/formatters.ts";
-import { type AsyncStatus, type TokenUsage } from "../shared/types.ts";
+import { formatDuration, shortenPath } from "../shared/formatters.ts";
+import { type AsyncStatus } from "../shared/types.ts";
 import { readStatus } from "../shared/utils.ts";
 
 export interface AsyncRunStepSummary {
@@ -9,7 +9,6 @@ export interface AsyncRunStepSummary {
 	agent: string;
 	status: string;
 	durationMs?: number;
-	tokens?: TokenUsage;
 	skills?: string[];
 }
 
@@ -24,9 +23,7 @@ export interface AsyncRunSummary {
 	endedAt?: number;
 	currentStep?: number;
 	steps: AsyncRunStepSummary[];
-	sessionDir?: string;
 	outputFile?: string;
-	totalTokens?: TokenUsage;
 	sessionFile?: string;
 }
 
@@ -63,28 +60,26 @@ function isAsyncRunDir(root: string, entry: string): boolean {
 	}
 }
 
-function statusToSummary(asyncDir: string, status: AsyncStatus & { cwd?: string }): AsyncRunSummary {
+function statusToSummary(asyncDirRoot: string, entry: string, status: AsyncStatus & { cwd?: string }): AsyncRunSummary {
+	const asyncDir = path.join(asyncDirRoot, entry);
 	return {
-		id: status.runId || path.basename(asyncDir),
+		id: status.runId || entry,
 		asyncDir,
 		state: status.state,
-		mode: status.mode,
+		mode: status.mode as "single" | "chain",
 		cwd: status.cwd,
 		startedAt: status.startedAt,
 		lastUpdate: status.lastUpdate,
 		endedAt: status.endedAt,
-		currentStep: status.currentStep,
+		currentStep: (status as any).currentStep,
 		steps: (status.steps ?? []).map((step, index) => ({
 			index,
 			agent: step.agent,
 			status: step.status,
 			...(step.durationMs !== undefined ? { durationMs: step.durationMs } : {}),
-			...(step.tokens ? { tokens: step.tokens } : {}),
 			...(step.skills ? { skills: step.skills } : {}),
 		})),
-		...(status.sessionDir ? { sessionDir: status.sessionDir } : {}),
 		...(status.outputFile ? { outputFile: status.outputFile } : {}),
-		...(status.totalTokens ? { totalTokens: status.totalTokens } : {}),
 		...(status.sessionFile ? { sessionFile: status.sessionFile } : {}),
 	};
 }
@@ -124,7 +119,7 @@ export function listAsyncRuns(asyncDirRoot: string, options: AsyncRunListOptions
 		const asyncDir = path.join(asyncDirRoot, entry);
 		const status = readStatus(asyncDir) as (AsyncStatus & { cwd?: string }) | null;
 		if (!status) continue;
-		const summary = statusToSummary(asyncDir, status);
+		const summary = statusToSummary(asyncDirRoot, entry, status);
 		if (allowedStates && !allowedStates.has(summary.state)) continue;
 		runs.push(summary);
 	}
@@ -148,7 +143,6 @@ export function listAsyncRunsForOverlay(asyncDirRoot: string, recentLimit = 5): 
 function formatStepLine(step: AsyncRunStepSummary): string {
 	const parts = [`${step.index + 1}. ${step.agent}`, step.status];
 	if (step.durationMs !== undefined) parts.push(formatDuration(step.durationMs));
-	if (step.tokens) parts.push(`${formatTokens(step.tokens.total)} tok`);
 	return parts.join(" | ");
 }
 

@@ -45,12 +45,6 @@ export interface Usage {
 	turns: number;
 }
 
-export interface TokenUsage {
-	input: number;
-	output: number;
-	total: number;
-}
-
 export type WorkflowMode = "superpowers";
 
 export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
@@ -93,7 +87,6 @@ export interface ResolvedSkill {
 // ============================================================================
 // Progress Tracking
 // ============================================================================
-
 export interface AgentProgress {
 	index: number;
 	agent: string;
@@ -105,7 +98,6 @@ export interface AgentProgress {
 	recentTools: Array<{ tool: string; args: string; endMs: number }>;
 	recentOutput: string[];
 	toolCount: number;
-	tokens: number;
 	durationMs: number;
 	error?: string;
 	failedTool?: string;
@@ -113,10 +105,8 @@ export interface AgentProgress {
 
 export interface ProgressSummary {
 	toolCount: number;
-	tokens: number;
 	durationMs: number;
 }
-
 // ============================================================================
 // Results
 // ============================================================================
@@ -159,7 +149,6 @@ export interface Details {
 		originalLines?: number;
 		artifactPath?: string;
 	};
-	totalSteps?: number;         // Total steps in parallel/single run
 }
 
 // ============================================================================
@@ -194,11 +183,8 @@ export interface AsyncStatus {
 	endedAt?: number;
 	lastUpdate?: number;
 	cwd?: string;
-	currentStep?: number;
-	steps?: Array<{ agent: string; status: string; durationMs?: number; tokens?: TokenUsage; skills?: string[] }>;
-	sessionDir?: string;
+	steps?: Array<{ agent: string; status: string; durationMs?: number; skills?: string[] }>;
 	outputFile?: string;
-	totalTokens?: TokenUsage;
 	sessionFile?: string;
 }
 
@@ -208,13 +194,9 @@ export interface AsyncJobState {
 	status: "queued" | "running" | "complete" | "failed";
 	mode?: "single" | "parallel";
 	agents?: string[];
-	currentStep?: number;
-	stepsTotal?: number;
 	startedAt?: number;
 	updatedAt?: number;
-	sessionDir?: string;
 	outputFile?: string;
-	totalTokens?: TokenUsage;
 	sessionFile?: string;
 }
 
@@ -275,7 +257,6 @@ export interface RunSyncOptions {
 	artifactConfig?: ArtifactConfig;
 	runId: string;
 	index?: number;
-	sessionDir?: string;
 	sessionFile?: string;
 	share?: boolean;
 	outputPath?: string;

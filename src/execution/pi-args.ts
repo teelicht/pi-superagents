@@ -9,7 +9,6 @@ export interface BuildPiArgsInput {
 	baseArgs: string[];
 	task: string;
 	sessionEnabled: boolean;
-	sessionDir?: string;
 	sessionFile?: string;
 	model?: string;
 	thinking?: string;
@@ -42,10 +41,6 @@ export function buildPiArgs(input: BuildPiArgsInput): BuildPiArgsResult {
 	} else {
 		if (!input.sessionEnabled) {
 			args.push("--no-session");
-		}
-		if (input.sessionDir) {
-			fs.mkdirSync(input.sessionDir, { recursive: true });
-			args.push("--session-dir", input.sessionDir);
 		}
 	}
 

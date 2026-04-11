@@ -26,28 +26,26 @@ export const TaskItem = Type.Object({
 
 export const SubagentParams = Type.Object({
 	agent: Type.Optional(SuperpowersRoleNameSchema),
-	task: Type.Optional(Type.String({ description: "Task for a single Superpowers role agent." })),
+	task: Type.Optional(Type.String({ description: "The specific objective for the Superpowers role agent." })),
 	workflow: Type.Optional(Type.String({
 		enum: ["superpowers"],
-		description: "Superpowers role execution. Generic subagent workflows are not part of this package.",
+		description: "Superpowers role execution workflow. Only 'superpowers' is supported.",
 	})),
 	useTestDrivenDevelopment: Type.Optional(Type.Boolean({
-		description: "Whether sp-implementer should receive test-driven-development guidance when available.",
+		description: "Whether sp-implementer should receive test-driven-development guidance.",
 	})),
 	tasks: Type.Optional(Type.Array(TaskItem, {
-		description: "Parallel Superpowers role tasks selected by the root Superpowers workflow.",
+		description: "Parallel Superpowers role tasks for coordinated execution.",
 	})),
 	context: Type.Optional(Type.String({
 		enum: ["fresh", "fork"],
-		description: "'fresh' or 'fork' to branch from parent session.",
+		description: "Execution context: 'fresh' starts new, 'fork' inherits from current Superpowers session.",
 	})),
-	cwd: Type.Optional(Type.String()),
-	async: Type.Optional(Type.Boolean({ description: "Run in background when supported by the runtime." })),
-	artifacts: Type.Optional(Type.Boolean({ description: "Write debug artifacts." })),
-	includeProgress: Type.Optional(Type.Boolean({ description: "Include full progress in result." })),
-	sessionDir: Type.Optional(Type.String({ description: "Directory to store session logs." })),
+	cwd: Type.Optional(Type.String({ description: "Working directory for the Superpowers role task." })),
+	artifacts: Type.Optional(Type.Boolean({ description: "Whether to preserve execution artifacts for debugging." })),
+	includeProgress: Type.Optional(Type.Boolean({ description: "Include detailed step-by-step progress in the tool output." })),
 	skill: Type.Optional(SkillOverride),
-	model: Type.Optional(Type.String({ description: "Override model for single Superpowers role execution." })),
+	model: Type.Optional(Type.String({ description: "Override the model for this Superpowers role execution." })),
 });
 
 export const StatusParams = Type.Object({

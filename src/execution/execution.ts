@@ -22,7 +22,6 @@ import {
 } from "../shared/types.ts";
 import {
 	getFinalOutput,
-	findLatestSessionFile,
 	detectSubagentError,
 	extractToolArgsPreview,
 	extractTextFromContent,
@@ -62,8 +61,8 @@ export async function runSync(
 	}
 
 	const shareEnabled = options.share === true;
-	const sessionEnabled = Boolean(options.sessionFile || options.sessionDir) || shareEnabled;
-	const workflow = options.workflow ?? "default";
+	const sessionEnabled = Boolean(options.sessionFile) || shareEnabled;
+	const workflow = options.workflow ?? "superpowers";
 	const useTestDrivenDevelopment = options.useTestDrivenDevelopment ?? true;
 	const config = options.config ?? {};
 	const role = inferExecutionRole(agent.name);
@@ -101,7 +100,6 @@ export async function runSync(
 		baseArgs: ["--mode", "json", "-p"],
 		task,
 		sessionEnabled,
-		sessionDir: options.sessionDir,
 		sessionFile: options.sessionFile,
 		model: effectiveModel,
 		thinking: effectiveThinking,
@@ -375,8 +373,7 @@ export async function runSync(
 	}
 
 	if (shareEnabled) {
-		const sessionFile = options.sessionFile
-			?? (options.sessionDir ? findLatestSessionFile(options.sessionDir) : null);
+		const sessionFile = options.sessionFile;
 		if (sessionFile) {
 			result.sessionFile = sessionFile;
 			// HTML export disabled - module resolution issues with global pi installation

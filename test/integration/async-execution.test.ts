@@ -140,15 +140,14 @@ describe("async execution utilities", { skip: !available ? "pi packages not avai
 					currentSessionId: "session-test",
 				},
 				artifactConfig: { enabled: false },
-				shareEnabled: false,
 				skills: ["override-skill"],
 				maxSubagentDepth: 0,
 			});
 
 			const cfg = readAsyncConfig(id);
-			assert.deepEqual(cfg.steps[0].skills, ["override-skill"]);
-			assert.match(cfg.steps[0].systemPrompt, /override-skill/);
-			assert.doesNotMatch(cfg.steps[0].systemPrompt, /default-skill/);
+			assert.deepEqual(cfg.step.skills, ["override-skill"]);
+			assert.match(cfg.step.systemPrompt, /override-skill/);
+			assert.doesNotMatch(cfg.step.systemPrompt, /default-skill/);
 		} finally {
 			removeTempDir(cwd);
 			fs.rmSync(path.join(os.tmpdir(), `pi-async-cfg-${id}.json`), { force: true });

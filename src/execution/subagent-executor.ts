@@ -64,12 +64,8 @@ interface TaskParam {
 	agent: string;
 	task: string;
 	cwd?: string;
-	count?: number;
 	model?: string;
 	skill?: string | string[] | boolean;
-	output?: string | false;
-	reads?: string[] | false;
-	progress?: boolean;
 }
 
 export interface SubagentParamsLike {
@@ -80,10 +76,7 @@ export interface SubagentParamsLike {
 	useTestDrivenDevelopment?: boolean;
 	worktree?: boolean;
 	context?: "fresh" | "fork";
-	async?: boolean;
-	clarify?: boolean;
 	share?: boolean;
-	sessionDir?: string;
 	cwd?: string;
 	maxOutput?: MaxOutputConfig;
 	artifacts?: boolean;
@@ -91,7 +84,6 @@ export interface SubagentParamsLike {
 	model?: string;
 	skill?: string | string[] | boolean;
 	output?: string | boolean;
-	agentScope?: unknown;
 }
 
 interface ExecutorDeps {
@@ -113,8 +105,6 @@ interface ExecutionContextData {
 	agents: AgentConfig[];
 	runId: string;
 	shareEnabled: boolean;
-	sessionRoot: string;
-	sessionDirForIndex: (idx?: number) => string;
 	sessionFileForIndex: (idx?: number) => string | undefined;
 	artifactConfig: ArtifactConfig;
 	artifactsDir: string;
@@ -163,33 +153,6 @@ function buildRequestedModeError(params: SubagentParamsLike, message: string): A
 	);
 }
 
-function expandTopLevelTaskCounts(tasks: TaskParam[]): { tasks?: TaskParam[]; error?: string } {
-	const expanded: TaskParam[] = [];
-	for (let taskIndex = 0; taskIndex < tasks.length; taskIndex++) {
-		const task = tasks[taskIndex]!;
-		const rawCount = (task as TaskParam & { count?: unknown }).count;
-		if (rawCount !== undefined && (typeof rawCount !== "number" || !Number.isInteger(rawCount) || rawCount < 1)) {
-			return { error: `tasks[${taskIndex}].count must be an integer >= 1` };
-		}
-		const { count, ...concreteTask } = task;
-		for (let repeat = 0; repeat < (rawCount ?? 1); repeat++) {
-			expanded.push({ ...concreteTask });
-		}
-	}
-	return { tasks: expanded };
-}
-
-function normalizeRepeatedParallelCounts(params: SubagentParamsLike): { params?: SubagentParamsLike; error?: AgentToolResult<Details> } {
-	if (params.tasks) {
-		const expandedTasks = expandTopLevelTaskCounts(params.tasks);
-		if (expandedTasks.error) {
-			return { error: buildRequestedModeError(params, expandedTasks.error) };
-		}
-		return { params: { ...params, tasks: expandedTasks.tasks } };
-	}
-	return { params };
-}
-
 function withForkContext(
 	result: AgentToolResult<Details>,
 	context: SubagentParamsLike["context"],
@@ -222,7 +185,6 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 		agents,
 		ctx,
 		shareEnabled,
-		sessionRoot,
 		sessionFileForIndex,
 		artifactConfig,
 		artifactsDir,
@@ -230,7 +192,6 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 		workflow,
 		useTestDrivenDevelopment,
 	} = data;
-	const hasTasks = (params.tasks?.length ?? 0) > 0;
 	const hasSingle = Boolean(params.agent && params.task);
 	if (!effectiveAsync) return null;
 
@@ -244,23 +205,6 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 	const id = randomUUID();
 	const asyncCtx = { pi: deps.pi, cwd: ctx.cwd, currentSessionId: deps.state.currentSessionId! };
 	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(deps.config.maxSubagentDepth);
-
-	if (hasTasks && params.tasks) {
-		const effectiveWorktree = resolveSuperagentWorktreeEnabled(params.worktree, workflow, deps.config);
-		if (effectiveWorktree) {
-			const worktreeTaskCwdError = buildParallelWorktreeTaskCwdError(params.tasks, params.cwd ?? ctx.cwd);
-			if (worktreeTaskCwdError) {
-				return buildParallelModeError(worktreeTaskCwdError);
-			}
-		}
-
-		// Note: Async parallel execution is not yet supported in this lean runtime.
-		return {
-			content: [{ type: "text", text: "Async parallel execution is not yet supported in this lean runtime." }],
-			isError: true,
-			details: { mode: "parallel" as const, results: [] },
-		};
-	}
 
 	if (hasSingle) {
 		const a = agents.find((x) => x.name === params.agent);
@@ -285,7 +229,6 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
 			artifactConfig,
 			shareEnabled,
-			sessionRoot,
 			sessionFile: sessionFileForIndex(0),
 			skills,
 			output: effectiveOutput,
@@ -306,7 +249,6 @@ interface ForegroundParallelRunInput {
 	ctx: ExtensionContext;
 	signal: AbortSignal;
 	runId: string;
-	sessionDirForIndex: (idx?: number) => string | undefined;
 	sessionFileForIndex: (idx?: number) => string | undefined;
 	shareEnabled: boolean;
 	artifactConfig: ArtifactConfig;
@@ -412,7 +354,6 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 			signal: input.signal,
 			runId: input.runId,
 			index,
-			sessionDir: input.sessionDirForIndex(index),
 			sessionFile: input.sessionFileForIndex(index),
 			share: input.shareEnabled,
 			artifactsDir: input.artifactConfig.enabled ? input.artifactsDir : undefined,
@@ -454,13 +395,11 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		ctx,
 		signal,
 		runId,
-		sessionDirForIndex,
 		sessionFileForIndex,
 		shareEnabled,
 		artifactConfig,
 		artifactsDir,
 		onUpdate,
-		sessionRoot,
 		workflow,
 		useTestDrivenDevelopment,
 	} = data;
@@ -505,9 +444,6 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 	const skillOverrides: (string[] | false | undefined)[] = tasks.map((t) =>
 		normalizeSkillInput(t.skill),
 	);
-	const outputOverrides: (string | false | undefined)[] = tasks.map((t) => t.output);
-	const readsOverrides: (string[] | false | undefined)[] = tasks.map((t) => t.reads);
-	const progressOverrides: (boolean | undefined)[] = tasks.map((t) => t.progress);
 
 	const behaviors = agentConfigs.map((config) => resolveStepBehavior(config, {}));
 	const liveResults: (SingleResult | undefined)[] = new Array(tasks.length).fill(undefined);
@@ -536,7 +472,6 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 			ctx,
 			signal,
 			runId,
-			sessionDirForIndex,
 			sessionFileForIndex,
 			shareEnabled,
 			artifactConfig,
@@ -603,13 +538,11 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		ctx,
 		signal,
 		runId,
-		sessionDirForIndex,
 		sessionFileForIndex,
 		shareEnabled,
 		artifactConfig,
 		artifactsDir,
 		onUpdate,
-		sessionRoot,
 		workflow,
 		useTestDrivenDevelopment,
 	} = data;
@@ -645,7 +578,6 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		cwd: params.cwd,
 		signal,
 		runId,
-		sessionDir: sessionDirForIndex(0),
 		sessionFile: sessionFileForIndex(0),
 		share: shareEnabled,
 		artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
@@ -733,20 +665,16 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			};
 		}
 
-		const normalized = normalizeRepeatedParallelCounts(params);
-		if (normalized.error) return normalized.error;
-		const normalizedParams = normalized.params!;
-
-		const scope: AgentScope = resolveExecutionAgentScope(normalizedParams.agentScope);
+		const scope: AgentScope = resolveExecutionAgentScope(undefined);
 		const parentSessionFile = ctx.sessionManager.getSessionFile() ?? null;
 		deps.state.currentSessionId = parentSessionFile ?? `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 		const agents = deps.discoverAgents(ctx.cwd, scope).agents;
 		const runId = randomUUID().slice(0, 8);
-		const shareEnabled = normalizedParams.share === true;
-		const hasTasks = (normalizedParams.tasks?.length ?? 0) > 0;
-		const hasSingle = Boolean(normalizedParams.agent && normalizedParams.task);
+		const shareEnabled = params.share === true;
+		const hasTasks = (params.tasks?.length ?? 0) > 0;
+		const hasSingle = Boolean(params.agent && params.task);
 		const validationError = validateExecutionInput(
-			normalizedParams,
+			params,
 			agents,
 			hasTasks,
 			hasSingle,
@@ -755,86 +683,63 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 
 		let sessionFileForIndex: (idx?: number) => string | undefined = () => undefined;
 		try {
-			sessionFileForIndex = createForkContextResolver(ctx.sessionManager, normalizedParams.context).sessionFileForIndex;
+			sessionFileForIndex = createForkContextResolver(ctx.sessionManager, params.context).sessionFileForIndex;
 		} catch (error) {
-			return toExecutionErrorResult(normalizedParams, error);
+			return toExecutionErrorResult(params, error);
 		}
 
-		const effectiveAsync = (normalizedParams.async ?? deps.asyncByDefault) ?? false;
+		const effectiveAsync = deps.asyncByDefault ?? false;
 
 
 		const artifactConfig: ArtifactConfig = {
 			...DEFAULT_ARTIFACT_CONFIG,
-			enabled: normalizedParams.artifacts !== false,
+			enabled: params.artifacts !== false,
 		};
 		const artifactsDir = effectiveAsync ? deps.tempArtifactsDir : getArtifactsDir(parentSessionFile);
 
-		let sessionRoot: string;
-		if (normalizedParams.sessionDir) {
-			sessionRoot = path.resolve(deps.expandTilde(normalizedParams.sessionDir));
-		} else {
-			const baseSessionRoot = deps.config.defaultSessionDir
-				? path.resolve(deps.expandTilde(deps.config.defaultSessionDir))
-				: deps.getSubagentSessionRoot(parentSessionFile);
-			sessionRoot = path.join(baseSessionRoot, runId);
-		}
-		try {
-			fs.mkdirSync(sessionRoot, { recursive: true });
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			return toExecutionErrorResult(
-				normalizedParams,
-				new Error(`Failed to create session directory '${sessionRoot}': ${message}`),
-			);
-		}
-		const sessionDirForIndex = (idx?: number) =>
-			path.join(sessionRoot, `run-${idx ?? 0}`);
-
 		const onUpdateWithContext = onUpdate
-			? (r: AgentToolResult<Details>) => onUpdate(withForkContext(r, normalizedParams.context))
+			? (r: AgentToolResult<Details>) => onUpdate(withForkContext(r, params.context))
 			: undefined;
 
 		const execData: ExecutionContextData = {
-			params: normalizedParams,
+			params,
 			ctx,
 			signal,
 			onUpdate: onUpdateWithContext,
 			agents,
 			runId,
 			shareEnabled,
-			sessionRoot,
-			sessionDirForIndex,
 			sessionFileForIndex,
 			artifactConfig,
 			artifactsDir,
 			effectiveAsync,
-			workflow: normalizedParams.workflow ?? "default",
+			workflow: params.workflow ?? "superpowers",
 			useTestDrivenDevelopment:
-				normalizedParams.useTestDrivenDevelopment
+				params.useTestDrivenDevelopment
 				?? deps.config.superagents?.useTestDrivenDevelopment
 				?? true,
 		};
 
 		try {
 			const asyncResult = runAsyncPath(execData, deps);
-			if (asyncResult) return withForkContext(asyncResult, normalizedParams.context);
+			if (asyncResult) return withForkContext(asyncResult, params.context);
 
-			if (hasTasks && normalizedParams.tasks) {
-				return withForkContext(await runParallelPath(execData, deps), normalizedParams.context);
+			if (hasTasks && params.tasks) {
+				return withForkContext(await runParallelPath(execData, deps), params.context);
 			}
 
 			if (hasSingle) {
-				return withForkContext(await runSinglePath(execData, deps), normalizedParams.context);
+				return withForkContext(await runSinglePath(execData, deps), params.context);
 			}
 		} catch (error) {
-			return toExecutionErrorResult(normalizedParams, error);
+			return toExecutionErrorResult(params, error);
 		}
 
 		return withForkContext({
 			content: [{ type: "text", text: "Invalid params" }],
 			isError: true,
 			details: { mode: "single" as const, results: [] },
-		}, normalizedParams.context);
+		}, params.context);
 	};
 
 	return { execute };

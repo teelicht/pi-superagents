@@ -76,8 +76,6 @@ export interface AsyncSingleParams {
 	maxOutput?: MaxOutputConfig;
 	artifactsDir?: string;
 	artifactConfig: ArtifactConfig;
-	shareEnabled: boolean;
-	sessionRoot?: string;
 	sessionFile?: string;
 	skills?: string[] | false;
 	output?: string | false;
@@ -141,7 +139,7 @@ function resolveAsyncModel(input: {
 	thinking?: string;
 }): string | undefined {
 	const tierModel = resolveModelForAgent({
-		workflow: input.workflow ?? "default",
+		workflow: input.workflow ?? "superpowers",
 		agentModel: input.model,
 		config: input.config ?? {},
 	});
@@ -164,8 +162,6 @@ export function executeAsyncSingle(
 		maxOutput,
 		artifactsDir,
 		artifactConfig,
-		shareEnabled,
-		sessionRoot,
 		sessionFile,
 		maxSubagentDepth,
 		workflow,
@@ -176,7 +172,7 @@ export function executeAsyncSingle(
 	const configuredSkills = params.skills !== undefined ? params.skills : (agentConfig.skills ?? []);
 	const { skillNames, resolvedSkills } = resolveExecutionSkills({
 		cwd: ctx.cwd,
-		workflow: workflow ?? "default",
+		workflow: workflow ?? "superpowers",
 		role,
 		config,
 		useTestDrivenDevelopment,
@@ -206,39 +202,35 @@ export function executeAsyncSingle(
 	const pid = spawnRunner(
 		{
 			id,
-			steps: [
-				{
-					agent,
-					task: taskWithOutputInstruction,
-					cwd,
-					model: resolveAsyncModel({
-						workflow,
-						config,
-						model: agentConfig.model,
-						thinking: agentConfig.thinking,
-					}),
-					tools: resolveRoleTools({
-						workflow: workflow ?? "default",
-						role,
-						agentTools: agentConfig.tools,
-					}),
-					extensions: agentConfig.extensions,
-					mcpDirectTools: agentConfig.mcpDirectTools,
-					systemPrompt,
-					skills: resolvedSkills.map((r) => r.name),
-					outputPath,
-					sessionFile,
-					maxSubagentDepth: resolveChildMaxSubagentDepth(maxSubagentDepth, agentConfig.maxSubagentDepth),
-				},
-			],
+			step: {
+				agent,
+				task: taskWithOutputInstruction,
+				cwd,
+				model: resolveAsyncModel({
+					workflow,
+					config,
+					model: agentConfig.model,
+					thinking: agentConfig.thinking,
+				}),
+				tools: resolveRoleTools({
+					workflow: workflow ?? "superpowers",
+					role,
+					agentTools: agentConfig.tools,
+				}),
+				extensions: agentConfig.extensions,
+				mcpDirectTools: agentConfig.mcpDirectTools,
+				systemPrompt,
+				skills: resolvedSkills.map((r) => r.name),
+				outputPath,
+				sessionFile,
+				maxSubagentDepth: resolveChildMaxSubagentDepth(maxSubagentDepth, agentConfig.maxSubagentDepth),
+			},
 			resultPath: path.join(RESULTS_DIR, `${id}.json`),
 			cwd: runnerCwd,
 			placeholder: "{previous}",
 			maxOutput,
 			artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
 			artifactConfig,
-			share: shareEnabled,
-			sessionDir: sessionRoot ? path.join(sessionRoot, `async-${id}`) : undefined,
 			asyncDir,
 			sessionId: ctx.currentSessionId,
 			piPackageRoot,
