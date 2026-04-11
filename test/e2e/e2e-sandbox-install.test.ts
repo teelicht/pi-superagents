@@ -8,6 +8,7 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import * as fs from "node:fs";
 import * as path from "node:path";
 import { tryImport } from "../support/helpers.ts";
 
@@ -34,6 +35,13 @@ describe(
 			assert.equal(result.loaded.extensions, 2);
 			assert.ok(result.loaded.tools.includes("subagent"));
 			assert.ok(result.loaded.tools.includes("subagent_status"));
+
+			const installDir = (result as { installDir?: string; packageDir?: string }).installDir
+				?? (result as { packageDir?: string }).packageDir;
+			if (installDir) {
+				assert.ok(fs.existsSync(path.join(installDir, "config.example.json")), "config.example.json should be installed");
+				assert.equal(fs.existsSync(path.join(installDir, "config.json")), false, "config.json should not be a packaged file");
+			}
 		});
 	},
 );
