@@ -1,6 +1,6 @@
 # Configuration Reference
 
-`pi-superagents` reads user overrides from:
+`@teelicht/pi-superagents` reads user overrides from:
 
 ```text
 ~/.pi/agent/extensions/subagent/config.json
@@ -18,17 +18,9 @@ Full parseable examples are available in:
 ~/.pi/agent/extensions/subagent/config.example.json
 ```
 
-Runtime config precedence:
-
-1. Bundled [default-config.json](../../default-config.json) always loads first.
-2. User `config.json` overrides bundled defaults.
-3. Empty `{}` means "use all bundled defaults."
-
-`default-config.json` and `config.example.json` are package-owned files and may be refreshed during updates. Do not edit them for local overrides.
-
 ## Validation And Repair
 
-`pi-superagents` fails closed when `config.json` cannot be trusted. If the file has invalid JSON, unknown keys, wrong value types, invalid enum values, or unsupported stale settings, subagent execution is disabled until the file is fixed.
+`pi-superagents` fails closed when `config.json` cannot be trusted. If the file has invalid JSON, unknown keys, or wrong value types, subagent execution is disabled until the file is fixed.
 
 When Pi starts, the extension shows a notification with the config path and exact diagnostics. You can also inspect diagnostics with:
 
@@ -40,48 +32,24 @@ When Pi starts, the extension shows a notification with the config path and exac
 
 using the `subagent_status` tool.
 
-If diagnostics say your config duplicates the bundled defaults, apply the safe empty-override migration:
-
-```bash
-npx @teelicht/pi-superagents --migrate-config
-```
-
-or call `subagent_status` with:
-
-```json
-{
-  "action": "migrate-config"
-}
-```
-
-Both migration paths write a timestamped backup before replacing `config.json` with `{}`.
-
-Common repairs:
-
-- Remove misspelled or unknown keys.
-- Compare your file with `config.example.json`.
-- Delete a key to fall back to the bundled default.
-- Keep `config.json` as a small override file instead of copying the full example.
-
 ## Common Override Examples
 
-Enable background execution by default:
+Override one model tier while inheriting the rest:
 
 ```json
 {
-  "asyncByDefault": true
+  "superagents": {
+    "modelTiers": {
+      "max": {
+        "model": "anthropic/claude-3-5-sonnet",
+        "thinking": "medium"
+      }
+    }
+  }
 }
 ```
 
-Set a default session directory:
-
-```json
-{
-  "defaultSessionDir": "~/.pi/agent/sessions/subagent/"
-}
-```
-
-Disable Superpowers worktree defaults:
+Disable automatic worktree creation for parallel tasks:
 
 ```json
 {
@@ -93,57 +61,36 @@ Disable Superpowers worktree defaults:
 }
 ```
 
-Override one model tier while inheriting the rest:
+## Configuration Keys
+
+### `superagents`
+
+Configures the Superpowers workflow and role execution policy.
+
+| Key | Description |
+|-----|-------------|
+| `modelTiers` | Maps abstract tier names (`cheap`, `balanced`, `max`) to concrete model configs. |
+| `worktrees.enabled` | Whether to use git worktree isolation for parallel tasks (default: `true`). |
+| `worktrees.root` | Directory for Superpowers parallel worktrees (default: system temp). |
+| `worktrees.setupHook` | Path to a script to run for each created worktree. |
+| `worktrees.setupHookTimeoutMs` | Maximum time to wait for the setup hook (default: 30000ms). |
+
+#### Model Tier Schema
+
+Each tier in `modelTiers` can be a string (model ID) or an object:
 
 ```json
 {
-  "superagents": {
-    "modelTiers": {
-      "max": {
-        "model": "openai/gpt-5.4",
-        "thinking": "high"
-      }
-    }
-  }
+  "model": "anthropic/claude-3-5-sonnet",
+  "thinking": "low"
 }
 ```
 
-Add a custom model tier:
-
-```json
-{
-  "superagents": {
-    "modelTiers": {
-      "free": {
-        "model": "google/gemini-flash"
-      }
-    }
-  }
-}
-```
-
-## Config Keys
-
-### `defaultSessionDir`
-
-Sets the fallback directory for session logs:
-
-```json
-{
-  "defaultSessionDir": "~/.pi/agent/sessions/subagent/"
-}
-```
-
-Session root resolution precedence:
-1. `params.sessionDir` from the `subagent` tool call
-2. `config.defaultSessionDir`
-3. Derived from parent session
-
-Sessions are always enabled — every subagent run gets a session directory.
+**Supported thinking levels:** `off`, `minimal`, `low`, `medium`, `high`, `xhigh`.
 
 ### `maxSubagentDepth`
 
-Default recursion limit for nested delegation. Per-agent `maxSubagentDepth` can tighten further but cannot relax an inherited stricter limit.
+Limits the recursion depth for subagent delegation. Default is 2.
 
 ```json
 {
@@ -151,92 +98,12 @@ Default recursion limit for nested delegation. Per-agent `maxSubagentDepth` can 
 }
 ```
 
-Can also be set via `PI_SUBAGENT_MAX_DEPTH` environment variable before starting pi. Internal `PI_SUBAGENT_DEPTH` is propagated automatically — don't set it manually.
-
 ### `asyncByDefault`
 
-Runs subagents in the background by default. When `true`, all `/run`, `/chain`, and `/parallel` commands run asynchronously unless `--bg` or explicit `async: false` overrides.
+If `true`, all subagent runs are executed in the background unless explicitly overridden.
 
 ```json
 {
   "asyncByDefault": true
 }
 ```
-
-### `superagents`
-
-Configures the `/superpowers` command path without changing default `/run`, `/chain`, `/parallel` behavior.
-
-```json
-{
-  "superagents": {
-    "defaultImplementerMode": "tdd",
-    "worktrees": {
-      "enabled": true,
-      "root": null,
-      "setupHook": "./scripts/setup-worktree.mjs",
-      "setupHookTimeoutMs": 45000
-    },
-    "modelTiers": {
-      "cheap": {
-        "model": "openai/gpt-5.3-mini",
-        "thinking": "off"
-      },
-      "balanced": {
-        "model": "openai/gpt-5.4",
-        "thinking": "medium"
-      },
-      "max": {
-        "model": "anthropic/claude-opus-4-6",
-        "thinking": "high"
-      }
-    }
-  }
-}
-```
-
-**Supported keys:**
-
-| Key | Description |
-|-----|-------------|
-| `defaultImplementerMode` | `tdd` (default) or `direct` |
-| `worktrees.enabled` | Default Superpowers parallel to worktree isolation |
-| `worktrees.root` | Directory for Superpowers parallel worktrees |
-| `worktrees.setupHook` | Per-worktree setup hook (see [Worktree Reference](worktrees.md)) |
-| `worktrees.setupHookTimeoutMs` | Hook timeout in ms (default: 30000) |
-| `modelTiers` | Maps tier names to model+thinking configs |
-
-#### Custom Model Tiers
-
-Define your own tier names beyond the built-in `cheap`, `balanced`, and `max`:
-
-```json
-{
-  "superagents": {
-    "modelTiers": {
-      "cheap": { "model": "openai/gpt-5.3-mini" },
-      "balanced": { "model": "openai/gpt-5.4" },
-      "max": { "model": "anthropic/claude-opus-4-6" },
-      "creative": {
-        "model": "anthropic/claude-sonnet-4",
-        "thinking": "high"
-      },
-      "free": {
-        "model": "google/gemini-flash"
-      }
-    }
-  }
-}
-```
-
-Then use in agent frontmatter:
-
-```yaml
----
-name: writer
-model: creative
-description: Creative writing assistant
----
-```
-
-Tier resolution works in all workflows (`/run`, `/chain`, `/parallel`, `/superpowers`).

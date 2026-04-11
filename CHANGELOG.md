@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.0] - 2026-04-11
+
+### Changed
+
+- **Lean Superpowers Runtime** — the core runtime has been radically trimmed to focus exclusively on Superpowers workflows. Generic subagent features like free-form chains, Agents Manager TUI, and management CRUD actions have been removed.
+- **Narrowed Subagent Tool** — the `subagent` tool now only accepts Superpowers role agents and structured parallel tasks. The generic sequential chain parameter has been removed.
+- **Unified Command Set** — slash commands are now limited to `/superpowers` and `/superpowers-status`. Generic commands like `/run`, `/chain`, `/parallel`, and `/agents` have been removed.
+- **Documentation Refactor** — documentation has been rewritten to reflect the Superpowers-first identity. Generic agent and chain guides have been removed.
+- **Removed Fork Branding** — branding as a fork of `pi-subagents` has been removed in favor of a standalone Superpowers extension identity.
+
+### Removed
+
+- Generic `.chain.md` file support and serialization.
+- Agents Manager TUI (Ctrl+Shift+A).
+- Management dispatcher branches (`list`, `get`, `create`, `update`, `delete`).
+- Generic sequential chain execution runtime.
+- Generic agents like `scout`, `planner`, `worker`, etc. (Superpowers `sp-*` roles are the new standard).
+
 ## [0.2.0] - 2026-04-11
 
 ### Changed

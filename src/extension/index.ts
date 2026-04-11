@@ -21,7 +21,6 @@ import { type ExtensionAPI, type ExtensionContext, type ToolDefinition } from "@
 import { Box, Container, Spacer, Text } from "@mariozechner/pi-tui";
 import { discoverAgents } from "../agents/agents.ts";
 import { cleanupAllArtifactDirs, cleanupOldArtifacts, getArtifactsDir } from "../shared/artifacts.ts";
-import { cleanupOldChainDirs } from "../execution/settings.ts";
 import { renderWidget, renderSubagentResult } from "../ui/render.ts";
 import { SubagentParams, StatusParams } from "../shared/schemas.ts";
 import { findByPrefix, readStatus } from "../shared/utils.ts";
@@ -214,7 +213,6 @@ function createSlashResultComponent(
 export default function registerSubagentExtension(pi: ExtensionAPI): void {
 	ensureAccessibleDir(RESULTS_DIR);
 	ensureAccessibleDir(ASYNC_DIR);
-	cleanupOldChainDirs();
 
 	const configState = loadConfigState();
 	const config = configState.config;
@@ -320,12 +318,6 @@ Bounded role agents are not allowed to call subagents.`,
 			const isParallel = (args.tasks?.length ?? 0) > 0;
 			const parallelCount = effectiveParallelTaskCount(args.tasks as Array<{ count?: unknown }> | undefined);
 			const asyncLabel = args.async === true && !isParallel ? theme.fg("warning", " [async]") : "";
-			if (args.chain?.length)
-				return new Text(
-					`${theme.fg("toolTitle", theme.bold("subagent "))}chain (${args.chain.length})${asyncLabel}`,
-					0,
-					0,
-				);
 			if (isParallel)
 				return new Text(
 					`${theme.fg("toolTitle", theme.bold("subagent "))}parallel (${parallelCount})`,

@@ -14,20 +14,15 @@ import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { type AgentConfig, type AgentScope } from "../agents/agents.ts";
 import { getArtifactsDir } from "../shared/artifacts.ts";
-import { executeChain } from "./chain-execution.ts";
 import { resolveExecutionAgentScope } from "../agents/agent-scope.ts";
 import { runSync } from "./execution.ts";
 import { aggregateParallelOutputs } from "./parallel-utils.ts";
 import { recordRun } from "./run-history.ts";
 import {
-	getStepAgents,
-	isParallelStep,
 	resolveStepBehavior,
-	type ChainStep,
-	type SequentialStep,
 } from "./settings.ts";
 import { normalizeSkillInput } from "../shared/skills.ts";
-import { executeAsyncChain, executeAsyncSingle, isAsyncAvailable } from "./async-execution.ts";
+import { executeAsyncSingle, isAsyncAvailable } from "./async-execution.ts";
 import { createForkContextResolver } from "./fork-context.ts";
 import { finalizeSingleOutput, injectSingleOutputInstruction, resolveSingleOutputPath } from "./single-output.ts";
 import {
@@ -80,7 +75,6 @@ interface TaskParam {
 export interface SubagentParamsLike {
 	agent?: string;
 	task?: string;
-	chain?: ChainStep[];
 	tasks?: TaskParam[];
 	workflow?: WorkflowMode;
 	useTestDrivenDevelopment?: boolean;
@@ -98,7 +92,6 @@ export interface SubagentParamsLike {
 	skill?: string | string[] | boolean;
 	output?: string | boolean;
 	agentScope?: unknown;
-	chainDir?: string;
 }
 
 interface ExecutorDeps {
@@ -133,12 +126,11 @@ interface ExecutionContextData {
 function validateExecutionInput(
 	params: SubagentParamsLike,
 	agents: AgentConfig[],
-	hasChain: boolean,
 	hasTasks: boolean,
 	hasSingle: boolean,
 
 ): AgentToolResult<Details> | null {
-	if (Number(hasChain) + Number(hasTasks) + Number(hasSingle) !== 1) {
+	if (Number(hasTasks) + Number(hasSingle) !== 1) {
 		return {
 			content: [
 				{
@@ -151,58 +143,10 @@ function validateExecutionInput(
 		};
 	}
 
-	if (hasChain && params.chain) {
-		if (params.chain.length === 0) {
-			return {
-				content: [{ type: "text", text: "Chain must have at least one step" }],
-				isError: true,
-				details: { mode: "chain" as const, results: [] },
-			};
-		}
-		const firstStep = params.chain[0] as ChainStep;
-		if (isParallelStep(firstStep)) {
-			const missingTaskIndex = firstStep.parallel.findIndex((t) => !t.task);
-			if (missingTaskIndex !== -1) {
-				return {
-					content: [{ type: "text", text: `First parallel step: task ${missingTaskIndex + 1} must have a task (no previous output to reference)` }],
-					isError: true,
-					details: { mode: "chain" as const, results: [] },
-				};
-			}
-		} else if (!(firstStep as SequentialStep).task && !params.task) {
-			return {
-				content: [{ type: "text", text: "First step in chain must have a task" }],
-				isError: true,
-				details: { mode: "chain" as const, results: [] },
-			};
-		}
-		for (let i = 0; i < params.chain.length; i++) {
-			const step = params.chain[i] as ChainStep;
-			const stepAgents = getStepAgents(step);
-			for (const agentName of stepAgents) {
-				if (!agents.find((a) => a.name === agentName)) {
-					return {
-						content: [{ type: "text", text: `Unknown agent: ${agentName} (step ${i + 1})` }],
-						isError: true,
-						details: { mode: "chain" as const, results: [] },
-					};
-				}
-			}
-			if (isParallelStep(step) && step.parallel.length === 0) {
-				return {
-					content: [{ type: "text", text: `Parallel step ${i + 1} must have at least one task` }],
-					isError: true,
-					details: { mode: "chain" as const, results: [] },
-				};
-			}
-		}
-	}
-
 	return null;
 }
 
 function getRequestedModeLabel(params: SubagentParamsLike): Details["mode"] {
-	if ((params.chain?.length ?? 0) > 0) return "chain";
 	if ((params.tasks?.length ?? 0) > 0) return "parallel";
 	if (params.agent && params.task) return "single";
 	return "single";
@@ -235,31 +179,6 @@ function expandTopLevelTaskCounts(tasks: TaskParam[]): { tasks?: TaskParam[]; er
 	return { tasks: expanded };
 }
 
-function expandChainParallelCounts(chain: ChainStep[]): { chain?: ChainStep[]; error?: string } {
-	const expandedChain: ChainStep[] = [];
-	for (let stepIndex = 0; stepIndex < chain.length; stepIndex++) {
-		const step = chain[stepIndex]!;
-		if (!isParallelStep(step)) {
-			expandedChain.push(step);
-			continue;
-		}
-		const expandedParallel = [];
-		for (let taskIndex = 0; taskIndex < step.parallel.length; taskIndex++) {
-			const task = step.parallel[taskIndex]!;
-			const rawCount = (task as typeof task & { count?: unknown }).count;
-			if (rawCount !== undefined && (typeof rawCount !== "number" || !Number.isInteger(rawCount) || rawCount < 1)) {
-				return { error: `chain[${stepIndex}].parallel[${taskIndex}].count must be an integer >= 1` };
-			}
-			const { count, ...concreteTask } = task;
-			for (let repeat = 0; repeat < (rawCount ?? 1); repeat++) {
-				expandedParallel.push({ ...concreteTask });
-			}
-		}
-		expandedChain.push({ ...step, parallel: expandedParallel });
-	}
-	return { chain: expandedChain };
-}
-
 function normalizeRepeatedParallelCounts(params: SubagentParamsLike): { params?: SubagentParamsLike; error?: AgentToolResult<Details> } {
 	if (params.tasks) {
 		const expandedTasks = expandTopLevelTaskCounts(params.tasks);
@@ -267,13 +186,6 @@ function normalizeRepeatedParallelCounts(params: SubagentParamsLike): { params?:
 			return { error: buildRequestedModeError(params, expandedTasks.error) };
 		}
 		return { params: { ...params, tasks: expandedTasks.tasks } };
-	}
-	if (params.chain) {
-		const expandedChain = expandChainParallelCounts(params.chain);
-		if (expandedChain.error) {
-			return { error: buildRequestedModeError(params, expandedChain.error) };
-		}
-		return { params: { ...params, chain: expandedChain.chain } };
 	}
 	return { params };
 }
@@ -304,46 +216,6 @@ function toExecutionErrorResult(params: SubagentParamsLike, error: unknown): Age
 	);
 }
 
-function collectChainSessionFiles(
-	chain: ChainStep[],
-	sessionFileForIndex: (idx?: number) => string | undefined,
-): (string | undefined)[] {
-	const sessionFiles: (string | undefined)[] = [];
-	let flatIndex = 0;
-	for (const step of chain) {
-		if (isParallelStep(step)) {
-			for (let i = 0; i < step.parallel.length; i++) {
-				sessionFiles.push(sessionFileForIndex(flatIndex));
-				flatIndex++;
-			}
-			continue;
-		}
-		sessionFiles.push(sessionFileForIndex(flatIndex));
-		flatIndex++;
-	}
-	return sessionFiles;
-}
-
-function wrapChainTasksForFork(chain: ChainStep[], context: SubagentParamsLike["context"]): ChainStep[] {
-	if (context !== "fork") return chain;
-	return chain.map((step, stepIndex) => {
-		if (isParallelStep(step)) {
-			return {
-				...step,
-				parallel: step.parallel.map((task) => ({
-					...task,
-					task: wrapForkTask(task.task ?? "{previous}"),
-				})),
-			};
-		}
-		const sequential = step as SequentialStep;
-		return {
-			...sequential,
-			task: wrapForkTask(sequential.task ?? (stepIndex === 0 ? "{task}" : "{previous}")),
-		};
-	});
-}
-
 function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentToolResult<Details> | null {
 	const {
 		params,
@@ -358,26 +230,9 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 		workflow,
 		useTestDrivenDevelopment,
 	} = data;
-	const hasChain = (params.chain?.length ?? 0) > 0;
 	const hasTasks = (params.tasks?.length ?? 0) > 0;
 	const hasSingle = Boolean(params.agent && params.task);
 	if (!effectiveAsync) return null;
-
-	if (hasChain && params.chain) {
-		const chain = applySuperagentWorktreeDefaultsToChain(
-			params.chain as ChainStep[],
-			data.workflow,
-			deps.config,
-		);
-		const chainWorktreeTaskCwdError = buildChainWorktreeTaskCwdError(chain, params.cwd ?? ctx.cwd);
-		if (chainWorktreeTaskCwdError) {
-			return {
-				content: [{ type: "text", text: chainWorktreeTaskCwdError }],
-				isError: true,
-				details: { mode: "chain" as const, results: [] },
-			};
-		}
-	}
 
 	if (!isAsyncAvailable()) {
 		return {
@@ -390,32 +245,6 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 	const asyncCtx = { pi: deps.pi, cwd: ctx.cwd, currentSessionId: deps.state.currentSessionId! };
 	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(deps.config.maxSubagentDepth);
 
-	if (hasChain && params.chain) {
-		const normalized = normalizeSkillInput(params.skill);
-		const chainSkills = normalized === false ? [] : (normalized ?? []);
-		const chain = wrapChainTasksForFork(
-			applySuperagentWorktreeDefaultsToChain(params.chain as ChainStep[], data.workflow, deps.config),
-			params.context,
-		);
-		return executeAsyncChain(id, {
-			chain,
-			agents,
-			ctx: asyncCtx,
-			cwd: params.cwd,
-			maxOutput: params.maxOutput,
-			artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
-			artifactConfig,
-			shareEnabled,
-			sessionRoot,
-			chainSkills,
-			sessionFilesByFlatIndex: collectChainSessionFiles(chain, sessionFileForIndex),
-			maxSubagentDepth: currentMaxSubagentDepth,
-			workflow: data.workflow,
-			useTestDrivenDevelopment: data.useTestDrivenDevelopment,
-			config: deps.config,
-		});
-	}
-
 	if (hasTasks && params.tasks) {
 		const effectiveWorktree = resolveSuperagentWorktreeEnabled(params.worktree, workflow, deps.config);
 		if (effectiveWorktree) {
@@ -425,33 +254,12 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			}
 		}
 
-		const parallelTasks = params.tasks.map((task) => ({
-			agent: task.agent,
-			task: params.context === "fork" ? wrapForkTask(task.task) : task.task,
-			cwd: task.cwd,
-			...(task.model ? { model: task.model } : {}),
-			...(task.skill !== undefined ? { skill: task.skill } : {}),
-			...(task.output !== undefined ? { output: task.output } : {}),
-			...(task.reads !== undefined ? { reads: task.reads } : {}),
-			...(task.progress !== undefined ? { progress: task.progress } : {}),
-		}));
-		return executeAsyncChain(id, {
-			chain: [{ parallel: parallelTasks, worktree: effectiveWorktree }],
-			agents,
-			ctx: asyncCtx,
-			cwd: params.cwd,
-			maxOutput: params.maxOutput,
-			artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
-			artifactConfig,
-			shareEnabled,
-			sessionRoot,
-			chainSkills: [],
-			sessionFilesByFlatIndex: params.tasks.map((_, index) => sessionFileForIndex(index)),
-			maxSubagentDepth: currentMaxSubagentDepth,
-			workflow,
-			useTestDrivenDevelopment,
-			config: deps.config,
-		});
+		// Note: Async parallel execution is not yet supported in this lean runtime.
+		return {
+			content: [{ type: "text", text: "Async parallel execution is not yet supported in this lean runtime." }],
+			isError: true,
+			details: { mode: "parallel" as const, results: [] },
+		};
 	}
 
 	if (hasSingle) {
@@ -489,51 +297,6 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 	}
 
 	return null;
-}
-
-async function runChainPath(data: ExecutionContextData, deps: ExecutorDeps): Promise<AgentToolResult<Details>> {
-	const {
-		params,
-		agents,
-		ctx,
-		signal,
-		runId,
-		shareEnabled,
-		sessionDirForIndex,
-		sessionFileForIndex,
-		artifactsDir,
-		artifactConfig,
-		onUpdate,
-		sessionRoot,
-	} = data;
-	const normalized = normalizeSkillInput(params.skill);
-	const chainSkills = normalized === false ? [] : (normalized ?? []);
-	const chain = wrapChainTasksForFork(params.chain as ChainStep[], params.context);
-	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(deps.config.maxSubagentDepth);
-	const chainResult = await executeChain({
-		chain,
-		task: params.task,
-		agents,
-		ctx,
-		signal,
-		runId,
-		cwd: params.cwd,
-		shareEnabled,
-		sessionDirForIndex,
-		sessionFileForIndex,
-		artifactsDir,
-		artifactConfig,
-		includeProgress: params.includeProgress,
-		onUpdate,
-		chainSkills,
-		chainDir: params.chainDir,
-		maxSubagentDepth: currentMaxSubagentDepth,
-		config: deps.config,
-		workflow: data.workflow,
-		useTestDrivenDevelopment: data.useTestDrivenDevelopment,
-	});
-
-	return chainResult;
 }
 
 interface ForegroundParallelRunInput {
@@ -616,19 +379,6 @@ function buildParallelWorktreeTaskCwdError(
 	const conflict = findWorktreeTaskCwdConflict(tasks, sharedCwd);
 	if (!conflict) return undefined;
 	return formatWorktreeTaskCwdConflict(conflict, sharedCwd);
-}
-
-function buildChainWorktreeTaskCwdError(chain: ChainStep[], sharedCwd: string): string | undefined {
-	for (let stepIndex = 0; stepIndex < chain.length; stepIndex++) {
-		const step = chain[stepIndex]!;
-		if (!isParallelStep(step) || !step.worktree) continue;
-		const stepCwd = step.cwd ?? sharedCwd;
-		const conflict = findWorktreeTaskCwdConflict(step.parallel, stepCwd);
-		if (!conflict) continue;
-		const detail = formatWorktreeTaskCwdConflict(conflict, stepCwd);
-		return `parallel chain step ${stepIndex + 1}: ${detail}`;
-	}
-	return undefined;
 }
 
 function resolveParallelTaskCwd(
@@ -993,13 +743,11 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 		const agents = deps.discoverAgents(ctx.cwd, scope).agents;
 		const runId = randomUUID().slice(0, 8);
 		const shareEnabled = normalizedParams.share === true;
-		const hasChain = (normalizedParams.chain?.length ?? 0) > 0;
 		const hasTasks = (normalizedParams.tasks?.length ?? 0) > 0;
 		const hasSingle = Boolean(normalizedParams.agent && normalizedParams.task);
 		const validationError = validateExecutionInput(
 			normalizedParams,
 			agents,
-			hasChain,
 			hasTasks,
 			hasSingle,
 		);
@@ -1070,10 +818,6 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 		try {
 			const asyncResult = runAsyncPath(execData, deps);
 			if (asyncResult) return withForkContext(asyncResult, normalizedParams.context);
-
-			if (hasChain && normalizedParams.chain) {
-				return withForkContext(await runChainPath(execData, deps), normalizedParams.context);
-			}
 
 			if (hasTasks && normalizedParams.tasks) {
 				return withForkContext(await runParallelPath(execData, deps), normalizedParams.context);
