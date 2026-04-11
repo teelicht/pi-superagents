@@ -12,15 +12,12 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { describe, it } from "node:test";
 
-const TOP_LEVEL_OPTION_KEYS = [
-	"asyncByDefault",
-	"defaultSessionDir",
-	"maxSubagentDepth",
-	"superagents",
-] as const;
+const TOP_LEVEL_OPTION_KEYS = ["superagents"] as const;
 
 const SUPERAGENTS_OPTION_KEYS = [
-	"defaultImplementerMode",
+	"useSubagents",
+	"useTestDrivenDevelopment",
+	"commands",
 	"worktrees",
 	"modelTiers",
 ] as const;
@@ -53,6 +50,9 @@ function assertPublicConfigSurface(config: Record<string, unknown>): void {
 		[key: string]: unknown;
 		modelTiers?: Record<string, unknown>;
 		worktrees?: Record<string, unknown>;
+		commands?: Record<string, unknown>;
+		useSubagents?: unknown;
+		useTestDrivenDevelopment?: unknown;
 	};
 	const worktrees = superagents.worktrees as Record<string, unknown>;
 	const modelTiers = superagents.modelTiers as Record<string, unknown>;
@@ -71,7 +71,8 @@ function assertPublicConfigSurface(config: Record<string, unknown>): void {
 		assert.ok(key in worktrees, `Expected superagents.worktrees option '${key}' to be present`);
 	}
 
-	assert.equal(superagents.defaultImplementerMode, "tdd");
+	assert.equal(superagents.useSubagents, true);
+	assert.equal(superagents.useTestDrivenDevelopment, true);
 	assert.equal(worktrees.enabled, false);
 	assert.equal(worktrees.root, null);
 	assert.equal(worktrees.setupHook, null);

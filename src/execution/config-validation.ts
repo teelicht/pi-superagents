@@ -14,7 +14,8 @@ import type {
 	ConfigDiagnostic,
 	ExtensionConfig,
 	ModelTierSetting,
-	SuperpowersImplementerMode,
+	SuperpowersCommandPreset,
+	SuperpowersWorktreeSettings,
 	ThinkingLevel,
 } from "../shared/types.ts";
 
@@ -32,12 +33,37 @@ export interface FormatConfigDiagnosticsOptions {
 	examplePath: string;
 }
 
-const TOP_LEVEL_KEYS = new Set(["asyncByDefault", "defaultSessionDir", "maxSubagentDepth", "superagents"]);
-const SUPERAGENTS_KEYS = new Set(["defaultImplementerMode", "worktrees", "modelTiers"]);
+const TOP_LEVEL_KEYS = new Set(["superagents"]);
+const SUPERAGENTS_KEYS = new Set(["useSubagents", "useTestDrivenDevelopment", "commands", "worktrees", "modelTiers"]);
+const COMMAND_PRESET_KEYS = new Set(["description", "useSubagents", "useTestDrivenDevelopment"]);
+const COMMAND_NAME_PATTERN = /^(superpowers-[a-z0-9][a-z0-9-]*|sp-[a-z0-9][a-z0-9-]*)$/;
 const WORKTREE_KEYS = new Set(["enabled", "root", "setupHook", "setupHookTimeoutMs"]);
 const MODEL_TIER_KEYS = new Set(["model", "thinking"]);
-const IMPLEMENTER_MODES: readonly SuperpowersImplementerMode[] = ["tdd", "direct"];
 const THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"];
+
+/** Removed top-level config keys with migration guidance. */
+const REMOVED_GENERIC_KEYS: Record<string, { code: string; message: string }> = {
+	asyncByDefault: {
+		code: "removed_key",
+		message: "has been removed. Use superagents.useSubagents instead.",
+	},
+	defaultSessionDir: {
+		code: "removed_key",
+		message: "has been removed.",
+	},
+	maxSubagentDepth: {
+		code: "removed_key",
+		message: "has been removed.",
+	},
+};
+
+/** Removed superagents keys with migration guidance. */
+const REMOVED_SUPERAGENTS_KEYS: Record<string, { code: string; message: string }> = {
+	defaultImplementerMode: {
+		code: "removed_key",
+		message: "has been removed. Use superagents.useTestDrivenDevelopment instead.",
+	},
+};
 
 /**
  * Determine whether a value is a non-array object.
@@ -121,6 +147,34 @@ function validateModelTier(diagnostics: ConfigDiagnostic[], value: unknown, path
 }
 
 /**
+ * Validate a single superpowers command preset.
+ *
+ * @param diagnostics Mutable diagnostic accumulator.
+ * @param value Unknown preset value.
+ * @param path Dot-separated config path for the preset.
+ */
+function validateCommandPreset(diagnostics: ConfigDiagnostic[], value: unknown, path: string): void {
+	if (!isRecord(value)) {
+		addError(diagnostics, path, "must be an object.");
+		return;
+	}
+	for (const key of Object.keys(value)) {
+		if (!COMMAND_PRESET_KEYS.has(key)) {
+			addError(diagnostics, `${path}.${key}`, "is not a supported config key.", "unknown_key");
+		}
+	}
+	if ("description" in value && typeof value.description !== "string") {
+		addError(diagnostics, `${path}.description`, "must be a string.");
+	}
+	if ("useSubagents" in value && typeof value.useSubagents !== "boolean") {
+		addError(diagnostics, `${path}.useSubagents`, "must be a boolean.");
+	}
+	if ("useTestDrivenDevelopment" in value && typeof value.useTestDrivenDevelopment !== "boolean") {
+		addError(diagnostics, `${path}.useTestDrivenDevelopment`, "must be a boolean.");
+	}
+}
+
+/**
  * Validate user-authored config shape and values.
  *
  * @param rawConfig Parsed user config value.
@@ -134,17 +188,11 @@ export function validateConfigObject(rawConfig: unknown): ConfigValidationResult
 	}
 
 	for (const key of Object.keys(rawConfig)) {
-		if (!TOP_LEVEL_KEYS.has(key)) addError(diagnostics, key, "is not a supported config key.", "unknown_key");
-	}
-
-	if ("asyncByDefault" in rawConfig && typeof rawConfig.asyncByDefault !== "boolean") {
-		addError(diagnostics, "asyncByDefault", "must be a boolean.");
-	}
-	validateOptionalStringOrNull(diagnostics, rawConfig, "defaultSessionDir", "defaultSessionDir");
-	if ("maxSubagentDepth" in rawConfig) {
-		const value = rawConfig.maxSubagentDepth;
-		if (!Number.isInteger(value) || Number(value) < 0) {
-			addError(diagnostics, "maxSubagentDepth", "must be an integer greater than or equal to 0.");
+		if (key in REMOVED_GENERIC_KEYS) {
+			const { code, message } = REMOVED_GENERIC_KEYS[key];
+			addError(diagnostics, key, message, code);
+		} else if (!TOP_LEVEL_KEYS.has(key)) {
+			addError(diagnostics, key, "is not a supported config key.", "unknown_key");
 		}
 	}
 
@@ -154,13 +202,35 @@ export function validateConfigObject(rawConfig: unknown): ConfigValidationResult
 			addError(diagnostics, "superagents", "must be an object.");
 		} else {
 			for (const key of Object.keys(superagents)) {
-				if (!SUPERAGENTS_KEYS.has(key)) addError(diagnostics, `superagents.${key}`, "is not a supported config key.", "unknown_key");
+				if (key in REMOVED_SUPERAGENTS_KEYS) {
+					const { code, message } = REMOVED_SUPERAGENTS_KEYS[key];
+					addError(diagnostics, `superagents.${key}`, message, code);
+				} else if (!SUPERAGENTS_KEYS.has(key)) {
+					addError(diagnostics, `superagents.${key}`, "is not a supported config key.", "unknown_key");
+				}
 			}
-			if (
-				"defaultImplementerMode" in superagents
-				&& !IMPLEMENTER_MODES.includes(superagents.defaultImplementerMode as SuperpowersImplementerMode)
-			) {
-				addError(diagnostics, "superagents.defaultImplementerMode", "must be either tdd or direct.");
+			if ("useSubagents" in superagents && typeof superagents.useSubagents !== "boolean") {
+				addError(diagnostics, "superagents.useSubagents", "must be a boolean.");
+			}
+			if ("useTestDrivenDevelopment" in superagents && typeof superagents.useTestDrivenDevelopment !== "boolean") {
+				addError(diagnostics, "superagents.useTestDrivenDevelopment", "must be a boolean.");
+			}
+			if ("commands" in superagents) {
+				const commands = superagents.commands;
+				if (!isRecord(commands)) {
+					addError(diagnostics, "superagents.commands", "must be an object.");
+				} else {
+					for (const [commandName, commandValue] of Object.entries(commands)) {
+						if (!COMMAND_NAME_PATTERN.test(commandName)) {
+							addError(
+								diagnostics,
+								`superagents.commands.${commandName}`,
+								"must match superpowers-<name> or sp-<name> (lowercase alphanumeric and hyphens).",
+							);
+						}
+						validateCommandPreset(diagnostics, commandValue, `superagents.commands.${commandName}`);
+					}
+				}
 			}
 			if ("worktrees" in superagents) {
 				const worktrees = superagents.worktrees;
@@ -231,6 +301,10 @@ export function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfi
 		? {
 			...(defaultSuperagents ?? {}),
 			...(overrideSuperagents ?? {}),
+			commands: {
+				...(defaultSuperagents?.commands ?? {}),
+				...(overrideSuperagents?.commands ?? {}),
+			},
 			worktrees: {
 				...(defaultSuperagents?.worktrees ?? {}),
 				...(overrideSuperagents?.worktrees ?? {}),
