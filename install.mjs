@@ -4,8 +4,8 @@
  * pi-superagents installer
  * 
  * Usage:
- *   npx pi-superagents          # Install to ~/.pi/agent/extensions/subagent
- *   npx pi-superagents --remove # Remove the extension
+ *   npx @teelicht/pi-superagents          # Install to ~/.pi/agent/extensions/subagent
+ *   npx @teelicht/pi-superagents --remove # Remove the extension
  */
 
 import { execSync } from "node:child_process";
@@ -27,9 +27,9 @@ if (isHelp) {
 pi-superagents - Pi extension for delegating tasks to subagents
 
 Usage:
-  npx pi-superagents          Install the extension
-  npx pi-superagents --remove Remove the extension
-  npx pi-superagents --help   Show this help
+  npx @teelicht/pi-superagents          Install the extension
+  npx @teelicht/pi-superagents --remove Remove the extension
+  npx @teelicht/pi-superagents --help   Show this help
 
 Installation directory: ${EXTENSION_DIR}
 `);
