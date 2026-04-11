@@ -1,6 +1,6 @@
 {
   "name": "@teelicht/pi-superagents",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Pi extension for delegating tasks to subagents to implement the superpowers development workflow",
   "author": "Thomas Lichtenecker, Nico Bailon",
   "license": "MIT",
@@ -34,6 +34,7 @@
     "agents/",
     "docs/",
     "default-config.json",
+    "config.example.json",
     "*.mjs",
     "README.md",
     "CHANGELOG.md"
