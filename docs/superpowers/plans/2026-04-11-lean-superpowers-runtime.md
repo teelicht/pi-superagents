@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Convert `pi-superagents` into a self-contained Superpowers-only Pi extension with `/superpowers`, `/superpowers-status`, Superpowers role subagents, role model selection, TDD/subagent toggles, and custom workflow command presets.
+**Goal:** Convert `pi-superagents` into a self-contained Superpowers-only Pi extension with `/superpowers`, `/superpowers-status`, Superpowers role subagents, model-tier resolution from role agent frontmatter, Superpowers worktrees, TDD/subagent toggles, and custom workflow command presets.
 
 **Architecture:** Keep the existing Pi child-process execution substrate where it directly supports Superpowers role execution, but remove the public generic subagent product surface. Add small focused modules for workflow profile resolution and root prompt construction, then simplify config, slash command registration, schemas, docs, and tests around that boundary.
 
@@ -20,8 +20,8 @@ The spec is deletion-heavy but cohesive: every task serves the single product bo
 
 | File | Purpose | Changes Needed |
 |------|---------|----------------|
-| `src/shared/types.ts` | Runtime and config contracts | Replace generic config shape with Superpowers config, workflow profile, role config, and command preset types. Remove config-facing `defaultImplementerMode`. |
-| `src/execution/config-validation.ts` | Strict config validation and merging | Validate `useSubagents`, `useTestDrivenDevelopment`, `commands`, `roles`, and `modelTiers`; reject removed generic keys and old `defaultImplementerMode`. |
+| `src/shared/types.ts` | Runtime and config contracts | Replace generic config shape with Superpowers config, workflow profile, worktree config, and command preset types. Remove config-facing `defaultImplementerMode`. |
+| `src/execution/config-validation.ts` | Strict config validation and merging | Validate `useSubagents`, `useTestDrivenDevelopment`, `commands`, `worktrees`, and `modelTiers`; reject removed generic keys and old `defaultImplementerMode`. |
 | `default-config.json` | Bundled defaults | Replace generic defaults with lean Superpowers defaults. |
 | `config.example.json` | User-facing config reference | Mirror the lean Superpowers config surface. |
 | `src/superpowers/workflow-profile.ts` | New resolver unit | Parse inline workflow tokens and combine global defaults, custom command presets, and inline overrides. |
@@ -30,15 +30,15 @@ The spec is deletion-heavy but cohesive: every task serves the single product bo
 | `src/extension/index.ts` | Pi extension entrypoint | Pass config into slash command registration, remove prompt-template bridge and slash subagent bridge registration, keep `subagent` and `subagent_status` tools for root-model workflows. |
 | `src/shared/schemas.ts` | Tool schemas | Remove management action schema and generic chain public descriptions; narrow `subagent` to Superpowers role execution. |
 | `src/execution/subagent-executor.ts` | Tool execution dispatcher | Remove management action paths and generic public chain affordances; preserve role single and parallel execution used by root Superpowers workflows. |
-| `src/execution/superpowers-policy.ts` | Role policy | Replace implementer mode with `useTestDrivenDevelopment`; add role model config resolution. |
-| `src/execution/superagents-config.ts` | Superpowers config helpers | Remove worktree public default helpers; keep only lean settings accessors needed by role policy. |
-| `src/ui/superpowers-status.ts` | New focused TUI | Replace generic Agents Manager with status/settings display, safe config toggles, and role model cycling. |
+| `src/execution/superpowers-policy.ts` | Role policy | Replace implementer mode with `useTestDrivenDevelopment`; preserve model-tier resolution from each `sp-*` agent frontmatter. |
+| `src/execution/superagents-config.ts` | Superpowers config helpers | Keep Superpowers worktree defaults and lean settings accessors. |
+| `src/ui/superpowers-status.ts` | New focused TUI | Replace generic Agents Manager with status/settings display, safe config toggles, and worktree visibility. |
 | `src/superpowers/config-writer.ts` | New config writer unit | Apply safe JSON updates for TUI toggles without introducing a second config system. |
 | `src/ui/subagents-status.ts` | Current async status TUI | Either rename into `superpowers-status.ts` or reduce to a helper used by the focused TUI. |
 | `agents/delegate.md` | Generic builtin agent | Delete unless executor still needs an internal fallback; do not document it. |
 | `agents/sp-task-loop.chain.md` | Generic chain-file workflow | Delete from public builtins in the first lean pass. |
 | `README.md` | User docs | Rewrite around Superpowers-only UX and remove fork lineage. |
-| `docs/guides/superpowers.md` | Superpowers guide | Rewrite to describe `/superpowers`, tokens, custom commands, role models, status/settings. |
+| `docs/guides/superpowers.md` | Superpowers guide | Rewrite to describe `/superpowers`, tokens, custom commands, role-agent frontmatter models, worktrees, and status/settings. |
 | `docs/reference/configuration.md` | Config reference | Replace broad config reference with lean Superpowers config. |
 | `docs/reference/parameters.md` | Tool parameter docs | Narrow or remove generic public API sections. |
 | `CHANGELOG.md` | Release notes | Add breaking 0.3.0 entry and remove forward-looking compatibility promises. |
@@ -68,7 +68,7 @@ Delete these only after imports and tests no longer reference them.
 | File | Relationship |
 |------|--------------|
 | `src/extension/index.ts` | Imports slash registration, prompt-template bridge, slash bridge, status TUI, config helpers, executor. |
-| `src/execution/async-execution.ts` | Uses chain/worktree concepts; keep only if recent-run status still needs async execution. |
+| `src/execution/async-execution.ts` | Uses chain-oriented async concepts; keep only if recent-run status or retained Superpowers worktree execution needs it. |
 | `src/execution/chain-execution.ts` | Generic chain implementation; remove from public paths, then delete if no internal Superpowers path uses it. |
 | `src/execution/execution.ts` | Single role child execution; preserve and simplify. |
 | `src/execution/parallel-utils.ts` | Parallel helper; preserve for root Superpowers delegated fan-out. |
@@ -81,19 +81,19 @@ Delete these only after imports and tests no longer reference them.
 
 | Test | Coverage |
 |------|----------|
-| `test/unit/config-validation.test.ts` | Update to lean config validation, commands, roles, model tiers, removed keys. |
+| `test/unit/config-validation.test.ts` | Update to lean config validation, commands, worktrees, model tiers, removed keys. |
 | `test/unit/default-config.test.ts` | Update to lean config templates. |
 | `test/unit/superpowers-workflow-profile.test.ts` | New workflow token and command preset precedence coverage. |
 | `test/unit/superpowers-root-prompt.test.ts` | New root prompt bootstrap and delegation wording coverage. |
 | `test/unit/superpowers-config-writer.test.ts` | New safe config text update coverage for TUI writes. |
-| `test/unit/superpowers-policy.test.ts` | Update to boolean TDD and role model config resolution. |
+| `test/unit/superpowers-policy.test.ts` | Update to boolean TDD and model-tier resolution from role agent frontmatter. |
 | `test/unit/schemas.test.ts` | Update to narrowed `subagent` and status schemas. |
 | `test/unit/package-manifest.test.ts` | Update version and package metadata expectations. |
 | `test/integration/slash-commands.test.ts` | Replace generic command assertions with lean command registration and prompt behavior. |
 | `test/integration/config-gating.test.ts` | Update command names and config diagnostics expectations. |
 | `test/unit/prompt-template-bridge.test.ts` | Delete with bridge removal. |
 | `test/integration/chain-execution.test.ts` | Delete if chain runtime is removed; otherwise update only for internal Superpowers role use. |
-| `test/integration/parallel-execution.test.ts` | Keep only if it covers retained Superpowers parallel role execution. |
+| `test/integration/parallel-execution.test.ts` | Keep only if it covers retained Superpowers parallel role execution and worktree defaults. |
 
 ### Reference Patterns
 
@@ -112,6 +112,12 @@ Delete these only after imports and tests no longer reference them.
 - [x] Configuration changes required
 - [x] Large deletion surface
 - [ ] Database migrations needed
+
+### Implementation Standards
+
+- Keep all application code in TypeScript. Do not add plain JavaScript source files.
+- Add or maintain file headers for every touched source file.
+- Add or maintain doc comments for every non-trivial function, including new helpers in `src/superpowers/*`.
 
 ## Task 1: Lean Config Contract And Defaults
 
@@ -133,13 +139,11 @@ const defaults: ExtensionConfig = {
 		useSubagents: true,
 		useTestDrivenDevelopment: true,
 		commands: {},
-		roles: {
-			recon: { model: "cheap" },
-			research: { model: "cheap" },
-			implementer: { model: "cheap" },
-			specReview: { model: "balanced" },
-			codeReview: { model: "balanced" },
-			debug: { model: "max" },
+		worktrees: {
+			enabled: false,
+			root: null,
+			setupHook: null,
+			setupHookTimeoutMs: 30000,
 		},
 		modelTiers: {
 			cheap: { model: "opencode-go/minimax-m2.7" },
@@ -163,8 +167,9 @@ const result = loadEffectiveConfig(defaults, {
 				useTestDrivenDevelopment: false,
 			},
 		},
-		roles: {
-			implementer: { model: "max" },
+		worktrees: {
+			enabled: true,
+			root: "/tmp/superpowers-worktrees",
 		},
 		modelTiers: {
 			max: { model: "openai/gpt-5.4", thinking: "high" },
@@ -181,8 +186,12 @@ assert.deepEqual(result.config.superagents?.commands?.["superpowers-lean"], {
 	useSubagents: false,
 	useTestDrivenDevelopment: false,
 });
-assert.deepEqual(result.config.superagents?.roles?.recon, { model: "cheap" });
-assert.deepEqual(result.config.superagents?.roles?.implementer, { model: "max" });
+assert.deepEqual(result.config.superagents?.worktrees, {
+	enabled: true,
+	root: "/tmp/superpowers-worktrees",
+	setupHook: null,
+	setupHookTimeoutMs: 30000,
+});
 assert.deepEqual(result.config.superagents?.modelTiers?.cheap, defaults.superagents?.modelTiers?.cheap);
 assert.deepEqual(result.config.superagents?.modelTiers?.max, {
 	model: "openai/gpt-5.4",
@@ -196,7 +205,7 @@ assert.deepEqual(result.config.superagents?.modelTiers?.free, {
 Add this test:
 
 ```typescript
-it("accepts lean Superpowers command presets and role model settings", () => {
+it("accepts lean Superpowers command presets, worktrees, and model tiers", () => {
 	const result = validateConfigObject({
 		superagents: {
 			useSubagents: true,
@@ -211,9 +220,11 @@ it("accepts lean Superpowers command presets and role model settings", () => {
 					useSubagents: false,
 				},
 			},
-			roles: {
-				recon: { model: "cheap" },
-				implementer: { model: "openai/gpt-5.4" },
+			worktrees: {
+				enabled: true,
+				root: null,
+				setupHook: "./scripts/setup-worktree.mjs",
+				setupHookTimeoutMs: 45000,
 			},
 			modelTiers: {
 				cheap: "opencode-go/minimax-m2.7",
@@ -237,7 +248,6 @@ it("rejects removed generic config keys and old implementer mode", () => {
 		maxSubagentDepth: 2,
 		superagents: {
 			defaultImplementerMode: "tdd",
-			worktrees: { enabled: true },
 		},
 	});
 
@@ -247,7 +257,6 @@ it("rejects removed generic config keys and old implementer mode", () => {
 		"defaultSessionDir",
 		"maxSubagentDepth",
 		"superagents.defaultImplementerMode",
-		"superagents.worktrees",
 	]);
 });
 ```
@@ -255,7 +264,7 @@ it("rejects removed generic config keys and old implementer mode", () => {
 Add this test:
 
 ```typescript
-it("rejects invalid custom command names and fields", () => {
+it("rejects invalid custom command names, fields, and worktree values", () => {
 	const result = validateConfigObject({
 		superagents: {
 			commands: {
@@ -268,10 +277,12 @@ it("rejects invalid custom command names and fields", () => {
 					prompt: "Do extra things",
 				},
 			},
-			roles: {
-				scout: { model: "cheap" },
-				recon: { model: "" },
-				debug: { model: "max", tools: ["bash"] },
+			worktrees: {
+				enabled: "yes",
+				root: 12,
+				setupHook: false,
+				setupHookTimeoutMs: 0,
+				setupCommand: "./setup.sh",
 			},
 		},
 	});
@@ -284,9 +295,11 @@ it("rejects invalid custom command names and fields", () => {
 		"superagents.commands.superpowers-extra.useSubagents",
 		"superagents.commands.superpowers-extra.useTestDrivenDevelopment",
 		"superagents.commands.superpowers-extra.prompt",
-		"superagents.roles.scout",
-		"superagents.roles.recon.model",
-		"superagents.roles.debug.tools",
+		"superagents.worktrees.setupCommand",
+		"superagents.worktrees.enabled",
+		"superagents.worktrees.root",
+		"superagents.worktrees.setupHook",
+		"superagents.worktrees.setupHookTimeoutMs",
 	]);
 });
 ```
@@ -299,7 +312,7 @@ Run:
 node --experimental-strip-types --test test/unit/config-validation.test.ts test/unit/default-config.test.ts
 ```
 
-Expected: FAIL because the current config schema still exposes `defaultImplementerMode`, `worktrees`, and generic top-level keys.
+Expected: FAIL because the current config schema still exposes `defaultImplementerMode`, lacks `commands`, and still allows generic top-level keys.
 
 - [ ] **Step 3: Update TypeScript config types**
 
@@ -308,29 +321,25 @@ In `src/shared/types.ts`, replace `SuperpowersImplementerMode` and `SuperpowersS
 ```typescript
 export type WorkflowMode = "superpowers";
 
-export type SuperpowersRoleName =
-	| "recon"
-	| "research"
-	| "implementer"
-	| "specReview"
-	| "codeReview"
-	| "debug";
-
 export interface SuperpowersCommandPreset {
 	description?: string;
 	useSubagents?: boolean;
 	useTestDrivenDevelopment?: boolean;
 }
 
-export interface SuperpowersRoleSettings {
-	model?: string;
+export interface SuperpowersWorktreeSettings {
+	enabled?: boolean;
+	root?: string | null;
+	setupHook?: string | null;
+	setupHookTimeoutMs?: number;
 }
 
 export interface SuperpowersSettings {
 	useSubagents?: boolean;
 	useTestDrivenDevelopment?: boolean;
 	commands?: Record<string, SuperpowersCommandPreset>;
-	roles?: Partial<Record<SuperpowersRoleName, SuperpowersRoleSettings>>;
+	/** Superpowers-only worktree defaults for parallel delegated work. */
+	worktrees?: SuperpowersWorktreeSettings;
 	/** Model configuration for each tier. Supports built-in (cheap, balanced, max) and custom tiers. */
 	modelTiers?: Record<string, ModelTierSetting>;
 }
@@ -364,23 +373,16 @@ const SUPERAGENTS_KEYS = new Set([
 	"useSubagents",
 	"useTestDrivenDevelopment",
 	"commands",
-	"roles",
+	"worktrees",
 	"modelTiers",
 ]);
 const COMMAND_PRESET_KEYS = new Set(["description", "useSubagents", "useTestDrivenDevelopment"]);
-const ROLE_SETTING_KEYS = new Set(["model"]);
-const SUPERPOWERS_ROLE_NAMES = new Set([
-	"recon",
-	"research",
-	"implementer",
-	"specReview",
-	"codeReview",
-	"debug",
-]);
+const WORKTREE_KEYS = new Set(["enabled", "root", "setupHook", "setupHookTimeoutMs"]);
+const MODEL_TIER_KEYS = new Set(["model", "thinking"]);
 const COMMAND_NAME_PATTERN = /^(superpowers-[a-z0-9][a-z0-9-]*|sp-[a-z0-9][a-z0-9-]*)$/;
 ```
 
-Add these helper functions below `validateModelTier`:
+Keep `validateOptionalStringOrNull`. Add this helper below `validateModelTier`:
 
 ```typescript
 function validateCommandPreset(
@@ -405,23 +407,6 @@ function validateCommandPreset(
 		addError(diagnostics, `${path}.useTestDrivenDevelopment`, "must be a boolean.");
 	}
 }
-
-function validateRoleSetting(
-	diagnostics: ConfigDiagnostic[],
-	value: unknown,
-	path: string,
-): void {
-	if (!isRecord(value)) {
-		addError(diagnostics, path, "must be an object.");
-		return;
-	}
-	for (const key of Object.keys(value)) {
-		if (!ROLE_SETTING_KEYS.has(key)) addError(diagnostics, `${path}.${key}`, "is not a supported config key.", "unknown_key");
-	}
-	if ("model" in value && (typeof value.model !== "string" || !value.model.trim())) {
-		addError(diagnostics, `${path}.model`, "must be a non-empty string.");
-	}
-}
 ```
 
 In `validateConfigObject`, delete validation for `asyncByDefault`, `defaultSessionDir`, and `maxSubagentDepth`. Inside `superagents`, add:
@@ -441,9 +426,6 @@ if ("defaultImplementerMode" in superagents) {
 		"removed_key",
 	);
 }
-if ("worktrees" in superagents) {
-	addError(diagnostics, "superagents.worktrees", "has been removed from the public config surface.", "removed_key");
-}
 if ("commands" in superagents) {
 	const commands = superagents.commands;
 	if (!isRecord(commands)) {
@@ -459,18 +441,24 @@ if ("commands" in superagents) {
 		}
 	}
 }
-if ("roles" in superagents) {
-	const roles = superagents.roles;
-	if (!isRecord(roles)) {
-		addError(diagnostics, "superagents.roles", "must be an object.");
+if ("worktrees" in superagents) {
+	const worktrees = superagents.worktrees;
+	if (!isRecord(worktrees)) {
+		addError(diagnostics, "superagents.worktrees", "must be an object.");
 	} else {
-		for (const [roleName, roleValue] of Object.entries(roles)) {
-			const rolePath = `superagents.roles.${roleName}`;
-			if (!SUPERPOWERS_ROLE_NAMES.has(roleName)) {
-				addError(diagnostics, rolePath, "is not a supported Superpowers role.", "unknown_key");
-				continue;
+		for (const key of Object.keys(worktrees)) {
+			if (!WORKTREE_KEYS.has(key)) addError(diagnostics, `superagents.worktrees.${key}`, "is not a supported config key.", "unknown_key");
+		}
+		if ("enabled" in worktrees && typeof worktrees.enabled !== "boolean") {
+			addError(diagnostics, "superagents.worktrees.enabled", "must be a boolean.");
+		}
+		validateOptionalStringOrNull(diagnostics, worktrees, "root", "superagents.worktrees.root");
+		validateOptionalStringOrNull(diagnostics, worktrees, "setupHook", "superagents.worktrees.setupHook");
+		if ("setupHookTimeoutMs" in worktrees) {
+			const value = worktrees.setupHookTimeoutMs;
+			if (!Number.isInteger(value) || Number(value) <= 0) {
+				addError(diagnostics, "superagents.worktrees.setupHookTimeoutMs", "must be a positive integer.");
 			}
-			validateRoleSetting(diagnostics, roleValue, rolePath);
 		}
 	}
 }
@@ -492,9 +480,9 @@ export function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfi
 				...(defaultSuperagents?.commands ?? {}),
 				...(overrideSuperagents?.commands ?? {}),
 			},
-			roles: {
-				...(defaultSuperagents?.roles ?? {}),
-				...(overrideSuperagents?.roles ?? {}),
+			worktrees: {
+				...(defaultSuperagents?.worktrees ?? {}),
+				...(overrideSuperagents?.worktrees ?? {}),
 			},
 			modelTiers: mergeModelTiers(defaultSuperagents?.modelTiers, overrideSuperagents?.modelTiers),
 		}
@@ -518,25 +506,11 @@ Replace `default-config.json` and `config.example.json` with:
     "useSubagents": true,
     "useTestDrivenDevelopment": true,
     "commands": {},
-    "roles": {
-      "recon": {
-        "model": "cheap"
-      },
-      "research": {
-        "model": "cheap"
-      },
-      "implementer": {
-        "model": "cheap"
-      },
-      "specReview": {
-        "model": "balanced"
-      },
-      "codeReview": {
-        "model": "balanced"
-      },
-      "debug": {
-        "model": "max"
-      }
+    "worktrees": {
+      "enabled": false,
+      "root": null,
+      "setupHook": null,
+      "setupHookTimeoutMs": 30000
     },
     "modelTiers": {
       "cheap": {
@@ -564,24 +538,22 @@ const SUPERAGENTS_OPTION_KEYS = [
 	"useSubagents",
 	"useTestDrivenDevelopment",
 	"commands",
-	"roles",
+	"worktrees",
 	"modelTiers",
 ] as const;
 
-const ROLE_OPTION_KEYS = [
-	"recon",
-	"research",
-	"implementer",
-	"specReview",
-	"codeReview",
-	"debug",
+const WORKTREE_OPTION_KEYS = [
+	"enabled",
+	"root",
+	"setupHook",
+	"setupHookTimeoutMs",
 ] as const;
 ```
 
 Replace `assertPublicConfigSurface` assertions after `superagents` lookup with:
 
 ```typescript
-const roles = superagents.roles as Record<string, { model?: unknown }>;
+const worktrees = superagents.worktrees as Record<string, unknown>;
 const modelTiers = superagents.modelTiers as Record<string, unknown>;
 const cheapTier = modelTiers.cheap as Record<string, unknown>;
 const balancedTier = modelTiers.balanced as Record<string, unknown>;
@@ -594,15 +566,17 @@ for (const key of TOP_LEVEL_OPTION_KEYS) {
 for (const key of SUPERAGENTS_OPTION_KEYS) {
 	assert.ok(key in superagents, `Expected superagents option '${key}' to be present`);
 }
-for (const key of ROLE_OPTION_KEYS) {
-	assert.ok(key in roles, `Expected superagents.roles.${key} to be present`);
-	assert.equal(typeof roles[key]?.model, "string");
-	assert.ok(String(roles[key]?.model).length > 0);
+for (const key of WORKTREE_OPTION_KEYS) {
+	assert.ok(key in worktrees, `Expected superagents.worktrees.${key} to be present`);
 }
 
 assert.equal(superagents.useSubagents, true);
 assert.equal(superagents.useTestDrivenDevelopment, true);
 assert.deepEqual(superagents.commands, {});
+assert.equal(worktrees.enabled, false);
+assert.equal(worktrees.root, null);
+assert.equal(worktrees.setupHook, null);
+assert.equal(worktrees.setupHookTimeoutMs, 30000);
 assert.equal(typeof cheapTier.model, "string");
 assert.equal(typeof balancedTier.model, "string");
 assert.equal(typeof maxTier.model, "string");
@@ -1786,7 +1760,7 @@ git add src/shared/schemas.ts src/execution/subagent-executor.ts src/extension/i
 git commit -m "feat: narrow subagent tool to superpowers roles"
 ```
 
-## Task 7: Role Model And TDD Policy
+## Task 7: TDD Policy And Role Agent Model Tiers
 
 **Files:**
 - Modify: `src/execution/superpowers-policy.ts`
@@ -1795,6 +1769,7 @@ git commit -m "feat: narrow subagent tool to superpowers roles"
 - Modify: `src/execution/subagent-runner.ts` if retained
 - Modify: `src/execution/subagent-executor.ts`
 - Modify: `test/unit/superpowers-policy.test.ts`
+- Modify: `test/integration/parallel-execution.test.ts`
 
 - [ ] **Step 1: Update policy tests**
 
@@ -1827,27 +1802,26 @@ it("adds test-driven-development only when useTestDrivenDevelopment is true", ()
 });
 ```
 
-Add:
+Keep the existing `resolveModelForAgent` tier tests. Add this test to make the role-agent-frontmatter decision explicit:
 
 ```typescript
-it("resolves role model settings through role config before agent frontmatter", () => {
+it("resolves sp role agent frontmatter model tiers without role config", () => {
 	assert.deepEqual(
-		resolveModelForRole({
-			roleName: "implementer",
-			agentModel: "cheap",
+		resolveModelForAgent({
+			workflow: "superpowers",
+			agentModel: "balanced",
 			config: {
 				superagents: {
-					roles: {
-						implementer: { model: "max" },
-					},
 					modelTiers: {
-						max: { model: "openai/gpt-5.4", thinking: "high" },
-						cheap: { model: "opencode-go/minimax-m2.7" },
+						balanced: {
+							model: "openai/gpt-5.4",
+							thinking: "medium",
+						},
 					},
 				},
 			},
 		}),
-		{ model: "openai/gpt-5.4", thinking: "high" },
+		{ model: "openai/gpt-5.4", thinking: "medium" },
 	);
 });
 ```
@@ -1860,46 +1834,11 @@ Run:
 node --experimental-strip-types --test test/unit/superpowers-policy.test.ts
 ```
 
-Expected: FAIL because `resolveModelForRole` and boolean TDD input do not exist.
+Expected: FAIL because `resolveImplementerSkillSet` still requires `implementerMode`.
 
-- [ ] **Step 3: Update policy types and resolver**
+- [ ] **Step 3: Update policy types**
 
-In `src/execution/superpowers-policy.ts`, replace the `SuperpowersImplementerMode` import with `SuperpowersRoleName`.
-
-Add:
-
-```typescript
-const EXECUTION_ROLE_TO_CONFIG_ROLE: Partial<Record<ExecutionRole, SuperpowersRoleName>> = {
-	"sp-recon": "recon",
-	"sp-research": "research",
-	"sp-implementer": "implementer",
-	"sp-spec-review": "specReview",
-	"sp-code-review": "codeReview",
-	"sp-debug": "debug",
-};
-```
-
-Add this exported function:
-
-```typescript
-/**
- * Resolve the effective model for a Superpowers role.
- *
- * @param input Role name, agent frontmatter model, and effective config.
- * @returns Resolved concrete model settings or undefined when no tier applies.
- */
-export function resolveModelForRole(input: {
-	roleName: SuperpowersRoleName;
-	agentModel?: string;
-	config: ExtensionConfig;
-}): ResolvedRoleModel | undefined {
-	const settings = getSuperagentSettings(input.config);
-	const configuredModel = settings?.roles?.[input.roleName]?.model ?? input.agentModel;
-	const tier = normalizeConfiguredTier(configuredModel);
-	if (!tier) return undefined;
-	return resolveTierModelSetting(settings, tier) ?? { model: tier };
-}
-```
+In `src/execution/superpowers-policy.ts`, remove the `SuperpowersImplementerMode` import. Do not add model settings under `superagents`. Role agent model choices remain in each `agents/sp-*.md` frontmatter `model` field, and `resolveModelForAgent` continues to resolve those values through `superagents.modelTiers`.
 
 Replace `resolveImplementerSkillSet` signature with:
 
@@ -1940,44 +1879,30 @@ When calling `resolveImplementerSkillSet`, pass:
 useTestDrivenDevelopment: options.useTestDrivenDevelopment ?? true,
 ```
 
-- [ ] **Step 5: Use role model config in execution**
+- [ ] **Step 5: Preserve Superpowers worktree defaults**
 
-Where `resolveModelForAgent` is called for Superpowers roles, infer the role and call `resolveModelForRole` when `EXECUTION_ROLE_TO_CONFIG_ROLE` has a role mapping:
+Keep `resolveSuperagentWorktreeEnabled`, `applySuperagentWorktreeDefaultsToChain`, `resolveSuperagentWorktreeRuntimeOptions`, and `resolveSuperagentWorktreeCreateOptions` in `src/execution/superagents-config.ts`. Update their doc headers from generic Superagents wording to Superpowers wording, but do not remove behavior.
 
-```typescript
-const executionRole = inferExecutionRole(agent.name);
-const configRole = EXECUTION_ROLE_TO_CONFIG_ROLE[executionRole];
-const resolvedModel = configRole
-	? resolveModelForRole({ roleName: configRole, agentModel: agent.model, config })
-	: resolveModelForAgent({ workflow, agentModel: agent.model, config });
-```
+Add or keep a test in `test/integration/parallel-execution.test.ts` or `test/unit/worktree.test.ts` that exercises `workflow: "superpowers"` with `superagents.worktrees.enabled: true` and verifies parallel role execution still requests worktree setup.
 
-Export a helper if multiple files need the mapping:
-
-```typescript
-export function mapExecutionRoleToConfigRole(role: ExecutionRole): SuperpowersRoleName | undefined {
-	return EXECUTION_ROLE_TO_CONFIG_ROLE[role];
-}
-```
-
-- [ ] **Step 6: Run policy and execution tests**
+- [ ] **Step 6: Run policy, worktree, and execution tests**
 
 Run:
 
 ```bash
-node --experimental-strip-types --test test/unit/superpowers-policy.test.ts
+node --experimental-strip-types --test test/unit/superpowers-policy.test.ts test/unit/worktree.test.ts
 node --experimental-transform-types --import ./test/support/register-loader.mjs --test test/integration/single-execution.test.ts test/integration/parallel-execution.test.ts
 ```
 
-Expected: PASS after updating test expectations from `implementerMode` to `useTestDrivenDevelopment`.
+Expected: PASS after updating test expectations from `implementerMode` to `useTestDrivenDevelopment` and preserving Superpowers worktree defaults.
 
-- [ ] **Step 7: Commit role policy update**
+- [ ] **Step 7: Commit policy update**
 
 Run:
 
 ```bash
-git add src/execution/superpowers-policy.ts src/execution/execution.ts src/execution/async-execution.ts src/execution/subagent-runner.ts src/execution/subagent-executor.ts test/unit/superpowers-policy.test.ts test/integration/single-execution.test.ts test/integration/parallel-execution.test.ts
-git commit -m "feat: resolve superpowers role models and tdd policy"
+git add src/execution/superpowers-policy.ts src/execution/superagents-config.ts src/execution/execution.ts src/execution/async-execution.ts src/execution/subagent-runner.ts src/execution/subagent-executor.ts test/unit/superpowers-policy.test.ts test/unit/worktree.test.ts test/integration/single-execution.test.ts test/integration/parallel-execution.test.ts
+git commit -m "feat: preserve superpowers tdd and worktree policy"
 ```
 
 ## Task 8: Focused Superpowers Status And Settings TUI
@@ -1991,7 +1916,7 @@ git commit -m "feat: resolve superpowers role models and tdd policy"
 In `test/integration/slash-commands.test.ts`, add:
 
 ```typescript
-it("renders Superpowers defaults and custom commands in the status component", async () => {
+it("renders Superpowers defaults, worktrees, model tiers, and custom commands in the status component", async () => {
 	const module = await import("../../src/ui/superpowers-status.ts") as {
 		SuperpowersStatusComponent: new (...args: unknown[]) => { render(width: number): string[] };
 	};
@@ -2010,8 +1935,13 @@ it("renders Superpowers defaults and custom commands in the status component", a
 						useTestDrivenDevelopment: false,
 					},
 				},
-				roles: {
-					implementer: { model: "max" },
+				worktrees: {
+					enabled: true,
+					root: "/tmp/superpowers-worktrees",
+				},
+				modelTiers: {
+					cheap: { model: "opencode-go/minimax-m2.7" },
+					balanced: { model: "opencode-go/glm-5.1" },
 				},
 			},
 		},
@@ -2022,7 +1952,9 @@ it("renders Superpowers defaults and custom commands in the status component", a
 	assert.match(rendered, /useSubagents: false/);
 	assert.match(rendered, /useTestDrivenDevelopment: true/);
 	assert.match(rendered, /superpowers-lean/);
-	assert.match(rendered, /implementer: max/);
+	assert.match(rendered, /worktrees.enabled: true/);
+	assert.match(rendered, /worktrees.root: \/tmp\/superpowers-worktrees/);
+	assert.match(rendered, /cheap: opencode-go\/minimax-m2.7/);
 });
 ```
 
@@ -2034,30 +1966,39 @@ Run:
 node --experimental-transform-types --import ./test/support/register-loader.mjs --test test/integration/slash-commands.test.ts
 ```
 
-Expected: FAIL because the temporary component does not list commands or roles.
+Expected: FAIL because the temporary component does not list commands, worktrees, or model tiers.
 
 - [ ] **Step 3: Expand status component rendering**
 
-In `src/ui/superpowers-status.ts`, update `render` lines to include commands and roles:
+In `src/ui/superpowers-status.ts`, update `render` lines to include commands, worktrees, and model tiers:
 
 ```typescript
 const commands = Object.entries(settings.commands ?? {});
-const roles = Object.entries(settings.roles ?? {});
+const modelTiers = Object.entries(settings.modelTiers ?? {});
+const tierModel = (value: unknown): string => {
+	if (typeof value === "string") return value;
+	if (value && typeof value === "object" && "model" in value) {
+		return String((value as { model?: unknown }).model ?? "unknown");
+	}
+	return "unknown";
+};
 const lines = [
 	"Superpowers",
 	"",
 	`useSubagents: ${settings.useSubagents ?? true}`,
 	`useTestDrivenDevelopment: ${settings.useTestDrivenDevelopment ?? true}`,
 	`configStatus: ${this.state.configGate.blocked ? "blocked" : "valid"}`,
+	`worktrees.enabled: ${settings.worktrees?.enabled ?? false}`,
+	`worktrees.root: ${settings.worktrees?.root ?? "default"}`,
 	"",
 	"Commands:",
 	...(commands.length
 		? commands.map(([name, preset]) => `- ${name}: subagents=${preset.useSubagents ?? "default"}, tdd=${preset.useTestDrivenDevelopment ?? "default"}`)
 		: ["- none"]),
 	"",
-	"Roles:",
-	...(roles.length
-		? roles.map(([name, role]) => `- ${name}: ${role.model ?? "default"}`)
+	"Model tiers:",
+	...(modelTiers.length
+		? modelTiers.map(([name, value]) => `- ${name}: ${tierModel(value)}`)
 		: ["- none"]),
 ];
 ```
@@ -2108,8 +2049,8 @@ Create `test/unit/superpowers-config-writer.test.ts`:
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-	cycleSuperpowersRoleModel,
 	toggleSuperpowersBoolean,
+	toggleSuperpowersWorktrees,
 	updateSuperpowersConfigText,
 } from "../../src/superpowers/config-writer.ts";
 
@@ -2138,13 +2079,16 @@ describe("Superpowers config writer", () => {
 		});
 	});
 
-	it("cycles a role model through configured tier names", () => {
+	it("toggles Superpowers worktrees without changing model tiers", () => {
 		const updated = updateSuperpowersConfigText(
-			'{\n  "superagents": {\n    "roles": { "implementer": { "model": "cheap" } },\n    "modelTiers": { "cheap": { "model": "a" }, "balanced": { "model": "b" } }\n  }\n}\n',
-			(config) => cycleSuperpowersRoleModel(config, "implementer"),
+			'{\n  "superagents": {\n    "worktrees": { "enabled": false, "root": null },\n    "modelTiers": { "cheap": { "model": "a" } }\n  }\n}\n',
+			(config) => toggleSuperpowersWorktrees(config),
 		);
-		assert.deepEqual(JSON.parse(updated).superagents.roles.implementer, {
-			model: "balanced",
+		assert.deepEqual(JSON.parse(updated), {
+			superagents: {
+				worktrees: { enabled: true, root: null },
+				modelTiers: { cheap: { model: "a" } },
+			},
 		});
 	});
 
@@ -2184,7 +2128,7 @@ Create `src/superpowers/config-writer.ts`:
  * - none; callers perform filesystem writes
  */
 
-import type { ExtensionConfig, SuperpowersRoleName } from "../shared/types.ts";
+import type { ExtensionConfig } from "../shared/types.ts";
 
 type MutableConfig = ExtensionConfig & {
 	superagents?: NonNullable<ExtensionConfig["superagents"]>;
@@ -2243,24 +2187,15 @@ export function toggleSuperpowersBoolean(
 }
 
 /**
- * Cycle one role model through configured model tier names.
+ * Toggle Superpowers worktree isolation in a config object.
  *
  * @param config Mutable config object.
- * @param role Role to update.
  * @returns The same config object after mutation.
  */
-export function cycleSuperpowersRoleModel(
-	config: MutableConfig,
-	role: SuperpowersRoleName,
-): MutableConfig {
+export function toggleSuperpowersWorktrees(config: MutableConfig): MutableConfig {
 	const settings = ensureSuperagents(config);
-	const tierNames = Object.keys(settings.modelTiers ?? {});
-	if (tierNames.length === 0) return config;
-	settings.roles ??= {};
-	const current = settings.roles[role]?.model;
-	const currentIndex = current ? tierNames.indexOf(current) : -1;
-	const next = tierNames[(currentIndex + 1) % tierNames.length]!;
-	settings.roles[role] = { model: next };
+	settings.worktrees ??= {};
+	settings.worktrees.enabled = !(settings.worktrees.enabled ?? false);
 	return config;
 }
 ```
@@ -2308,26 +2243,16 @@ In `src/ui/superpowers-status.ts`, import filesystem helpers and writer function
 ```typescript
 import * as fs from "node:fs";
 import {
-	cycleSuperpowersRoleModel,
 	toggleSuperpowersBoolean,
+	toggleSuperpowersWorktrees,
 	updateSuperpowersConfigText,
 } from "../superpowers/config-writer.ts";
-import type { SuperpowersRoleName } from "../shared/types.ts";
 ```
 
-Add fields to the component:
+Add this field to the component:
 
 ```typescript
-private selectedRoleIndex = 0;
 private lastWriteMessage = "";
-private readonly roleOrder: SuperpowersRoleName[] = [
-	"recon",
-	"research",
-	"implementer",
-	"specReview",
-	"codeReview",
-	"debug",
-];
 ```
 
 Add this method:
@@ -2373,11 +2298,10 @@ toggleUseTestDrivenDevelopment(): void {
 }
 
 /**
- * Cycle the selected role model through configured tiers.
+ * Toggle the persisted Superpowers worktree default.
  */
-cycleSelectedRoleModel(): void {
-	const role = this.roleOrder[this.selectedRoleIndex] ?? "implementer";
-	this.writeConfig((config) => cycleSuperpowersRoleModel(config, role));
+toggleWorktrees(): void {
+	this.writeConfig((config) => toggleSuperpowersWorktrees(config));
 }
 ```
 
@@ -2400,14 +2324,6 @@ handleInput(data: string): void {
 		this.close();
 		return;
 	}
-	if (matchesKey(data, "up")) {
-		this.selectedRoleIndex = Math.max(0, this.selectedRoleIndex - 1);
-		return;
-	}
-	if (matchesKey(data, "down")) {
-		this.selectedRoleIndex = Math.min(this.roleOrder.length - 1, this.selectedRoleIndex + 1);
-		return;
-	}
 	if (matchesKey(data, "s")) {
 		this.toggleUseSubagents();
 		return;
@@ -2416,8 +2332,8 @@ handleInput(data: string): void {
 		this.toggleUseTestDrivenDevelopment();
 		return;
 	}
-	if (matchesKey(data, "m")) {
-		this.cycleSelectedRoleModel();
+	if (matchesKey(data, "w")) {
+		this.toggleWorktrees();
 	}
 }
 ```
@@ -2434,11 +2350,12 @@ it("writes Superpowers setting toggles to the config file", async () => {
 	const module = await import("../../src/ui/superpowers-status.ts") as {
 		SuperpowersStatusComponent: new (...args: unknown[]) => {
 			toggleUseSubagents(): void;
+			toggleWorktrees(): void;
 		};
 	};
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "superpowers-config-"));
 	const configPath = path.join(dir, "config.json");
-	fs.writeFileSync(configPath, '{\n  "superagents": { "useSubagents": true }\n}\n', "utf-8");
+	fs.writeFileSync(configPath, '{\n  "superagents": { "useSubagents": true, "worktrees": { "enabled": false } }\n}\n', "utf-8");
 	const state = createState(process.cwd());
 	state.configGate.configPath = configPath;
 
@@ -2446,13 +2363,17 @@ it("writes Superpowers setting toggles to the config file", async () => {
 		{},
 		{},
 		state,
-		{ superagents: { useSubagents: true } },
+		{ superagents: { useSubagents: true, worktrees: { enabled: false } } },
 		() => {},
 	);
 	component.toggleUseSubagents();
+	component.toggleWorktrees();
 
 	assert.deepEqual(JSON.parse(fs.readFileSync(configPath, "utf-8")), {
-		superagents: { useSubagents: false },
+		superagents: {
+			useSubagents: false,
+			worktrees: { enabled: true },
+		},
 	});
 });
 ```
@@ -2630,7 +2551,7 @@ git commit -m "refactor: remove generic chain runtime"
 - Modify/Delete: `docs/guides/agents.md`
 - Modify/Delete: `docs/guides/chains.md`
 - Modify/Delete: `docs/reference/agents-reference.md`
-- Modify/Delete: `docs/reference/worktrees.md`
+- Modify: `docs/reference/worktrees.md`
 - Modify: `CHANGELOG.md`
 - Modify: `package.json`
 - Modify: `package-lock.json`
@@ -2710,7 +2631,9 @@ Self-contained Superpowers subagent runtime for Pi.
 
 ## Status And Settings
 
-## Role Models
+## Role Agent Models
+
+## Superpowers Worktrees
 
 ## Documentation
 ```
@@ -2754,10 +2677,11 @@ In `docs/reference/configuration.md`, document only:
         "useTestDrivenDevelopment": false
       }
     },
-    "roles": {
-      "implementer": {
-        "model": "cheap"
-      }
+    "worktrees": {
+      "enabled": false,
+      "root": null,
+      "setupHook": null,
+      "setupHookTimeoutMs": 30000
     },
     "modelTiers": {
       "cheap": {
@@ -2783,7 +2707,8 @@ In `docs/guides/superpowers.md`, describe:
 ## Workflow Tokens
 ## Custom Commands
 ## Role Agents
-## Role Models
+## Role Agent Models
+## Superpowers Worktrees
 ## Status And Settings
 ## Skill Bootstrap
 ```
@@ -2799,14 +2724,16 @@ State explicitly:
 Delete generic docs if no package links need them:
 
 ```bash
-git rm docs/guides/agents.md docs/guides/chains.md docs/reference/agents-reference.md docs/reference/worktrees.md
+git rm docs/guides/agents.md docs/guides/chains.md docs/reference/agents-reference.md
 ```
+
+Rewrite `docs/reference/worktrees.md` as a narrow Superpowers worktree reference. It should document only the retained `superagents.worktrees` options and the fact that worktree isolation applies to parallel delegated Superpowers role work, not to generic `/parallel` workflows.
 
 If deletion breaks links in docs that remain, remove those links rather than preserving generic docs.
 
 - [ ] **Step 8: Update parameters reference**
 
-In `docs/reference/parameters.md`, remove management, generic chain, worktree, session sharing, and prompt-template sections. Keep only:
+In `docs/reference/parameters.md`, remove management, generic chain, session sharing, and prompt-template sections. Keep only:
 
 ````markdown
 # Parameters API Reference
@@ -2828,6 +2755,8 @@ The `subagent` tool is for root Superpowers workflows. It delegates bounded work
 ], workflow: "superpowers" }
 ```
 
+Parallel role execution may use Superpowers worktree isolation when `superagents.worktrees.enabled` is true.
+
 ## Status
 
 ```typescript
@@ -2846,14 +2775,15 @@ At the top of `CHANGELOG.md`, add:
 
 - **Superpowers-only runtime** — removed generic `/run`, `/chain`, `/parallel`, `/agents`, generic chain files, prompt-template bridge support, and generic agent management.
 - **Self-contained identity** — removed fork-oriented product framing and pi-subagents compatibility promises.
-- **Lean config surface** — replaced broad config with Superpowers-specific `useSubagents`, `useTestDrivenDevelopment`, `commands`, `roles`, and `modelTiers`.
+- **Lean config surface** — replaced broad config with Superpowers-specific `useSubagents`, `useTestDrivenDevelopment`, `commands`, `worktrees`, and `modelTiers`.
 
 ### Added
 
 - **Custom Superpowers commands** — config-defined slash command presets for workflow options.
 - **Per-run workflow tokens** — inline controls for TDD and subagent delegation.
-- **Focused status/settings TUI** — `/superpowers-status` shows Superpowers defaults, diagnostics, commands, and role models.
+- **Focused status/settings TUI** — `/superpowers-status` shows Superpowers defaults, diagnostics, commands, worktree defaults, and model tiers.
 - **Skill bootstrap** — `/superpowers` starts from `using-superpowers` instead of a fixed recon-first flow.
+- **Superpowers worktrees** — preserved worktree isolation for parallel delegated Superpowers role work.
 ```
 
 - [ ] **Step 10: Run docs identity scan**
@@ -2936,7 +2866,7 @@ Expected: PASS.
 Run:
 
 ```bash
-rg -n "registerCommand\\(\"(run|chain|parallel|agents)\"|prompt-template|Agents Manager|defaultImplementerMode|implementerMode|worktrees|sp-task-loop|delegate" src test README.md docs default-config.json config.example.json
+rg -n "registerCommand\\(\"(run|chain|parallel|agents)\"|prompt-template|Agents Manager|defaultImplementerMode|implementerMode|sp-task-loop|delegate" src test README.md docs default-config.json config.example.json
 ```
 
 Expected: No output except references inside old committed design/plan artifacts under `docs/superpowers/specs` or `docs/superpowers/plans`. If source, tests, README, current docs, or config files match, remove or rewrite those matches.
@@ -2976,11 +2906,12 @@ If Step 7 already showed a clean tree, do not create an empty commit.
 
 - Spec Goal: covered by Tasks 1-13.
 - Public UX: `/superpowers`, custom commands, and `/superpowers-status` covered by Tasks 2, 4, and 8.
-- Config: `useSubagents`, `useTestDrivenDevelopment`, `commands`, `roles`, and `modelTiers` covered by Tasks 1 and 7.
+- Config: `useSubagents`, `useTestDrivenDevelopment`, `commands`, `worktrees`, and `modelTiers` covered by Tasks 1, 7, 8, and 9.
 - Custom commands: command preset validation and registration covered by Tasks 1, 2, and 4.
 - Inline workflow tokens: covered by Task 2.
 - Skill bootstrap: covered by Tasks 3 and 5.
-- Role model selection: covered by Task 7.
+- Role agent model-tier resolution: covered by Task 7.
+- Superpowers worktrees: covered by Tasks 1, 7, 8, 9, 12, and 13.
 - Generic feature removal: covered by Tasks 6, 10, 11, and 13.
 - Status/settings TUI: covered by Tasks 8 and 9.
 - Package identity and docs: covered by Task 12.
