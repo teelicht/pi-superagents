@@ -11,7 +11,7 @@ import {
 	MAX_WIDGET_JOBS,
 	WIDGET_KEY,
 } from "../shared/types.ts";
-import { formatTokens, formatUsage, formatDuration, formatToolCall, shortenPath } from "../shared/formatters.ts";
+import { formatUsage, formatDuration, formatToolCall, shortenPath } from "../shared/formatters.ts";
 import { getDisplayItems, getLastActivity, getOutputTail, getSingleResultOutput } from "../shared/utils.ts";
 
 type Theme = ExtensionContext["ui"]["theme"];
@@ -201,9 +201,9 @@ export function renderSubagentResult(
 		const output = r.truncation?.text || getSingleResultOutput(r);
 
 		const progressInfo = isRunning && r.progress
-			? ` | ${r.progress.toolCount} tools, ${formatTokens(r.progress.tokens)} tok, ${formatDuration(r.progress.durationMs)}`
+			? ` | ${r.progress.toolCount} tools, ${formatDuration(r.progress.durationMs)}`
 			: r.progressSummary
-				? ` | ${r.progressSummary.toolCount} tools, ${formatTokens(r.progressSummary.tokens)} tok, ${formatDuration(r.progressSummary.durationMs)}`
+				? ` | ${r.progressSummary.toolCount} tools, ${formatDuration(r.progressSummary.durationMs)}`
 				: "";
 
 		const w = getTermWidth() - 4;
@@ -299,7 +299,6 @@ export function renderSubagentResult(
 				const prog = r.progress || r.progressSummary;
 				if (prog) {
 					acc.toolCount += prog.toolCount;
-					acc.tokens += prog.tokens;
 					acc.durationMs =
 						d.mode === "chain"
 							? acc.durationMs + prog.durationMs
@@ -307,12 +306,12 @@ export function renderSubagentResult(
 				}
 				return acc;
 			},
-			{ toolCount: 0, tokens: 0, durationMs: 0 },
+			{ toolCount: 0, durationMs: 0 },
 		);
 
 	const summaryStr =
-		totalSummary.toolCount || totalSummary.tokens
-			? ` | ${totalSummary.toolCount} tools, ${formatTokens(totalSummary.tokens)} tok, ${formatDuration(totalSummary.durationMs)}`
+		totalSummary.toolCount
+			? ` | ${totalSummary.toolCount} tools, ${formatDuration(totalSummary.durationMs)}`
 			: "";
 
 	const modeLabel = d.mode;
