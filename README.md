@@ -1,8 +1,6 @@
-# pi-superagents
+# @teelicht/pi-superagents
 
-Pi extension for delegating tasks to subagents with chains, parallel execution, TUI clarification, and async support.
-
-> `pi-superagents` is a fork of `pi-subagents`, rebranded to reflect the combination of Superpowers workflow ideas and subagent-based execution.
+Pi extension for Superpowers workflows: structured delegation to specialized role agents for recon, research, implementation, review, and debugging.
 
 ## Installation
 
@@ -16,74 +14,22 @@ To remove:
 npx @teelicht/pi-superagents --remove
 ```
 
-## Configuration
-
-On install, `pi-superagents` creates an empty user override file:
-
-```text
-~/.pi/agent/extensions/subagent/config.json
-```
-
-Keep this file small. Add only the settings you want to change. The bundled defaults continue to come from `default-config.json`, and the full user-facing reference lives at:
-
-```text
-~/.pi/agent/extensions/subagent/config.example.json
-```
-
-If `config.json` contains invalid JSON, unknown keys, or unsupported values, `pi-superagents` disables subagent execution until the file is fixed. Pi shows the config error when the extension loads, and `subagent_status` can inspect config diagnostics.
-
-If your `config.json` is still an unchanged copy of the bundled defaults, run:
-
-```bash
-npx @teelicht/pi-superagents --migrate-config
-```
-
-or use `subagent_status` with `{ "action": "migrate-config" }` to replace it with `{}` after writing a backup.
-
-See [Configuration Reference](docs/reference/configuration.md) for examples and repair guidance.
-
-### Optional: pi-prompt-template-model
-
-If you use [pi-prompt-template-model](https://github.com/nicobailon/pi-prompt-template-model), you can wrap subagent delegation in a slash command. See [Agents Reference → pi-prompt-template-model](docs/reference/agents-reference.md#pi-prompt-template-model).
-
 ## Quick Commands
 
-| Command                                      | Description                                              |
-| -------------------------------------------- | -------------------------------------------------------- |
-| `/run <agent> <task>`                        | Run a single agent with a task                           |
-| `/chain agent1 "task1" -> agent2 "task2"`    | Run agents in sequence with per-step tasks               |
-| `/parallel agent1 "task1" -> agent2 "task2"` | Run agents in parallel with per-step tasks               |
-| `/superpowers <task>`                        | Run a task through the Superpowers workflow               |
-| `/subagents-status`                          | Open the async status overlay for active and recent runs |
-| `/agents`                                    | Open the Agents Manager overlay                          |
+| Command                | Description                                              |
+| ---------------------- | -------------------------------------------------------- |
+| `/superpowers <task>`  | Run a task through the Superpowers workflow               |
+| `/superpowers-status`  | Open the async status overlay for active and recent runs |
 
-### Per-Step Tasks & Inline Config
+### Superpowers Workflow
 
-Use `->` to separate steps and give each step its own task with quotes or `--`:
+The `/superpowers` command activates a structured multi-agent pipeline tailored for software engineering tasks. It uses a sequence of specialized roles:
 
-```
-/chain scout "analyze auth" -> planner "create implementation plan"
-/parallel scanner "find security issues" -> reviewer "check code style"
-```
-
-Append `[key=value,...]` to any agent name to override defaults:
-
-```
-/chain scout[output=context.md] "scan code" -> planner[reads=context.md] "analyze auth"
-/run scout[model=anthropic/claude-sonnet-4] summarize this codebase
-```
-
-Supported inline keys: `output`, `reads`, `model`, `skills`, `progress`. Set `output=false`, `reads=false`, or `skills=false` to explicitly disable.
-
-### Background & Forked Execution
-
-- `--bg` — run in the background (check status with `/subagents-status`)
-- `--fork` — run with `context: "fork"` (branched session from parent's current leaf)
-- Combine in any order: `/run reviewer "review this diff" --fork --bg`
-
-## Superpowers Command
-
-`/superpowers` activates the stricter Superpowers workflow for a specific run. The baseline `pi` harness plus generic `pi-superagents` behavior stays unchanged unless this command is used.
+1. **Recon** (`sp-recon`): Initial codebase analysis and context gathering.
+2. **Research** (`sp-research`): Deep dive into specific APIs, libraries, or logic.
+3. **Implementation** (`sp-implementer`): Code changes guided by test-driven development (optional).
+4. **Review** (`sp-code-review`): Automated review of changes against project standards.
+5. **Debug** (`sp-debug`): Root cause analysis and fix verification for regressions.
 
 ```text
 /superpowers fix the auth regression
@@ -92,100 +38,38 @@ Supported inline keys: `output`, `reads`, `model`, `skills`, `progress`. Set `ou
 /superpowers tdd review the release branch --fork
 ```
 
-- **`tdd`** (default) — test-first implementer loop with the `test-driven-development` skill
-- **`direct`** — same review and verification loop, but allows code-first implementation
+- **`tdd`** (default): Uses the `test-driven-development` skill for the implementation phase.
+- **`direct`**: Traditional implementation loop with verification and review.
 
-Superpowers parallel steps default to worktree isolation (configurable via `superagents.worktrees.enabled`).
+### Background & Forked Execution
 
-See [docs/guides/superpowers.md](docs/guides/superpowers.md) for full configuration and model tier details.
+- `--bg`: Run in the background. Check status with `/superpowers-status`.
+- `--fork`: Run with `context: "fork"` (branched session from parent's current leaf).
 
-## Agents
+## Configuration
 
-Agents are markdown files with YAML frontmatter that define specialized subagent configurations.
+On install, `pi-superagents` creates an empty user override file:
 
-**Agent file locations:**
-
-| Scope   | Path                                                | Priority |
-| ------- | --------------------------------------------------- | -------- |
-| Builtin | `~/.pi/agent/extensions/subagent/agents/`           | Lowest   |
-| User    | `~/.pi/agent/agents/{name}.md`                      | Medium   |
-| Project | `.pi/agents/{name}.md` (searches up directory tree) | Highest  |
-
-**Builtin agents:** `scout`, `planner`, `worker`, `reviewer`, `context-builder`, `researcher`, and `delegate`. User/project agents with the same name override builtins.
-
-> **Note:** The `researcher` agent requires [pi-web-access](https://github.com/nicobailon/pi-web-access) for web search tools.
-
-**Minimal frontmatter example:**
-
-```yaml
----
-name: scout
-description: Fast codebase recon
-model: claude-haiku-4-5
-thinking: high
----
-Your system prompt goes here.
+```text
+~/.pi/agent/extensions/subagent/config.json
 ```
 
-Full frontmatter field reference: [docs/reference/agents-reference.md](docs/reference/agents-reference.md)
-
-## Agents Manager
-
-Press **Ctrl+Shift+A** or type `/agents` to open the Agents Manager — a TUI for browsing, viewing, editing, creating, and launching agents and chains.
-
-Key screens: List (search/filter), Detail (resolved prompt, run history), Edit (model/thinking/skills pickers), Chain Detail (flow visualization), Parallel Builder (multi-agent launch), New Agent (templates).
-
-See [docs/guides/agents.md](docs/guides/agents.md) for keybindings and workflows.
-
-## Chain Files
-
-Chains are `.chain.md` files stored alongside agent files, defining reusable multi-step pipelines.
-
-```markdown
----
-name: scout-planner
-description: Gather context then plan implementation
----
-
-## scout
-
-output: context.md
-
-Analyze the codebase for {task}
-
-## planner
-
-reads: context.md
-
-Create an implementation plan based on {previous}
-```
-
-Each `## agent-name` section defines a step. Config lines (`output`, `reads`, `model`, `skills`, `progress`) go after the header. Chains support parallel steps with `{ parallel: [...] }` and chain variables `{task}`, `{previous}`, `{chain_dir}`.
-
-See [docs/guides/chains.md](docs/guides/chains.md) for the full chain file format and workflow.
+See [Configuration Reference](docs/reference/configuration.md) for details on model tiers and worktree settings.
 
 ## Features
 
-- **Slash Commands**: `/run`, `/chain`, `/parallel`, `/superpowers` with tab-completion and live progress
-- **Agents Manager Overlay**: Browse, edit, create, and launch agents from a TUI
-- **Superpowers Workflow**: Structured recon → plan → implement → review pipeline with role-specific agents
-- **Chain Files**: Reusable `.chain.md` pipelines with per-step config
-- **Parallel Execution**: Fan-out/fan-in patterns with worktree isolation
-- **Worktree Isolation**: Each parallel agent gets its own git worktree to prevent filesystem conflicts
-- **Chain Clarification TUI**: Interactive preview/edit before execution
-- **Session Sharing**: Upload session to GitHub Gist with `share: true`
-- **Async Execution**: Background mode with progress overlay and completion notifications
-- **Skill Injection**: Agents declare skills in frontmatter; skills inject into system prompts
-- **MCP Tools**: Optional [pi-mcp-adapter](https://github.com/nicobailon/pi-mcp-adapter) integration for direct MCP tool access
+- **Superpowers Workflow**: Industry-standard pipeline for robust AI-assisted development.
+- **Role-Specific Agents**: Purpose-built agents for every phase of the development lifecycle.
+- **Parallel Execution**: Fan-out/fan-in patterns for multi-component analysis.
+- **Worktree Isolation**: Automatic git worktree creation for parallel tasks to prevent filesystem conflicts.
+- **Async Execution**: Background mode with real-time progress overlay and desktop notifications.
+- **Model Tiers**: Abstract model selection (cheap, balanced, max) resolved via user configuration.
+- **Skill Injection**: Automatic injection of project-local and user-global skills into agent prompts.
 
 ## Documentation
 
-- **[Agents Guide](docs/guides/agents.md)** — Creating, managing, and using agents
-- **[Chains Guide](docs/guides/chains.md)** — Chain files, variables, and workflows
-- **[Superpowers Guide](docs/guides/superpowers.md)** — Superpowers workflow, model tiers, and configuration
-- **[Worktree Isolation](docs/reference/worktrees.md)** — Git worktree setup, requirements, and hooks
-- **[Skills Reference](docs/reference/skills.md)** — Skill locations, injection, and handling
-- **[Parameters API](docs/reference/parameters.md)** — Full parameter reference for the `subagent` tool
-- **[Configuration](docs/reference/configuration.md)** — Extension config, model tiers, and session settings
-- **[Agents Reference](docs/reference/agents-reference.md)** — Complete frontmatter schema and extension sandboxing
-- **[Contributing](docs/contributing.md)** — TypeScript standards, doc headers, and testing requirements
+- **[Superpowers Guide](docs/guides/superpowers.md)** — Workflow details, role agents, and command usage.
+- **[Worktree Isolation](docs/reference/worktrees.md)** — Git worktree setup, requirements, and hooks.
+- **[Configuration](docs/reference/configuration.md)** — Extension settings, model tiers, and performance tuning.
+- **[Parameters API](docs/reference/parameters.md)** — Full parameter reference for the `subagent` tool.
+- **[Contributing](docs/contributing.md)** — Project standards and development guidelines.

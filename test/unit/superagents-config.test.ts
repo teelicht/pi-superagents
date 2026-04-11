@@ -10,7 +10,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-	applySuperagentWorktreeDefaultsToChain,
 	getSuperagentSettings,
 	resolveSuperagentWorktreeCreateOptions,
 	resolveSuperagentWorktreeEnabled,
@@ -54,28 +53,6 @@ describe("superagents config helpers", () => {
 		assert.equal(resolveSuperagentWorktreeEnabled(false, "superpowers", {}), false);
 		assert.equal(resolveSuperagentWorktreeEnabled(true, "default", {}), true);
 		assert.equal(resolveSuperagentWorktreeEnabled(undefined, "default", {}), undefined);
-	});
-
-	/**
-	 * Verifies chain parallel steps inherit the Superpowers worktree default.
-	 *
-	 * @returns Nothing; asserts normalized chain step metadata.
-	 */
-	it("applies the superpowers worktree default only to parallel steps without an explicit value", () => {
-		const normalized = applySuperagentWorktreeDefaultsToChain(
-			[
-				{ agent: "sp-recon", task: "Inspect repo" },
-				{ parallel: [{ agent: "sp-implementer", task: "Implement A" }] },
-				{ parallel: [{ agent: "sp-code-review", task: "Review B" }], worktree: false },
-			],
-			"superpowers",
-			{},
-		);
-
-		assert.equal("agent" in normalized[0], true);
-		assert.equal("parallel" in normalized[1], true);
-		assert.equal((normalized[1] as { worktree?: boolean }).worktree, true);
-		assert.equal((normalized[2] as { worktree?: boolean }).worktree, false);
 	});
 
 	/**

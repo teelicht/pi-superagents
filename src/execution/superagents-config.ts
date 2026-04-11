@@ -7,7 +7,6 @@
  * - build scoped git-worktree options for sync and async execution paths
  */
 
-import { isParallelStep, type ChainStep } from "./settings.ts";
 import type { ExtensionConfig, WorkflowMode } from "../shared/types.ts";
 import type { CreateWorktreesOptions } from "./worktree.ts";
 
@@ -45,28 +44,6 @@ export function resolveSuperagentWorktreeEnabled(
 	if (requested !== undefined) return requested;
 	if (workflow !== "superpowers") return undefined;
 	return getSuperagentSettings(config)?.worktrees?.enabled ?? true;
-}
-
-/**
- * Apply the Superpowers default worktree flag to chain parallel steps.
- *
- * @param chain Chain steps to normalize.
- * @param workflow Active workflow for the current run.
- * @param config Extension config containing optional Superpowers settings.
- * @returns Chain steps with implicit Superpowers worktree defaults filled in.
- */
-export function applySuperagentWorktreeDefaultsToChain(
-	chain: ChainStep[],
-	workflow: WorkflowMode,
-	config: ExtensionConfig,
-): ChainStep[] {
-	const defaultEnabled = resolveSuperagentWorktreeEnabled(undefined, workflow, config);
-	if (defaultEnabled !== true) return chain;
-
-	return chain.map((step) => {
-		if (!isParallelStep(step) || step.worktree !== undefined) return step;
-		return { ...step, worktree: true };
-	});
 }
 
 /**

@@ -1,7 +1,7 @@
 {
   "name": "@teelicht/pi-superagents",
-  "version": "0.2.0",
-  "description": "Pi extension for delegating tasks to subagents to implement the superpowers development workflow",
+  "version": "0.3.0",
+  "description": "Pi extension for Superpowers workflows: recon, research, implementation, review, and debug",
   "author": "Thomas Lichtenecker, Nico Bailon",
   "license": "MIT",
   "type": "module",
@@ -23,7 +23,8 @@
     "subagents",
     "ai",
     "agents",
-    "cli"
+    "cli",
+    "superpowers"
   ],
   "bin": {
     "pi-superagents": "install.mjs"

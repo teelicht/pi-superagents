@@ -4,7 +4,7 @@ The `/superpowers` command activates a structured workflow for task execution wi
 
 ## Overview
 
-When you use `/superpowers`, pi-superagents runs your task through a bounded workflow with specialized agents (recon, plan, implement, review) instead of the freeform `/run` or `/chain` commands. The baseline `pi` harness plus generic `pi-superagents` behavior stays unchanged unless this command is used.
+When you use `/superpowers`, pi-superagents runs your task through a bounded workflow with specialized agents (recon, research, implement, review) instead of a single generic agent. This structured approach ensures that context is gathered before implementation and that results are verified before completion.
 
 ```text
 /superpowers fix the auth regression
@@ -22,28 +22,30 @@ When you use `/superpowers`, pi-superagents runs your task through a bounded wor
 
 Specify the mode as the first argument: `/superpowers tdd <task>` or `/superpowers direct <task>`.
 
-## Built-in Superpowers Agents
+## Role Agents
+
+The workflow uses a sequence of specialized role agents. Each agent is purpose-built for its phase:
 
 | Role | Agent | Purpose |
 |------|-------|---------|
-| Recon | `sp-recon` | Bounded reconnaissance for task discovery |
-| Research | `sp-research` | Focused evidence gathering |
-| Implementer | `sp-implementer` | One bounded plan task implementation |
-| Code Review | `sp-code-review` | Code-quality reviewer for a single task packet |
-| Spec Review | `sp-spec-review` | Spec compliance reviewer |
-| Debug | `sp-debug` | One bounded failure investigation |
+| Recon | `sp-recon` | Bounded reconnaissance for task discovery and context gathering. |
+| Research | `sp-research` | Focused evidence gathering for APIs or complex logic. |
+| Implementer | `sp-implementer` | Execution of planned code changes with verification. |
+| Code Review | `sp-code-review` | Code-quality reviewer for implementation results. |
+| Spec Review | `sp-spec-review` | Verification of changes against design specifications. |
+| Debug | `sp-debug` | Bounded failure investigation and root-cause analysis. |
 
 ## Model Tiers
 
-Superpowers agents can use model tiers defined in config, mapping role-appropriate models to cheap/balanced/max quality levels.
+Superpowers agents use abstract model tiers defined in your configuration. This allows you to scale quality and cost without modifying individual agent files.
 
 ```json
 {
   "superagents": {
     "modelTiers": {
-      "cheap": { "model": "openai/gpt-5.3-mini", "thinking": "off" },
-      "balanced": { "model": "openai/gpt-5.4", "thinking": "medium" },
-      "max": { "model": "anthropic/claude-opus-4-6", "thinking": "high" }
+      "cheap": { "model": "openai/gpt-4o-mini", "thinking": "off" },
+      "balanced": { "model": "anthropic/claude-3-5-sonnet", "thinking": "low" },
+      "max": { "model": "anthropic/claude-3-5-sonnet", "thinking": "medium" }
     }
   }
 }
@@ -51,24 +53,11 @@ Superpowers agents can use model tiers defined in config, mapping role-appropria
 
 ### Custom Tiers
 
-Define your own tier names beyond the built-in ones:
+You can define custom tiers (e.g., "creative", "legacy") in the `modelTiers` object and reference them in project-local agent overrides.
 
-```json
-{
-  "superagents": {
-    "modelTiers": {
-      "cheap": { "model": "openai/gpt-5.3-mini" },
-      "creative": { "model": "anthropic/claude-sonnet-4", "thinking": "high" }
-    }
-  }
-}
-```
+## Worktree Isolation
 
-Then use in agent frontmatter: `model: creative`. Tier resolution works in all workflows (`/run`, `/chain`, `/parallel`, `/superpowers`).
-
-## Worktree Integration
-
-Superpowers parallel steps default to worktree isolation via `superagents.worktrees.enabled` (defaults to `true`). Each parallel agent gets its own git worktree to prevent filesystem conflicts.
+Parallel tasks within the Superpowers workflow automatically use git worktrees to prevent filesystem conflicts. This is enabled by default via `superagents.worktrees.enabled`.
 
 Configure in `~/.pi/agent/extensions/subagent/config.json`:
 
@@ -77,24 +66,15 @@ Configure in `~/.pi/agent/extensions/subagent/config.json`:
   "superagents": {
     "worktrees": {
       "enabled": true,
-      "root": null,
-      "setupHook": "./scripts/setup-worktree.mjs",
-      "setupHookTimeoutMs": 45000
+      "setupHook": "./scripts/setup-worktree.mjs"
     }
   }
 }
 ```
 
-See [Worktree Reference](../reference/worktrees.md) for the full hook contract and internals.
+See [Worktree Reference](../reference/worktrees.md) for full details.
 
-## Configuration
+## Runtime Flags
 
-All Superpowers configuration lives under the `superagents` key in `config.json`. See [Configuration Reference](../reference/configuration.md) for the complete schema.
-
-## Flags
-
-Superpowers supports the same runtime flags as other slash commands:
-
-- `--bg` — run in the background
-- `--fork` — run with branched session context
-- Combine: `/superpowers tdd harden auth --fork --bg`
+- `--bg`: Run in the background. Progress is shown in the async status overlay.
+- `--fork`: Run with `context: "fork"`, branching from the current session state.

@@ -7,7 +7,6 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { KNOWN_FIELDS } from "./agent-serializer.ts";
-import { parseChain } from "./chain-serializer.ts";
 import { mergeAgentsForScope } from "./agent-selection.ts";
 import { parseFrontmatter } from "./frontmatter.ts";
 
@@ -27,31 +26,12 @@ export interface AgentConfig {
 	filePath: string;
 	skills?: string[];
 	extensions?: string[];
-	// Chain behavior fields
+	// Execution behavior fields
 	output?: string;
 	defaultReads?: string[];
 	defaultProgress?: boolean;
 	interactive?: boolean;
 	maxSubagentDepth?: number;
-	extraFields?: Record<string, string>;
-}
-
-export interface ChainStepConfig {
-	agent: string;
-	task: string;
-	output?: string | false;
-	reads?: string[] | false;
-	model?: string;
-	skills?: string[] | false;
-	progress?: boolean;
-}
-
-export interface ChainConfig {
-	name: string;
-	description: string;
-	source: AgentSource;
-	filePath: string;
-	steps: ChainStepConfig[];
 	extraFields?: Record<string, string>;
 }
 
@@ -149,7 +129,7 @@ function loadAgentsFromDir(dir: string, source: AgentSource): AgentConfig[] {
 			filePath,
 			skills: skills && skills.length > 0 ? skills : undefined,
 			extensions,
-			// Chain behavior fields
+			// Execution behavior fields
 			output: frontmatter.output,
 			defaultReads: defaultReads && defaultReads.length > 0 ? defaultReads : undefined,
 			defaultProgress: frontmatter.defaultProgress === "true",
@@ -163,42 +143,6 @@ function loadAgentsFromDir(dir: string, source: AgentSource): AgentConfig[] {
 	}
 
 	return agents;
-}
-
-function loadChainsFromDir(dir: string, source: AgentSource): ChainConfig[] {
-	const chains: ChainConfig[] = [];
-
-	if (!fs.existsSync(dir)) {
-		return chains;
-	}
-
-	let entries: fs.Dirent[];
-	try {
-		entries = fs.readdirSync(dir, { withFileTypes: true });
-	} catch {
-		return chains;
-	}
-
-	for (const entry of entries) {
-		if (!entry.name.endsWith(".chain.md")) continue;
-		if (!entry.isFile() && !entry.isSymbolicLink()) continue;
-
-		const filePath = path.join(dir, entry.name);
-		let content: string;
-		try {
-			content = fs.readFileSync(filePath, "utf-8");
-		} catch {
-			continue;
-		}
-
-		try {
-			chains.push(parseChain(content, source, filePath));
-		} catch {
-			continue;
-		}
-	}
-
-	return chains;
 }
 
 function isDirectory(p: string): boolean {
@@ -247,7 +191,6 @@ export function discoverAgentsAll(cwd: string): {
 	builtin: AgentConfig[];
 	user: AgentConfig[];
 	project: AgentConfig[];
-	chains: ChainConfig[];
 	userDir: string;
 	projectDir: string | null;
 } {
@@ -261,13 +204,8 @@ export function discoverAgentsAll(cwd: string): {
 		...loadAgentsFromDir(userDirNew, "user"),
 	];
 	const project = projectDir ? loadAgentsFromDir(projectDir, "project") : [];
-	const chains = [
-		...loadChainsFromDir(userDirOld, "user"),
-		...loadChainsFromDir(userDirNew, "user"),
-		...(projectDir ? loadChainsFromDir(projectDir, "project") : []),
-	];
 
 	const userDir = fs.existsSync(userDirNew) ? userDirNew : userDirOld;
 
-	return { builtin, user, project, chains, userDir, projectDir };
+	return { builtin, user, project, userDir, projectDir };
 }

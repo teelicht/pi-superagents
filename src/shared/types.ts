@@ -142,7 +142,7 @@ export interface SingleResult {
 }
 
 export interface Details {
-	mode: "single" | "parallel" | "chain" | "management";
+	mode: "single" | "parallel";
 	context?: "fresh" | "fork";
 	results: SingleResult[];
 	asyncId?: string;
@@ -159,10 +159,7 @@ export interface Details {
 		originalLines?: number;
 		artifactPath?: string;
 	};
-	// Chain metadata for observability
-	chainAgents?: string[];      // Agent names in order, e.g., ["scout", "planner"]
-	totalSteps?: number;         // Total steps in chain
-	currentStepIndex?: number;   // 0-indexed current step (for running chains)
+	totalSteps?: number;         // Total steps in parallel/single run
 }
 
 // ============================================================================
@@ -191,7 +188,7 @@ export interface ArtifactConfig {
 
 export interface AsyncStatus {
 	runId: string;
-	mode: "single" | "chain";
+	mode: "single" | "parallel";
 	state: "queued" | "running" | "complete" | "failed";
 	startedAt: number;
 	endedAt?: number;
@@ -209,7 +206,7 @@ export interface AsyncJobState {
 	asyncId: string;
 	asyncDir: string;
 	status: "queued" | "running" | "complete" | "failed";
-	mode?: "single" | "chain";
+	mode?: "single" | "parallel";
 	agents?: string[];
 	currentStep?: number;
 	stepsTotal?: number;

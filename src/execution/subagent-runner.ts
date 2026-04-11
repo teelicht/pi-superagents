@@ -248,7 +248,7 @@ function writeRunLog(
 	logPath: string,
 	input: {
 		id: string;
-		mode: "single" | "chain";
+		mode: "single" | "parallel";
 		cwd: string;
 		startedAt: number;
 		endedAt: number;
@@ -391,7 +391,7 @@ async function runSingleStep(
 
 type RunnerStatusPayload = {
 	runId: string;
-	mode: "single" | "chain";
+	mode: "single" | "parallel";
 	state: "queued" | "running" | "complete" | "failed";
 	startedAt: number;
 	endedAt?: number;
@@ -534,7 +534,7 @@ async function runSubagent(config: SubagentRunConfig): Promise<void> {
 		|| flatSteps.some((step) => Boolean(step.sessionFile));
 	const statusPayload: RunnerStatusPayload = {
 		runId: id,
-		mode: flatSteps.length > 1 ? "chain" : "single",
+		mode: flatSteps.length > 1 ? "parallel" : "single",
 		state: "running",
 		startedAt: overallStartTime,
 		lastUpdate: overallStartTime,
@@ -841,7 +841,7 @@ async function runSubagent(config: SubagentRunConfig): Promise<void> {
 
 	const agentName = flatSteps.length === 1
 		? flatSteps[0].agent
-		: `chain:${flatSteps.map((s) => s.agent).join("->")}`;
+		: "parallel";
 	let sessionFile: string | undefined;
 	let shareUrl: string | undefined;
 	let gistUrl: string | undefined;
