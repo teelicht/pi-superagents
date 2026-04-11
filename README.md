@@ -7,13 +7,13 @@ Pi extension for delegating tasks to subagents with chains, parallel execution, 
 ## Installation
 
 ```bash
-pi install npm:pi-superagents
+pi install npm:@teelicht/pi-superagents
 ```
 
 To remove:
 
 ```bash
-npx pi-superagents --remove
+npx @teelicht/pi-superagents --remove
 ```
 
 ### Optional: pi-prompt-template-model

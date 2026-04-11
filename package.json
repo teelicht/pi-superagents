@@ -1,5 +1,5 @@
 {
-  "name": "pi-superagents",
+  "name": "@teelicht/pi-superagents",
   "version": "0.1.0",
   "description": "Pi extension for delegating tasks to subagents to implement the superpowers development workflow",
   "author": "Thomas Lichtenecker, Nico Bailon",
@@ -12,6 +12,9 @@
   "homepage": "https://github.com/nicobailon/pi-superagents#readme",
   "bugs": {
     "url": "https://github.com/nicobailon/pi-superagents/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "keywords": [
     "pi-package",
