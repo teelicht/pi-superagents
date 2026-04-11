@@ -296,28 +296,15 @@ function configBlockedResult(message: string): AgentToolResult<Details> {
 const tool: ToolDefinition<typeof SubagentParams, Details> = {
 		name: "subagent",
 		label: "Subagent",
-		description: `Delegate to subagents or manage agent definitions.
+		description: `Delegate bounded work to Superpowers role subagents.
 
-EXECUTION (use exactly ONE mode):
-• SINGLE: { agent, task } - one task
-• CHAIN: { chain: [{agent:"scout"}, {parallel:[{agent:"worker",count:3}]}] } - sequential pipeline with optional parallel fan-out
-• PARALLEL: { tasks: [{agent,task,count?}, ...], worktree?: true } - concurrent execution (worktree: isolate each task in a git worktree)
-• Optional context: { context: "fresh" | "fork" } (default: "fresh")
+Use this tool only inside a Superpowers workflow when selected skills call for delegation.
 
-CHAIN TEMPLATE VARIABLES (use in task strings):
-• {task} - The original task/request from the user
-• {previous} - Text response from the previous step (empty for first step)
-• {chain_dir} - Shared directory for chain files (e.g., <tmpdir>/pi-chain-runs/abc123/)
+SINGLE: { agent: "sp-recon", task: "Inspect the auth flow" }
+PARALLEL: { tasks: [{ agent: "sp-research", task: "Check config" }, { agent: "sp-code-review", task: "Review diff" }] }
 
-Example: { chain: [{agent:"scout", task:"Analyze {task}"}, {agent:"planner", task:"Plan based on {previous}"}] }
-
-MANAGEMENT (use action field, omit agent/task/chain/tasks):
-• { action: "list" } - discover agents/chains
-• { action: "get", agent: "name" } - full agent detail
-• { action: "create", config: { name, systemPrompt, ... } }
-• { action: "update", agent: "name", config: { ... } } - merge
-• { action: "delete", agent: "name" }
-• Use chainName for chain operations`,
+Allowed role agents: sp-recon, sp-research, sp-implementer, sp-spec-review, sp-code-review, sp-debug.
+Bounded role agents are not allowed to call subagents.`,
 		parameters: SubagentParams,
 
 		execute(id, params, signal, onUpdate, ctx) {
@@ -328,13 +315,6 @@ MANAGEMENT (use action field, omit agent/task/chain/tasks):
 		},
 
 		renderCall(args, theme) {
-			if (args.action) {
-				const target = args.agent || args.chainName || "";
-				return new Text(
-					`${theme.fg("toolTitle", theme.bold("subagent "))}${args.action}${target ? ` ${theme.fg("accent", target)}` : ""}`,
-					0, 0,
-				);
-			}
 			const isParallel = (args.tasks?.length ?? 0) > 0;
 			const parallelCount = effectiveParallelTaskCount(args.tasks as Array<{ count?: unknown }> | undefined);
 			const asyncLabel = args.async === true && !isParallel ? theme.fg("warning", " [async]") : "";

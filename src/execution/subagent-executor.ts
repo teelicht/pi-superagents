@@ -3,7 +3,7 @@
  *
  * Responsibilities:
  * - normalize slash/tool parameters into concrete execution modes
- * - route single, parallel, chain, and management requests
+ * - route single, parallel, and chain execution requests
  * - thread shared execution metadata into lower-level runners
  */
 
@@ -17,7 +17,6 @@ import { getArtifactsDir } from "../shared/artifacts.ts";
 import { ChainClarifyComponent, type ChainClarifyResult, type ModelInfo } from "../ui/chain-clarify.ts";
 import { executeChain } from "./chain-execution.ts";
 import { resolveExecutionAgentScope } from "../agents/agent-scope.ts";
-import { handleManagementAction } from "../agents/agent-management.ts";
 import { runSync } from "./execution.ts";
 import { aggregateParallelOutputs } from "./parallel-utils.ts";
 import { recordRun } from "./run-history.ts";
@@ -56,7 +55,6 @@ import {
 	type MaxOutputConfig,
 	type SingleResult,
 	type SubagentState,
-	type SuperpowersImplementerMode,
 	type WorkflowMode,
 	DEFAULT_ARTIFACT_CONFIG,
 	MAX_CONCURRENCY,
@@ -66,6 +64,14 @@ import {
 	resolveCurrentMaxSubagentDepth,
 	wrapForkTask,
 } from "../shared/types.ts";
+
+/**
+ * Convert useTestDrivenDevelopment boolean to the SuperpowersImplementerMode
+ * string expected by lower-level runners.
+ */
+function toImplementerMode(useTestDrivenDevelopment: boolean): "tdd" | "direct" {
+	return useTestDrivenDevelopment ? "tdd" : "direct";
+}
 
 interface TaskParam {
 	agent: string;
@@ -80,13 +86,12 @@ interface TaskParam {
 }
 
 export interface SubagentParamsLike {
-	action?: string;
 	agent?: string;
 	task?: string;
 	chain?: ChainStep[];
 	tasks?: TaskParam[];
 	workflow?: WorkflowMode;
-	implementerMode?: SuperpowersImplementerMode;
+	useTestDrivenDevelopment?: boolean;
 	worktree?: boolean;
 	context?: "fresh" | "fork";
 	async?: boolean;
@@ -130,7 +135,7 @@ interface ExecutionContextData {
 	artifactsDir: string;
 	effectiveAsync: boolean;
 	workflow: WorkflowMode;
-	implementerMode: SuperpowersImplementerMode;
+	useTestDrivenDevelopment: boolean;
 }
 
 function validateExecutionInput(
@@ -359,8 +364,9 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 		artifactsDir,
 		effectiveAsync,
 		workflow,
-		implementerMode,
+		useTestDrivenDevelopment,
 	} = data;
+	const implementerMode = toImplementerMode(useTestDrivenDevelopment);
 	const hasChain = (params.chain?.length ?? 0) > 0;
 	const hasTasks = (params.tasks?.length ?? 0) > 0;
 	const hasSingle = Boolean(params.agent && params.task);
@@ -414,7 +420,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			sessionFilesByFlatIndex: collectChainSessionFiles(chain, sessionFileForIndex),
 			maxSubagentDepth: currentMaxSubagentDepth,
 			workflow: data.workflow,
-			implementerMode: data.implementerMode,
+			implementerMode: toImplementerMode(data.useTestDrivenDevelopment),
 			config: deps.config,
 		});
 	}
@@ -486,7 +492,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			output: effectiveOutput,
 			maxSubagentDepth,
 			workflow: data.workflow,
-			implementerMode: data.implementerMode,
+			implementerMode: toImplementerMode(data.useTestDrivenDevelopment),
 			config: deps.config,
 		});
 	}
@@ -534,7 +540,7 @@ async function runChainPath(data: ExecutionContextData, deps: ExecutorDeps): Pro
 		maxSubagentDepth: currentMaxSubagentDepth,
 		config: deps.config,
 		workflow: data.workflow,
-		implementerMode: data.implementerMode,
+		implementerMode: toImplementerMode(data.useTestDrivenDevelopment),
 	});
 
 	if (chainResult.requestedAsync) {
@@ -562,7 +568,7 @@ async function runChainPath(data: ExecutionContextData, deps: ExecutorDeps): Pro
 			sessionFilesByFlatIndex: collectChainSessionFiles(asyncChain, sessionFileForIndex),
 			maxSubagentDepth: currentMaxSubagentDepth,
 			workflow: data.workflow,
-			implementerMode: data.implementerMode,
+			implementerMode: toImplementerMode(data.useTestDrivenDevelopment),
 			config: deps.config,
 		});
 	}
@@ -594,7 +600,7 @@ interface ForegroundParallelRunInput {
 	worktreeSetup?: WorktreeSetup;
 	config: ExtensionConfig;
 	workflow: WorkflowMode;
-	implementerMode: SuperpowersImplementerMode;
+	useTestDrivenDevelopment: boolean;
 }
 
 function buildParallelModeError(message: string): AgentToolResult<Details> {
@@ -707,7 +713,7 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 			skills: effectiveSkills,
 			config: input.config,
 			workflow: input.workflow,
-			implementerMode: input.implementerMode,
+			implementerMode: toImplementerMode(input.useTestDrivenDevelopment),
 			onUpdate: input.onUpdate
 				? (progressUpdate) => {
 						const stepResults = progressUpdate.details?.results || [];
@@ -746,8 +752,9 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		onUpdate,
 		sessionRoot,
 		workflow,
-		implementerMode,
+		useTestDrivenDevelopment,
 	} = data;
+	const implementerMode = toImplementerMode(useTestDrivenDevelopment);
 	const allProgress: AgentProgress[] = [];
 	const allArtifactPaths: ArtifactPaths[] = [];
 	const tasks = params.tasks!;
@@ -978,8 +985,9 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		onUpdate,
 		sessionRoot,
 		workflow,
-		implementerMode,
+		useTestDrivenDevelopment,
 	} = data;
+	const implementerMode = toImplementerMode(useTestDrivenDevelopment);
 	const allProgress: AgentProgress[] = [];
 	const allArtifactPaths: ArtifactPaths[] = [];
 	const agentConfig = agents.find((a) => a.name === params.agent);
@@ -1152,18 +1160,6 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 		ctx: ExtensionContext,
 	): Promise<AgentToolResult<Details>> => {
 		deps.state.baseCwd = ctx.cwd;
-		if (params.action) {
-			const validActions = ["list", "get", "create", "update", "delete"];
-			if (!validActions.includes(params.action)) {
-				return {
-					content: [{ type: "text", text: `Unknown action: ${params.action}. Valid: ${validActions.join(", ")}` }],
-					isError: true,
-					details: { mode: "management" as const, results: [] },
-				};
-			}
-			return handleManagementAction(params.action, params, ctx);
-		}
-
 		const { blocked, depth, maxDepth } = checkSubagentDepth(deps.config.maxSubagentDepth);
 		if (blocked) {
 			return {
@@ -1272,10 +1268,10 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			artifactsDir,
 			effectiveAsync,
 			workflow: normalizedParams.workflow ?? "default",
-			implementerMode:
-				normalizedParams.implementerMode
-				?? deps.config.superagents?.defaultImplementerMode
-				?? "tdd",
+			useTestDrivenDevelopment:
+				normalizedParams.useTestDrivenDevelopment
+				?? deps.config.superagents?.useTestDrivenDevelopment
+				?? true,
 		};
 
 		try {
