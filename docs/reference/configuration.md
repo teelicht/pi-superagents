@@ -87,23 +87,3 @@ Each tier in `modelTiers` can be a string (model ID) or an object:
 ```
 
 **Supported thinking levels:** `off`, `minimal`, `low`, `medium`, `high`, `xhigh`.
-
-### `maxSubagentDepth`
-
-Limits the recursion depth for subagent delegation. Default is 2.
-
-```json
-{
-  "maxSubagentDepth": 1
-}
-```
-
-### `asyncByDefault`
-
-If `true`, all subagent runs are executed in the background unless explicitly overridden.
-
-```json
-{
-  "asyncByDefault": true
-}
-```

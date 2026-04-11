@@ -30,7 +30,6 @@ import { createSubagentExecutor } from "../execution/subagent-executor.ts";
 import { createAsyncJobTracker } from "../ui/async-job-tracker.ts";
 import { createResultWatcher } from "../ui/result-watcher.ts";
 import { registerSlashCommands } from "../slash/slash-commands.ts";
-import { clearSlashSnapshots, getSlashRenderableSnapshot, resolveSlashMessageDetails, restoreSlashFinalSnapshots, type SlashMessageDetails } from "../slash/slash-live-state.ts";
 import { formatAsyncRunList, listAsyncRuns } from "../ui/async-status.ts";
 import {
 	type Details,
@@ -39,7 +38,6 @@ import {
 	ASYNC_DIR,
 	DEFAULT_ARTIFACT_CONFIG,
 	RESULTS_DIR,
-	SLASH_RESULT_TYPE,
 	WIDGET_KEY,
 } from "../shared/types.ts";
 
@@ -263,13 +261,6 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 		expandTilde,
 		discoverAgents,
 	});
-
-	pi.registerMessageRenderer<SlashMessageDetails>(SLASH_RESULT_TYPE, (message, options, theme) => {
-		const details = resolveSlashMessageDetails(message.details);
-		if (!details) return undefined;
-		return createSlashResultComponent(details, options, theme);
-	});
-
 
 	function effectiveParallelTaskCount(tasks: Array<{ count?: unknown }> | undefined): number {
 		if (!tasks || tasks.length === 0) return 0;
@@ -498,7 +489,6 @@ Bounded role agents are not allowed to call subagents.`,
 		state.lastUiContext = ctx;
 		cleanupSessionArtifacts(ctx);
 		resetJobs(ctx);
-		restoreSlashFinalSnapshots(ctx.sessionManager.getEntries());
 	};
 
 	let configDiagnosticNotifiedForSession: string | null = null;
@@ -523,7 +513,6 @@ Bounded role agents are not allowed to call subagents.`,
 		}
 		state.cleanupTimers.clear();
 		state.asyncJobs.clear();
-		clearSlashSnapshots();
 		if (state.lastUiContext?.hasUI) {
 			state.lastUiContext.ui.setWidget(WIDGET_KEY, undefined);
 		}

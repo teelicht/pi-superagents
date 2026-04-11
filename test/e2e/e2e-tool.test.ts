@@ -51,68 +51,6 @@ function writeTestAgents(cwd: string, agents: Array<{ name: string; description?
 	}
 }
 
-describe("subagent tool — management", { skip: !available ? "pi-test-harness not available" : undefined }, () => {
-	const { createTestSession, when, calls, says } = harness;
-	let t: any;
-
-	afterEach(() => {
-		t?.dispose();
-		mockPi?.reset();
-	});
-
-	it("action: list returns discovered agents (project scope)", async () => {
-		t = await createTestSession({
-			extensions: [EXTENSION],
-			mockTools: {
-				bash: "ok",
-				read: "ok",
-				write: "ok",
-				edit: "ok",
-			},
-		});
-
-		// Write test agents into the session's cwd (project scope)
-		writeTestAgents(t.cwd, [
-			{ name: "scout", description: "Reconnaissance agent" },
-			{ name: "writer", description: "Documentation writer" },
-		]);
-
-		await t.run(
-			when("List available agents", [
-				calls("subagent", { action: "list", agentScope: "project" }),
-				says("Found the agents."),
-			]),
-		);
-
-		const results = t.events.toolResultsFor("subagent");
-		assert.equal(results.length, 1);
-		assert.ok(!results[0].isError, "should not be an error");
-		assert.ok(results[0].text.includes("scout"), `should list scout: ${results[0].text.slice(0, 200)}`);
-		assert.ok(results[0].text.includes("writer"), `should list writer: ${results[0].text.slice(0, 200)}`);
-	});
-
-	it("action: get returns agent detail", async () => {
-		t = await createTestSession({
-			extensions: [EXTENSION],
-			mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },
-		});
-
-		writeTestAgents(t.cwd, [{ name: "scout", description: "Recon agent" }]);
-
-		await t.run(
-			when("Get scout agent details", [
-				calls("subagent", { action: "get", agent: "scout", agentScope: "project" }),
-				says("Here are the details."),
-			]),
-		);
-
-		const results = t.events.toolResultsFor("subagent");
-		assert.equal(results.length, 1);
-		assert.ok(!results[0].isError);
-		assert.ok(results[0].text.includes("scout"));
-	});
-});
-
 describe("subagent tool — validation", { skip: !available ? "pi-test-harness not available" : undefined }, () => {
 	const { createTestSession, when, calls, says } = harness;
 	let t: any;
@@ -120,48 +58,6 @@ describe("subagent tool — validation", { skip: !available ? "pi-test-harness n
 	afterEach(() => {
 		t?.dispose();
 		mockPi?.reset();
-	});
-
-	it("rejects invalid action", async () => {
-		t = await createTestSession({
-			extensions: [EXTENSION],
-			mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },
-		});
-
-		await t.run(
-			when("Do something invalid", [
-				calls("subagent", { action: "invalid_action" }),
-				says("That failed."),
-			]),
-		);
-
-		const results = t.events.toolResultsFor("subagent");
-		assert.equal(results.length, 1);
-		assert.ok(results[0].isError, "should be an error");
-		assert.ok(results[0].text.includes("Unknown action"));
-	});
-
-	it("rejects ambiguous mode (both agent+task and chain)", async () => {
-		t = await createTestSession({
-			extensions: [EXTENSION],
-			mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },
-		});
-
-		await t.run(
-			when("Ambiguous call", [
-				calls("subagent", {
-					agent: "test",
-					task: "do something",
-					chain: [{ agent: "a", task: "start" }],
-				}),
-				says("That's ambiguous."),
-			]),
-		);
-
-		const results = t.events.toolResultsFor("subagent");
-		assert.equal(results.length, 1);
-		assert.ok(results[0].isError, "should be an error");
-		assert.ok(results[0].text.includes("exactly one mode") || results[0].text.includes("Provide exactly one"));
 	});
 
 	it("rejects unknown agent in single mode", async () => {
@@ -181,51 +77,6 @@ describe("subagent tool — validation", { skip: !available ? "pi-test-harness n
 		assert.equal(results.length, 1);
 		assert.ok(results[0].isError, "should be an error");
 		assert.ok(results[0].text.includes("Unknown") || results[0].text.includes("nonexistent"));
-	});
-
-	it("rejects chain with unknown agent", async () => {
-		t = await createTestSession({
-			extensions: [EXTENSION],
-			mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },
-		});
-
-		writeTestAgents(t.cwd, [{ name: "scout" }]);
-
-		await t.run(
-			when("Chain with bad agent", [
-				calls("subagent", {
-					chain: [
-						{ agent: "scout", task: "start" },
-						{ agent: "nonexistent_agent_xyz" },
-					],
-					agentScope: "project",
-				}),
-				says("Unknown agent in chain."),
-			]),
-		);
-
-		const results = t.events.toolResultsFor("subagent");
-		assert.equal(results.length, 1);
-		assert.ok(results[0].isError, "should be an error");
-		assert.ok(results[0].text.includes("Unknown agent") || results[0].text.includes("nonexistent"));
-	});
-
-	it("rejects empty chain", async () => {
-		t = await createTestSession({
-			extensions: [EXTENSION],
-			mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },
-		});
-
-		await t.run(
-			when("Empty chain", [
-				calls("subagent", { chain: [] }),
-				says("Chain must have steps."),
-			]),
-		);
-
-		const results = t.events.toolResultsFor("subagent");
-		assert.equal(results.length, 1);
-		assert.ok(results[0].isError);
 	});
 });
 
@@ -250,7 +101,7 @@ describe("subagent tool — single execution", { skip: !available ? "pi-test-har
 
 		await t.run(
 			when("Run the echo agent", [
-				calls("subagent", { agent: "echo", task: "Say hello", clarify: false, agentScope: "project" }),
+				calls("subagent", { agent: "echo", task: "Say hello" }),
 				says("The agent responded."),
 			]),
 		);
@@ -273,7 +124,7 @@ describe("subagent tool — single execution", { skip: !available ? "pi-test-har
 
 		await t.run(
 			when("Run the crasher", [
-				calls("subagent", { agent: "crasher", task: "Crash please", clarify: false, agentScope: "project" }),
+				calls("subagent", { agent: "crasher", task: "Crash please" }),
 				says("It failed."),
 			]),
 		);

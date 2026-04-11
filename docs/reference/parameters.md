@@ -13,13 +13,11 @@ These are the parameters the **LLM agent** passes when it calls the `subagent` t
 | `useTestDrivenDevelopment` | boolean                        | `true`                    | Enables test-driven development guidance for `sp-implementer` tasks. |
 | `worktree`        | boolean                                 | `true` (parallel)         | Whether to create isolated git worktrees for parallel tasks. |
 | `context`         | `"fresh" \| "fork"`                     | `"fresh"`                 | Execution context mode. `"fork"` branches from the current parent session. |
-| `async`           | boolean                                 | `false`                   | If `true`, the task runs in the background. |
 | `cwd`             | string                                  | parent cwd                | Working directory for the subagent. |
 | `skill`           | `string \| string[] \| false`           | agent default             | Skills to inject into the agent prompt. `false` disables all skills. |
 | `model`           | string                                  | agent default             | Override the model for this specific run. Can be a concrete ID or a tier name (`cheap`, `balanced`, `max`). |
 | `artifacts`       | boolean                                 | `true`                    | Whether to write debug artifacts (input/output logs). |
 | `includeProgress` | boolean                                 | `false`                   | Whether to include full internal progress metadata in the result. |
-| `sessionDir`      | string                                  | -                         | Custom directory for session logs. |
 
 ### TaskItem (for parallel tasks)
 

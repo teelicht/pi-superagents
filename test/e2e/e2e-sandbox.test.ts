@@ -28,15 +28,16 @@ describe("extension loading", { skip: !available ? "pi-test-harness not availabl
 		});
 
 		await t.run(
-			when("List agents", [
-				calls("subagent", { action: "list" }),
+			when("Run recon", [
+				calls("subagent", { agent: "sp-recon", task: "hello" }),
 				says("Done."),
 			]),
 		);
 
 		const results = t.events.toolResultsFor("subagent");
 		assert.equal(results.length, 1, "subagent tool should respond");
-		assert.ok(!results[0].isError, "should not be an error");
+		// sp-recon is a builtin agent, so this should not be an agent-not-found error
+		assert.ok(!results[0].isError, `should not be an error: ${results[0].text}`);
 	});
 
 	it("subagent_status tool responds", async () => {
