@@ -14,7 +14,6 @@ import {
 import type {
 	ExecutionRole,
 	ExtensionConfig,
-	SuperpowersImplementerMode,
 	WorkflowMode,
 } from "./types.ts";
 
@@ -124,13 +123,11 @@ function collectPackageSkillPaths(cwd: string): string[] {
 		path.join(cwd, CONFIG_DIR, "npm", "node_modules"),
 		path.join(AGENT_DIR, "npm", "node_modules"),
 	];
-	
 	// Add global npm root if available (where pi installs global packages)
 	const globalRoot = getGlobalNpmRoot();
 	if (globalRoot) {
 		dirs.push(globalRoot);
 	}
-	
 	const results: string[] = [];
 
 	for (const dir of dirs) {
@@ -361,7 +358,7 @@ export function resolveExecutionSkills(input: {
 	workflow: WorkflowMode;
 	role: ExecutionRole;
 	config?: ExtensionConfig;
-	implementerMode?: SuperpowersImplementerMode;
+	useTestDrivenDevelopment?: boolean;
 	skills?: string[] | false;
 }): ExecutionSkillResolution {
 	const configuredSkills = input.skills === false ? [] : (input.skills ?? []);
@@ -369,7 +366,7 @@ export function resolveExecutionSkills(input: {
 	const skillNames = input.role === "sp-implementer"
 		? resolveImplementerSkillSet({
 			workflow: input.workflow,
-			implementerMode: input.implementerMode ?? "tdd",
+			useTestDrivenDevelopment: input.useTestDrivenDevelopment ?? true,
 			config: input.config ?? {},
 			agentSkills: [],
 			stepSkills: configuredSkills,

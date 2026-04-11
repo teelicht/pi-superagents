@@ -11,7 +11,6 @@ import type {
 	ExecutionRole,
 	ExtensionConfig,
 	ModelTierConfig,
-	SuperpowersImplementerMode,
 	WorkflowMode,
 } from "../shared/types.ts";
 import { getSuperagentSettings } from "./superagents-config.ts";
@@ -201,11 +200,12 @@ export function resolveRoleTools(input: {
 /**
  * Resolve the effective skill set for the Superpowers implementer role.
  *
- * In `tdd` mode this appends `test-driven-development` when that skill exists.
+ * When `useTestDrivenDevelopment` is true, appends the `test-driven-development` skill
+ * if it exists in the available set. Otherwise returns only the merged skill list.
  */
 export function resolveImplementerSkillSet(input: {
 	workflow: WorkflowMode;
-	implementerMode: SuperpowersImplementerMode;
+	useTestDrivenDevelopment: boolean;
 	config: ExtensionConfig;
 	agentSkills: string[];
 	stepSkills: string[];
@@ -219,7 +219,7 @@ export function resolveImplementerSkillSet(input: {
 		stepSkills: input.stepSkills,
 		availableSkills: input.availableSkills,
 	});
-	if (input.workflow !== "superpowers" || input.implementerMode !== "tdd") return base;
+	if (input.workflow !== "superpowers" || !input.useTestDrivenDevelopment) return base;
 	if (!input.availableSkills.has("test-driven-development")) return base;
 	return [...new Set([...base, "test-driven-development"])];
 }

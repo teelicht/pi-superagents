@@ -172,7 +172,7 @@ describe("superpowers packets in real execution paths", {
 			artifactConfig: { enabled: false },
 			clarify: false,
 			workflow: "superpowers",
-			implementerMode: "tdd",
+			useTestDrivenDevelopment: true,
 			config: {},
 			maxSubagentDepth: 0,
 		};

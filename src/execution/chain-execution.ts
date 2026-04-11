@@ -53,7 +53,6 @@ import {
 	type Details,
 	type ExtensionConfig,
 	type SingleResult,
-	type SuperpowersImplementerMode,
 	type WorkflowMode,
 	MAX_CONCURRENCY,
 	resolveChildMaxSubagentDepth,
@@ -116,7 +115,7 @@ interface ParallelChainRunInput {
 	maxSubagentDepth: number;
 	config: ExtensionConfig;
 	workflow: WorkflowMode;
-	implementerMode: SuperpowersImplementerMode;
+	useTestDrivenDevelopment: boolean;
 }
 
 function buildChainExecutionDetails(input: ChainExecutionDetailsInput): Details {
@@ -257,7 +256,7 @@ async function runParallelChainTasks(input: ParallelChainRunInput): Promise<Sing
 				skills: behavior.skills,
 				config: input.config,
 				workflow: input.workflow,
-				implementerMode: input.implementerMode,
+				useTestDrivenDevelopment: input.useTestDrivenDevelopment,
 				onUpdate: input.onUpdate
 					? (progressUpdate) => {
 							const stepResults = progressUpdate.details?.results || [];
@@ -309,7 +308,7 @@ export interface ChainExecutionParams {
 	maxSubagentDepth: number;
 	config: ExtensionConfig;
 	workflow: WorkflowMode;
-	implementerMode: SuperpowersImplementerMode;
+	useTestDrivenDevelopment: boolean;
 }
 
 export interface ChainExecutionResult {
@@ -346,7 +345,7 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 		chainDir: chainDirBase,
 		config,
 		workflow,
-		implementerMode,
+		useTestDrivenDevelopment,
 	} = params;
 	const chainSteps = applySuperagentWorktreeDefaultsToChain(rawChainSteps, workflow, config);
 	const chainSkills = chainSkillsParam ?? [];
@@ -585,7 +584,7 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 					maxSubagentDepth: params.maxSubagentDepth,
 					config,
 					workflow,
-					implementerMode,
+					useTestDrivenDevelopment,
 				});
 				globalTaskIndex += step.parallel.length;
 
@@ -735,7 +734,7 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 				skills: behavior.skills,
 				config,
 				workflow,
-				implementerMode,
+				useTestDrivenDevelopment,
 				onUpdate: onUpdate
 					? (p) => {
 							// Use concat instead of spread for better performance

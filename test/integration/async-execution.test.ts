@@ -178,7 +178,7 @@ describe("async execution utilities", { skip: !available ? "pi packages not avai
 				skills: ["domain-skill"],
 				maxSubagentDepth: 0,
 				workflow: "superpowers",
-				implementerMode: "tdd",
+				useTestDrivenDevelopment: true,
 				config: {},
 			});
 

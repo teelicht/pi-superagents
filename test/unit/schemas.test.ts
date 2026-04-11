@@ -42,7 +42,6 @@ interface SubagentParamsSchema {
 		action?: unknown;
 		chainName?: unknown;
 		config?: unknown;
-		implementerMode?: unknown;
 		chain?: unknown;
 		share?: unknown;
 	};
