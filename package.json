@@ -43,6 +43,10 @@
   "scripts": {
     "prepublishOnly": "npm test",
     "debug:pi-local": "node --experimental-transform-types ./scripts/local-extension-install.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit",
     "test": "npm run test:unit",
     "test:unit": "node --experimental-strip-types --test test/unit/*.test.ts",
     "test:integration": "node --experimental-transform-types --import ./test/support/register-loader.mjs --test test/integration/*.test.ts",
@@ -63,11 +67,20 @@
     "@sinclair/typebox": "*"
   },
   "devDependencies": {
+    "@eslint/js": "^9.0.0",
     "@marcfargas/pi-test-harness": "^0.5.0",
     "@mariozechner/pi-agent-core": "^0.65.0",
     "@mariozechner/pi-ai": "^0.65.0",
     "@mariozechner/pi-coding-agent": "^0.65.0",
     "@mariozechner/pi-tui": "^0.66.1",
-    "@sinclair/typebox": "^0.34.49"
+    "@sinclair/typebox": "^0.34.49",
+    "@types/node": "^20.12.0",
+    "@vitest/coverage-v8": "^4.1.4",
+    "eslint": "^9.1.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^4.1.4"
   }
 }
