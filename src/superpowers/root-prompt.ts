@@ -20,7 +20,6 @@ export interface SuperpowersRootPromptInput {
 	task: string;
 	useSubagents: boolean;
 	useTestDrivenDevelopment: boolean;
-	bg: boolean;
 	fork: boolean;
 	usingSuperpowersSkill?: SuperpowersRootPromptSkill;
 }
@@ -37,10 +36,7 @@ function buildMetadata(input: SuperpowersRootPromptInput): string {
 		`useSubagents: ${input.useSubagents}`,
 		`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`,
 	];
-	if (input.bg) {
-		lines.push("async: true");
-		lines.push("clarify: false");
-	}
+
 	if (input.fork) {
 		lines.push('context: "fork"');
 	}

@@ -135,8 +135,6 @@ export interface Details {
 	mode: "single" | "parallel";
 	context?: "fresh" | "fork";
 	results: SingleResult[];
-	asyncId?: string;
-	asyncDir?: string;
 	progress?: AgentProgress[];
 	progressSummary?: ProgressSummary;
 	artifacts?: {
@@ -171,34 +169,6 @@ export interface ArtifactConfig {
 	cleanupDays: number;
 }
 
-// ============================================================================
-// Async Execution
-// ============================================================================
-
-export interface AsyncStatus {
-	runId: string;
-	mode: "single" | "parallel";
-	state: "queued" | "running" | "complete" | "failed";
-	startedAt: number;
-	endedAt?: number;
-	lastUpdate?: number;
-	cwd?: string;
-	steps?: Array<{ agent: string; status: string; durationMs?: number; skills?: string[] }>;
-	outputFile?: string;
-	sessionFile?: string;
-}
-
-export interface AsyncJobState {
-	asyncId: string;
-	asyncDir: string;
-	status: "queued" | "running" | "complete" | "failed";
-	mode?: "single" | "parallel";
-	agents?: string[];
-	startedAt?: number;
-	updatedAt?: number;
-	outputFile?: string;
-	sessionFile?: string;
-}
 
 export interface ConfigGateState {
 	blocked: boolean;
@@ -211,17 +181,7 @@ export interface ConfigGateState {
 export interface SubagentState {
 	baseCwd: string;
 	currentSessionId: string | null;
-	asyncJobs: Map<string, AsyncJobState>;
-	cleanupTimers: Map<string, ReturnType<typeof setTimeout>>;
 	lastUiContext: ExtensionContext | null;
-	poller: NodeJS.Timeout | null;
-	completionSeen: Map<string, number>;
-	watcher: FSWatcher | null;
-	watcherRestartTimer: ReturnType<typeof setTimeout> | null;
-	resultFileCoalescer: {
-		schedule(file: string, delayMs?: number): boolean;
-		clear(): void;
-	};
 	configGate: ConfigGateState;
 }
 
@@ -258,7 +218,6 @@ export interface RunSyncOptions {
 	runId: string;
 	index?: number;
 	sessionFile?: string;
-	share?: boolean;
 	outputPath?: string;
 	maxSubagentDepth?: number;
 	/** Override the agent's default model (format: "provider/id" or just "id") */
@@ -330,11 +289,6 @@ export const DEFAULT_ARTIFACT_CONFIG: ArtifactConfig = {
 
 export const MAX_PARALLEL = 8;
 export const MAX_CONCURRENCY = 4;
-export const RESULTS_DIR = path.join(os.tmpdir(), "pi-async-subagent-results");
-export const ASYNC_DIR = path.join(os.tmpdir(), "pi-async-subagent-runs");
-export const WIDGET_KEY = "subagent-async";
-export const POLL_INTERVAL_MS = 250;
-export const MAX_WIDGET_JOBS = 4;
 export const DEFAULT_SUBAGENT_MAX_DEPTH = 2;
 
 export const DEFAULT_FORK_PREAMBLE =

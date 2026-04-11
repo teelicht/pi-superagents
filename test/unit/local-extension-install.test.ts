@@ -108,10 +108,10 @@ describe("installLocalExtensionFiles", () => {
 		tempDirs.push(sourceRoot, targetRoot);
 
 		fs.writeFileSync(path.join(sourceRoot, "package.json"), "{\n  \"name\": \"pi-superagents\"\n}\n", "utf-8");
-		fs.writeFileSync(path.join(sourceRoot, "config.example.json"), "{\n  \"asyncByDefault\": false\n}\n", "utf-8");
-		fs.writeFileSync(path.join(sourceRoot, "default-config.json"), "{\n  \"asyncByDefault\": false\n}\n", "utf-8");
+		fs.writeFileSync(path.join(sourceRoot, "config.example.json"), "{\n  \"useSubagents\": false\n}\n", "utf-8");
+		fs.writeFileSync(path.join(sourceRoot, "default-config.json"), "{\n  \"useSubagents\": false\n}\n", "utf-8");
 		fs.mkdirSync(targetRoot, { recursive: true });
-		fs.writeFileSync(path.join(targetRoot, "config.json"), "{\n  \"asyncByDefault\": true\n}\n", "utf-8");
+		fs.writeFileSync(path.join(targetRoot, "config.json"), "{\n  \"useSubagents\": true\n}\n", "utf-8");
 		fs.writeFileSync(path.join(targetRoot, "config.example.json"), "{\n  \"old\": true\n}\n", "utf-8");
 		fs.writeFileSync(path.join(targetRoot, "stale.ts"), "old\n", "utf-8");
 
@@ -121,8 +121,8 @@ describe("installLocalExtensionFiles", () => {
 			relativePaths: ["package.json", "default-config.json", "config.example.json"],
 		});
 
-		assert.equal(fs.readFileSync(path.join(targetRoot, "config.json"), "utf-8"), "{\n  \"asyncByDefault\": true\n}\n");
-		assert.equal(fs.readFileSync(path.join(targetRoot, "config.example.json"), "utf-8"), "{\n  \"asyncByDefault\": false\n}\n");
+		assert.equal(fs.readFileSync(path.join(targetRoot, "config.json"), "utf-8"), "{\n  \"useSubagents\": true\n}\n");
+		assert.equal(fs.readFileSync(path.join(targetRoot, "config.example.json"), "utf-8"), "{\n  \"useSubagents\": false\n}\n");
 		assert.equal(fs.existsSync(path.join(targetRoot, "stale.ts")), false);
 	});
 
@@ -132,7 +132,7 @@ describe("installLocalExtensionFiles", () => {
 		tempDirs.push(sourceRoot, targetRoot);
 
 		fs.writeFileSync(path.join(sourceRoot, "package.json"), "{\n  \"name\": \"pi-superagents\"\n}\n", "utf-8");
-		fs.writeFileSync(path.join(sourceRoot, "config.example.json"), "{\n  \"asyncByDefault\": false\n}\n", "utf-8");
+		fs.writeFileSync(path.join(sourceRoot, "config.example.json"), "{\n  \"useSubagents\": false\n}\n", "utf-8");
 
 		installLocalExtensionFiles({
 			sourceRoot,

@@ -6,11 +6,23 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { KNOWN_FIELDS } from "./agent-serializer.ts";
-import { mergeAgentsForScope } from "./agent-selection.ts";
 import { parseFrontmatter } from "./frontmatter.ts";
 
-export type AgentScope = "user" | "project" | "both";
+export const KNOWN_FIELDS = new Set([
+	"name",
+	"description",
+	"tools",
+	"model",
+	"thinking",
+	"skills",
+	"extensions",
+	"output",
+	"defaultReads",
+	"defaultProgress",
+	"interactive",
+	"maxSubagentDepth",
+]);
+
 
 export type AgentSource = "builtin" | "user" | "project";
 
@@ -56,7 +68,6 @@ function loadAgentsFromDir(dir: string, source: AgentSource): AgentConfig[] {
 
 	for (const entry of entries) {
 		if (!entry.name.endsWith(".md")) continue;
-		if (entry.name.endsWith(".chain.md")) continue;
 		if (!entry.isFile() && !entry.isSymbolicLink()) continue;
 
 		const filePath = path.join(dir, entry.name);
@@ -170,19 +181,25 @@ function findNearestProjectAgentsDir(cwd: string): string | null {
 
 const BUILTIN_AGENTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../agents");
 
-export function discoverAgents(cwd: string, scope: AgentScope): AgentDiscoveryResult {
+export function discoverAgents(cwd: string): AgentDiscoveryResult {
 	const userDirOld = path.join(os.homedir(), ".pi", "agent", "agents");
 	const userDirNew = path.join(os.homedir(), ".agents");
 	const projectAgentsDir = findNearestProjectAgentsDir(cwd);
 
 	const builtinAgents = loadAgentsFromDir(BUILTIN_AGENTS_DIR, "builtin");
 	
-	const userAgentsOld = scope === "project" ? [] : loadAgentsFromDir(userDirOld, "user");
-	const userAgentsNew = scope === "project" ? [] : loadAgentsFromDir(userDirNew, "user");
+	const userAgentsOld = loadAgentsFromDir(userDirOld, "user");
+	const userAgentsNew = loadAgentsFromDir(userDirNew, "user");
 	const userAgents = [...userAgentsOld, ...userAgentsNew];
 
-	const projectAgents = scope === "user" || !projectAgentsDir ? [] : loadAgentsFromDir(projectAgentsDir, "project");
-	const agents = mergeAgentsForScope(scope, userAgents, projectAgents, builtinAgents);
+	const projectAgents = projectAgentsDir ? loadAgentsFromDir(projectAgentsDir, "project") : [];
+	
+	const agentMap = new Map<string, AgentConfig>();
+	for (const agent of builtinAgents) agentMap.set(agent.name, agent);
+	for (const agent of userAgents) agentMap.set(agent.name, agent);
+	for (const agent of projectAgents) agentMap.set(agent.name, agent);
+
+	const agents = Array.from(agentMap.values());
 
 	return { agents, projectAgentsDir };
 }

@@ -9,6 +9,8 @@
 - **Unified Command Set** — slash commands are now limited to `/superpowers` and `/superpowers-status`. Generic commands like `/run`, `/chain`, `/parallel`, and `/agents` have been removed.
 - **Documentation Refactor** — documentation has been rewritten to reflect the Superpowers-first identity. Generic agent and chain guides have been removed.
 - **Removed Fork Branding** — branding as a fork of `pi-subagents` has been removed in favor of a standalone Superpowers extension identity.
+- **Strictly Synchronous Execution** — all background run capabilities (`--bg`) and associated polling logic have been stripped; subagents now execute reliably in the foreground.
+- **Simplified Agent Discovery** — agent selection and scope logic have been consolidated to directly and strictly target `sp-*` agents without extraneous abstraction constraints.
 
 ### Removed
 
@@ -17,6 +19,9 @@
 - Management dispatcher branches (`list`, `get`, `create`, `update`, `delete`).
 - Generic sequential chain execution runtime.
 - Generic agents like `scout`, `planner`, `worker`, etc. (Superpowers `sp-*` roles are the new standard).
+- The entire `async` execution subsystem, including background polling tracking, status UI widgets, and the `--bg` slash command flag.
+- The `subagent_status` tool.
+- Dead executor fields like `share` / `shareEnabled` and `asyncByDefault` from core settings types.
 
 ## [0.2.0] - 2026-04-11
 

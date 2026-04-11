@@ -20,7 +20,6 @@ export interface SuperpowersWorkflowOverrides {
 export interface ParsedSuperpowersWorkflowArgs {
 	task: string;
 	overrides: SuperpowersWorkflowOverrides;
-	bg: boolean;
 	fork: boolean;
 }
 
@@ -29,7 +28,6 @@ export interface ResolvedSuperpowersRunProfile {
 	task: string;
 	useSubagents: boolean;
 	useTestDrivenDevelopment: boolean;
-	bg: boolean;
 	fork: boolean;
 }
 
@@ -39,17 +37,11 @@ export interface ResolvedSuperpowersRunProfile {
  * @param rawArgs Raw slash command arguments.
  * @returns Cleaned arguments plus extracted flag values.
  */
-function extractExecutionFlags(rawArgs: string): { args: string; bg: boolean; fork: boolean } {
+function extractExecutionFlags(rawArgs: string): { args: string; fork: boolean } {
 	let args = rawArgs.trim();
-	let bg = false;
 	let fork = false;
 
 	while (true) {
-		if (args.endsWith(" --bg") || args === "--bg") {
-			bg = true;
-			args = args === "--bg" ? "" : args.slice(0, -5).trim();
-			continue;
-		}
 		if (args.endsWith(" --fork") || args === "--fork") {
 			fork = true;
 			args = args === "--fork" ? "" : args.slice(0, -7).trim();
@@ -58,7 +50,7 @@ function extractExecutionFlags(rawArgs: string): { args: string; bg: boolean; fo
 		break;
 	}
 
-	return { args, bg, fork };
+	return { args, fork };
 }
 
 /**
@@ -103,7 +95,7 @@ function applyWorkflowToken(token: string, overrides: SuperpowersWorkflowOverrid
  * @returns Parsed workflow args or null when no task remains.
  */
 export function parseSuperpowersWorkflowArgs(rawArgs: string): ParsedSuperpowersWorkflowArgs | null {
-	const { args, bg, fork } = extractExecutionFlags(rawArgs);
+	const { args, fork } = extractExecutionFlags(rawArgs);
 	const words = args.split(/\s+/).filter(Boolean);
 	const overrides: SuperpowersWorkflowOverrides = {};
 	let index = 0;
@@ -112,7 +104,7 @@ export function parseSuperpowersWorkflowArgs(rawArgs: string): ParsedSuperpowers
 	}
 	const task = words.slice(index).join(" ").trim();
 	if (!task) return null;
-	return { task, overrides, bg, fork };
+	return { task, overrides, fork };
 }
 
 /**
@@ -151,7 +143,6 @@ export function resolveSuperpowersRunProfile(input: {
 			?? preset.useTestDrivenDevelopment
 			?? settings.useTestDrivenDevelopment
 			?? true,
-		bg: input.parsed.bg,
 		fork: input.parsed.fork,
 	};
 }

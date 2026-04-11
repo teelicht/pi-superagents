@@ -2,14 +2,8 @@
  * Chain behavior, template resolution, and directory management
  */
 
-import * as fs from "node:fs";
-import * as os from "node:os";
-import * as path from "node:path";
 import type { AgentConfig } from "../agents/agents.ts";
 import { normalizeSkillInput } from "../shared/skills.ts";
-
-const CHAIN_RUNS_DIR = path.join(os.tmpdir(), "pi-chain-runs");
-const CHAIN_DIR_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // =============================================================================
 // Behavior Resolution Types
@@ -48,7 +42,6 @@ export interface PacketDefaults {
 export function resolveStepBehavior(
 	agentConfig: AgentConfig,
 	stepOverrides: StepOverrides,
-	chainSkills?: string[],
 	packetDefaults?: PacketDefaults,
 ): ResolvedStepBehavior {
 	// Output: step override > packet defaults > frontmatter > false (no output)
@@ -80,14 +73,8 @@ export function resolveStepBehavior(
 		skills = false;
 	} else if (stepOverrides.skills !== undefined) {
 		skills = [...stepOverrides.skills];
-		if (chainSkills && chainSkills.length > 0) {
-			skills = [...new Set([...skills, ...chainSkills])];
-		}
 	} else {
 		skills = agentConfig.skills ? [...agentConfig.skills] : [];
-		if (chainSkills && chainSkills.length > 0) {
-			skills = [...new Set([...skills, ...chainSkills])];
-		}
 	}
 
 	const model = stepOverrides.model ?? agentConfig.model;

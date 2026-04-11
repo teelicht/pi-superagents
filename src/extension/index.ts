@@ -1,15 +1,9 @@
 /**
  * Subagent Tool
  *
- * Full-featured subagent with sync and async modes.
- * - Sync (default): Streams output, renders markdown, tracks usage
- * - Async: Background execution, emits events when done
- *
- * Modes: single (agent + task), parallel (tasks[]), chain (chain[] with {previous})
- * Toggle: async parameter (default: false, configurable via config.json)
  *
  * Config file: ~/.pi/agent/extensions/subagent/config.json
- *   { "asyncByDefault": true, "maxSubagentDepth": 1, "superagents": { "worktrees": { "enabled": true } } }
+ *   { "maxSubagentDepth": 1, "superagents": { "worktrees": { "enabled": true } } }
  */
 
 import * as fs from "node:fs";
@@ -21,24 +15,17 @@ import { type ExtensionAPI, type ExtensionContext, type ToolDefinition } from "@
 import { Box, Container, Spacer, Text } from "@mariozechner/pi-tui";
 import { discoverAgents } from "../agents/agents.ts";
 import { cleanupAllArtifactDirs, cleanupOldArtifacts, getArtifactsDir } from "../shared/artifacts.ts";
-import { renderWidget, renderSubagentResult } from "../ui/render.ts";
-import { SubagentParams, StatusParams } from "../shared/schemas.ts";
-import { findByPrefix, readStatus } from "../shared/utils.ts";
+import { renderSubagentResult } from "../ui/render.ts";
+import { SubagentParams } from "../shared/schemas.ts";
 import { formatConfigDiagnostics, loadEffectiveConfig } from "../execution/config-validation.ts";
 import type { ConfigDiagnostic } from "../shared/types.ts";
 import { createSubagentExecutor } from "../execution/subagent-executor.ts";
-import { createAsyncJobTracker } from "../ui/async-job-tracker.ts";
-import { createResultWatcher } from "../ui/result-watcher.ts";
 import { registerSlashCommands } from "../slash/slash-commands.ts";
-import { formatAsyncRunList, listAsyncRuns } from "../ui/async-status.ts";
 import {
 	type Details,
 	type ExtensionConfig,
 	type SubagentState,
-	ASYNC_DIR,
 	DEFAULT_ARTIFACT_CONFIG,
-	RESULTS_DIR,
-	WIDGET_KEY,
 } from "../shared/types.ts";
 
 /**
@@ -166,72 +153,16 @@ function ensureAccessibleDir(dirPath: string): void {
 	}
 }
 
-function isSlashResultRunning(result: { details?: Details }): boolean {
-	return result.details?.progress?.some((entry) => entry.status === "running")
-		|| result.details?.results.some((entry) => entry.progress?.status === "running")
-		|| false;
-}
-
-function isSlashResultError(result: { details?: Details }): boolean {
-	return result.details?.results.some((entry) => entry.exitCode !== 0 && entry.progress?.status !== "running") || false;
-}
-
-function rebuildSlashResultContainer(
-	container: Container,
-	result: AgentToolResult<Details>,
-	options: { expanded: boolean },
-	theme: ExtensionContext["ui"]["theme"],
-): void {
-	container.clear();
-	container.addChild(new Spacer(1));
-	const boxTheme = isSlashResultRunning(result) ? "toolPendingBg" : isSlashResultError(result) ? "toolErrorBg" : "toolSuccessBg";
-	const box = new Box(1, 1, (text: string) => theme.bg(boxTheme, text));
-	box.addChild(renderSubagentResult(result, options, theme));
-	container.addChild(box);
-}
-
-function createSlashResultComponent(
-	details: SlashMessageDetails,
-	options: { expanded: boolean },
-	theme: ExtensionContext["ui"]["theme"],
-): Container {
-	const container = new Container();
-	let lastVersion = -1;
-	container.render = (width: number): string[] => {
-		const snapshot = getSlashRenderableSnapshot(details);
-		if (snapshot.version !== lastVersion) {
-			lastVersion = snapshot.version;
-			rebuildSlashResultContainer(container, snapshot.result, options, theme);
-		}
-		return Container.prototype.render.call(container, width);
-	};
-	return container;
-}
-
 export default function registerSubagentExtension(pi: ExtensionAPI): void {
-	ensureAccessibleDir(RESULTS_DIR);
-	ensureAccessibleDir(ASYNC_DIR);
-
 	const configState = loadConfigState();
 	const config = configState.config;
-	const asyncByDefault = config.asyncByDefault === true;
 	const tempArtifactsDir = getArtifactsDir(null);
 	cleanupAllArtifactDirs(DEFAULT_ARTIFACT_CONFIG.cleanupDays);
 
 	const state: SubagentState = {
 		baseCwd: process.cwd(),
 		currentSessionId: null,
-		asyncJobs: new Map(),
-		cleanupTimers: new Map(),
 		lastUiContext: null,
-		poller: null,
-		completionSeen: new Map(),
-		watcher: null,
-		watcherRestartTimer: null,
-		resultFileCoalescer: {
-			schedule: () => false,
-			clear: () => {},
-		},
 		configGate: {
 			blocked: configState.blocked,
 			diagnostics: configState.diagnostics,
@@ -241,21 +172,10 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 		},
 	};
 
-	const { startResultWatcher, primeExistingResults, stopResultWatcher } = createResultWatcher(
-		pi,
-		state,
-		RESULTS_DIR,
-		10 * 60 * 1000,
-	);
-	startResultWatcher();
-	primeExistingResults();
-
-	const { ensurePoller, handleStarted, handleComplete, resetJobs } = createAsyncJobTracker(state, ASYNC_DIR);
 	const executor = createSubagentExecutor({
 		pi,
 		state,
 		config,
-		asyncByDefault,
 		tempArtifactsDir,
 		getSubagentSessionRoot,
 		expandTilde,
@@ -327,149 +247,13 @@ Bounded role agents are not allowed to call subagents.`,
 
 	};
 
-	const statusTool: ToolDefinition<typeof StatusParams, Details> = {
-		name: "subagent_status",
-		label: "Subagent Status",
-		description: "Inspect async subagent run status and artifacts",
-		parameters: StatusParams,
-
-		async execute(_id, params, _signal, _onUpdate, _ctx) {
-			if (params.action === "config") {
-				return {
-					content: [{ type: "text", text: state.configGate.message || "pi-superagents config is valid." }],
-					isError: state.configGate.blocked,
-					details: { mode: "single" as const, results: [] },
-				};
-			}
-			if (params.action === "migrate-config") {
-				return migrateCopiedDefaultConfig(configState);
-			}
-			if (params.action === "list") {
-				try {
-					const runs = listAsyncRuns(ASYNC_DIR, { states: ["queued", "running"] });
-					return {
-						content: [{ type: "text", text: formatAsyncRunList(runs) }],
-						details: { mode: "single", results: [] },
-					};
-				} catch (error) {
-					const message = error instanceof Error ? error.message : String(error);
-					return {
-						content: [{ type: "text", text: message }],
-						isError: true,
-						details: { mode: "single", results: [] },
-					};
-				}
-			}
-
-			let asyncDir: string | null = null;
-			let resolvedId = params.id;
-
-			if (params.dir) {
-				asyncDir = path.resolve(params.dir);
-			} else if (params.id) {
-				const direct = path.join(ASYNC_DIR, params.id);
-				if (fs.existsSync(direct)) {
-					asyncDir = direct;
-				} else {
-					const match = findByPrefix(ASYNC_DIR, params.id);
-					if (match) {
-						asyncDir = match;
-						resolvedId = path.basename(match);
-					}
-				}
-			}
-
-			const resultPath =
-				params.id && !asyncDir ? findByPrefix(RESULTS_DIR, params.id, ".json") : null;
-
-			if (!asyncDir && !resultPath) {
-				return {
-					content: [{ type: "text", text: "Async run not found. Provide id or dir." }],
-					isError: true,
-					details: { mode: "single" as const, results: [] },
-				};
-			}
-
-			if (asyncDir) {
-				let status;
-				try {
-					status = readStatus(asyncDir);
-				} catch (error) {
-					const message = error instanceof Error ? error.message : String(error);
-					return {
-						content: [{ type: "text", text: message }],
-						isError: true,
-						details: { mode: "single" as const, results: [] },
-					};
-				}
-				const logPath = path.join(asyncDir, `subagent-log-${resolvedId ?? "unknown"}.md`);
-				const eventsPath = path.join(asyncDir, "events.jsonl");
-				if (status) {
-					const stepsTotal = status.steps?.length ?? 1;
-					const current = status.currentStep !== undefined ? status.currentStep + 1 : undefined;
-					const stepLine =
-						current !== undefined ? `Step: ${current}/${stepsTotal}` : `Steps: ${stepsTotal}`;
-					const started = new Date(status.startedAt).toISOString();
-					const updated = status.lastUpdate ? new Date(status.lastUpdate).toISOString() : "n/a";
-
-					const lines = [
-						`Run: ${status.runId}`,
-						`State: ${status.state}`,
-						`Mode: ${status.mode}`,
-						stepLine,
-						`Started: ${started}`,
-						`Updated: ${updated}`,
-						`Dir: ${asyncDir}`,
-					];
-					if (status.sessionFile) lines.push(`Session: ${status.sessionFile}`);
-					if (fs.existsSync(logPath)) lines.push(`Log: ${logPath}`);
-					if (fs.existsSync(eventsPath)) lines.push(`Events: ${eventsPath}`);
-
-					return { content: [{ type: "text", text: lines.join("\n") }], details: { mode: "single", results: [] } };
-				}
-			}
-
-			if (resultPath) {
-				try {
-					const raw = fs.readFileSync(resultPath, "utf-8");
-					const data = JSON.parse(raw) as { id?: string; success?: boolean; summary?: string };
-					const status = data.success ? "complete" : "failed";
-					const lines = [`Run: ${data.id ?? params.id}`, `State: ${status}`, `Result: ${resultPath}`];
-					if (data.summary) lines.push("", data.summary);
-					return { content: [{ type: "text", text: lines.join("\n") }], details: { mode: "single", results: [] } };
-				} catch (error) {
-					const message = error instanceof Error ? error.message : String(error);
-					return {
-						content: [{ type: "text", text: `Failed to read async result file: ${message}` }],
-						isError: true,
-						details: { mode: "single" as const, results: [] },
-					};
-				}
-			}
-
-			return {
-				content: [{ type: "text", text: "Status file not found." }],
-				isError: true,
-				details: { mode: "single" as const, results: [] },
-			};
-		},
-	};
-
 	pi.registerTool(tool);
-	pi.registerTool(statusTool);
 	registerSlashCommands(pi, state, config);
-
-	pi.events.on("subagent:started", handleStarted);
-	pi.events.on("subagent:complete", handleComplete);
 
 	pi.on("tool_result", (event, ctx) => {
 		if (event.toolName !== "subagent") return;
 		if (!ctx.hasUI) return;
 		state.lastUiContext = ctx;
-		if (state.asyncJobs.size > 0) {
-			renderWidget(ctx, Array.from(state.asyncJobs.values()));
-			ensurePoller();
-		}
 	});
 
 	const cleanupSessionArtifacts = (ctx: ExtensionContext) => {
@@ -488,7 +272,6 @@ Bounded role agents are not allowed to call subagents.`,
 		state.currentSessionId = ctx.sessionManager.getSessionFile() ?? `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 		state.lastUiContext = ctx;
 		cleanupSessionArtifacts(ctx);
-		resetJobs(ctx);
 	};
 
 	let configDiagnosticNotifiedForSession: string | null = null;
@@ -505,16 +288,6 @@ Bounded role agents are not allowed to call subagents.`,
 		}
 	});
 	pi.on("session_shutdown", () => {
-		stopResultWatcher();
-		if (state.poller) clearInterval(state.poller);
-		state.poller = null;
-		for (const timer of state.cleanupTimers.values()) {
-			clearTimeout(timer);
-		}
-		state.cleanupTimers.clear();
-		state.asyncJobs.clear();
-		if (state.lastUiContext?.hasUI) {
-			state.lastUiContext.ui.setWidget(WIDGET_KEY, undefined);
-		}
+		// Nothing to clean up anymore
 	});
 }

@@ -60,8 +60,7 @@ export async function runSync(
 		};
 	}
 
-	const shareEnabled = options.share === true;
-	const sessionEnabled = Boolean(options.sessionFile) || shareEnabled;
+	const sessionEnabled = Boolean(options.sessionFile);
 	const workflow = options.workflow ?? "superpowers";
 	const useTestDrivenDevelopment = options.useTestDrivenDevelopment ?? true;
 	const config = options.config ?? {};
@@ -366,15 +365,6 @@ export async function runSync(
 		const truncationResult = truncateOutput(fullOutput, config);
 		if (truncationResult.truncated) {
 			result.truncation = truncationResult;
-		}
-	}
-
-	if (shareEnabled) {
-		const sessionFile = options.sessionFile;
-		if (sessionFile) {
-			result.sessionFile = sessionFile;
-			// HTML export disabled - module resolution issues with global pi installation
-			// Users can still access the session file directly
 		}
 	}
 

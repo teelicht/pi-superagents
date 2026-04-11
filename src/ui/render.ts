@@ -6,10 +6,7 @@ import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import { getMarkdownTheme, type ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text, visibleWidth, type Component } from "@mariozechner/pi-tui";
 import {
-	type AsyncJobState,
 	type Details,
-	MAX_WIDGET_JOBS,
-	WIDGET_KEY,
 } from "../shared/types.ts";
 import { formatUsage, formatDuration, formatToolCall, shortenPath } from "../shared/formatters.ts";
 import { getDisplayItems, getLastActivity, getOutputTail, getSingleResultOutput } from "../shared/utils.ts";
@@ -84,18 +81,6 @@ function truncLine(text: string, maxWidth: number): string {
 	return result + activeStyles.join("") + "…";
 }
 
-// Track last rendered widget state to avoid no-op re-renders
-let lastWidgetHash = "";
-
-/**
- * Compute a simple hash of job states for change detection
- */
-function computeWidgetHash(jobs: AsyncJobState[]): string {
-	return jobs.slice(0, MAX_WIDGET_JOBS).map(job =>
-		`${job.asyncId}:${job.status}:${job.updatedAt}`
-	).join("|");
-}
-
 function extractOutputTarget(task: string): string | undefined {
 	const writeToMatch = task.match(/\[Write to:\s*([^\]\n]+)\]/i);
 	if (writeToMatch?.[1]?.trim()) return writeToMatch[1].trim();
@@ -109,64 +94,6 @@ function extractOutputTarget(task: string): string | undefined {
 function hasEmptyTextOutputWithoutOutputTarget(task: string, output: string): boolean {
 	if (output.trim()) return false;
 	return !extractOutputTarget(task);
-}
-
-/**
- * Render the async jobs widget
- */
-export function renderWidget(ctx: ExtensionContext, jobs: AsyncJobState[]): void {
-	if (!ctx.hasUI) return;
-	if (jobs.length === 0) {
-		if (lastWidgetHash !== "") {
-			lastWidgetHash = "";
-			ctx.ui.setWidget(WIDGET_KEY, undefined);
-		}
-		return;
-	}
-
-	// Check if anything changed since last render
-	// Always re-render if any displayed job is running (output tail updates constantly)
-	const displayedJobs = jobs.slice(0, MAX_WIDGET_JOBS);
-	const hasRunningJobs = displayedJobs.some(job => job.status === "running");
-	const newHash = computeWidgetHash(jobs);
-	if (!hasRunningJobs && newHash === lastWidgetHash) {
-		return; // Skip re-render, nothing changed
-	}
-	lastWidgetHash = newHash;
-
-	const theme = ctx.ui.theme;
-	const w = getTermWidth();
-	const lines: string[] = [];
-	lines.push(theme.fg("accent", "Async subagents"));
-
-	for (const job of displayedJobs) {
-		const id = job.asyncId.slice(0, 6);
-		const status =
-			job.status === "complete"
-				? theme.fg("success", "complete")
-				: job.status === "failed"
-					? theme.fg("error", "failed")
-					: theme.fg("warning", "running");
-
-		const agents = job.agents || [];
-		const agentLabel = agents.length > 1 ? `parallel[${agents.length}]` : (agents[0] || job.mode || "single");
-		const endTime = (job.status === "complete" || job.status === "failed") ? (job.updatedAt ?? Date.now()) : Date.now();
-		const elapsed = job.startedAt ? formatDuration(endTime - job.startedAt) : "";
-
-		const activityText = job.status === "running" ? getLastActivity(job.outputFile) : "";
-		const activitySuffix = activityText ? ` | ${theme.fg("dim", activityText)}` : "";
-
-		lines.push(truncLine(`- ${id} ${status} | ${agentLabel}${elapsed ? ` | ${elapsed}` : ""}${activitySuffix}`, w));
-
-		if (job.status === "running" && job.outputFile) {
-			const tail = getOutputTail(job.outputFile, 3);
-			for (const line of tail) {
-				lines.push(truncLine(theme.fg("dim", `  > ${line}`), w));
-			}
-		}
-	}
-
-	ctx.ui.setWidget(WIDGET_KEY, lines);
 }
 
 /**

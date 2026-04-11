@@ -56,7 +56,6 @@ async function sendSuperpowersPrompt(
 		task: profile.task,
 		useSubagents: profile.useSubagents,
 		useTestDrivenDevelopment: profile.useTestDrivenDevelopment,
-		bg: profile.bg,
 		fork: profile.fork,
 		usingSuperpowersSkill,
 	});
@@ -90,7 +89,7 @@ function registerSuperpowersCommand(
 			if (notifyIfConfigBlocked(state, ctx)) return;
 			const parsed = parseSuperpowersWorkflowArgs(rawArgs);
 			if (!parsed?.task) {
-				ctx.ui.notify(`Usage: /${commandName} [lean|full|tdd|direct|subagents|no-subagents] <task> [--bg] [--fork]`, "error");
+				ctx.ui.notify(`Usage: /${commandName} [lean|full|tdd|direct|subagents|no-subagents] <task> [--fork]`, "error");
 				return;
 			}
 			const profile = resolveSuperpowersRunProfile({ config, commandName, parsed });
@@ -121,7 +120,7 @@ export function registerSlashCommands(
 		state,
 		config,
 		"superpowers",
-		"Run a Superpowers workflow: /superpowers [lean|full|tdd|direct|subagents|no-subagents] <task> [--bg] [--fork]",
+		"Run a Superpowers workflow: /superpowers [lean|full|tdd|direct|subagents|no-subagents] <task> [--fork]",
 	);
 
 	for (const [commandName, preset] of Object.entries(config.superagents?.commands ?? {})) {

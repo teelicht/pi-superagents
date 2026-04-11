@@ -14,7 +14,6 @@ import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { type AgentConfig, type AgentScope } from "../agents/agents.ts";
 import { getArtifactsDir } from "../shared/artifacts.ts";
-import { resolveExecutionAgentScope } from "../agents/agent-scope.ts";
 import { runSync } from "./execution.ts";
 import { aggregateParallelOutputs } from "./parallel-utils.ts";
 import { recordRun } from "./run-history.ts";
@@ -26,7 +25,6 @@ import {
 	resolveStepBehavior,
 } from "./settings.ts";
 import { normalizeSkillInput } from "../shared/skills.ts";
-import { executeAsyncParallel, executeAsyncSingle, isAsyncAvailable } from "./async-execution.ts";
 import { createForkContextResolver } from "./fork-context.ts";
 import { finalizeSingleOutput, injectSingleOutputInstruction, resolveSingleOutputPath } from "./single-output.ts";
 import {
@@ -79,7 +77,6 @@ export interface SubagentParamsLike {
 	useTestDrivenDevelopment?: boolean;
 	worktree?: boolean;
 	context?: "fresh" | "fork";
-	share?: boolean;
 	cwd?: string;
 	maxOutput?: MaxOutputConfig;
 	artifacts?: boolean;
@@ -93,7 +90,6 @@ interface ExecutorDeps {
 	pi: ExtensionAPI;
 	state: SubagentState;
 	config: ExtensionConfig;
-	asyncByDefault: boolean;
 	tempArtifactsDir: string;
 	getSubagentSessionRoot: (parentSessionFile: string | null) => string;
 	expandTilde: (p: string) => string;
@@ -107,11 +103,9 @@ interface ExecutionContextData {
 	onUpdate?: (r: AgentToolResult<Details>) => void;
 	agents: AgentConfig[];
 	runId: string;
-	shareEnabled: boolean;
 	sessionFileForIndex: (idx?: number) => string | undefined;
 	artifactConfig: ArtifactConfig;
 	artifactsDir: string;
-	effectiveAsync: boolean;
 	workflow: WorkflowMode;
 	useTestDrivenDevelopment: boolean;
 }
@@ -182,86 +176,6 @@ function toExecutionErrorResult(params: SubagentParamsLike, error: unknown): Age
 	);
 }
 
-function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentToolResult<Details> | null {
-	const {
-		params,
-		agents,
-		ctx,
-		shareEnabled,
-		sessionFileForIndex,
-		artifactConfig,
-		artifactsDir,
-		effectiveAsync,
-		workflow,
-		useTestDrivenDevelopment,
-	} = data;
-	const hasSingle = Boolean(params.agent && params.task);
-	if (!effectiveAsync) return null;
-
-	if (!isAsyncAvailable()) {
-		return {
-			content: [{ type: "text", text: "Async mode requires jiti for TypeScript execution but it could not be found. Install globally: npm install -g jiti" }],
-			isError: true,
-			details: { mode: "single" as const, results: [] },
-		};
-	}
-	const id = randomUUID();
-	const asyncCtx = { pi: deps.pi, cwd: ctx.cwd, currentSessionId: deps.state.currentSessionId! };
-	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(deps.config.maxSubagentDepth);
-
-	if (hasSingle) {
-		const a = agents.find((x) => x.name === params.agent);
-		if (!a) {
-			return {
-				content: [{ type: "text", text: `Unknown agent: ${params.agent}` }],
-				isError: true,
-				details: { mode: "single" as const, results: [] },
-			};
-		}
-		const skills = normalizeSkillInput(params.skill);
-		const maxSubagentDepth = resolveChildMaxSubagentDepth(currentMaxSubagentDepth, a.maxSubagentDepth);
-		return executeAsyncSingle(id, {
-			agent: params.agent!,
-			task: params.context === "fork" ? wrapForkTask(params.task!) : params.task!,
-			agentConfig: a,
-			ctx: asyncCtx,
-			cwd: params.cwd,
-			maxOutput: params.maxOutput,
-			artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
-			artifactConfig,
-			shareEnabled,
-			sessionFile: sessionFileForIndex(0),
-			skills,
-			output: params.output,
-			maxSubagentDepth,
-			workflow: data.workflow,
-			useTestDrivenDevelopment: data.useTestDrivenDevelopment,
-			config: deps.config,
-		});
-	}
-
-	if (params.tasks && params.tasks.length > 0) {
-		const effectiveWorktree = resolveSuperagentWorktreeEnabled(params.worktree, workflow, deps.config);
-		return executeAsyncParallel(id, {
-			tasks: params.tasks,
-			agents,
-			ctx: asyncCtx,
-			cwd: params.cwd,
-			maxOutput: params.maxOutput,
-			artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
-			artifactConfig,
-			sessionFileForIndex,
-			maxSubagentDepth: currentMaxSubagentDepth,
-			workflow: data.workflow,
-			useTestDrivenDevelopment: data.useTestDrivenDevelopment,
-			config: deps.config,
-			worktree: effectiveWorktree,
-		});
-	}
-
-	return null;
-}
-
 interface ForegroundParallelRunInput {
 	tasks: TaskParam[];
 	taskTexts: string[];
@@ -270,7 +184,6 @@ interface ForegroundParallelRunInput {
 	signal: AbortSignal;
 	runId: string;
 	sessionFileForIndex: (idx?: number) => string | undefined;
-	shareEnabled: boolean;
 	artifactConfig: ArtifactConfig;
 	artifactsDir: string;
 	maxOutput?: MaxOutputConfig;
@@ -375,7 +288,6 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 			runId: input.runId,
 			index,
 			sessionFile: input.sessionFileForIndex(index),
-			share: input.shareEnabled,
 			artifactsDir: input.artifactConfig.enabled ? input.artifactsDir : undefined,
 			artifactConfig: input.artifactConfig,
 			maxOutput: input.maxOutput,
@@ -508,7 +420,6 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 			signal,
 			runId,
 			sessionFileForIndex,
-			shareEnabled,
 			artifactConfig,
 			artifactsDir,
 			maxOutput: params.maxOutput,
@@ -574,7 +485,6 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		signal,
 		runId,
 		sessionFileForIndex,
-		shareEnabled,
 		artifactConfig,
 		artifactsDir,
 		onUpdate,
@@ -629,7 +539,6 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		signal,
 		runId,
 		sessionFile: sessionFileForIndex(0),
-		share: shareEnabled,
 		artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
 		artifactConfig,
 		maxOutput: params.maxOutput,
@@ -715,12 +624,11 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			};
 		}
 
-		const scope: AgentScope = resolveExecutionAgentScope(undefined);
+		const scope: AgentScope = "both";
 		const parentSessionFile = ctx.sessionManager.getSessionFile() ?? null;
 		deps.state.currentSessionId = parentSessionFile ?? `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 		const agents = deps.discoverAgents(ctx.cwd, scope).agents;
 		const runId = randomUUID().slice(0, 8);
-		const shareEnabled = params.share === true;
 		const hasTasks = (params.tasks?.length ?? 0) > 0;
 		const hasSingle = Boolean(params.agent && params.task);
 		const validationError = validateExecutionInput(
@@ -738,14 +646,12 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			return toExecutionErrorResult(params, error);
 		}
 
-		const effectiveAsync = deps.asyncByDefault ?? false;
-
 
 		const artifactConfig: ArtifactConfig = {
 			...DEFAULT_ARTIFACT_CONFIG,
 			enabled: params.artifacts !== false,
 		};
-		const artifactsDir = effectiveAsync ? deps.tempArtifactsDir : getArtifactsDir(parentSessionFile);
+		const artifactsDir = getArtifactsDir(parentSessionFile);
 
 		const onUpdateWithContext = onUpdate
 			? (r: AgentToolResult<Details>) => onUpdate(withForkContext(r, params.context))
@@ -758,11 +664,9 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			onUpdate: onUpdateWithContext,
 			agents,
 			runId,
-			shareEnabled,
 			sessionFileForIndex,
 			artifactConfig,
 			artifactsDir,
-			effectiveAsync,
 			workflow: params.workflow ?? "superpowers",
 			useTestDrivenDevelopment:
 				params.useTestDrivenDevelopment
@@ -771,9 +675,6 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 		};
 
 		try {
-			const asyncResult = runAsyncPath(execData, deps);
-			if (asyncResult) return withForkContext(asyncResult, params.context);
-
 			if (hasTasks && params.tasks) {
 				return withForkContext(await runParallelPath(execData, deps), params.context);
 			}
