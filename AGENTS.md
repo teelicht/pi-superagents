@@ -1,7 +1,3 @@
-## Backwards Compatibility
-
-- Don't build any backwards compatibility into the code.
-
 ## Language Standard (TypeScript Required)
 
 - Use TypeScript for all application code.
