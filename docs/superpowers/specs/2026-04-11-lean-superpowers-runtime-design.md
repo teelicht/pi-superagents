@@ -11,7 +11,7 @@ The package should no longer present itself as a fork or general replacement for
 - a `/superpowers` workflow entrypoint
 - a status and settings TUI
 - Superpowers-aware subagent execution as an internal runtime detail
-- model selection per Superpowers role
+- model-tier selection through the individual `sp-*` role agent frontmatter
 - per-run controls for TDD and subagent delegation
 - custom user-defined Superpowers slash commands that map to workflow option presets
 
@@ -183,25 +183,11 @@ Keep configuration narrow and Superpowers-specific:
     "useSubagents": true,
     "useTestDrivenDevelopment": true,
     "commands": {},
-    "roles": {
-      "recon": {
-        "model": "cheap"
-      },
-      "research": {
-        "model": "cheap"
-      },
-      "implementer": {
-        "model": "cheap"
-      },
-      "specReview": {
-        "model": "balanced"
-      },
-      "codeReview": {
-        "model": "balanced"
-      },
-      "debug": {
-        "model": "max"
-      }
+    "worktrees": {
+      "enabled": false,
+      "root": null,
+      "setupHook": null,
+      "setupHookTimeoutMs": 30000
     },
     "modelTiers": {
       "cheap": {
@@ -226,7 +212,8 @@ Required config behavior:
 - `useSubagents` is boolean
 - `useTestDrivenDevelopment` is boolean
 - custom command profile fields are validated strictly
-- role model fields may point to either direct model strings or configured model-tier names
+- `worktrees` preserves the existing Superpowers worktree behavior for parallel delegated work
+- role agent model choices are not configured here; they live in the individual `agents/sp-*.md` frontmatter and may point to configured model-tier names
 - old generic keys from the current broad product should be removed instead of kept for compatibility
 
 `defaultImplementerMode` should not survive this redesign. TDD is represented by `useTestDrivenDevelopment`.
@@ -243,7 +230,8 @@ The TUI should support:
 - toggling `useSubagents`
 - toggling `useTestDrivenDevelopment`
 - viewing configured custom Superpowers commands
-- selecting model tiers or explicit models per role
+- viewing the configured model tiers used by `sp-*` role agents
+- viewing Superpowers worktree defaults
 - opening the user config file path or writing safe JSON updates if the current config can be edited without losing comments or unknown formatting
 
 The TUI should not support:
@@ -300,8 +288,9 @@ Keep only runtime behavior needed by Superpowers:
 
 - single child-role execution
 - parallel child-role execution when root skills call for independent delegated work
-- bounded role model selection
+- bounded role-agent model resolution from individual `sp-*` agent frontmatter and configured model tiers
 - skill injection into child roles
+- Superpowers worktree isolation for parallel delegated work
 - progress and final result rendering
 - cancellation
 - recent-run status
@@ -318,7 +307,7 @@ Remove or demote:
 - generic session sharing
 - generic output/read/progress chain artifact conventions that are not used by Superpowers role packets
 
-Worktree isolation should not be a core feature in the first lean pass unless the implementation already needs it for safe parallel role execution. If kept, it should be described as an internal safety option for Superpowers parallel delegation rather than a general worktree framework.
+Worktree isolation should remain supported for Superpowers parallel delegated work. It should be documented as a Superpowers safety option, not as a general worktree framework for arbitrary `/parallel` usage.
 
 ## Package Identity
 
@@ -389,7 +378,8 @@ Add or update tests for:
 - `/superpowers` prompt does not require `sp-recon` first
 - `useSubagents: true` strongly directs use of the `subagent` tool when selected skills call for delegation
 - `useSubagents: false` forbids `subagent` and `subagent_status`
-- role model config resolves tier names and explicit models
+- `sp-*` agent frontmatter model values resolve through configured model tiers
+- Superpowers worktree defaults still apply to parallel delegated work
 - status/settings TUI displays effective defaults and diagnostics
 
 Delete tests that only protect removed generic behavior.
@@ -405,6 +395,7 @@ Suggested changelog themes:
 - **Custom Superpowers commands** — added config-defined slash command presets for workflow options.
 - **Per-run workflow tokens** — added inline controls for TDD and subagent delegation.
 - **Focused settings TUI** — replaced generic agent management with Superpowers status and settings.
+- **Superpowers worktrees** — preserved worktree isolation for parallel delegated Superpowers work.
 - **Skill bootstrap** — `/superpowers` starts from `using-superpowers` instead of a fixed recon-first flow.
 
 ## Risks
@@ -425,6 +416,6 @@ Resolved:
 - Keep only `/superpowers`, status/settings, and configured custom Superpowers commands as public UX.
 - Support both global config and per-run overrides for TDD and subagent delegation.
 - Use `/superpowers-status` as the first-pass status/settings command. Do not add `/superpowers status` in the first lean pass.
-- Remove worktree isolation from the first-pass public feature set. Retain internal worktree code only if it is cheaper than removing it during the first implementation pass, and do not document it as supported behavior.
+- Preserve Superpowers worktree isolation for parallel delegated work and keep the existing `superagents.worktrees` config shape.
 - Do not support project-local `sp-*` role prompt overrides in the first lean pass.
-- Limit custom command presets to workflow booleans and descriptions in the first lean pass. Role model overrides stay in global role config.
+- Limit custom command presets to workflow booleans and descriptions in the first lean pass. Role agent model choices stay in individual `agents/sp-*.md` frontmatter, not in config.
