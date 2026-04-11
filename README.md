@@ -8,6 +8,9 @@ Pi extension for Superpowers workflows: structured delegation to specialized rol
 pi install npm:@teelicht/pi-superagents
 ```
 
+> [!NOTE]
+> This tool requires the `superpowers` skills to be installed. I recommend installing them through https://skills.sh/obra/superpowers.
+
 To remove:
 
 ```bash
@@ -16,10 +19,10 @@ npx @teelicht/pi-superagents --remove
 
 ## Quick Commands
 
-| Command                | Description                                              |
-| ---------------------- | -------------------------------------------------------- |
-| `/superpowers <task>`  | Run a task through the Superpowers workflow               |
-| `/superpowers-status`  | Open the async status overlay for active and recent runs |
+| Command               | Description                                              |
+| --------------------- | -------------------------------------------------------- |
+| `/superpowers <task>` | Run a task through the Superpowers workflow              |
+| `/superpowers-status` | Open the async status overlay for active and recent runs |
 
 ### Superpowers Workflow
 

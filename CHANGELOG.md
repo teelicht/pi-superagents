@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.1] - 2026-04-11
+
+- Linter fixes
+- Added note about required superpowers skills installation
+
 ## [0.3.0] - 2026-04-11
 
 ### Changed
