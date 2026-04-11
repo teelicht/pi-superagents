@@ -53,3 +53,46 @@ export function loadRunsForAgent(agent: string): RunEntry[] {
 		.filter((entry): entry is RunEntry => Boolean(entry) && entry.agent === agent)
 		.reverse();
 }
+
+/**
+ * Load all recent runs from the history file.
+ *
+ * @returns Array of run entries, newest first.
+ */
+export function loadAllRuns(): RunEntry[] {
+	if (!fs.existsSync(HISTORY_PATH)) return [];
+	let raw: string;
+	try {
+		raw = fs.readFileSync(HISTORY_PATH, "utf-8");
+	} catch {
+		return [];
+	}
+
+	const lines = raw.split("\n").map((line) => line.trim()).filter((line) => line.length > 0);
+
+	return lines
+		.map((line) => {
+			try {
+				return JSON.parse(line) as RunEntry;
+			} catch {
+				return undefined;
+			}
+		})
+		.filter((entry): entry is RunEntry => Boolean(entry))
+		.reverse();
+}
+
+/**
+ * Global run history accessor for UI components.
+ */
+export const globalRunHistory = {
+	/**
+	 * Get the most recent runs.
+	 *
+	 * @param limit - Maximum number of runs to return.
+	 * @returns Array of recent run entries.
+	 */
+	getRecent(limit = 50): RunEntry[] {
+		return loadAllRuns().slice(0, limit);
+	},
+};

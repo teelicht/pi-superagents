@@ -19,14 +19,17 @@ import { runSync } from "./execution.ts";
 import { aggregateParallelOutputs } from "./parallel-utils.ts";
 import { recordRun } from "./run-history.ts";
 import {
+	buildSuperpowersPacketPlan,
+	injectSuperpowersPacketInstructions,
+} from "./superpowers-packets.ts";
+import {
 	resolveStepBehavior,
 } from "./settings.ts";
 import { normalizeSkillInput } from "../shared/skills.ts";
-import { executeAsyncSingle, isAsyncAvailable } from "./async-execution.ts";
+import { executeAsyncParallel, executeAsyncSingle, isAsyncAvailable } from "./async-execution.ts";
 import { createForkContextResolver } from "./fork-context.ts";
 import { finalizeSingleOutput, injectSingleOutputInstruction, resolveSingleOutputPath } from "./single-output.ts";
 import {
-	applySuperagentWorktreeDefaultsToChain,
 	resolveSuperagentWorktreeCreateOptions,
 	resolveSuperagentWorktreeEnabled,
 } from "./superagents-config.ts";
@@ -215,8 +218,6 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 				details: { mode: "single" as const, results: [] },
 			};
 		}
-		const rawOutput = params.output !== undefined ? params.output : a.output;
-		const effectiveOutput: string | false | undefined = rawOutput === true ? a.output : (rawOutput as string | false | undefined);
 		const skills = normalizeSkillInput(params.skill);
 		const maxSubagentDepth = resolveChildMaxSubagentDepth(currentMaxSubagentDepth, a.maxSubagentDepth);
 		return executeAsyncSingle(id, {
@@ -231,11 +232,30 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			shareEnabled,
 			sessionFile: sessionFileForIndex(0),
 			skills,
-			output: effectiveOutput,
+			output: params.output,
 			maxSubagentDepth,
 			workflow: data.workflow,
 			useTestDrivenDevelopment: data.useTestDrivenDevelopment,
 			config: deps.config,
+		});
+	}
+
+	if (params.tasks && params.tasks.length > 0) {
+		const effectiveWorktree = resolveSuperagentWorktreeEnabled(params.worktree, workflow, deps.config);
+		return executeAsyncParallel(id, {
+			tasks: params.tasks,
+			agents,
+			ctx: asyncCtx,
+			cwd: params.cwd,
+			maxOutput: params.maxOutput,
+			artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
+			artifactConfig,
+			sessionFileForIndex,
+			maxSubagentDepth: currentMaxSubagentDepth,
+			workflow: data.workflow,
+			useTestDrivenDevelopment: data.useTestDrivenDevelopment,
+			config: deps.config,
+			worktree: effectiveWorktree,
 		});
 	}
 
@@ -438,13 +458,29 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		if (worktreeTaskCwdError) return buildParallelModeError(worktreeTaskCwdError);
 	}
 
-	let taskTexts = tasks.map((t) => t.task);
 	const modelOverrides: (string | undefined)[] = tasks.map((t) => t.model);
 	const skillOverrides: (string[] | false | undefined)[] = tasks.map((t) =>
 		normalizeSkillInput(t.skill),
 	);
 
-	const behaviors = agentConfigs.map((config) => resolveStepBehavior(config, {}));
+	const behaviors = agentConfigs.map((config, i) => {
+		const t = tasks[i];
+		const skillOverride = normalizeSkillInput(t.skill);
+		const packetDefaults = buildSuperpowersPacketPlan(config.name as any);
+		return resolveStepBehavior(
+			config,
+			{
+				output: undefined,
+				reads: undefined,
+				progress: undefined,
+				skills: skillOverride === true ? undefined : skillOverride,
+				model: t.model,
+			},
+			undefined,
+			packetDefaults,
+		);
+	});
+	const taskTexts = tasks.map((t, i) => injectSuperpowersPacketInstructions(t.task, behaviors[i]));
 	const liveResults: (SingleResult | undefined)[] = new Array(tasks.length).fill(undefined);
 	const liveProgress: (AgentProgress | undefined)[] = new Array(tasks.length).fill(undefined);
 	const { setup: worktreeSetup, errorResult } = createParallelWorktreeSetup(
@@ -564,11 +600,26 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(deps.config.maxSubagentDepth);
 	const maxSubagentDepth = resolveChildMaxSubagentDepth(currentMaxSubagentDepth, agentConfig.maxSubagentDepth);
 
+	const packetDefaults = buildSuperpowersPacketPlan(agentConfig.name as any);
+	const behavior = resolveStepBehavior(
+		agentConfig,
+		{
+			output: params.output === true ? undefined : (params.output as string | false | undefined),
+			reads: undefined,
+			progress: undefined,
+			skills: skillOverride === true ? undefined : skillOverride,
+			model: modelOverride,
+		},
+		undefined,
+		packetDefaults,
+	);
+	task = injectSuperpowersPacketInstructions(task, behavior);
+
 	if (params.context === "fork") {
 		task = wrapForkTask(task);
 	}
 	const cleanTask = task;
-	const outputPath = resolveSingleOutputPath(effectiveOutput, ctx.cwd, params.cwd);
+	const outputPath = resolveSingleOutputPath(behavior.output || undefined, ctx.cwd, params.cwd);
 	task = injectSingleOutputInstruction(task, outputPath);
 
 	const effectiveSkills = skillOverride;

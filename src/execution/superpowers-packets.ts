@@ -8,11 +8,26 @@
  */
 
 import type { ExecutionRole } from "../shared/types.ts";
+import type { ResolvedStepBehavior } from "./settings.ts";
 
 export interface SuperpowersPacketPlan {
 	reads: string[];
 	output: string | false;
 	progress: false;
+}
+
+/**
+ * Injects Superpowers packet instructions into a task string.
+ */
+export function injectSuperpowersPacketInstructions(task: string, behavior: ResolvedStepBehavior): string {
+	let instructedTask = task;
+	if (behavior.reads && behavior.reads.length > 0) {
+		instructedTask += `\n\n[Read from: ${behavior.reads.join(", ")}]`;
+	}
+	if (behavior.output) {
+		instructedTask += `\n\n[Write to: ${behavior.output}]`;
+	}
+	return instructedTask;
 }
 
 /**

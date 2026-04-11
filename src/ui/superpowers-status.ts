@@ -19,6 +19,7 @@ import {
 	toggleSuperpowersWorktrees,
 	updateSuperpowersConfigText,
 } from "../superpowers/config-writer.ts";
+import { globalRunHistory } from "../execution/run-history.ts";
 
 /**
  * Focused Superpowers status/settings TUI component.
@@ -28,6 +29,7 @@ import {
  */
 export class SuperpowersStatusComponent extends Container {
 	private lastWriteMessage = "";
+	private activePane: "settings" | "runs" = "settings";
 
 	constructor(
 		_tui: unknown,
@@ -41,6 +43,25 @@ export class SuperpowersStatusComponent extends Container {
 
 	override render(width: number): string[] {
 		this.clear();
+
+		const tabs = this.activePane === "settings" ? "[ Settings ]  Runs" : "Settings  [ Runs ]";
+		const separator = "-".repeat(Math.max(20, tabs.length));
+
+		const lines = ["Superpowers", "", tabs, separator, ""];
+
+		if (this.activePane === "settings") {
+			lines.push(...this.renderSettingsPane());
+		} else {
+			lines.push(...this.renderRunsPane());
+		}
+
+		lines.push("", "Tab: Switch View | q: Close");
+
+		this.addChild(new Text(lines.join("\n"), 0, 0));
+		return Container.prototype.render.call(this, width);
+	}
+
+	private renderSettingsPane(): string[] {
 		const settings = this.config.superagents ?? {};
 		const commands = Object.entries(settings.commands ?? {});
 		const modelTiers = Object.entries(settings.modelTiers ?? {});
@@ -53,17 +74,18 @@ export class SuperpowersStatusComponent extends Container {
 		};
 
 		const lines = [
-			"Superpowers",
-			"",
-			`useSubagents: ${settings.useSubagents ?? true}`,
-			`useTestDrivenDevelopment: ${settings.useTestDrivenDevelopment ?? true}`,
+			`useSubagents: ${settings.useSubagents ?? true} (s)`,
+			`useTestDrivenDevelopment: ${settings.useTestDrivenDevelopment ?? true} (t)`,
 			`configStatus: ${this.state.configGate.blocked ? "blocked" : "valid"}`,
-			`worktrees.enabled: ${settings.worktrees?.enabled ?? false}`,
+			`worktrees.enabled: ${settings.worktrees?.enabled ?? false} (w)`,
 			`worktrees.root: ${settings.worktrees?.root ?? "default"}`,
 			"",
 			"Commands:",
 			...(commands.length
-				? commands.map(([name, preset]) => `- ${name}: subagents=${preset.useSubagents ?? "default"}, tdd=${preset.useTestDrivenDevelopment ?? "default"}`)
+				? commands.map(
+						([name, preset]) =>
+							`- ${name}: subagents=${preset.useSubagents ?? "default"}, tdd=${preset.useTestDrivenDevelopment ?? "default"}`,
+					)
 				: ["- none"]),
 			"",
 			"Model tiers:",
@@ -80,8 +102,25 @@ export class SuperpowersStatusComponent extends Container {
 			lines.push("", this.lastWriteMessage);
 		}
 
-		this.addChild(new Text(lines.join("\n"), 0, 0));
-		return Container.prototype.render.call(this, width);
+		return lines;
+	}
+
+	private renderRunsPane(): string[] {
+		const runs = globalRunHistory.getRecent(20);
+		if (runs.length === 0) {
+			return ["No recent runs recorded."];
+		}
+
+		return [
+			"Recent Runs:",
+			"",
+			...runs.map((run) => {
+				const duration = (run.duration / 1000).toFixed(1) + "s";
+				const status = run.status === "ok" ? "OK" : "ERR";
+				const task = run.task.length > 50 ? run.task.slice(0, 47) + "..." : run.task;
+				return `${run.agent.padEnd(15)} | ${status.padEnd(3)} | ${duration.padStart(5)} | ${task}`;
+			}),
+		];
 	}
 
 	/**
@@ -130,16 +169,22 @@ export class SuperpowersStatusComponent extends Container {
 			this.close();
 			return;
 		}
-		if (matchesKey(data, "s")) {
-			this.toggleUseSubagents();
+		if (matchesKey(data, "tab")) {
+			this.activePane = this.activePane === "settings" ? "runs" : "settings";
 			return;
 		}
-		if (matchesKey(data, "t")) {
-			this.toggleUseTestDrivenDevelopment();
-			return;
-		}
-		if (matchesKey(data, "w")) {
-			this.toggleWorktrees();
+		if (this.activePane === "settings") {
+			if (matchesKey(data, "s")) {
+				this.toggleUseSubagents();
+				return;
+			}
+			if (matchesKey(data, "t")) {
+				this.toggleUseTestDrivenDevelopment();
+				return;
+			}
+			if (matchesKey(data, "w")) {
+				this.toggleWorktrees();
+			}
 		}
 	}
 

@@ -182,7 +182,7 @@ describe("async execution utilities", { skip: !available ? "pi packages not avai
 			});
 
 			const cfg = readAsyncConfig(id);
-			assert.deepEqual(cfg.steps[0].skills, ["domain-skill", "test-driven-development"]);
+			assert.deepEqual(cfg.step.skills, ["domain-skill", "test-driven-development"]);
 		} finally {
 			removeTempDir(cwd);
 			fs.rmSync(path.join(os.tmpdir(), `pi-async-cfg-${id}.json`), { force: true });
