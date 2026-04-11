@@ -131,7 +131,6 @@ export async function runSync(
 		recentTools: [],
 		recentOutput: [],
 		toolCount: 0,
-		tokens: 0,
 		durationMs: 0,
 	};
 	result.progress = progress;
@@ -215,7 +214,6 @@ export async function runSync(
 							result.usage.cacheRead += u.cacheRead || 0;
 							result.usage.cacheWrite += u.cacheWrite || 0;
 							result.usage.cost += u.cost?.total || 0;
-							progress.tokens = result.usage.input + result.usage.output;
 						}
 						if (!result.model && evt.message.model) result.model = evt.message.model;
 						if (evt.message.errorMessage) result.error = evt.message.errorMessage;
@@ -321,7 +319,6 @@ export async function runSync(
 	result.progress = progress;
 	result.progressSummary = {
 		toolCount: progress.toolCount,
-		tokens: progress.tokens,
 		durationMs: progress.durationMs,
 	};
 
