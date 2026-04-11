@@ -16,6 +16,32 @@ To remove:
 npx @teelicht/pi-superagents --remove
 ```
 
+## Configuration
+
+On install, `pi-superagents` creates an empty user override file:
+
+```text
+~/.pi/agent/extensions/subagent/config.json
+```
+
+Keep this file small. Add only the settings you want to change. The bundled defaults continue to come from `default-config.json`, and the full user-facing reference lives at:
+
+```text
+~/.pi/agent/extensions/subagent/config.example.json
+```
+
+If `config.json` contains invalid JSON, unknown keys, or unsupported values, `pi-superagents` disables subagent execution until the file is fixed. Pi shows the config error when the extension loads, and `subagent_status` can inspect config diagnostics.
+
+If your `config.json` is still an unchanged copy of the bundled defaults, run:
+
+```bash
+npx @teelicht/pi-superagents --migrate-config
+```
+
+or use `subagent_status` with `{ "action": "migrate-config" }` to replace it with `{}` after writing a backup.
+
+See [Configuration Reference](docs/reference/configuration.md) for examples and repair guidance.
+
 ### Optional: pi-prompt-template-model
 
 If you use [pi-prompt-template-model](https://github.com/nicobailon/pi-prompt-template-model), you can wrap subagent delegation in a slash command. See [Agents Reference → pi-prompt-template-model](docs/reference/agents-reference.md#pi-prompt-template-model).
