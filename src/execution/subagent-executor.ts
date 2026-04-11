@@ -379,7 +379,6 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 								mode: "parallel",
 								results: mergedResults,
 								progress: mergedProgress,
-								totalSteps: input.tasks.length,
 							},
 						});
 					}

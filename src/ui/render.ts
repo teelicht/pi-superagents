@@ -148,17 +148,15 @@ export function renderWidget(ctx: ExtensionContext, jobs: AsyncJobState[]): void
 					? theme.fg("error", "failed")
 					: theme.fg("warning", "running");
 
-		const stepsTotal = job.stepsTotal ?? (job.agents?.length ?? 1);
-		const stepIndex = job.currentStep !== undefined ? job.currentStep + 1 : undefined;
-		const stepText = stepIndex !== undefined ? `step ${stepIndex}/${stepsTotal}` : `steps ${stepsTotal}`;
+		const agents = job.agents || [];
+		const agentLabel = agents.length > 1 ? `parallel[${agents.length}]` : (agents[0] || job.mode || "single");
 		const endTime = (job.status === "complete" || job.status === "failed") ? (job.updatedAt ?? Date.now()) : Date.now();
 		const elapsed = job.startedAt ? formatDuration(endTime - job.startedAt) : "";
-		const agentLabel = job.agents ? job.agents.join(" -> ") : (job.mode ?? "single");
 
 		const activityText = job.status === "running" ? getLastActivity(job.outputFile) : "";
 		const activitySuffix = activityText ? ` | ${theme.fg("dim", activityText)}` : "";
 
-		lines.push(truncLine(`- ${id} ${status} | ${agentLabel} | ${stepText}${elapsed ? ` | ${elapsed}` : ""}${activitySuffix}`, w));
+		lines.push(truncLine(`- ${id} ${status} | ${agentLabel}${elapsed ? ` | ${elapsed}` : ""}${activitySuffix}`, w));
 
 		if (job.status === "running" && job.outputFile) {
 			const tail = getOutputTail(job.outputFile, 3);
@@ -299,10 +297,7 @@ export function renderSubagentResult(
 				const prog = r.progress || r.progressSummary;
 				if (prog) {
 					acc.toolCount += prog.toolCount;
-					acc.durationMs =
-						d.mode === "chain"
-							? acc.durationMs + prog.durationMs
-							: Math.max(acc.durationMs, prog.durationMs);
+					acc.durationMs = Math.max(acc.durationMs, prog.durationMs);
 				}
 				return acc;
 			},
@@ -316,40 +311,8 @@ export function renderSubagentResult(
 
 	const modeLabel = d.mode;
 	const contextBadge = d.context === "fork" ? theme.fg("warning", " [fork]") : "";
-	// For parallel-in-chain, show task count (results) for consistency with step display
-	// For sequential chains, show logical step count
-	const hasParallelInChain = d.chainAgents?.some((a) => a.startsWith("["));
-	const totalCount = hasParallelInChain ? d.results.length : (d.totalSteps ?? d.results.length);
-	const currentStep = d.currentStepIndex !== undefined ? d.currentStepIndex + 1 : ok + 1;
-	const stepInfo = hasRunning ? ` ${currentStep}/${totalCount}` : ` ${ok}/${totalCount}`;
-	
-	// Build chain visualization: "scout → planner" with status icons
-	// Note: Only works correctly for sequential chains. Chains with parallel steps
-	// (indicated by "[agent1+agent2]" format) have multiple results per step,
-	// breaking the 1:1 mapping between chainAgents and results.
-	const chainVis = d.chainAgents?.length && !hasParallelInChain
-		? d.chainAgents
-				.map((agent, i) => {
-					const result = d.results[i];
-					const isFailed = result && result.exitCode !== 0 && result.progress?.status !== "running";
-					const isComplete = result && result.exitCode === 0 && result.progress?.status !== "running";
-					const isEmptyWithoutTarget = Boolean(result)
-						&& Boolean(isComplete)
-						&& hasEmptyTextOutputWithoutOutputTarget(result.task, getSingleResultOutput(result));
-					const isCurrent = i === (d.currentStepIndex ?? d.results.length);
-					const stepIcon = isFailed
-						? theme.fg("error", "✗")
-						: isEmptyWithoutTarget
-							? theme.fg("warning", "⚠")
-							: isComplete
-								? theme.fg("success", "✓")
-								: isCurrent && hasRunning
-									? theme.fg("warning", "●")
-									: theme.fg("dim", "○");
-					return `${stepIcon} ${agent}`;
-				})
-				.join(theme.fg("dim", " → "))
-		: null;
+	const totalCount = d.results.length;
+	const stepInfo = hasRunning ? ` ${ok + 1}/${totalCount}` : ` ${ok}/${totalCount}`;
 
 	const w = getTermWidth() - 4;
 	const c = new Container();
@@ -360,25 +323,14 @@ export function renderSubagentResult(
 			0,
 		),
 	);
-	// Show chain visualization
-	if (chainVis) {
-		c.addChild(new Text(truncLine(`  ${chainVis}`, w), 0, 0));
-	}
 
 	// === STATIC STEP LAYOUT (like clarification UI) ===
 	// Each step gets a fixed section with task/output/status
-	// Note: For chains with parallel steps, chainAgents indices don't map 1:1 to results
-	// (parallel steps produce multiple results). Fall back to result-based iteration.
-	const useResultsDirectly = hasParallelInChain || !d.chainAgents?.length;
-	const stepsToShow = useResultsDirectly ? d.results.length : d.chainAgents!.length;
-
 	c.addChild(new Spacer(1));
 
-	for (let i = 0; i < stepsToShow; i++) {
+	for (let i = 0; i < d.results.length; i++) {
 		const r = d.results[i];
-		const agentName = useResultsDirectly 
-			? (r?.agent || `step-${i + 1}`)
-			: (d.chainAgents![i] || r?.agent || `step-${i + 1}`);
+		const agentName = r?.agent || `step-${i + 1}`;
 
 		if (!r) {
 			// Pending step
@@ -466,10 +418,6 @@ export function renderSubagentResult(
 	if (d.artifacts) {
 		c.addChild(new Spacer(1));
 		c.addChild(new Text(truncLine(theme.fg("dim", `Artifacts dir: ${shortenPath(d.artifacts.dir)}`), w), 0, 0));
-	}
-	return c;
-}
-Artifacts dir: ${shortenPath(d.artifacts.dir)}`), w), 0, 0));
 	}
 	return c;
 }
