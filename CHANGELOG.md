@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.0] - 2026-04-11
+
+### Changed
+
+- **Config install model** — fresh installs now create an empty user-owned `config.json` override file instead of copying the full bundled defaults.
+- **Config reference file** — installs now include `config.example.json` as the package-owned reference for all supported settings.
+- **Fail-closed config validation** — invalid JSON, unknown config keys, stale removed settings, and unsupported values disable `pi-superagents` execution until fixed.
+- **Pi-visible diagnostics** — config problems are reported when Pi starts, and `subagent_status` can inspect config diagnostics.
+- **Safe config migration** — unchanged full-default config files can be backed up and replaced with `{}` through `--migrate-config` or `subagent_status`.
+
+### Migration Notes
+
+- Existing `config.json` files are preserved during install/update.
+- Keep only local overrides in `config.json`; compare with `config.example.json` for the current supported shape.
+- If Pi reports that `pi-superagents` is disabled, fix or remove the reported keys to fall back to bundled defaults.
+
 ## [0.1.0] - 2026-04-10
 
 Initial release of **pi-superagents**, rebranded from pi-subagents to reflect the combination of Superpowers workflow ideas and subagent-based execution.
