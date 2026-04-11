@@ -19,9 +19,6 @@ interface SubagentResult {
 	exitCode: number;
 	timestamp: number;
 	sessionFile?: string;
-	shareUrl?: string;
-	gistUrl?: string;
-	shareError?: string;
 	results?: ChainStepResult[];
 	taskIndex?: number;
 	totalTasks?: number;
@@ -46,11 +43,7 @@ export default function registerSubagentNotify(pi: ExtensionAPI): void {
 				: "";
 
 		const extra: string[] = [];
-		if (result.shareUrl) {
-			extra.push(`Session: ${result.shareUrl}`);
-		} else if (result.shareError) {
-			extra.push(`Session share error: ${result.shareError}`);
-		} else if (result.sessionFile) {
+		if (result.sessionFile) {
 			extra.push(`Session file: ${result.sessionFile}`);
 		}
 

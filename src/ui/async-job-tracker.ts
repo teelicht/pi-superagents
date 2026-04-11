@@ -42,9 +42,7 @@ export function createAsyncJobTracker(state: SubagentState, asyncDirRoot: string
 						if (status.steps?.length) {
 							job.agents = status.steps.map((step) => step.agent);
 						}
-						job.sessionDir = status.sessionDir ?? job.sessionDir;
 						job.outputFile = status.outputFile ?? job.outputFile;
-						job.totalTokens = status.totalTokens ?? job.totalTokens;
 						job.sessionFile = status.sessionFile ?? job.sessionFile;
 						continue;
 					}

@@ -9,7 +9,6 @@ describe("buildPiArgs session wiring", () => {
 			task: "hello",
 			sessionEnabled: true,
 			sessionFile: "/tmp/forked-session.jsonl",
-			sessionDir: "/tmp/should-not-be-used",
 		});
 
 		assert.ok(args.includes("--session"));
@@ -18,16 +17,13 @@ describe("buildPiArgs session wiring", () => {
 		assert.ok(!args.includes("--no-session"), "--no-session should not be emitted with --session");
 	});
 
-	it("keeps fresh mode behavior (sessionDir + no session file)", () => {
+	it("keeps fresh mode behavior (no session file)", () => {
 		const { args } = buildPiArgs({
 			baseArgs: ["-p"],
 			task: "hello",
 			sessionEnabled: true,
-			sessionDir: "/tmp/subagent-sessions",
 		});
 
-		assert.ok(args.includes("--session-dir"));
-		assert.ok(args.includes("/tmp/subagent-sessions"));
 		assert.ok(!args.includes("--session"));
 	});
 });

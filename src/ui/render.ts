@@ -92,7 +92,7 @@ let lastWidgetHash = "";
  */
 function computeWidgetHash(jobs: AsyncJobState[]): string {
 	return jobs.slice(0, MAX_WIDGET_JOBS).map(job =>
-		`${job.asyncId}:${job.status}:${job.currentStep}:${job.updatedAt}:${job.totalTokens?.total ?? 0}`
+		`${job.asyncId}:${job.status}:${job.updatedAt}`
 	).join("|");
 }
 
@@ -155,11 +155,10 @@ export function renderWidget(ctx: ExtensionContext, jobs: AsyncJobState[]): void
 		const elapsed = job.startedAt ? formatDuration(endTime - job.startedAt) : "";
 		const agentLabel = job.agents ? job.agents.join(" -> ") : (job.mode ?? "single");
 
-		const tokenText = job.totalTokens ? ` | ${formatTokens(job.totalTokens.total)} tok` : "";
 		const activityText = job.status === "running" ? getLastActivity(job.outputFile) : "";
 		const activitySuffix = activityText ? ` | ${theme.fg("dim", activityText)}` : "";
 
-		lines.push(truncLine(`- ${id} ${status} | ${agentLabel} | ${stepText}${elapsed ? ` | ${elapsed}` : ""}${tokenText}${activitySuffix}`, w));
+		lines.push(truncLine(`- ${id} ${status} | ${agentLabel} | ${stepText}${elapsed ? ` | ${elapsed}` : ""}${activitySuffix}`, w));
 
 		if (job.status === "running" && job.outputFile) {
 			const tail = getOutputTail(job.outputFile, 3);
@@ -468,6 +467,10 @@ export function renderSubagentResult(
 	if (d.artifacts) {
 		c.addChild(new Spacer(1));
 		c.addChild(new Text(truncLine(theme.fg("dim", `Artifacts dir: ${shortenPath(d.artifacts.dir)}`), w), 0, 0));
+	}
+	return c;
+}
+Artifacts dir: ${shortenPath(d.artifacts.dir)}`), w), 0, 0));
 	}
 	return c;
 }

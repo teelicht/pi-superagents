@@ -82,7 +82,7 @@ describe("SubagentParams schema", { skip: !available ? "typebox not available" :
 		assert.equal(workflowSchema.type, "string");
 		assert.deepEqual(workflowSchema.enum, ["superpowers"]);
 		assert.match(String(workflowSchema.description ?? ""), /superpowers/i);
-		assert.match(String(workflowSchema.description ?? ""), /not part of this package/i);
+		assert.match(String(workflowSchema.description ?? ""), /only 'superpowers' is supported/i);
 	});
 
 	it("includes agent field with superpowers role description", () => {

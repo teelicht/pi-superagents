@@ -154,24 +154,6 @@ export function findByPrefix(dir: string, prefix: string, suffix?: string): stri
 }
 
 /**
- * Find the latest session file in a directory
- */
-export function findLatestSessionFile(sessionDir: string): string | null {
-	if (!fs.existsSync(sessionDir)) return null;
-	const files = fs.readdirSync(sessionDir)
-		.filter((f) => f.endsWith(".jsonl"))
-		.map((f) => {
-			const filePath = path.join(sessionDir, f);
-			return {
-				path: filePath,
-				mtime: fs.statSync(filePath).mtimeMs,
-			};
-		})
-		.sort((a, b) => b.mtime - a.mtime);
-	return files.length > 0 ? files[0].path : null;
-}
-
-/**
  * Write a prompt to a temporary file
  */
 export function writePrompt(agent: string, prompt: string): { dir: string; path: string } {
