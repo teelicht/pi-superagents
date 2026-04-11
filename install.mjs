@@ -152,7 +152,7 @@ if (fs.existsSync(EXTENSION_DIR)) {
 		try {
 			execSync("git pull", { cwd: EXTENSION_DIR, stdio: "inherit" });
 			console.log("\n✓ pi-superagents updated");
-		} catch (err) {
+		} catch {
 			console.error("Failed to update. Try removing and reinstalling:");
 			console.error("  npx pi-superagents --remove && npx pi-superagents");
 			process.exit(1);
@@ -168,7 +168,7 @@ if (fs.existsSync(EXTENSION_DIR)) {
 	try {
 		execSync(`git clone ${REPO_URL} "${EXTENSION_DIR}"`, { stdio: "inherit" });
 		console.log("\n✓ pi-superagents installed");
-	} catch (err) {
+	} catch {
 		console.error("Failed to clone repository");
 		process.exit(1);
 	}

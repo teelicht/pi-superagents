@@ -13,10 +13,10 @@ export function resolvePiPackageRoot(): string | undefined {
 			try {
 				const pkg = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf-8"));
 				if (pkg.name === "@mariozechner/pi-coding-agent") return dir;
-			} catch {}
+			} catch { /* empty */ }
 			dir = path.dirname(dir);
 		}
-	} catch {}
+	} catch { /* empty */ }
 	return undefined;
 }
 
@@ -44,7 +44,7 @@ function normalizePath(filePath: string): string {
 	return path.isAbsolute(filePath) ? filePath : path.resolve(filePath);
 }
 
-export function resolveWindowsPiCliScript(deps: PiSpawnDeps = {}): string | undefined {
+export function resolveWindowsPiCliScript(deps: PiSpawnDeps = { /* empty */ }): string | undefined {
 	const existsSync = deps.existsSync ?? fs.existsSync;
 	const readFileSync = deps.readFileSync ?? ((filePath, encoding) => fs.readFileSync(filePath, encoding));
 	const argv1 = deps.argv1 ?? process.argv[1];
@@ -69,7 +69,7 @@ export function resolveWindowsPiCliScript(deps: PiSpawnDeps = {}): string | unde
 		const binField = packageJson.bin;
 		const binPath = typeof binField === "string"
 			? binField
-			: binField?.pi ?? Object.values(binField ?? {})[0];
+			: binField?.pi ?? Object.values(binField ?? { /* empty */ })[0];
 		if (!binPath) return undefined;
 		const candidate = normalizePath(path.resolve(path.dirname(packageJsonPath), binPath));
 		if (isRunnableNodeScript(candidate, existsSync)) {
@@ -82,7 +82,7 @@ export function resolveWindowsPiCliScript(deps: PiSpawnDeps = {}): string | unde
 	return undefined;
 }
 
-export function getPiSpawnCommand(args: string[], deps: PiSpawnDeps = {}): PiSpawnCommand {
+export function getPiSpawnCommand(args: string[], deps: PiSpawnDeps = { /* empty */ }): PiSpawnCommand {
 	const piCliPath = resolveWindowsPiCliScript(deps);
 	if (piCliPath) {
 		return {

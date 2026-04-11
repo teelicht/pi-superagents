@@ -94,7 +94,7 @@ export function createMockPi(): MockPi {
 			}
 			try {
 				fs.rmSync(rootDir, { recursive: true, force: true });
-			} catch {}
+			} catch { /* empty */ }
 		},
 		onCall(response) {
 			ensureDir(queueDir);
@@ -112,7 +112,7 @@ export function createMockPi(): MockPi {
 			for (const entry of fs.readdirSync(queueDir)) {
 				try {
 					fs.rmSync(path.join(queueDir, entry), { recursive: true, force: true });
-				} catch {}
+				} catch { /* empty */ }
 			}
 		},
 		callCount() {

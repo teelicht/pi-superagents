@@ -8,7 +8,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import * as fs from "node:fs";
+// import * as fs from "node:fs";
 import * as path from "node:path";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
@@ -139,7 +139,7 @@ function getRequestedModeLabel(params: SubagentParamsLike): Details["mode"] {
 	return "single";
 }
 
-function buildRequestedModeError(params: SubagentParamsLike, message: string): AgentToolResult<Details> {
+function _buildRequestedModeError(params: SubagentParamsLike, message: string): AgentToolResult<Details> {
 	return withForkContext(
 		{
 			content: [{ type: "text", text: message }],
@@ -327,7 +327,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		signal,
 		runId,
 		sessionFileForIndex,
-		shareEnabled,
+		shareEnabled: _shareEnabled,
 		artifactConfig,
 		artifactsDir,
 		onUpdate,
@@ -503,10 +503,10 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	}
 
 	let task = params.task!;
-	let modelOverride: string | undefined = params.model as string | undefined;
-	let skillOverride: string[] | false | undefined = normalizeSkillInput(params.skill);
+	const modelOverride: string | undefined = params.model as string | undefined;
+	const skillOverride: string[] | false | undefined = normalizeSkillInput(params.skill);
 	const rawOutput = params.output !== undefined ? params.output : agentConfig.output;
-	let effectiveOutput: string | false | undefined = rawOutput === true ? agentConfig.output : (rawOutput as string | false | undefined);
+	const _effectiveOutput: string | false | undefined = rawOutput === true ? agentConfig.output : (rawOutput as string | false | undefined);
 	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(deps.config.maxSubagentDepth);
 	const maxSubagentDepth = resolveChildMaxSubagentDepth(currentMaxSubagentDepth, agentConfig.maxSubagentDepth);
 

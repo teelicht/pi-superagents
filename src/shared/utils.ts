@@ -117,7 +117,7 @@ export function getOutputTail(outputFile: string | undefined, maxLines: number =
 		if (fd !== null) {
 			try {
 				fs.closeSync(fd);
-			} catch {}
+			} catch { /* empty */ }
 		}
 	}
 }

@@ -32,7 +32,7 @@ function createTempDir(prefix: string): string {
 function removeTempDir(dir: string): void {
 	try {
 		fs.rmSync(dir, { recursive: true, force: true });
-	} catch {}
+	} catch { /* empty */ }
 }
 
 describe("installLocalExtensionFiles", () => {
@@ -52,8 +52,8 @@ describe("installLocalExtensionFiles", () => {
 
 		fs.mkdirSync(path.join(sourceRoot, "src", "extension"), { recursive: true });
 		fs.mkdirSync(path.join(sourceRoot, "agents"), { recursive: true });
-		fs.writeFileSync(path.join(sourceRoot, "src", "extension", "index.ts"), "export default {};\n", "utf-8");
-		fs.writeFileSync(path.join(sourceRoot, "src", "extension", "notify.ts"), "export default {};\n", "utf-8");
+		fs.writeFileSync(path.join(sourceRoot, "src", "extension", "index.ts"), "export default { /* empty */ };\n", "utf-8");
+		fs.writeFileSync(path.join(sourceRoot, "src", "extension", "notify.ts"), "export default { /* empty */ };\n", "utf-8");
 		fs.writeFileSync(path.join(sourceRoot, "package.json"), "{\n  \"name\": \"pi-superagents\"\n}\n", "utf-8");
 		fs.writeFileSync(path.join(sourceRoot, "README.md"), "# Readme\n", "utf-8");
 		fs.writeFileSync(path.join(sourceRoot, "agents", "worker.md"), "# Worker\n", "utf-8");
@@ -77,8 +77,8 @@ describe("installLocalExtensionFiles", () => {
 			"src/extension/index.ts",
 			"src/extension/notify.ts",
 		]);
-		assert.equal(fs.readFileSync(path.join(targetRoot, "src", "extension", "index.ts"), "utf-8"), "export default {};\n");
-		assert.equal(fs.readFileSync(path.join(targetRoot, "src", "extension", "notify.ts"), "utf-8"), "export default {};\n");
+		assert.equal(fs.readFileSync(path.join(targetRoot, "src", "extension", "index.ts"), "utf-8"), "export default { /* empty */ };\n");
+		assert.equal(fs.readFileSync(path.join(targetRoot, "src", "extension", "notify.ts"), "utf-8"), "export default { /* empty */ };\n");
 		assert.equal(fs.readFileSync(path.join(targetRoot, "agents", "worker.md"), "utf-8"), "# Worker\n");
 	});
 
@@ -140,6 +140,6 @@ describe("installLocalExtensionFiles", () => {
 			relativePaths: ["package.json", "config.example.json"],
 		});
 
-		assert.equal(fs.readFileSync(path.join(targetRoot, "config.json"), "utf-8"), "{}\n");
+		assert.equal(fs.readFileSync(path.join(targetRoot, "config.json"), "utf-8"), "{ /* empty */ }\n");
 	});
 });

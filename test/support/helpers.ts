@@ -122,7 +122,7 @@ export function createTempDir(prefix = "pi-subagent-test-"): string {
 export function removeTempDir(dir: string): void {
 	try {
 		fs.rmSync(dir, { recursive: true, force: true });
-	} catch {}
+	} catch { /* empty */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -160,7 +160,7 @@ export function makeAgentConfigs(names: string[]): AgentConfig[] {
 /**
  * Create an agent config with specific settings.
  */
-export function makeAgent(name: string, overrides: Partial<AgentConfig> = {}): AgentConfig {
+export function makeAgent(name: string, overrides: Partial<AgentConfig> = { /* empty */ }): AgentConfig {
 	return {
 		name,
 		description: `Test agent: ${name}`,
@@ -180,7 +180,7 @@ export function makeMinimalCtx(cwd: string): any {
 	return {
 		cwd,
 		hasUI: false,
-		ui: {},
+		ui: { /* empty */ },
 		sessionManager: {
 			getSessionFile: () => null,
 		},
@@ -224,8 +224,8 @@ export async function tryImport<T>(specifier: string): Promise<T | null> {
 		const isModuleNotFound = code === "MODULE_NOT_FOUND" || code === "ERR_MODULE_NOT_FOUND";
 		if (isBare && isModuleNotFound) {
 			const msg = String(error?.message ?? "");
-			const missing = msg.match(/Cannot find (?:package|module) ['\"]([^'\"]+)['\"]/i)?.[1];
-			if (missing === specifier || msg.includes(`'${specifier}'`) || msg.includes(`\"${specifier}\"`)) {
+			const missing = msg.match(/Cannot find (?:package|module) ['"]([^'"]+)['"]/i)?.[1];
+			if (missing === specifier || msg.includes(`'${specifier}'`) || msg.includes(`"${specifier}"`)) {
 				return null;
 			}
 		}
@@ -251,7 +251,7 @@ export const events = {
 	},
 
 	/** Build a tool_execution_start event */
-	toolStart(toolName: string, args: Record<string, unknown> = {}): object {
+	toolStart(toolName: string, args: Record<string, unknown> = { /* empty */ }): object {
 		return { type: "tool_execution_start", toolName, args };
 	},
 

@@ -450,8 +450,8 @@ function createSingleWorktree(
 			syntheticPaths,
 		};
 	} catch (error) {
-		try { runGitChecked(toplevel, ["worktree", "remove", "--force", worktreePath]); } catch {}
-		try { runGitChecked(toplevel, ["branch", "-D", branch]); } catch {}
+		try { runGitChecked(toplevel, ["worktree", "remove", "--force", worktreePath]); } catch { /* empty */ }
+		try { runGitChecked(toplevel, ["branch", "-D", branch]); } catch { /* empty */ }
 		throw error;
 	}
 }
@@ -559,12 +559,12 @@ function captureWorktreeDiff(
 function writeEmptyPatch(patchPath: string): void {
 	try {
 		fs.writeFileSync(patchPath, "", "utf-8");
-	} catch {}
+	} catch { /* empty */ }
 }
 
 function cleanupSingleWorktree(repoCwd: string, worktree: WorktreeInfo): void {
-	try { runGitChecked(repoCwd, ["worktree", "remove", "--force", worktree.path]); } catch {}
-	try { runGitChecked(repoCwd, ["branch", "-D", worktree.branch]); } catch {}
+	try { runGitChecked(repoCwd, ["worktree", "remove", "--force", worktree.path]); } catch { /* empty */ }
+	try { runGitChecked(repoCwd, ["branch", "-D", worktree.branch]); } catch { /* empty */ }
 }
 
 function hasWorktreeChanges(diff: WorktreeDiff): boolean {
@@ -650,7 +650,7 @@ export function cleanupWorktrees(setup: WorktreeSetup): void {
 	for (let index = setup.worktrees.length - 1; index >= 0; index--) {
 		cleanupSingleWorktree(setup.cwd, setup.worktrees[index]!);
 	}
-	try { runGitChecked(setup.cwd, ["worktree", "prune"]); } catch {}
+	try { runGitChecked(setup.cwd, ["worktree", "prune"]); } catch { /* empty */ }
 }
 
 export function formatWorktreeDiffSummary(diffs: WorktreeDiff[]): string {

@@ -9,7 +9,7 @@ import {
 	type Details,
 } from "../shared/types.ts";
 import { formatUsage, formatDuration, formatToolCall, shortenPath } from "../shared/formatters.ts";
-import { getDisplayItems, getLastActivity, getOutputTail, getSingleResultOutput } from "../shared/utils.ts";
+import { getDisplayItems, getSingleResultOutput } from "../shared/utils.ts";
 
 type Theme = ExtensionContext["ui"]["theme"];
 

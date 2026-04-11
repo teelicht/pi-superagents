@@ -14,8 +14,6 @@ import type {
 	ConfigDiagnostic,
 	ExtensionConfig,
 	ModelTierSetting,
-	SuperpowersCommandPreset,
-	SuperpowersWorktreeSettings,
 	ThinkingLevel,
 } from "../shared/types.ts";
 

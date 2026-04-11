@@ -65,12 +65,12 @@ describe("path.join vs template string concatenation", () => {
 		const file = "progress.md";
 
 		// Template string: always forward slash
-		const templateResult = `${chainDir}/${file}`;
+		const _templateResult = `${chainDir}/${file}`;
 		assert.equal(templateResult, "C:\\Users\\marc\\temp\\chain-abc/progress.md",
 			"template string produces mixed separators");
 
 		// path.join: uses platform separator
-		const joinResult = path.join(chainDir, file);
+		const _joinResult = path.join(chainDir, file);
 		if (process.platform === "win32") {
 			assert.equal(joinResult, "C:\\Users\\marc\\temp\\chain-abc\\progress.md",
 				"path.join uses consistent backslashes on Windows");

@@ -13,10 +13,7 @@
  * - node:os, node:path, node:fs
  */
 
-import * as os from "node:os";
-import * as path from "node:path";
 import type { Message } from "@mariozechner/pi-ai";
-import type { FSWatcher } from "node:fs";
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 
 // ============================================================================
