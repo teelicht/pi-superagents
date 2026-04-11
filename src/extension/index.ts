@@ -240,6 +240,8 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 			blocked: configState.blocked,
 			diagnostics: configState.diagnostics,
 			message: configState.message,
+			configPath: configState.configPath,
+			examplePath: configState.examplePath,
 		},
 	};
 

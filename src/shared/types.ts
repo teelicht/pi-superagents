@@ -225,6 +225,8 @@ export interface ConfigGateState {
 	blocked: boolean;
 	diagnostics: ConfigDiagnostic[];
 	message: string;
+	configPath?: string;
+	examplePath?: string;
 }
 
 export interface SubagentState {

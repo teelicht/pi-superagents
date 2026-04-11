@@ -34,7 +34,7 @@ interface RegisterSlashCommandsModule {
 			watcher: unknown;
 			watcherRestartTimer: ReturnType<typeof setTimeout> | null;
 			resultFileCoalescer: { schedule(file: string, delayMs?: number): boolean; clear(): void };
-			configGate: { blocked: boolean; diagnostics: unknown[]; message: string };
+			configGate: { blocked: boolean; diagnostics: unknown[]; message: string; configPath?: string; examplePath?: string };
 		},
 		config: { superagents?: { useSubagents?: boolean; useTestDrivenDevelopment?: boolean; commands?: Record<string, { description?: string; useSubagents?: boolean; useTestDrivenDevelopment?: boolean }> } },
 	) => void;
@@ -84,6 +84,8 @@ function createState(cwd: string) {
 			blocked: false,
 			diagnostics: [],
 			message: "",
+			configPath: undefined,
+			examplePath: undefined,
 		},
 	};
 }
@@ -318,5 +320,82 @@ describe("lean superpowers slash commands", { skip: !available ? "slash-commands
 		assert.equal(notifications.length, 1);
 		assert.equal(notifications[0]!.type, "error");
 		assert.match(notifications[0]!.message, /Usage:/);
+	});
+
+	it("renders Superpowers defaults, worktrees, model tiers, and custom commands in the status component", async () => {
+		const module = await import("../../src/ui/superpowers-status.ts") as {
+			SuperpowersStatusComponent: new (...args: unknown[]) => { render(width: number): string[] };
+		};
+		const component = new module.SuperpowersStatusComponent(
+			{},
+			{},
+			createState(process.cwd()),
+			{
+				superagents: {
+					useSubagents: false,
+					useTestDrivenDevelopment: true,
+					commands: {
+						"superpowers-lean": {
+							description: "Lean mode",
+							useSubagents: false,
+							useTestDrivenDevelopment: false,
+						},
+					},
+					worktrees: {
+						enabled: true,
+						root: "/tmp/superpowers-worktrees",
+					},
+					modelTiers: {
+						cheap: { model: "opencode-go/minimax-m2.7" },
+						balanced: { model: "opencode-go/glm-5.1" },
+					},
+				},
+			},
+			() => {},
+		);
+
+		const rendered = component.render(100).join("\n");
+		assert.match(rendered, /useSubagents: false/);
+		assert.match(rendered, /useTestDrivenDevelopment: true/);
+		assert.match(rendered, /superpowers-lean/);
+		assert.match(rendered, /worktrees\.enabled: true/);
+		assert.match(rendered, /worktrees\.root: \/tmp\/superpowers-worktrees/);
+		assert.match(rendered, /cheap: opencode-go\/minimax-m2.7/);
+	});
+
+	it("writes Superpowers setting toggles to the config file", async () => {
+		const fs = await import("node:fs");
+		const os = await import("node:os");
+		const path = await import("node:path");
+		const module = await import("../../src/ui/superpowers-status.ts") as {
+			SuperpowersStatusComponent: new (...args: unknown[]) => {
+				toggleUseSubagents(): void;
+				toggleWorktrees(): void;
+			};
+		};
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "superpowers-config-"));
+		const configPath = path.join(dir, "config.json");
+		fs.writeFileSync(configPath, '{\n  "superagents": { "useSubagents": true, "worktrees": { "enabled": false } }\n}\n', "utf-8");
+		const state = createState(process.cwd());
+		state.configGate.configPath = configPath;
+
+		const component = new module.SuperpowersStatusComponent(
+			{},
+			{},
+			state,
+			{ superagents: { useSubagents: true, worktrees: { enabled: false } } },
+			() => {},
+		);
+		component.toggleUseSubagents();
+		component.toggleWorktrees();
+
+		assert.deepEqual(JSON.parse(fs.readFileSync(configPath, "utf-8")), {
+			superagents: {
+				useSubagents: false,
+				worktrees: { enabled: true },
+			},
+		});
+
+		fs.rmSync(dir, { recursive: true, force: true });
 	});
 });
