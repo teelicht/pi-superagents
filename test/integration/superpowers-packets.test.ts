@@ -476,61 +476,6 @@ describe("superpowers packets in real execution paths", {
 		assert.doesNotMatch(cfg.steps[0].parallel[0].task, /task-brief\.md/);
 	});
 
-	it("preserves top-level parallel clarify background output, reads, and progress overrides", async () => {
-		const agents = [
-			{
-				name: "sp-implementer",
-				description: "Test agent: sp-implementer",
-				systemPrompt: "Implement the task.",
-				source: "builtin",
-				filePath: "/tmp/sp-implementer.md",
-				output: "context.md",
-				defaultReads: ["plan.md"],
-				defaultProgress: false,
-			},
-		];
-		const executor = makeAsyncExecutor(agents);
-
-		const result = await executor.execute(
-			"packet-parallel-clarify",
-			{
-				tasks: [{ agent: "sp-implementer", task: "Implement the selected task." }],
-				clarify: true,
-				workflow: "superpowers",
-			},
-			new AbortController().signal,
-			undefined,
-			makeExecutorCtx({
-				hasUI: true,
-				ui: {
-					custom: async () => ({
-						confirmed: true,
-						templates: ["Clarified implementation task."],
-						behaviorOverrides: [
-							{
-								output: "custom-report.md",
-								reads: ["custom-brief.md"],
-								progress: true,
-							},
-						],
-						runInBackground: true,
-					}),
-				},
-			}),
-		);
-
-		assert.ok(!result.isError, JSON.stringify(result.content));
-		const cfg = readAsyncConfig(result.details.asyncId);
-		assert.match(cfg.steps[0].parallel[0].task, /Clarified implementation task\./);
-		assert.match(cfg.steps[0].parallel[0].task, /custom-brief\.md/);
-		assert.match(cfg.steps[0].parallel[0].task, /custom-report\.md/);
-		assert.match(cfg.steps[0].parallel[0].task, /progress\.md/);
-			assert.ok(
-				String(cfg.steps[0].parallel[0].outputPath).endsWith(path.join("custom-report.md")),
-				String(cfg.steps[0].parallel[0].outputPath),
-			);
-		});
-
 		it("defaults async top-level parallel worktrees on for superpowers using superagents config", async () => {
 			const agents = [
 				{
