@@ -31,8 +31,6 @@ import { createSubagentExecutor } from "../execution/subagent-executor.ts";
 import { createAsyncJobTracker } from "../ui/async-job-tracker.ts";
 import { createResultWatcher } from "../ui/result-watcher.ts";
 import { registerSlashCommands } from "../slash/slash-commands.ts";
-import { registerPromptTemplateDelegationBridge } from "../slash/prompt-template-bridge.ts";
-import { registerSlashSubagentBridge } from "../slash/slash-bridge.ts";
 import { clearSlashSnapshots, getSlashRenderableSnapshot, resolveSlashMessageDetails, restoreSlashFinalSnapshots, type SlashMessageDetails } from "../slash/slash-live-state.ts";
 import { formatAsyncRunList, listAsyncRuns } from "../ui/async-status.ts";
 import {
@@ -272,50 +270,6 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 		return createSlashResultComponent(details, options, theme);
 	});
 
-	const slashBridge = registerSlashSubagentBridge({
-		events: pi.events,
-		getContext: () => state.lastUiContext,
-		execute: (id, params, signal, onUpdate, ctx) =>
-			executor.execute(id, params, signal, onUpdate, ctx),
-	});
-
-	const promptTemplateBridge = registerPromptTemplateDelegationBridge({
-		events: pi.events,
-		getContext: () => state.lastUiContext,
-		execute: async (requestId, request, signal, ctx, onUpdate) => {
-			if (request.tasks && request.tasks.length > 0) {
-				return executor.execute(
-					requestId,
-					{
-						tasks: request.tasks,
-						context: request.context,
-						cwd: request.cwd,
-						worktree: request.worktree,
-						async: false,
-						clarify: false,
-					},
-					signal,
-					onUpdate,
-					ctx,
-				);
-			}
-			return executor.execute(
-				requestId,
-				{
-					agent: request.agent,
-					task: request.task,
-					context: request.context,
-					cwd: request.cwd,
-					model: request.model,
-					async: false,
-					clarify: false,
-				},
-				signal,
-				onUpdate,
-				ctx,
-			);
-		},
-	});
 
 	function effectiveParallelTaskCount(tasks: Array<{ count?: unknown }> | undefined): number {
 		if (!tasks || tasks.length === 0) return 0;
@@ -539,7 +493,7 @@ MANAGEMENT (use action field, omit agent/task/chain/tasks):
 
 	pi.registerTool(tool);
 	pi.registerTool(statusTool);
-	registerSlashCommands(pi, state);
+	registerSlashCommands(pi, state, config);
 
 	pi.events.on("subagent:started", handleStarted);
 	pi.events.on("subagent:complete", handleComplete);
@@ -597,10 +551,6 @@ MANAGEMENT (use action field, omit agent/task/chain/tasks):
 		state.cleanupTimers.clear();
 		state.asyncJobs.clear();
 		clearSlashSnapshots();
-		slashBridge.cancelAll();
-		slashBridge.dispose();
-		promptTemplateBridge.cancelAll();
-		promptTemplateBridge.dispose();
 		if (state.lastUiContext?.hasUI) {
 			state.lastUiContext.ui.setWidget(WIDGET_KEY, undefined);
 		}

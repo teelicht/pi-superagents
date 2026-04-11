@@ -1,24 +1,16 @@
 /**
- * Integration tests for slash command registration and bridge request payloads.
+ * Integration tests for lean Superpowers slash command registration and behavior.
  *
  * Responsibilities:
- * - verify slash commands register expected handlers
- * - verify commands emit the right bridge request metadata
- * - verify inline slash result rendering remains stable
+ * - verify only Superpowers commands and configured custom commands are registered
+ * - verify /superpowers sends a root-session prompt with resolved defaults
+ * - verify custom commands apply presets and inline tokens override them
+ * - verify /superpowers-status opens the status overlay
+ * - verify config-gated refusal blocks execution
  */
 
 import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
-
-const SLASH_RESULT_TYPE = "subagent-slash-result";
-const SLASH_SUBAGENT_REQUEST_EVENT = "subagent:slash:request";
-const SLASH_SUBAGENT_STARTED_EVENT = "subagent:slash:started";
-const SLASH_SUBAGENT_RESPONSE_EVENT = "subagent:slash:response";
-
-interface EventBus {
-	on(event: string, handler: (data: unknown) => void): () => void;
-	emit(event: string, data: unknown): void;
-}
 
 interface RegisterSlashCommandsModule {
 	registerSlashCommands?: (
@@ -26,9 +18,8 @@ interface RegisterSlashCommandsModule {
 			events: EventBus;
 			registerCommand(
 				name: string,
-				spec: { handler(args: string, ctx: unknown): Promise<void>; getArgumentCompletions?: (prefix: string) => unknown },
+				spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> },
 			): void;
-			registerShortcut(key: string, spec: { handler(ctx: unknown): Promise<void> }): void;
 			sendMessage(message: unknown): void;
 			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }): void;
 		},
@@ -45,23 +36,14 @@ interface RegisterSlashCommandsModule {
 			resultFileCoalescer: { schedule(file: string, delayMs?: number): boolean; clear(): void };
 			configGate: { blocked: boolean; diagnostics: unknown[]; message: string };
 		},
+		config: { superagents?: { useSubagents?: boolean; useTestDrivenDevelopment?: boolean; commands?: Record<string, { description?: string; useSubagents?: boolean; useTestDrivenDevelopment?: boolean }> } },
 	) => void;
 }
 
-interface SlashLiveStateModule {
-	clearSlashSnapshots?: typeof import("../../slash-live-state.ts").clearSlashSnapshots;
-	getSlashRenderableSnapshot?: typeof import("../../slash-live-state.ts").getSlashRenderableSnapshot;
-	resolveSlashMessageDetails?: typeof import("../../slash-live-state.ts").resolveSlashMessageDetails;
-}
-
 let registerSlashCommands: RegisterSlashCommandsModule["registerSlashCommands"];
-let clearSlashSnapshots: SlashLiveStateModule["clearSlashSnapshots"];
-let getSlashRenderableSnapshot: SlashLiveStateModule["getSlashRenderableSnapshot"];
-let resolveSlashMessageDetails: SlashLiveStateModule["resolveSlashMessageDetails"];
 let available = true;
 try {
 	({ registerSlashCommands } = await import("../../src/slash/slash-commands.ts") as RegisterSlashCommandsModule);
-	({ clearSlashSnapshots, getSlashRenderableSnapshot, resolveSlashMessageDetails } = await import("../../src/slash/slash-live-state.ts") as SlashLiveStateModule);
 } catch {
 	available = false;
 }
@@ -69,19 +51,16 @@ try {
 function createEventBus(): EventBus {
 	const handlers = new Map<string, Array<(data: unknown) => void>>();
 	return {
-		on(event, handler) {
+		on(event: string, handler: (data: unknown) => void) {
 			const existing = handlers.get(event) ?? [];
 			existing.push(handler);
 			handlers.set(event, existing);
 			return () => {
-				const current = handlers.get(event) ?? [];
-				handlers.set(event, current.filter((entry) => entry !== handler));
+				handlers.set(event, (handlers.get(event) ?? []).filter((entry) => entry !== handler));
 			};
 		},
-		emit(event, data) {
-			for (const handler of handlers.get(event) ?? []) {
-				handler(data);
-			}
+		emit(event: string, data: unknown) {
+			for (const handler of handlers.get(event) ?? []) handler(data);
 		},
 	};
 }
@@ -126,233 +105,126 @@ function createCommandContext(
 	};
 }
 
-describe("slash command custom message delivery", { skip: !available ? "slash-commands.ts not importable" : undefined }, () => {
-	beforeEach(() => {
-		clearSlashSnapshots?.();
-	});
-
-	it("/run sends an inline slash result message after a successful bridge response", async () => {
-		const sent: unknown[] = [];
-		const commands = new Map<string, { handler(args: string, ctx: unknown): Promise<void> }>();
-		const events = createEventBus();
-		events.on(SLASH_SUBAGENT_REQUEST_EVENT, (data) => {
-			const requestId = (data as { requestId: string }).requestId;
-			events.emit(SLASH_SUBAGENT_STARTED_EVENT, { requestId });
-			events.emit(SLASH_SUBAGENT_RESPONSE_EVENT, {
-				requestId,
-				result: {
-					content: [{ type: "text", text: "Scout finished" }],
-					details: { mode: "single", results: [] },
-				},
-				isError: false,
-			});
-		});
-
-		const pi = {
-			events,
-			registerCommand(name: string, spec: { handler(args: string, ctx: unknown): Promise<void> }) {
-				commands.set(name, spec);
-			},
-			registerShortcut() {},
-			sendMessage(message: unknown) {
-				sent.push(message);
-			},
-			sendUserMessage() {},
-		};
-
-		registerSlashCommands!(pi, createState(process.cwd()));
-		await commands.get("run")!.handler("scout inspect this", createCommandContext());
-
-		assert.equal(sent.length, 2);
-		assert.equal((sent[0] as { customType?: string; display?: boolean }).customType, SLASH_RESULT_TYPE);
-		assert.equal((sent[0] as { display?: boolean }).display, true);
-		assert.equal((sent[0] as { content?: string }).content, "inspect this");
-		assert.equal((sent[1] as { customType?: string; display?: boolean }).customType, SLASH_RESULT_TYPE);
-		assert.equal((sent[1] as { display?: boolean }).display, false);
-		assert.equal((sent[1] as { content?: string }).content, "Scout finished");
-
-		const visibleDetails = resolveSlashMessageDetails!((sent[0] as { details?: unknown }).details);
-		assert.ok(visibleDetails);
-		const visibleSnapshot = getSlashRenderableSnapshot!(visibleDetails!);
-		assert.equal((visibleSnapshot.result.content[0] as { text?: string }).text, "Scout finished");
-	});
-
-	it("/run still sends an inline slash result message when the bridge returns an error", async () => {
-		const sent: unknown[] = [];
-		const commands = new Map<string, { handler(args: string, ctx: unknown): Promise<void> }>();
-		const events = createEventBus();
-		events.on(SLASH_SUBAGENT_REQUEST_EVENT, (data) => {
-			const requestId = (data as { requestId: string }).requestId;
-			events.emit(SLASH_SUBAGENT_STARTED_EVENT, { requestId });
-			events.emit(SLASH_SUBAGENT_RESPONSE_EVENT, {
-				requestId,
-				result: {
-					content: [{ type: "text", text: "Subagent failed" }],
-					details: { mode: "single", results: [] },
-				},
-				isError: true,
-				errorText: "Subagent failed",
-			});
-		});
-
-		const pi = {
-			events,
-			registerCommand(name: string, spec: { handler(args: string, ctx: unknown): Promise<void> }) {
-				commands.set(name, spec);
-			},
-			registerShortcut() {},
-			sendMessage(message: unknown) {
-				sent.push(message);
-			},
-			sendUserMessage() {},
-		};
-
-		registerSlashCommands!(pi, createState(process.cwd()));
-		await commands.get("run")!.handler("scout inspect this", createCommandContext());
-
-		assert.equal(sent.length, 2);
-		assert.equal((sent[0] as { customType?: string; display?: boolean }).customType, SLASH_RESULT_TYPE);
-		assert.equal((sent[0] as { display?: boolean }).display, true);
-		assert.equal((sent[0] as { content?: string }).content, "inspect this");
-		assert.equal((sent[1] as { customType?: string; display?: boolean }).customType, SLASH_RESULT_TYPE);
-		assert.equal((sent[1] as { display?: boolean }).display, false);
-		assert.equal((sent[1] as { content?: string }).content, "Subagent failed");
-
-		const visibleDetails = resolveSlashMessageDetails!((sent[0] as { details?: unknown }).details);
-		assert.ok(visibleDetails);
-		const visibleSnapshot = getSlashRenderableSnapshot!(visibleDetails!);
-		assert.equal((visibleSnapshot.result.content[0] as { text?: string }).text, "Subagent failed");
-	});
-
-	it("/superpowers sends a root-session workflow prompt instead of directly running sp-recon", async () => {
-		const sent: unknown[] = [];
-		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
-		const commands = new Map<string, { handler(args: string, ctx: unknown): Promise<void> }>();
-		const events = createEventBus();
-
-		const pi = {
-			events,
-			registerCommand(name: string, spec: { handler(args: string, ctx: unknown): Promise<void> }) {
-				commands.set(name, spec);
-			},
-			registerShortcut() {},
-			sendMessage(message: unknown) {
-				sent.push(message);
-			},
-			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
-				userMessages.push({ content, options });
-			},
-		};
-
-		registerSlashCommands!(pi, createState(process.cwd()));
-		await commands.get("superpowers")!.handler("tdd implement auth fix", createCommandContext());
-
-		assert.equal(sent.length, 0);
-		assert.equal(userMessages.length, 1);
-		assert.match(String(userMessages[0]!.content), /workflow:\s*"superpowers"/);
-		assert.match(String(userMessages[0]!.content), /implementerMode:\s*"tdd"/);
-		assert.match(String(userMessages[0]!.content), /sp-recon/);
-		assert.match(String(userMessages[0]!.content), /Do not stop after the recon subagent finishes/i);
-	});
-
-	it("/superpowers carries --bg and --fork through the root prompt contract", async () => {
-		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
-		const commands = new Map<string, { handler(args: string, ctx: unknown): Promise<void> }>();
+describe("lean superpowers slash commands", { skip: !available ? "slash-commands.ts not importable" : undefined }, () => {
+	it("registers only Superpowers commands and configured custom commands", () => {
+		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
 		const pi = {
 			events: createEventBus(),
-			registerCommand(name: string, spec: { handler(args: string, ctx: unknown): Promise<void> }) {
+			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
 				commands.set(name, spec);
 			},
-			registerShortcut() {},
+			sendMessage() {},
+			sendUserMessage() {},
+		};
+
+		const config = {
+			superagents: {
+				commands: {
+					review: { description: "Run code review", useSubagents: false },
+				},
+			},
+		};
+
+		registerSlashCommands!(pi, createState(process.cwd()), config);
+
+		// Should have superpowers, review, superpowers-status
+		assert.ok(commands.has("superpowers"), "expected /superpowers to be registered");
+		assert.ok(commands.has("superpowers-status"), "expected /superpowers-status to be registered");
+		assert.ok(commands.has("review"), "expected /review preset to be registered");
+
+		// Should NOT have old commands
+		assert.ok(!commands.has("run"), "expected /run to NOT be registered");
+		assert.ok(!commands.has("chain"), "expected /chain to NOT be registered");
+		assert.ok(!commands.has("parallel"), "expected /parallel to NOT be registered");
+		assert.ok(!commands.has("agents"), "expected /agents to NOT be registered");
+
+		// review preset should have the configured description
+		assert.equal(commands.get("review")!.description, "Run code review");
+	});
+
+	it("/superpowers sends a root-session prompt with resolved defaults", async () => {
+		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
+		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const pi = {
+			events: createEventBus(),
+			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+				commands.set(name, spec);
+			},
 			sendMessage() {},
 			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
 				userMessages.push({ content, options });
 			},
 		};
 
-		registerSlashCommands!(pi, createState(process.cwd()));
-		await commands.get("superpowers")!.handler("direct harden auth flow --fork --bg", createCommandContext());
+		registerSlashCommands!(pi, createState(process.cwd()), {});
+		await commands.get("superpowers")!.handler("tdd implement auth fix", createCommandContext());
 
 		assert.equal(userMessages.length, 1);
 		const prompt = String(userMessages[0]!.content);
 		assert.match(prompt, /workflow:\s*"superpowers"/);
-		assert.match(prompt, /implementerMode:\s*"direct"/);
-		assert.match(prompt, /async:\s*true/);
-		assert.match(prompt, /clarify:\s*false/);
-		assert.match(prompt, /context:\s*"fork"/);
+		assert.match(prompt, /useSubagents:\s*true/);
+		assert.match(prompt, /useTestDrivenDevelopment:\s*true/);
+		assert.match(prompt, /implement auth fix/);
+		// No options means it was sent directly (isIdle === true)
+		assert.equal(userMessages[0]!.options, undefined);
 	});
 
-	it("/superpowers accepts flags in either order", async () => {
+	it("custom commands apply presets and inline tokens override them", async () => {
 		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
-		const commands = new Map<string, { handler(args: string, ctx: unknown): Promise<void> }>();
+		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
 		const pi = {
 			events: createEventBus(),
-			registerCommand(name: string, spec: { handler(args: string, ctx: unknown): Promise<void> }) {
+			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
 				commands.set(name, spec);
 			},
-			registerShortcut() {},
 			sendMessage() {},
 			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
 				userMessages.push({ content, options });
 			},
 		};
 
-		registerSlashCommands!(pi, createState(process.cwd()));
-		await commands.get("superpowers")!.handler("tdd stabilize cache invalidation --bg --fork", createCommandContext());
+		const config = {
+			superagents: {
+				useSubagents: false,
+				useTestDrivenDevelopment: true,
+				commands: {
+					review: { description: "Run code review", useSubagents: false, useTestDrivenDevelopment: false },
+				},
+			},
+		};
 
+		registerSlashCommands!(pi, createState(process.cwd()), config);
+
+		// /review inherits the preset so useSubagents: false, useTestDrivenDevelopment: false
+		await commands.get("review")!.handler("check auth module for bugs", createCommandContext());
 		assert.equal(userMessages.length, 1);
 		const prompt = String(userMessages[0]!.content);
-		assert.match(prompt, /async:\s*true/);
-		assert.match(prompt, /context:\s*"fork"/);
-	});
+		assert.match(prompt, /useSubagents:\s*false/);
+		assert.match(prompt, /useTestDrivenDevelopment:\s*false/);
 
-	it("/superpowers queues a follow-up root prompt when the agent is busy", async () => {
-		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
-		const commands = new Map<string, { handler(args: string, ctx: unknown): Promise<void> }>();
-		const pi = {
-			events: createEventBus(),
-			registerCommand(name: string, spec: { handler(args: string, ctx: unknown): Promise<void> }) {
-				commands.set(name, spec);
-			},
-			registerShortcut() {},
-			sendMessage() {},
-			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
-				userMessages.push({ content, options });
-			},
-		};
-
-		registerSlashCommands!(pi, createState(process.cwd()));
-		await commands.get("superpowers")!.handler("direct update config", createCommandContext({ idle: false }));
-
+		// Inline override: /review subagents check auth module → useSubagents: true
+		userMessages.length = 0;
+		await commands.get("review")!.handler("subagents check auth module", createCommandContext());
 		assert.equal(userMessages.length, 1);
-		assert.equal(userMessages[0]!.options?.deliverAs, "followUp");
-		assert.match(String(userMessages[0]!.content), /implementerMode:\s*"direct"/);
-	});
-});
-
-describe("subagents-status slash command", { skip: !available ? "slash-commands.ts not importable" : undefined }, () => {
-	beforeEach(() => {
-		clearSlashSnapshots?.();
+		const overridePrompt = String(userMessages[0]!.content);
+		assert.match(overridePrompt, /useSubagents:\s*true/);
 	});
 
-	it("opens the async status overlay", async () => {
-		const commands = new Map<string, { handler(args: string, ctx: unknown): Promise<void> }>();
-		const events = createEventBus();
+	it("/superpowers-status opens the status and settings overlay", async () => {
+		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
 		let customCalls = 0;
 		const pi = {
-			events,
-			registerCommand(name: string, spec: { handler(args: string, ctx: unknown): Promise<void> }) {
+			events: createEventBus(),
+			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
 				commands.set(name, spec);
 			},
-			registerShortcut() {},
-			sendMessage(_message: unknown) {},
+			sendMessage() {},
 			sendUserMessage() {},
 		};
 
-		registerSlashCommands!(pi, createState(process.cwd()));
-		assert.ok(commands.has("subagents-status"));
+		registerSlashCommands!(pi, createState(process.cwd()), {});
 
-		await commands.get("subagents-status")!.handler("", createCommandContext({
+		await commands.get("superpowers-status")!.handler("", createCommandContext({
 			hasUI: true,
 			custom: async () => {
 				customCalls++;
@@ -363,15 +235,14 @@ describe("subagents-status slash command", { skip: !available ? "slash-commands.
 		assert.equal(customCalls, 1);
 	});
 
-	it("refuses to execute /run when config is blocked", async () => {
+	it("refuses to execute /superpowers when config is blocked", async () => {
 		const notifications: Array<{ message: string; type?: string }> = [];
-		const commands = new Map<string, { handler(args: string, ctx: unknown): Promise<void> }>();
+		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
 		const pi = {
 			events: createEventBus(),
-			registerCommand(name: string, spec: { handler(args: string, ctx: unknown): Promise<void> }) {
+			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
 				commands.set(name, spec);
 			},
-			registerShortcut() {},
 			sendMessage() {},
 			sendUserMessage() {},
 		};
@@ -386,11 +257,65 @@ describe("subagents-status slash command", { skip: !available ? "slash-commands.
 			notifications.push({ message, type });
 		};
 
-		registerSlashCommands!(pi, state);
-		await commands.get("run")!.handler("scout inspect this", ctx);
+		registerSlashCommands!(pi, state, {});
+		await commands.get("superpowers")!.handler("tdd fix bug", ctx);
 
 		assert.equal(notifications.length, 1);
 		assert.equal(notifications[0]!.type, "error");
 		assert.match(notifications[0]!.message, /disabled because config\.json needs attention/);
+	});
+
+	it("/superpowers queues a follow-up when the agent is busy", async () => {
+		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
+		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const pi = {
+			events: createEventBus(),
+			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+				commands.set(name, spec);
+			},
+			sendMessage() {},
+			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
+				userMessages.push({ content, options });
+			},
+		};
+
+		registerSlashCommands!(pi, createState(process.cwd()), {});
+
+		// isIdle() returns false → should use followUp delivery
+		await commands.get("superpowers")!.handler("direct update config", createCommandContext({ idle: false }));
+
+		assert.equal(userMessages.length, 1);
+		assert.equal(userMessages[0]!.options?.deliverAs, "followUp");
+		assert.match(String(userMessages[0]!.content), /useTestDrivenDevelopment:\s*false/);
+	});
+
+	it("shows usage hint when /superpowers is called without a task", async () => {
+		const notifications: Array<{ message: string; type?: string }> = [];
+		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const pi = {
+			events: createEventBus(),
+			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+				commands.set(name, spec);
+			},
+			sendMessage() {},
+			sendUserMessage() {},
+		};
+
+		registerSlashCommands!(pi, createState(process.cwd()), {});
+		const ctx = createCommandContext({ hasUI: true });
+		(ctx as { ui: { notify(message: string, type?: string): void } }).ui.notify = (message, type) => {
+			notifications.push({ message, type });
+		};
+
+		await commands.get("superpowers")!.handler("", ctx);
+		assert.equal(notifications.length, 1);
+		assert.equal(notifications[0]!.type, "error");
+		assert.match(notifications[0]!.message, /Usage:/);
+
+		notifications.length = 0;
+		await commands.get("superpowers")!.handler("tdd", ctx);
+		assert.equal(notifications.length, 1);
+		assert.equal(notifications[0]!.type, "error");
+		assert.match(notifications[0]!.message, /Usage:/);
 	});
 });
