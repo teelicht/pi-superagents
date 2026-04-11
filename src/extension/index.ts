@@ -25,7 +25,8 @@ import { cleanupOldChainDirs } from "../execution/settings.ts";
 import { renderWidget, renderSubagentResult } from "../ui/render.ts";
 import { SubagentParams, StatusParams } from "../shared/schemas.ts";
 import { findByPrefix, readStatus } from "../shared/utils.ts";
-import { getSuperagentSettings } from "../execution/superagents-config.ts";
+import { formatConfigDiagnostics, loadEffectiveConfig } from "../execution/config-validation.ts";
+import type { ConfigDiagnostic } from "../shared/types.ts";
 import { createSubagentExecutor } from "../execution/subagent-executor.ts";
 import { createAsyncJobTracker } from "../ui/async-job-tracker.ts";
 import { createResultWatcher } from "../ui/result-watcher.ts";
@@ -65,62 +66,83 @@ function getSubagentSessionRoot(parentSessionFile: string | null): string {
  * Read one JSON config file from disk.
  *
  * @param filePath Absolute path to the JSON file.
- * @returns Parsed config object or `undefined` when the file is absent.
+ * @returns Parsed JSON value or `undefined` when the file is absent.
  */
-function readJsonConfig(filePath: string): ExtensionConfig | undefined {
+function readJsonConfig(filePath: string): unknown | undefined {
 	if (!fs.existsSync(filePath)) return undefined;
-	return JSON.parse(fs.readFileSync(filePath, "utf-8")) as ExtensionConfig;
+	return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+}
+
+interface LoadedConfigState {
+	config: ExtensionConfig;
+	blocked: boolean;
+	diagnostics: ConfigDiagnostic[];
+	message: string;
+	configPath: string;
+	examplePath: string;
 }
 
 /**
- * Merge user config over bundled defaults while keeping nested Superagents maps.
+ * Load and validate extension config, preserving diagnostics for user display.
  *
- * @param defaults Bundled config defaults shipped with the extension.
- * @param overrides User-authored config loaded from `config.json`.
- * @returns Effective config used by the runtime.
+ * @returns Validated config state for runtime registration.
  */
-function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfig): ExtensionConfig {
-	const defaultSuperagents = getSuperagentSettings(defaults);
-	const overrideSuperagents = getSuperagentSettings(overrides);
-	const mergedSuperagents = defaultSuperagents || overrideSuperagents
-		? {
-			...(defaultSuperagents ?? {}),
-			...(overrideSuperagents ?? {}),
-			worktrees: {
-				...(defaultSuperagents?.worktrees ?? {}),
-				...(overrideSuperagents?.worktrees ?? {}),
-			},
-			modelTiers: {
-				...(defaultSuperagents?.modelTiers ?? {}),
-				...(overrideSuperagents?.modelTiers ?? {}),
-			},
-		}
-		: undefined;
-
-	return {
-		...defaults,
-		...overrides,
-		...(mergedSuperagents ? { superagents: mergedSuperagents } : {}),
-	};
-}
-
-/**
- * Load effective extension config, seeding missing keys from bundled defaults.
- *
- * @returns Effective extension config for the current runtime.
- */
-function loadConfig(): ExtensionConfig {
+function loadConfigState(): LoadedConfigState {
 	const extensionDir = path.dirname(fileURLToPath(import.meta.url));
-	const bundledDefaultConfigPath = path.join(extensionDir, "default-config.json");
+	const packageRoot = path.resolve(extensionDir, "..", "..");
+	const bundledDefaultConfigPath = path.join(packageRoot, "default-config.json");
 	const configPath = path.join(os.homedir(), ".pi", "agent", "extensions", "subagent", "config.json");
+	const examplePath = path.join(os.homedir(), ".pi", "agent", "extensions", "subagent", "config.example.json");
 	try {
-		const bundledDefaults = readJsonConfig(bundledDefaultConfigPath) ?? {};
+		const bundledDefaults = (readJsonConfig(bundledDefaultConfigPath) ?? {}) as ExtensionConfig;
 		const userConfig = readJsonConfig(configPath);
-		return userConfig ? mergeConfig(bundledDefaults, userConfig) : bundledDefaults;
+		const result = loadEffectiveConfig(bundledDefaults, userConfig);
+		const message = result.diagnostics.length
+			? formatConfigDiagnostics(result.diagnostics, { configPath, examplePath })
+			: "";
+		return { ...result, message, configPath, examplePath };
 	} catch (error) {
-		console.error(`Failed to load subagent config from '${configPath}':`, error);
+		const message = error instanceof Error ? error.message : String(error);
+		const diagnostics: ConfigDiagnostic[] = [{
+			level: "error",
+			code: "config_load_failed",
+			path: "config.json",
+			message,
+		}];
+		return {
+			config: {},
+			blocked: true,
+			diagnostics,
+			message: formatConfigDiagnostics(diagnostics, { configPath, examplePath }),
+			configPath,
+			examplePath,
+		};
 	}
-	return {};
+}
+
+/**
+ * Apply the safe empty-override migration for a copied default config.
+ *
+ * @param state Current loaded config state.
+ * @returns Tool result describing the migration outcome.
+ */
+function migrateCopiedDefaultConfig(state: LoadedConfigState): AgentToolResult<Details> {
+	const canMigrate = state.diagnostics.some((diagnostic) => diagnostic.action === "replace_with_empty_override");
+	if (!canMigrate) {
+		return {
+			content: [{ type: "text", text: "No safe config migration is available for the current config.json." }],
+			isError: true,
+			details: { mode: "single", results: [] },
+		};
+	}
+	const backupPath = `${state.configPath}.bak-${Date.now()}`;
+	fs.copyFileSync(state.configPath, backupPath);
+	fs.writeFileSync(state.configPath, "{}\n", "utf-8");
+	return {
+		content: [{ type: "text", text: `Migrated config.json to an empty override. Backup: ${backupPath}\nRestart or reload Pi to use the updated config.` }],
+		isError: false,
+		details: { mode: "single", results: [] },
+	};
 }
 
 function expandTilde(p: string): string {
@@ -196,7 +218,8 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 	ensureAccessibleDir(ASYNC_DIR);
 	cleanupOldChainDirs();
 
-	const config = loadConfig();
+	const configState = loadConfigState();
+	const config = configState.config;
 	const asyncByDefault = config.asyncByDefault === true;
 	const tempArtifactsDir = getArtifactsDir(null);
 	cleanupAllArtifactDirs(DEFAULT_ARTIFACT_CONFIG.cleanupDays);
@@ -214,6 +237,11 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 		resultFileCoalescer: {
 			schedule: () => false,
 			clear: () => {},
+		},
+		configGate: {
+			blocked: configState.blocked,
+			diagnostics: configState.diagnostics,
+			message: configState.message,
 		},
 	};
 
@@ -297,7 +325,21 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 		}, 0);
 	}
 
-	const tool: ToolDefinition<typeof SubagentParams, Details> = {
+	/**
+ * Build a blocking tool result for invalid config.
+ *
+ * @param message User-facing config diagnostic message.
+ * @returns Tool result that refuses execution.
+ */
+function configBlockedResult(message: string): AgentToolResult<Details> {
+	return {
+		content: [{ type: "text", text: message }],
+		isError: true,
+		details: { mode: "single", results: [] },
+	};
+}
+
+const tool: ToolDefinition<typeof SubagentParams, Details> = {
 		name: "subagent",
 		label: "Subagent",
 		description: `Delegate to subagents or manage agent definitions.
@@ -325,6 +367,9 @@ MANAGEMENT (use action field, omit agent/task/chain/tasks):
 		parameters: SubagentParams,
 
 		execute(id, params, signal, onUpdate, ctx) {
+			if (state.configGate.blocked) {
+				return Promise.resolve(configBlockedResult(state.configGate.message));
+			}
 			return executor.execute(id, params, signal, onUpdate, ctx);
 		},
 
@@ -371,6 +416,16 @@ MANAGEMENT (use action field, omit agent/task/chain/tasks):
 		parameters: StatusParams,
 
 		async execute(_id, params, _signal, _onUpdate, _ctx) {
+			if (params.action === "config") {
+				return {
+					content: [{ type: "text", text: state.configGate.message || "pi-superagents config is valid." }],
+					isError: state.configGate.blocked,
+					details: { mode: "single" as const, results: [] },
+				};
+			}
+			if (params.action === "migrate-config") {
+				return migrateCopiedDefaultConfig(configState);
+			}
 			if (params.action === "list") {
 				try {
 					const runs = listAsyncRuns(ASYNC_DIR, { states: ["queued", "running"] });
@@ -519,8 +574,18 @@ MANAGEMENT (use action field, omit agent/task/chain/tasks):
 		restoreSlashFinalSnapshots(ctx.sessionManager.getEntries());
 	};
 
+	let configDiagnosticNotifiedForSession: string | null = null;
+
 	pi.on("session_start", (_event, ctx) => {
 		resetSessionState(ctx);
+		if (
+			state.configGate.message
+			&& ctx.hasUI
+			&& configDiagnosticNotifiedForSession !== state.currentSessionId
+		) {
+			configDiagnosticNotifiedForSession = state.currentSessionId;
+			ctx.ui.notify(state.configGate.message, state.configGate.blocked ? "error" : "warning");
+		}
 	});
 	pi.on("session_shutdown", () => {
 		stopResultWatcher();

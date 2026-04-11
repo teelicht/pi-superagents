@@ -217,6 +217,11 @@ describe("superpowers packets in real execution paths", {
 					schedule: () => false,
 					clear: () => {},
 				},
+				configGate: {
+					blocked: false,
+					diagnostics: [],
+					message: "",
+				},
 			},
 			config,
 			asyncByDefault: false,

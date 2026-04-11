@@ -20,6 +20,11 @@ function createState() {
 			schedule: () => false,
 			clear: () => {},
 		},
+		configGate: {
+			blocked: false,
+			diagnostics: [],
+			message: "",
+		},
 	};
 }
 

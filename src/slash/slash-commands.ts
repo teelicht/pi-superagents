@@ -464,6 +464,19 @@ const parseAgentArgs = (
 	return { steps, task: sharedTask };
 };
 
+/**
+ * Notify the user when config errors disable execution.
+ *
+ * @param state Shared extension state containing the config gate.
+ * @param ctx Current extension context.
+ * @returns True when execution should stop.
+ */
+function notifyIfConfigBlocked(state: SubagentState, ctx: ExtensionContext): boolean {
+	if (!state.configGate.blocked) return false;
+	if (ctx.hasUI) ctx.ui.notify(state.configGate.message, "error");
+	return true;
+}
+
 export function registerSlashCommands(
 	pi: ExtensionAPI,
 	state: SubagentState,
@@ -479,6 +492,7 @@ export function registerSlashCommands(
 		description: "Run a subagent directly: /run agent[output=file] task [--bg] [--fork]",
 		getArgumentCompletions: makeAgentCompletions(state, false),
 		handler: async (args, ctx) => {
+			if (notifyIfConfigBlocked(state, ctx)) return;
 			const { args: cleanedArgs, bg, fork } = extractExecutionFlags(args);
 			const input = cleanedArgs.trim();
 			const firstSpace = input.indexOf(" ");
@@ -507,6 +521,7 @@ export function registerSlashCommands(
 	pi.registerCommand("superpowers", {
 		description: "Run the Superpowers workflow: /superpowers [tdd|direct] <task> [--bg] [--fork]",
 		handler: async (rawArgs, ctx) => {
+			if (notifyIfConfigBlocked(state, ctx)) return;
 			const parsed = parseSuperpowersArgs(rawArgs);
 			if (!parsed?.task) {
 				ctx.ui.notify("Usage: /superpowers [tdd|direct] <task> [--bg] [--fork]", "error");
@@ -528,6 +543,7 @@ export function registerSlashCommands(
 		description: "Run agents in sequence: /chain scout \"task\" -> planner [--bg] [--fork]",
 		getArgumentCompletions: makeAgentCompletions(state, true),
 		handler: async (args, ctx) => {
+			if (notifyIfConfigBlocked(state, ctx)) return;
 			const { args: cleanedArgs, bg, fork } = extractExecutionFlags(args);
 			const parsed = parseAgentArgs(state, cleanedArgs, "chain", ctx);
 			if (!parsed) return;
@@ -551,6 +567,7 @@ export function registerSlashCommands(
 		description: "Run agents in parallel: /parallel scout \"task1\" -> reviewer \"task2\" [--bg] [--fork]",
 		getArgumentCompletions: makeAgentCompletions(state, true),
 		handler: async (args, ctx) => {
+			if (notifyIfConfigBlocked(state, ctx)) return;
 			const { args: cleanedArgs, bg, fork } = extractExecutionFlags(args);
 			const parsed = parseAgentArgs(state, cleanedArgs, "parallel", ctx);
 			if (!parsed) return;

@@ -60,6 +60,11 @@ function makeState(cwd: string) {
 			schedule: () => false,
 			clear: () => {},
 		},
+		configGate: {
+			blocked: false,
+			diagnostics: [],
+			message: "",
+		},
 	};
 }
 

@@ -43,6 +43,7 @@ interface RegisterSlashCommandsModule {
 			watcher: unknown;
 			watcherRestartTimer: ReturnType<typeof setTimeout> | null;
 			resultFileCoalescer: { schedule(file: string, delayMs?: number): boolean; clear(): void };
+			configGate: { blocked: boolean; diagnostics: unknown[]; message: string };
 		},
 	) => void;
 }
@@ -99,6 +100,11 @@ function createState(cwd: string) {
 		resultFileCoalescer: {
 			schedule: () => false,
 			clear: () => {},
+		},
+		configGate: {
+			blocked: false,
+			diagnostics: [],
+			message: "",
 		},
 	};
 }
@@ -355,5 +361,36 @@ describe("subagents-status slash command", { skip: !available ? "slash-commands.
 		}));
 
 		assert.equal(customCalls, 1);
+	});
+
+	it("refuses to execute /run when config is blocked", async () => {
+		const notifications: Array<{ message: string; type?: string }> = [];
+		const commands = new Map<string, { handler(args: string, ctx: unknown): Promise<void> }>();
+		const pi = {
+			events: createEventBus(),
+			registerCommand(name: string, spec: { handler(args: string, ctx: unknown): Promise<void> }) {
+				commands.set(name, spec);
+			},
+			registerShortcut() {},
+			sendMessage() {},
+			sendUserMessage() {},
+		};
+		const state = createState(process.cwd());
+		state.configGate = {
+			blocked: true,
+			diagnostics: [{ level: "error", code: "unknown_key", path: "asyncByDefalt", message: "is not supported." }],
+			message: "pi-superagents is disabled because config.json needs attention.",
+		};
+		const ctx = createCommandContext({ hasUI: true });
+		(ctx as { ui: { notify(message: string, type?: string): void } }).ui.notify = (message, type) => {
+			notifications.push({ message, type });
+		};
+
+		registerSlashCommands!(pi, state);
+		await commands.get("run")!.handler("scout inspect this", ctx);
+
+		assert.equal(notifications.length, 1);
+		assert.equal(notifications[0]!.type, "error");
+		assert.match(notifications[0]!.message, /disabled because config\.json needs attention/);
 	});
 });
