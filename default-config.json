@@ -1,9 +1,8 @@
 {
-  "asyncByDefault": false,
-  "defaultSessionDir": null,
-  "maxSubagentDepth": 2,
   "superagents": {
-    "defaultImplementerMode": "tdd",
+    "useSubagents": true,
+    "useTestDrivenDevelopment": true,
+    "commands": {},
     "worktrees": {
       "enabled": false,
       "root": null,

@@ -1,5 +1,16 @@
 /**
  * Type definitions for the subagent extension
+ *
+ * Key responsibilities:
+ * - define config contracts (ExtensionConfig, SuperpowersSettings, etc.)
+ * - define execution options (RunSyncOptions)
+ * - define result and artifact types
+ * - define display, error, and async types
+ *
+ * Important dependencies:
+ * - @mariozechner/pi-ai (Message type)
+ * - @mariozechner/pi-coding-agent (ExtensionContext)
+ * - node:os, node:path, node:fs
  */
 
 import * as os from "node:os";
@@ -40,9 +51,7 @@ export interface TokenUsage {
 	total: number;
 }
 
-export type WorkflowMode = "default" | "superpowers";
-
-export type SuperpowersImplementerMode = "tdd" | "direct";
+export type WorkflowMode = "superpowers";
 
 export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
@@ -280,8 +289,8 @@ export interface RunSyncOptions {
 	config?: ExtensionConfig;
 	/** Execution workflow mode. */
 	workflow?: WorkflowMode;
-	/** Superpowers implementer behavior mode. */
-	implementerMode?: SuperpowersImplementerMode;
+	/** Whether to use test-driven development for implementer runs. */
+	useTestDrivenDevelopment?: boolean;
 }
 
 export type ConfigDiagnosticLevel = "warning" | "error";
@@ -294,23 +303,30 @@ export interface ConfigDiagnostic {
 	action?: string;
 }
 
+/** Preset for a named superpowers command. */
+export interface SuperpowersCommandPreset {
+	description?: string;
+	useSubagents?: boolean;
+	useTestDrivenDevelopment?: boolean;
+}
+
+/** Worktree settings for superagents parallel execution. */
+export interface SuperpowersWorktreeSettings {
+	enabled?: boolean;
+	root?: string | null;
+	setupHook?: string | null;
+	setupHookTimeoutMs?: number;
+}
+
 export interface SuperpowersSettings {
-	/** Superpowers-only worktree defaults for parallel execution. */
-	worktrees?: {
-		enabled?: boolean;
-		root?: string | null;
-		setupHook?: string | null;
-		setupHookTimeoutMs?: number;
-	};
-	/** Model configuration for each tier. Supports built-in (cheap, balanced, max) and custom tiers. */
+	useSubagents?: boolean;
+	useTestDrivenDevelopment?: boolean;
+	commands?: Record<string, SuperpowersCommandPreset>;
+	worktrees?: SuperpowersWorktreeSettings;
 	modelTiers?: Record<string, ModelTierSetting>;
-	defaultImplementerMode?: SuperpowersImplementerMode;
 }
 
 export interface ExtensionConfig {
-	asyncByDefault?: boolean;
-	defaultSessionDir?: string | null;
-	maxSubagentDepth?: number;
 	superagents?: SuperpowersSettings;
 }
 
