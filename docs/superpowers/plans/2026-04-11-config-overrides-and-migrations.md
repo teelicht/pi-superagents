@@ -62,7 +62,7 @@ Reason: the new behavior is intentionally stricter and can block existing instal
 - Modify: `package.json`
 - Modify: `package-lock.json`
 
-- [ ] **Step 1: Write failing tests for config assets and package metadata**
+- [x] **Step 1: Write failing tests for config assets and package metadata**
 
 In `test/unit/default-config.test.ts`, add example-config coverage beside the existing default-config test:
 
@@ -152,7 +152,7 @@ assert.deepEqual(packageJson.files, [
 ]);
 ```
 
-- [ ] **Step 2: Run the asset tests and verify they fail**
+- [x] **Step 2: Run the asset tests and verify they fail**
 
 Run:
 
@@ -165,7 +165,7 @@ Expected:
 - `default-config.test.ts` fails because `config.example.json` does not exist.
 - `package-manifest.test.ts` fails because version is still `0.1.0` and `config.example.json` is not in `files`.
 
-- [ ] **Step 3: Add `config.example.json`**
+- [x] **Step 3: Add `config.example.json`**
 
 Create `config.example.json` with this parseable JSON:
 
@@ -201,7 +201,7 @@ Create `config.example.json` with this parseable JSON:
 }
 ```
 
-- [ ] **Step 4: Update package version and files**
+- [x] **Step 4: Update package version and files**
 
 In `package.json`, change:
 
@@ -227,7 +227,7 @@ and add `config.example.json` directly after `default-config.json` in `files`:
 
 In `package-lock.json`, update both root version occurrences from `0.1.0` to `0.2.0`.
 
-- [ ] **Step 5: Run the asset tests and verify they pass**
+- [x] **Step 5: Run the asset tests and verify they pass**
 
 Run:
 
@@ -237,7 +237,7 @@ node --experimental-strip-types --test test/unit/default-config.test.ts test/uni
 
 Expected: both tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add config.example.json default-config.json package.json package-lock.json test/unit/default-config.test.ts test/unit/package-manifest.test.ts
@@ -251,7 +251,7 @@ git commit -m "feat: add config example asset"
 - Create: `test/unit/config-validation.test.ts`
 - Modify: `src/shared/types.ts`
 
-- [ ] **Step 1: Write failing validator tests**
+- [x] **Step 1: Write failing validator tests**
 
 Create `test/unit/config-validation.test.ts`:
 
@@ -435,7 +435,7 @@ describe("config validation", () => {
 });
 ```
 
-- [ ] **Step 2: Run validator tests and verify they fail**
+- [x] **Step 2: Run validator tests and verify they fail**
 
 Run:
 
@@ -445,7 +445,7 @@ node --experimental-strip-types --test test/unit/config-validation.test.ts
 
 Expected: fail because `src/execution/config-validation.ts` does not exist.
 
-- [ ] **Step 3: Update nullable config types**
+- [x] **Step 3: Update nullable config types**
 
 In `src/shared/types.ts`, update config-facing interfaces:
 
@@ -481,7 +481,7 @@ export interface ExtensionConfig {
 }
 ```
 
-- [ ] **Step 4: Implement `src/execution/config-validation.ts`**
+- [x] **Step 4: Implement `src/execution/config-validation.ts`**
 
 Create the file with a header and these exports:
 
@@ -791,7 +791,7 @@ export function formatConfigDiagnostics(
 }
 ```
 
-- [ ] **Step 5: Run validator tests and fix compile issues**
+- [x] **Step 5: Run validator tests and fix compile issues**
 
 Run:
 
@@ -801,7 +801,7 @@ node --experimental-strip-types --test test/unit/config-validation.test.ts
 
 Expected: pass. If TypeScript reports nullable type errors in existing callers, keep the nullable types and update callers to ignore `null` values where they already mean “unset”.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/execution/config-validation.ts src/shared/types.ts test/unit/config-validation.test.ts
@@ -818,7 +818,7 @@ git commit -m "feat: validate config overrides"
 - Create: `test/integration/config-gating.test.ts`
 - Modify: `test/integration/slash-commands.test.ts`
 
-- [ ] **Step 1: Write failing extension gating tests**
+- [x] **Step 1: Write failing extension gating tests**
 
 Create `test/integration/config-gating.test.ts`:
 
@@ -1012,7 +1012,7 @@ describe("extension config gating", () => {
 });
 ```
 
-- [ ] **Step 2: Update slash command tests for blocked config**
+- [x] **Step 2: Update slash command tests for blocked config**
 
 In `test/integration/slash-commands.test.ts`, extend `createState()` with a config gate once the type exists:
 
@@ -1077,7 +1077,7 @@ test/integration/result-watcher.test.ts
 test/integration/superpowers-packets.test.ts
 ```
 
-- [ ] **Step 3: Run gating tests and verify they fail**
+- [x] **Step 3: Run gating tests and verify they fail**
 
 Run:
 
@@ -1087,7 +1087,7 @@ node --experimental-transform-types --import ./test/support/register-loader.mjs 
 
 Expected: fail because runtime gating and `subagent_status` config action do not exist.
 
-- [ ] **Step 4: Add config gate type to shared state**
+- [x] **Step 4: Add config gate type to shared state**
 
 In `src/shared/types.ts`, add:
 
@@ -1105,7 +1105,7 @@ and add to `SubagentState`:
 configGate: ConfigGateState;
 ```
 
-- [ ] **Step 5: Add `subagent_status` config action to schema**
+- [x] **Step 5: Add `subagent_status` config action to schema**
 
 In `src/shared/schemas.ts`, change the `StatusParams.action` description:
 
@@ -1113,7 +1113,7 @@ In `src/shared/schemas.ts`, change the `StatusParams.action` description:
 action: Type.Optional(Type.String({ description: "Action: 'list' to show active async runs, 'config' to inspect config diagnostics, 'migrate-config' to apply safe config migrations, or omit to inspect one run by id/dir" })),
 ```
 
-- [ ] **Step 6: Refactor config loading in `src/extension/index.ts`**
+- [x] **Step 6: Refactor config loading in `src/extension/index.ts`**
 
 Replace the private `mergeConfig()` helper with imports from the validation module:
 
@@ -1242,7 +1242,7 @@ configGate: {
 },
 ```
 
-- [ ] **Step 7: Block tool execution when config is invalid**
+- [x] **Step 7: Block tool execution when config is invalid**
 
 Add this helper in `src/extension/index.ts` near the tool definitions:
 
@@ -1285,7 +1285,7 @@ if (params.action === "migrate-config") {
 }
 ```
 
-- [ ] **Step 8: Notify once per session**
+- [x] **Step 8: Notify once per session**
 
 In `registerSubagentExtension()`, add a local notification guard:
 
@@ -1306,7 +1306,7 @@ if (
 }
 ```
 
-- [ ] **Step 9: Block slash launchers**
+- [x] **Step 9: Block slash launchers**
 
 In `src/slash/slash-commands.ts`, add:
 
@@ -1331,7 +1331,7 @@ Call it at the top of `/run`, `/chain`, `/parallel`, and `/superpowers` handlers
 if (notifyIfConfigBlocked(state, ctx)) return;
 ```
 
-- [ ] **Step 10: Run gating tests and verify they pass**
+- [x] **Step 10: Run gating tests and verify they pass**
 
 Run:
 
@@ -1341,7 +1341,7 @@ node --experimental-transform-types --import ./test/support/register-loader.mjs 
 
 Expected: pass.
 
-- [ ] **Step 11: Run focused unit tests**
+- [x] **Step 11: Run focused unit tests**
 
 Run:
 
@@ -1351,7 +1351,7 @@ node --experimental-strip-types --test test/unit/config-validation.test.ts test/
 
 Expected: pass.
 
-- [ ] **Step 12: Commit**
+- [x] **Step 12: Commit**
 
 ```bash
 git add src/extension/index.ts src/slash/slash-commands.ts src/shared/types.ts src/shared/schemas.ts test/integration/config-gating.test.ts test/integration/slash-commands.test.ts
@@ -1365,7 +1365,7 @@ git commit -m "feat: fail closed on invalid config"
 - Modify: `scripts/local-extension-install.ts`
 - Modify: `test/unit/local-extension-install.test.ts`
 
-- [ ] **Step 1: Write failing local installer preservation tests**
+- [x] **Step 1: Write failing local installer preservation tests**
 
 In `test/unit/local-extension-install.test.ts`, add this test:
 
@@ -1416,7 +1416,7 @@ it("creates an empty user config when the target config is missing", () => {
 });
 ```
 
-- [ ] **Step 2: Run local installer tests and verify they fail**
+- [x] **Step 2: Run local installer tests and verify they fail**
 
 Run:
 
@@ -1426,7 +1426,7 @@ node --experimental-strip-types --test test/unit/local-extension-install.test.ts
 
 Expected: fail because the installer deletes `config.json` during refresh and does not create `{}`.
 
-- [ ] **Step 3: Preserve `config.json` in local installer**
+- [x] **Step 3: Preserve `config.json` in local installer**
 
 In `scripts/local-extension-install.ts`, add constants:
 
@@ -1456,7 +1456,7 @@ if (existingUserConfig !== undefined) {
 
 Ensure `config.json` is not part of `relativePaths`; package metadata should not include it.
 
-- [ ] **Step 4: Update `install.mjs` constants and install behavior**
+- [x] **Step 4: Update `install.mjs` constants and install behavior**
 
 In `install.mjs`, add:
 
@@ -1533,7 +1533,7 @@ if (installDiagnostics.errors.length || installDiagnostics.warnings.length) {
 }
 ```
 
-- [ ] **Step 5: Add installer diagnostic and migration flags**
+- [x] **Step 5: Add installer diagnostic and migration flags**
 
 In `install.mjs`, support `--check-config` and `--migrate-config`:
 
@@ -1599,7 +1599,7 @@ npx @teelicht/pi-superagents --check-config Check user config parseability
 npx @teelicht/pi-superagents --migrate-config Apply safe config migrations
 ```
 
-- [ ] **Step 6: Run local installer tests**
+- [x] **Step 6: Run local installer tests**
 
 Run:
 
@@ -1609,7 +1609,7 @@ node --experimental-strip-types --test test/unit/local-extension-install.test.ts
 
 Expected: pass.
 
-- [ ] **Step 7: Run installer flags manually**
+- [x] **Step 7: Run installer flags manually**
 
 Run:
 
@@ -1632,7 +1632,7 @@ cat "$tmp_home/.pi/agent/extensions/subagent/config.json"
 
 Expected: command prints a migration message with a backup path, and `cat` prints `{}`.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add install.mjs scripts/local-extension-install.ts test/unit/local-extension-install.test.ts
@@ -1646,7 +1646,7 @@ git commit -m "feat: install empty config overrides"
 - Modify: `test/unit/package-manifest.test.ts`
 - Modify: `package.json`
 
-- [ ] **Step 1: Extend sandbox install expectations**
+- [x] **Step 1: Extend sandbox install expectations**
 
 In `test/e2e/e2e-sandbox-install.test.ts`, after the existing assertions, add package file checks if the harness exposes an install directory. Use defensive checks so the test remains compatible with the current harness shape:
 
@@ -1665,7 +1665,7 @@ Add imports:
 import * as fs from "node:fs";
 ```
 
-- [ ] **Step 2: Verify package manifest still passes**
+- [x] **Step 2: Verify package manifest still passes**
 
 Run:
 
@@ -1675,7 +1675,7 @@ node --experimental-strip-types --test test/unit/package-manifest.test.ts
 
 Expected: pass.
 
-- [ ] **Step 3: Run sandbox install test**
+- [x] **Step 3: Run sandbox install test**
 
 Run:
 
@@ -1685,7 +1685,7 @@ node --experimental-transform-types --import ./test/support/register-loader.mjs 
 
 Expected: pass, or skip with `pi-test-harness not available` if the optional harness is absent.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add test/e2e/e2e-sandbox-install.test.ts test/unit/package-manifest.test.ts package.json
@@ -1698,7 +1698,7 @@ git commit -m "test: verify config package assets"
 - Modify: `README.md`
 - Modify: `docs/reference/configuration.md`
 
-- [ ] **Step 1: Update README configuration section**
+- [x] **Step 1: Update README configuration section**
 
 In `README.md`, add this after Installation and before Optional pi-prompt-template-model:
 
@@ -1730,7 +1730,7 @@ or use `subagent_status` with `{ "action": "migrate-config" }` to replace it wit
 See [Configuration Reference](docs/reference/configuration.md) for examples and repair guidance.
 ````
 
-- [ ] **Step 2: Replace configuration reference opening**
+- [x] **Step 2: Replace configuration reference opening**
 
 In `docs/reference/configuration.md`, replace the current intro and precedence section with:
 
@@ -1801,7 +1801,7 @@ Common repairs:
 - Keep `config.json` as a small override file instead of copying the full example.
 ````
 
-- [ ] **Step 3: Add targeted examples to configuration reference**
+- [x] **Step 3: Add targeted examples to configuration reference**
 
 Keep the existing config key sections, but add these examples under a new `## Common Override Examples` section before `## Config Keys`:
 
@@ -1865,7 +1865,7 @@ Add a custom model tier:
 }
 ````
 
-- [ ] **Step 4: Remove stale install-seeding language**
+- [x] **Step 4: Remove stale install-seeding language**
 
 In `docs/reference/configuration.md`, remove any sentence that says the installer seeds `config.json` from `default-config.json`. Replace it with:
 
@@ -1873,7 +1873,7 @@ In `docs/reference/configuration.md`, remove any sentence that says the installe
 On install, `config.json` is created as an empty override file when missing.
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add README.md docs/reference/configuration.md
@@ -1885,7 +1885,7 @@ git commit -m "docs: explain config override model"
 **Files:**
 - Modify: `CHANGELOG.md`
 
-- [ ] **Step 1: Add `0.2.0` changelog entry**
+- [x] **Step 1: Add `0.2.0` changelog entry**
 
 At the top of `CHANGELOG.md`, above `0.1.0`, add:
 
@@ -1907,7 +1907,7 @@ At the top of `CHANGELOG.md`, above `0.1.0`, add:
 - If Pi reports that `pi-superagents` is disabled, fix or remove the reported keys to fall back to bundled defaults.
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add CHANGELOG.md
@@ -1919,7 +1919,7 @@ git commit -m "docs: add 0.2.0 changelog"
 **Files:**
 - No code changes expected.
 
-- [ ] **Step 1: Run all unit tests**
+- [x] **Step 1: Run all unit tests**
 
 Run:
 
@@ -1929,7 +1929,7 @@ npm run test:unit
 
 Expected: all unit tests pass.
 
-- [ ] **Step 2: Run all integration tests**
+- [x] **Step 2: Run all integration tests**
 
 Run:
 
@@ -1939,7 +1939,7 @@ npm run test:integration
 
 Expected: all integration tests pass, with optional dependency skips only where already expected.
 
-- [ ] **Step 3: Run install-oriented e2e tests**
+- [x] **Step 3: Run install-oriented e2e tests**
 
 Run:
 
@@ -1949,7 +1949,7 @@ npm run test:e2e
 
 Expected: all e2e tests pass, or optional harness-dependent tests skip with explicit skip messages.
 
-- [ ] **Step 4: Inspect package contents**
+- [x] **Step 4: Inspect package contents**
 
 Run:
 
@@ -1972,7 +1972,7 @@ and does not include:
 config.json
 ```
 
-- [ ] **Step 5: Verify final git state**
+- [x] **Step 5: Verify final git state**
 
 Run:
 
