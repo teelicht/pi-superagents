@@ -7,7 +7,6 @@ import * as path from "node:path";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import type { AgentConfig } from "../agents/agents.ts";
-import { ChainClarifyComponent, type ChainClarifyResult, type BehaviorOverride, type ModelInfo } from "../ui/chain-clarify.ts";
 import {
 	resolveChainTemplates,
 	createChainDir,
@@ -26,7 +25,7 @@ import {
 	type ResolvedStepBehavior,
 	type ResolvedTemplates,
 } from "./settings.ts";
-import { discoverAvailableSkills, normalizeSkillInput } from "../shared/skills.ts";
+import { normalizeSkillInput } from "../shared/skills.ts";
 import { runSync } from "./execution.ts";
 import { buildChainSummary } from "../shared/formatters.ts";
 import { getSingleResultOutput, mapConcurrent } from "../shared/utils.ts";
@@ -57,6 +56,13 @@ import {
 	MAX_CONCURRENCY,
 	resolveChildMaxSubagentDepth,
 } from "../shared/types.ts";
+
+/** Model info for display (previously from chain-clarify.ts) */
+interface ModelInfo {
+	provider: string;
+	id: string;
+	fullId: string;
+}
 
 /** Resolve a model name to its full provider/model format */
 function resolveModelFullId(modelName: string | undefined, availableModels: ModelInfo[]): string | undefined {
@@ -301,6 +307,7 @@ export interface ChainExecutionParams {
 	artifactsDir: string;
 	artifactConfig: ArtifactConfig;
 	includeProgress?: boolean;
+	/** @deprecated Clarify TUI has been removed; this field is kept for backward compatibility but ignored. */
 	clarify?: boolean;
 	onUpdate?: (r: AgentToolResult<Details>) => void;
 	chainSkills?: string[];
@@ -315,11 +322,6 @@ export interface ChainExecutionResult {
 	content: Array<{ type: "text"; text: string }>;
 	details: Details;
 	isError?: boolean;
-	/** User requested async execution via TUI - caller should dispatch to executeAsyncChain */
-	requestedAsync?: {
-		chain: ChainStep[];
-		chainSkills: string[];
-	};
 }
 
 /**
@@ -339,7 +341,6 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 		artifactsDir,
 		artifactConfig,
 		includeProgress,
-		clarify,
 		onUpdate,
 		chainSkills: chainSkillsParam,
 		chainDir: chainDirBase,
@@ -369,124 +370,15 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 	// Create chain directory
 	const chainDir = createChainDir(runId, chainDirBase);
 
-	// Check if chain has any parallel steps
-	const hasParallelSteps = chainSteps.some(isParallelStep);
-
 	// Resolve templates (parallel-aware)
-	let templates: ResolvedTemplates = resolveChainTemplates(chainSteps);
+	const templates: ResolvedTemplates = resolveChainTemplates(chainSteps);
 
-	// For TUI: only show if no parallel steps (TUI v1 doesn't support parallel display)
-	const shouldClarify = clarify !== false && ctx.hasUI && !hasParallelSteps;
-
-	// Behavior overrides from TUI (set if TUI is shown, undefined otherwise)
-	let tuiBehaviorOverrides: (BehaviorOverride | undefined)[] | undefined;
-
-	// Get available models for model resolution (used in TUI and execution)
+	// Get available models for model resolution (used in execution)
 	const availableModels: ModelInfo[] = ctx.modelRegistry.getAvailable().map((m) => ({
 		provider: m.provider,
 		id: m.id,
 		fullId: `${m.provider}/${m.id}`,
 	}));
-	const availableSkills = discoverAvailableSkills(ctx.cwd);
-
-	if (shouldClarify) {
-		// Sequential-only chain: use existing TUI
-		const seqSteps = chainSteps as SequentialStep[];
-
-		// Load agent configs for sequential steps
-		const agentConfigs: AgentConfig[] = [];
-		for (const step of seqSteps) {
-			const config = agents.find((a) => a.name === step.agent);
-			if (!config) {
-				removeChainDir(chainDir);
-				return {
-					content: [{ type: "text", text: `Unknown agent: ${step.agent}` }],
-					isError: true,
-					details: { mode: "chain" as const, results: [] },
-				};
-			}
-			agentConfigs.push(config);
-		}
-
-		// Build step overrides
-		const stepOverrides: StepOverrides[] = seqSteps.map((step) => ({
-			output: step.output,
-			reads: step.reads,
-			progress: step.progress,
-			skills: normalizeSkillInput(step.skill),
-			model: step.model,
-		}));
-
-		// Pre-resolve behaviors for TUI display
-		const resolvedBehaviors = agentConfigs.map((config, i) =>
-			resolveStepBehavior(
-				config,
-				stepOverrides[i]!,
-				chainSkills,
-				resolvePacketDefaultsForChainAgent(workflow, seqSteps[i]!.agent),
-			),
-		);
-
-		// Flatten templates for TUI (all strings for sequential)
-		const flatTemplates = templates as string[];
-
-		const result = await ctx.ui.custom<ChainClarifyResult>(
-			(tui, theme, _kb, done) =>
-				new ChainClarifyComponent(
-					tui,
-					theme,
-					agentConfigs,
-					flatTemplates,
-					originalTask,
-					chainDir,
-					resolvedBehaviors,
-					availableModels,
-					availableSkills,
-					done,
-				),
-			{
-				overlay: true,
-				overlayOptions: { anchor: "center", width: 84, maxHeight: "80%" },
-			},
-		);
-
-		if (!result || !result.confirmed) {
-			removeChainDir(chainDir);
-			return {
-				content: [{ type: "text", text: "Chain cancelled" }],
-				details: { mode: "chain", results: [] },
-			};
-		}
-
-		// User requested background execution - return early so caller can dispatch to async
-		if (result.runInBackground) {
-			removeChainDir(chainDir); // Will be recreated by async runner
-			// Apply TUI edits (templates + behavior overrides) to chain steps
-			const updatedChain = chainSteps.map((step, i) => {
-				if (isParallelStep(step)) return step; // Parallel steps unchanged (TUI skipped for parallel chains)
-				const override = result.behaviorOverrides[i];
-				return {
-					...step,
-					task: result.templates[i] as string, // Always use edited template
-					...(override?.model ? { model: override.model } : {}),
-					...(override?.output !== undefined ? { output: override.output } : {}),
-					...(override?.reads !== undefined ? { reads: override.reads } : {}),
-					...(override?.progress !== undefined ? { progress: override.progress } : {}),
-					...(override?.skills !== undefined ? { skill: override.skills } : {}),
-				};
-			});
-			return {
-				content: [{ type: "text", text: "Launching in background..." }],
-				details: { mode: "chain", results: [] },
-				requestedAsync: { chain: updatedChain as ChainStep[], chainSkills },
-			};
-		}
-
-		// Update templates from TUI result
-		templates = result.templates;
-		// Store behavior overrides from TUI (used below in sequential step execution)
-		tuiBehaviorOverrides = result.behaviorOverrides;
-	}
 
 	// Execute chain (handles both sequential and parallel steps)
 	const results: SingleResult[] = [];
@@ -663,16 +555,12 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 				};
 			}
 
-			// Resolve behavior first (TUI overrides take precedence over step config)
-			const tuiOverride = tuiBehaviorOverrides?.[stepIndex];
+			// Resolve behavior from step configuration (no TUI overrides)
 			const stepOverride: StepOverrides = {
-				output: tuiOverride?.output !== undefined ? tuiOverride.output : seqStep.output,
-				reads: tuiOverride?.reads !== undefined ? tuiOverride.reads : seqStep.reads,
-				progress: tuiOverride?.progress !== undefined ? tuiOverride.progress : seqStep.progress,
-				skills:
-					tuiOverride?.skills !== undefined
-						? tuiOverride.skills
-						: normalizeSkillInput(seqStep.skill),
+				output: seqStep.output,
+				reads: seqStep.reads,
+				progress: seqStep.progress,
+				skills: normalizeSkillInput(seqStep.skill),
 			};
 			const behavior = resolveStepBehavior(
 				agentConfig,
@@ -706,10 +594,9 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 			// Assemble final task: prefix (READ/WRITE instructions) + task + suffix (progress, previous summary)
 			stepTask = prefix + stepTask + suffix;
 
-			// Resolve model: TUI override (already full format) or agent's model resolved to full format
+			// Resolve model
 			const effectiveModel =
-				tuiOverride?.model
-				?? (seqStep.model ? resolveModelFullId(seqStep.model, availableModels) : null)
+				(seqStep.model ? resolveModelFullId(seqStep.model, availableModels) : null)
 				?? resolveModelFullId(agentConfig.model, availableModels);
 
 			// Run step

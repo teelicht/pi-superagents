@@ -1,8 +1,31 @@
+/**
+ * Slash command live state tracking
+ *
+ * Manages live and final snapshots of slash subagent execution results.
+ * Previously imported SlashSubagentResponse and SlashSubagentUpdate from
+ * slash-bridge.ts; those types are now inlined here since that module was removed.
+ */
+
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { Message } from "@mariozechner/pi-ai";
 import type { SubagentParamsLike } from "../execution/subagent-executor.ts";
-import type { SlashSubagentResponse, SlashSubagentUpdate } from "./slash-bridge.ts";
 import { type Details, type SingleResult, type Usage, SLASH_RESULT_TYPE } from "../shared/types.ts";
+
+/** Slash-subagent completion payload (previously from slash-bridge.ts) */
+export interface SlashSubagentResponse {
+	requestId: string;
+	result: AgentToolResult<Details>;
+	isError: boolean;
+	errorText?: string;
+}
+
+/** Slash-subagent progress update payload (previously from slash-bridge.ts) */
+export interface SlashSubagentUpdate {
+	requestId: string;
+	progress?: Details["progress"];
+	currentTool?: string;
+	toolCount?: number;
+}
 
 export interface SlashMessageDetails {
 	requestId: string;

@@ -14,7 +14,6 @@ import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { type AgentConfig, type AgentScope } from "../agents/agents.ts";
 import { getArtifactsDir } from "../shared/artifacts.ts";
-import { ChainClarifyComponent, type ChainClarifyResult, type ModelInfo } from "../ui/chain-clarify.ts";
 import { executeChain } from "./chain-execution.ts";
 import { resolveExecutionAgentScope } from "../agents/agent-scope.ts";
 import { runSync } from "./execution.ts";
@@ -27,7 +26,7 @@ import {
 	type ChainStep,
 	type SequentialStep,
 } from "./settings.ts";
-import { discoverAvailableSkills, normalizeSkillInput } from "../shared/skills.ts";
+import { normalizeSkillInput } from "../shared/skills.ts";
 import { executeAsyncChain, executeAsyncSingle, isAsyncAvailable } from "./async-execution.ts";
 import { createForkContextResolver } from "./fork-context.ts";
 import { finalizeSingleOutput, injectSingleOutputInstruction, resolveSingleOutputPath } from "./single-output.ts";
@@ -137,7 +136,7 @@ function validateExecutionInput(
 	hasChain: boolean,
 	hasTasks: boolean,
 	hasSingle: boolean,
-	allowClarifyTaskPrompt: boolean,
+
 ): AgentToolResult<Details> | null {
 	if (Number(hasChain) + Number(hasTasks) + Number(hasSingle) !== 1) {
 		return {
@@ -170,7 +169,7 @@ function validateExecutionInput(
 					details: { mode: "chain" as const, results: [] },
 				};
 			}
-		} else if (!(firstStep as SequentialStep).task && !params.task && !allowClarifyTaskPrompt) {
+		} else if (!(firstStep as SequentialStep).task && !params.task) {
 			return {
 				content: [{ type: "text", text: "First step in chain must have a task" }],
 				isError: true,
@@ -525,7 +524,6 @@ async function runChainPath(data: ExecutionContextData, deps: ExecutorDeps): Pro
 		artifactsDir,
 		artifactConfig,
 		includeProgress: params.includeProgress,
-		clarify: params.clarify,
 		onUpdate,
 		chainSkills,
 		chainDir: params.chainDir,
@@ -534,36 +532,6 @@ async function runChainPath(data: ExecutionContextData, deps: ExecutorDeps): Pro
 		workflow: data.workflow,
 		useTestDrivenDevelopment: data.useTestDrivenDevelopment,
 	});
-
-	if (chainResult.requestedAsync) {
-		if (!isAsyncAvailable()) {
-			return {
-				content: [{ type: "text", text: "Background mode requires jiti for TypeScript execution but it could not be found." }],
-				isError: true,
-				details: { mode: "chain" as const, results: [] },
-			};
-		}
-		const id = randomUUID();
-		const asyncCtx = { pi: deps.pi, cwd: ctx.cwd, currentSessionId: deps.state.currentSessionId! };
-		const asyncChain = wrapChainTasksForFork(chainResult.requestedAsync.chain, params.context);
-		return executeAsyncChain(id, {
-			chain: asyncChain,
-			agents,
-			ctx: asyncCtx,
-			cwd: params.cwd,
-			maxOutput: params.maxOutput,
-			artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
-			artifactConfig,
-			shareEnabled,
-			sessionRoot,
-			chainSkills: chainResult.requestedAsync.chainSkills,
-			sessionFilesByFlatIndex: collectChainSessionFiles(asyncChain, sessionFileForIndex),
-			maxSubagentDepth: currentMaxSubagentDepth,
-			workflow: data.workflow,
-			useTestDrivenDevelopment: data.useTestDrivenDevelopment,
-			config: deps.config,
-		});
-	}
 
 	return chainResult;
 }
@@ -791,89 +759,6 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 	const readsOverrides: (string[] | false | undefined)[] = tasks.map((t) => t.reads);
 	const progressOverrides: (boolean | undefined)[] = tasks.map((t) => t.progress);
 
-	if (params.clarify === true && ctx.hasUI) {
-		const availableModels: ModelInfo[] = ctx.modelRegistry.getAvailable().map((m) => ({
-			provider: m.provider,
-			id: m.id,
-			fullId: `${m.provider}/${m.id}`,
-		}));
-
-		const behaviors = agentConfigs.map((c, i) =>
-			resolveStepBehavior(c, { skills: skillOverrides[i] }),
-		);
-		const availableSkills = discoverAvailableSkills(ctx.cwd);
-
-		const result = await ctx.ui.custom<ChainClarifyResult>(
-			(tui, theme, _kb, done) =>
-				new ChainClarifyComponent(
-					tui, theme,
-					agentConfigs,
-					taskTexts,
-					"",
-					undefined,
-					behaviors,
-					availableModels,
-					availableSkills,
-					done,
-					"parallel",
-				),
-			{ overlay: true, overlayOptions: { anchor: "center", width: 84, maxHeight: "80%" } },
-		);
-
-		if (!result || !result.confirmed) {
-			return { content: [{ type: "text", text: "Cancelled" }], details: { mode: "parallel", results: [] } };
-		}
-
-		taskTexts = result.templates;
-		for (let i = 0; i < result.behaviorOverrides.length; i++) {
-			const override = result.behaviorOverrides[i];
-			if (override?.model) modelOverrides[i] = override.model;
-			if (override?.skills !== undefined) skillOverrides[i] = override.skills;
-			if (override?.output !== undefined) outputOverrides[i] = override.output;
-			if (override?.reads !== undefined) readsOverrides[i] = override.reads;
-			if (override?.progress !== undefined) progressOverrides[i] = override.progress;
-		}
-
-		if (result.runInBackground) {
-			if (!isAsyncAvailable()) {
-				return {
-					content: [{ type: "text", text: "Background mode requires jiti for TypeScript execution but it could not be found." }],
-					isError: true,
-					details: { mode: "parallel" as const, results: [] },
-				};
-			}
-			const id = randomUUID();
-			const asyncCtx = { pi: deps.pi, cwd: ctx.cwd, currentSessionId: deps.state.currentSessionId! };
-			const parallelTasks = tasks.map((t, i) => ({
-				agent: t.agent,
-				task: params.context === "fork" ? wrapForkTask(taskTexts[i]!) : taskTexts[i]!,
-				cwd: t.cwd,
-				...(modelOverrides[i] ? { model: modelOverrides[i] } : {}),
-				...(skillOverrides[i] !== undefined ? { skill: skillOverrides[i] } : {}),
-				...(outputOverrides[i] !== undefined ? { output: outputOverrides[i] } : {}),
-				...(readsOverrides[i] !== undefined ? { reads: readsOverrides[i] } : {}),
-				...(progressOverrides[i] !== undefined ? { progress: progressOverrides[i] } : {}),
-			}));
-			return executeAsyncChain(id, {
-				chain: [{ parallel: parallelTasks, worktree: effectiveWorktree }],
-				agents,
-				ctx: asyncCtx,
-				cwd: params.cwd,
-				maxOutput: params.maxOutput,
-				artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
-				artifactConfig,
-				shareEnabled,
-				sessionRoot,
-				chainSkills: [],
-				sessionFilesByFlatIndex: tasks.map((_, index) => sessionFileForIndex(index)),
-				maxSubagentDepth: currentMaxSubagentDepth,
-				workflow,
-				useTestDrivenDevelopment,
-				config: deps.config,
-			});
-		}
-	}
-
 	const behaviors = agentConfigs.map((config) => resolveStepBehavior(config, {}));
 	const liveResults: (SingleResult | undefined)[] = new Array(tasks.length).fill(undefined);
 	const liveProgress: (AgentProgress | undefined)[] = new Array(tasks.length).fill(undefined);
@@ -997,75 +882,6 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(deps.config.maxSubagentDepth);
 	const maxSubagentDepth = resolveChildMaxSubagentDepth(currentMaxSubagentDepth, agentConfig.maxSubagentDepth);
 
-	if (params.clarify === true && ctx.hasUI) {
-		const availableModels: ModelInfo[] = ctx.modelRegistry.getAvailable().map((m) => ({
-			provider: m.provider,
-			id: m.id,
-			fullId: `${m.provider}/${m.id}`,
-		}));
-
-		const behavior = resolveStepBehavior(agentConfig, { output: effectiveOutput, skills: skillOverride });
-		const availableSkills = discoverAvailableSkills(ctx.cwd);
-
-		const result = await ctx.ui.custom<ChainClarifyResult>(
-			(tui, theme, _kb, done) =>
-				new ChainClarifyComponent(
-					tui, theme,
-					[agentConfig],
-					[task],
-					task,
-					undefined,
-					[behavior],
-					availableModels,
-					availableSkills,
-					done,
-					"single",
-				),
-			{ overlay: true, overlayOptions: { anchor: "center", width: 84, maxHeight: "80%" } },
-		);
-
-		if (!result || !result.confirmed) {
-			return { content: [{ type: "text", text: "Cancelled" }], details: { mode: "single", results: [] } };
-		}
-
-		task = result.templates[0]!;
-		const override = result.behaviorOverrides[0];
-		if (override?.model) modelOverride = override.model;
-		if (override?.output !== undefined) effectiveOutput = override.output;
-		if (override?.skills !== undefined) skillOverride = override.skills;
-
-		if (result.runInBackground) {
-			if (!isAsyncAvailable()) {
-				return {
-					content: [{ type: "text", text: "Background mode requires jiti for TypeScript execution but it could not be found." }],
-					isError: true,
-					details: { mode: "single" as const, results: [] },
-				};
-			}
-			const id = randomUUID();
-			const asyncCtx = { pi: deps.pi, cwd: ctx.cwd, currentSessionId: deps.state.currentSessionId! };
-			return executeAsyncSingle(id, {
-				agent: params.agent!,
-				task: params.context === "fork" ? wrapForkTask(task) : task,
-				agentConfig,
-				ctx: asyncCtx,
-				cwd: params.cwd,
-				maxOutput: params.maxOutput,
-				artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
-				artifactConfig,
-				shareEnabled,
-				sessionRoot,
-				sessionFile: sessionFileForIndex(0),
-				skills: skillOverride,
-				output: effectiveOutput,
-				maxSubagentDepth,
-				workflow,
-				useTestDrivenDevelopment,
-				config: deps.config,
-			});
-		}
-	}
-
 	if (params.context === "fork") {
 		task = wrapForkTask(task);
 	}
@@ -1180,18 +996,12 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 		const hasChain = (normalizedParams.chain?.length ?? 0) > 0;
 		const hasTasks = (normalizedParams.tasks?.length ?? 0) > 0;
 		const hasSingle = Boolean(normalizedParams.agent && normalizedParams.task);
-		const allowClarifyTaskPrompt = hasChain
-			&& normalizedParams.clarify === true
-			&& ctx.hasUI
-			&& !(normalizedParams.chain?.some(isParallelStep) ?? false);
-
 		const validationError = validateExecutionInput(
 			normalizedParams,
 			agents,
 			hasChain,
 			hasTasks,
 			hasSingle,
-			allowClarifyTaskPrompt,
 		);
 		if (validationError) return validationError;
 
@@ -1202,15 +1012,8 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			return toExecutionErrorResult(normalizedParams, error);
 		}
 
-		const requestedAsync = normalizedParams.async ?? deps.asyncByDefault;
-		let effectiveAsync = false;
-		if (requestedAsync) {
-			if (hasChain) {
-				effectiveAsync = normalizedParams.clarify === false;
-			} else {
-				effectiveAsync = normalizedParams.clarify !== true;
-			}
-		}
+		const effectiveAsync = (normalizedParams.async ?? deps.asyncByDefault) ?? false;
+
 
 		const artifactConfig: ArtifactConfig = {
 			...DEFAULT_ARTIFACT_CONFIG,
