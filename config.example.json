@@ -1,0 +1,29 @@
+{
+  "asyncByDefault": false,
+  "defaultSessionDir": null,
+  "maxSubagentDepth": 2,
+  "superagents": {
+    "defaultImplementerMode": "tdd",
+    "worktrees": {
+      "enabled": false,
+      "root": null,
+      "setupHook": null,
+      "setupHookTimeoutMs": 30000
+    },
+    "modelTiers": {
+      "cheap": {
+        "model": "opencode-go/minimax-m2.7"
+      },
+      "balanced": {
+        "model": "opencode-go/glm-5.1"
+      },
+      "max": {
+        "model": "openai/gpt-5.4"
+      },
+      "creative": {
+        "model": "anthropic/claude-sonnet-4",
+        "thinking": "high"
+      }
+    }
+  }
+}
