@@ -10,11 +10,13 @@
  * - `superpowers/workflow-profile` for argument parsing and profile resolution
  * - `superpowers/root-prompt` for prompt construction
  * - `shared/types` for `ExtensionConfig`, `SubagentState`
+ * - `shared/skills` for `resolveAvailableSkill`
  * - `ui/superpowers-status` for the status overlay
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import type { ExtensionConfig, SubagentState } from "../shared/types.ts";
+import { resolveAvailableSkill } from "../shared/skills.ts";
 import { SuperpowersStatusComponent } from "../ui/superpowers-status.ts";
 import {
 	parseSuperpowersWorkflowArgs,
@@ -49,13 +51,14 @@ async function sendSuperpowersPrompt(
 	ctx: ExtensionContext,
 	profile: ResolvedSuperpowersRunProfile,
 ): Promise<void> {
+	const usingSuperpowersSkill = resolveAvailableSkill(ctx.cwd, "using-superpowers");
 	const prompt = buildSuperpowersRootPrompt({
 		task: profile.task,
 		useSubagents: profile.useSubagents,
 		useTestDrivenDevelopment: profile.useTestDrivenDevelopment,
 		bg: profile.bg,
 		fork: profile.fork,
-		usingSuperpowersSkill: undefined,
+		usingSuperpowersSkill,
 	});
 	if (ctx.isIdle()) {
 		pi.sendUserMessage(prompt);

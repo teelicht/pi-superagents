@@ -441,6 +441,19 @@ export function discoverAvailableSkills(cwd: string): Array<{
 }
 
 /**
+ * Resolve one available skill by exact name.
+ *
+ * @param cwd Current working directory used for project skill discovery.
+ * @param name Skill name to resolve.
+ * @returns Resolved skill or undefined when unavailable.
+ */
+export function resolveAvailableSkill(cwd: string, name: string): ResolvedSkill | undefined {
+	const location = resolveSkillPath(name, cwd);
+	if (!location) return undefined;
+	return readSkill(name, location.path, location.source);
+}
+
+/**
  * Return the set of skill names currently discoverable for a workspace.
  *
  * Uses the shared cached discovery path so callers can validate overlays

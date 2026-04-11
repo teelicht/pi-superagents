@@ -165,6 +165,7 @@ describe("lean superpowers slash commands", { skip: !available ? "slash-commands
 		assert.match(prompt, /useSubagents:\s*true/);
 		assert.match(prompt, /useTestDrivenDevelopment:\s*true/);
 		assert.match(prompt, /implement auth fix/);
+		assert.match(prompt, /Required bootstrap skill/);
 		// No options means it was sent directly (isIdle === true)
 		assert.equal(userMessages[0]!.options, undefined);
 	});
