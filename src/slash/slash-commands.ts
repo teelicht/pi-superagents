@@ -1,468 +1,27 @@
 /**
- * Slash command registration and request bridging for subagent execution.
+ * Lean slash command registration for Superpowers workflows.
  *
  * Responsibilities:
- * - register slash commands and shortcuts with Pi
- * - parse command arguments into executor request payloads
- * - stream bridge updates into inline slash result messages
+ * - register `/superpowers`, `/superpowers-status`, and configured custom commands
+ * - parse workflow arguments and resolve run profiles from config defaults
+ * - send root-session prompts via `sendUserMessage`
+ *
+ * Important dependencies:
+ * - `superpowers/workflow-profile` for argument parsing and profile resolution
+ * - `superpowers/root-prompt` for prompt construction
+ * - `shared/types` for `ExtensionConfig`, `SubagentState`
+ * - `ui/superpowers-status` for the status overlay
  */
 
-import { randomUUID } from "node:crypto";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { Key, matchesKey } from "@mariozechner/pi-tui";
-import { discoverAgents, discoverAgentsAll } from "../agents/agents.ts";
-import { AgentManagerComponent, type ManagerResult } from "../agents/agent-manager.ts";
-import { SubagentsStatusComponent } from "../ui/subagents-status.ts";
-import { discoverAvailableSkills } from "../shared/skills.ts";
-import type { SubagentParamsLike } from "../execution/subagent-executor.ts";
-import type { SlashSubagentResponse, SlashSubagentUpdate } from "./slash-bridge.ts";
+import type { ExtensionConfig, SubagentState } from "../shared/types.ts";
+import { SuperpowersStatusComponent } from "../ui/superpowers-status.ts";
 import {
-	applySlashUpdate,
-	buildSlashInitialResult,
-	failSlashResult,
-	finalizeSlashResult,
-} from "./slash-live-state.ts";
-import {
-	MAX_PARALLEL,
-	SLASH_RESULT_TYPE,
-	SLASH_SUBAGENT_CANCEL_EVENT,
-	SLASH_SUBAGENT_REQUEST_EVENT,
-	SLASH_SUBAGENT_RESPONSE_EVENT,
-	SLASH_SUBAGENT_STARTED_EVENT,
-	SLASH_SUBAGENT_UPDATE_EVENT,
-	type SubagentState,
-} from "../shared/types.ts";
-
-interface InlineConfig {
-	output?: string | false;
-	reads?: string[] | false;
-	model?: string;
-	skill?: string[] | false;
-	progress?: boolean;
-}
-
-const parseInlineConfig = (raw: string): InlineConfig => {
-	const config: InlineConfig = {};
-	for (const part of raw.split(",")) {
-		const trimmed = part.trim();
-		if (!trimmed) continue;
-		const eq = trimmed.indexOf("=");
-		if (eq === -1) {
-			if (trimmed === "progress") config.progress = true;
-			continue;
-		}
-		const key = trimmed.slice(0, eq).trim();
-		const val = trimmed.slice(eq + 1).trim();
-		switch (key) {
-			case "output": config.output = val === "false" ? false : val; break;
-			case "reads": config.reads = val === "false" ? false : val.split("+").filter(Boolean); break;
-			case "model": config.model = val || undefined; break;
-			case "skill": case "skills": config.skill = val === "false" ? false : val.split("+").filter(Boolean); break;
-			case "progress": config.progress = val !== "false"; break;
-		}
-	}
-	return config;
-};
-
-const parseAgentToken = (token: string): { name: string; config: InlineConfig } => {
-	const bracket = token.indexOf("[");
-	if (bracket === -1) return { name: token, config: {} };
-	const end = token.lastIndexOf("]");
-	return { name: token.slice(0, bracket), config: parseInlineConfig(token.slice(bracket + 1, end !== -1 ? end : undefined)) };
-};
-
-const extractExecutionFlags = (rawArgs: string): { args: string; bg: boolean; fork: boolean } => {
-	let args = rawArgs.trim();
-	let bg = false;
-	let fork = false;
-
-	while (true) {
-		if (args.endsWith(" --bg") || args === "--bg") {
-			bg = true;
-			args = args === "--bg" ? "" : args.slice(0, -5).trim();
-			continue;
-		}
-		if (args.endsWith(" --fork") || args === "--fork") {
-			fork = true;
-			args = args === "--fork" ? "" : args.slice(0, -7).trim();
-			continue;
-		}
-		break;
-	}
-
-	return { args, bg, fork };
-};
-
-const makeAgentCompletions = (state: SubagentState, multiAgent: boolean) => (prefix: string) => {
-	const agents = discoverAgents(state.baseCwd, "both").agents;
-	if (!multiAgent) {
-		if (prefix.includes(" ")) return null;
-		return agents.filter((a) => a.name.startsWith(prefix)).map((a) => ({ value: a.name, label: a.name }));
-	}
-
-	const lastArrow = prefix.lastIndexOf(" -> ");
-	const segment = lastArrow !== -1 ? prefix.slice(lastArrow + 4) : prefix;
-	if (segment.includes(" -- ") || segment.includes('"') || segment.includes("'")) return null;
-
-	const lastWord = (prefix.match(/(\S*)$/) || ["", ""])[1];
-	const beforeLastWord = prefix.slice(0, prefix.length - lastWord.length);
-
-	if (lastWord === "->") {
-		return agents.map((a) => ({ value: `${prefix} ${a.name}`, label: a.name }));
-	}
-
-	return agents.filter((a) => a.name.startsWith(lastWord)).map((a) => ({ value: `${beforeLastWord}${a.name}`, label: a.name }));
-};
-
-async function requestSlashRun(
-	pi: ExtensionAPI,
-	ctx: ExtensionContext,
-	requestId: string,
-	params: SubagentParamsLike,
-): Promise<SlashSubagentResponse> {
-	return new Promise((resolve, reject) => {
-		let done = false;
-		let started = false;
-
-		const startTimeoutMs = 15_000;
-		const startTimeout = setTimeout(() => {
-			finish(() => reject(new Error(
-				"Slash subagent bridge did not start within 15s. Ensure the extension is loaded correctly.",
-			)));
-		}, startTimeoutMs);
-
-		const onStarted = (data: unknown) => {
-			if (done || !data || typeof data !== "object") return;
-			if ((data as { requestId?: unknown }).requestId !== requestId) return;
-			started = true;
-			clearTimeout(startTimeout);
-			if (ctx.hasUI) ctx.ui.setStatus("subagent-slash", "running...");
-		};
-
-		const onResponse = (data: unknown) => {
-			if (done || !data || typeof data !== "object") return;
-			const response = data as Partial<SlashSubagentResponse>;
-			if (response.requestId !== requestId) return;
-			clearTimeout(startTimeout);
-			finish(() => resolve(response as SlashSubagentResponse));
-		};
-
-		const onUpdate = (data: unknown) => {
-			if (done || !data || typeof data !== "object") return;
-			const update = data as SlashSubagentUpdate;
-			if (update.requestId !== requestId) return;
-			applySlashUpdate(requestId, update);
-			if (!ctx.hasUI) return;
-			const tool = update.currentTool ? ` ${update.currentTool}` : "";
-			const count = update.toolCount ?? 0;
-			ctx.ui.setStatus("subagent-slash", `${count} tools${tool}`);
-		};
-
-		const onTerminalInput = ctx.hasUI
-			? ctx.ui.onTerminalInput((input) => {
-				if (!matchesKey(input, Key.escape)) return undefined;
-				pi.events.emit(SLASH_SUBAGENT_CANCEL_EVENT, { requestId });
-				finish(() => reject(new Error("Cancelled")));
-				return { consume: true };
-			})
-			: undefined;
-
-		const unsubStarted = pi.events.on(SLASH_SUBAGENT_STARTED_EVENT, onStarted);
-		const unsubResponse = pi.events.on(SLASH_SUBAGENT_RESPONSE_EVENT, onResponse);
-		const unsubUpdate = pi.events.on(SLASH_SUBAGENT_UPDATE_EVENT, onUpdate);
-
-		const finish = (next: () => void) => {
-			if (done) return;
-			done = true;
-			clearTimeout(startTimeout);
-			unsubStarted();
-			unsubResponse();
-			unsubUpdate();
-			onTerminalInput?.();
-			if (ctx.hasUI) ctx.ui.setStatus("subagent-slash", undefined);
-			next();
-		};
-
-		pi.events.emit(SLASH_SUBAGENT_REQUEST_EVENT, { requestId, params });
-
-		// Bridge emits STARTED synchronously during REQUEST emit.
-		// If not started, no bridge received the request.
-		if (!started && done) return;
-		if (!started) {
-			finish(() => reject(new Error(
-				"No slash subagent bridge responded. Ensure the subagent extension is loaded correctly.",
-			)));
-		}
-	});
-}
-
-function extractSlashMessageText(content: string | Array<{ type?: string; text?: string }>): string {
-	if (typeof content === "string") return content;
-	if (!Array.isArray(content)) return "";
-	return content
-		.filter((part): part is { type: "text"; text: string } => part?.type === "text" && typeof part.text === "string")
-		.map((part) => part.text)
-		.join("\n");
-}
-
-async function runSlashSubagent(
-	pi: ExtensionAPI,
-	ctx: ExtensionContext,
-	params: SubagentParamsLike,
-): Promise<void> {
-	const requestId = randomUUID();
-	const initialDetails = buildSlashInitialResult(requestId, params);
-	const initialText = extractSlashMessageText(initialDetails.result.content) || "Running subagent...";
-	pi.sendMessage({
-		customType: SLASH_RESULT_TYPE,
-		content: initialText,
-		display: true,
-		details: initialDetails,
-	});
-
-	try {
-		const response = await requestSlashRun(pi, ctx, requestId, params);
-		const finalDetails = finalizeSlashResult(response);
-		const text = extractSlashMessageText(response.result.content) || response.errorText || "(no output)";
-		pi.sendMessage({
-			customType: SLASH_RESULT_TYPE,
-			content: text,
-			display: false,
-			details: finalDetails,
-		});
-		if (response.isError && ctx.hasUI) {
-			ctx.ui.notify(response.errorText || "Subagent failed", "error");
-		}
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		const failedDetails = failSlashResult(requestId, params, message === "Cancelled" ? "Cancelled" : message);
-		pi.sendMessage({
-			customType: SLASH_RESULT_TYPE,
-			content: message,
-			display: false,
-			details: failedDetails,
-		});
-		if (message === "Cancelled") {
-			if (ctx.hasUI) ctx.ui.notify("Cancelled", "warning");
-			return;
-		}
-		if (ctx.hasUI) ctx.ui.notify(message, "error");
-	}
-}
-
-async function openAgentManager(
-	pi: ExtensionAPI,
-	ctx: ExtensionContext,
-): Promise<void> {
-	const agentData = { ...discoverAgentsAll(ctx.cwd), cwd: ctx.cwd };
-	const models = ctx.modelRegistry.getAvailable().map((m) => ({
-		provider: m.provider,
-		id: m.id,
-		fullId: `${m.provider}/${m.id}`,
-	}));
-	const skills = discoverAvailableSkills(ctx.cwd);
-
-	const result = await ctx.ui.custom<ManagerResult>(
-		(tui, theme, _kb, done) => new AgentManagerComponent(tui, theme, agentData, models, skills, done),
-		{ overlay: true, overlayOptions: { anchor: "center", width: 84, maxHeight: "80%" } },
-	);
-	if (!result) return;
-
-	if (result.action === "chain") {
-		const chain = result.agents.map((name, i) => ({
-			agent: name,
-			...(i === 0 ? { task: result.task } : {}),
-		}));
-		await runSlashSubagent(pi, ctx, {
-			chain,
-			task: result.task,
-			clarify: true,
-			agentScope: "both",
-		});
-		return;
-	}
-
-	if (result.action === "launch") {
-		await runSlashSubagent(pi, ctx, {
-			agent: result.agent,
-			task: result.task,
-			clarify: !result.skipClarify,
-			agentScope: "both",
-		});
-	} else if (result.action === "launch-chain") {
-		const chainParam = result.chain.steps.map((step) => ({
-			agent: step.agent,
-			task: step.task || undefined,
-			output: step.output,
-			reads: step.reads,
-			progress: step.progress,
-			skill: step.skills,
-			model: step.model,
-		}));
-		await runSlashSubagent(pi, ctx, {
-			chain: chainParam,
-			task: result.task,
-			clarify: !result.skipClarify,
-			agentScope: "both",
-		});
-	} else if (result.action === "parallel") {
-		await runSlashSubagent(pi, ctx, {
-			tasks: result.tasks,
-			clarify: !result.skipClarify,
-			agentScope: "both",
-		});
-	}
-}
-
-interface ParsedStep { name: string; config: InlineConfig; task?: string }
-
-/**
- * Parse `/superpowers` arguments into execution flags, implementer mode, and task text.
- *
- * Defaults to `tdd` mode when no explicit prefix is provided. Returns `null`
- * when the user provided only a mode token without a task body.
- */
-function parseSuperpowersArgs(
-	rawArgs: string,
-): { implementerMode: "tdd" | "direct"; task: string; bg: boolean; fork: boolean } | null {
-	const { args: cleanedArgs, bg, fork } = extractExecutionFlags(rawArgs);
-	const trimmed = cleanedArgs.trim();
-	if (!trimmed) return null;
-	if (trimmed === "direct" || trimmed === "tdd") return null;
-	if (trimmed.startsWith("direct ")) {
-		return {
-			implementerMode: "direct",
-			task: trimmed.slice("direct ".length).trim(),
-			bg,
-			fork,
-		};
-	}
-	if (trimmed.startsWith("tdd ")) {
-		return {
-			implementerMode: "tdd",
-			task: trimmed.slice("tdd ".length).trim(),
-			bg,
-			fork,
-		};
-	}
-	return { implementerMode: "tdd", task: trimmed, bg, fork };
-}
-
-/**
- * Build the root-session prompt injected by `/superpowers`.
- *
- * Inputs/outputs:
- * - accepts the parsed implementer mode, execution flags, and the user task text
- * - returns a concrete user-message prompt for the root agent
- *
- * Invariants:
- * - the prompt keeps workflow ownership in the root session
- * - the prompt explicitly activates `workflow: "superpowers"`
- * - the prompt tells the root agent not to stop after `sp-recon`
- *
- * Failure modes:
- * - none; callers validate the task text before invoking this helper
- */
-function buildSuperpowersUserPrompt(input: {
-	implementerMode: "tdd" | "direct";
-	task: string;
-	bg: boolean;
-	fork: boolean;
-}): string {
-	const subagentArgs = [
-		'workflow: "superpowers"',
-		`implementerMode: "${input.implementerMode}"`,
-		...(input.bg ? ["async: true", "clarify: false"] : []),
-		...(input.fork ? ['context: "fork"'] : []),
-	].join(", ");
-
-	return [
-		`Use the subagent tool with ${subagentArgs} for this task: ${input.task}`,
-		"The root session must own the workflow. Start with the `sp-recon` agent for bounded reconnaissance, then consume its findings in the root session and continue the root-owned Superpowers loop.",
-		"Do not stop after the recon subagent finishes. Continue with the next bounded step yourself, or explain clearly what blocks progress.",
-		...(input.bg
-			? ["Honor the requested background mode for subagent launches unless a concrete blocker makes that impossible."]
-			: []),
-		...(input.fork
-			? ['Honor the requested forked execution context by passing `context: "fork"` to subagent runs unless a concrete blocker makes that impossible.']
-			: []),
-	].join("\n\n");
-}
-
-const parseAgentArgs = (
-	state: SubagentState,
-	args: string,
-	command: string,
-	ctx: ExtensionContext,
-): { steps: ParsedStep[]; task: string } | null => {
-	const input = args.trim();
-	const usage = `Usage: /${command} agent1 "task1" -> agent2 "task2"`;
-	let steps: ParsedStep[];
-	let sharedTask: string;
-	let perStep = false;
-
-	if (input.includes(" -> ")) {
-		perStep = true;
-		const segments = input.split(" -> ");
-		steps = [];
-		for (const seg of segments) {
-			const trimmed = seg.trim();
-			if (!trimmed) continue;
-			let agentPart: string;
-			let task: string | undefined;
-			const qMatch = trimmed.match(/^(\S+(?:\[[^\]]*\])?)\s+(?:"([^"]*)"|'([^']*)')$/);
-			if (qMatch) {
-				agentPart = qMatch[1]!;
-				task = (qMatch[2] ?? qMatch[3]) || undefined;
-			} else {
-				const dashIdx = trimmed.indexOf(" -- ");
-				if (dashIdx !== -1) {
-					agentPart = trimmed.slice(0, dashIdx).trim();
-					task = trimmed.slice(dashIdx + 4).trim() || undefined;
-				} else {
-					agentPart = trimmed;
-				}
-			}
-			const parsed = parseAgentToken(agentPart);
-			steps.push({ ...parsed, task });
-		}
-		sharedTask = steps.find((s) => s.task)?.task ?? "";
-	} else {
-		const delimiterIndex = input.indexOf(" -- ");
-		if (delimiterIndex === -1) {
-			ctx.ui.notify(usage, "error");
-			return null;
-		}
-		const agentsPart = input.slice(0, delimiterIndex).trim();
-		sharedTask = input.slice(delimiterIndex + 4).trim();
-		if (!agentsPart || !sharedTask) {
-			ctx.ui.notify(usage, "error");
-			return null;
-		}
-		steps = agentsPart.split(/\s+/).filter(Boolean).map((t) => parseAgentToken(t));
-	}
-
-	if (steps.length === 0) {
-		ctx.ui.notify(usage, "error");
-		return null;
-	}
-	const agents = discoverAgents(state.baseCwd, "both").agents;
-	for (const step of steps) {
-		if (!agents.find((a) => a.name === step.name)) {
-			ctx.ui.notify(`Unknown agent: ${step.name}`, "error");
-			return null;
-		}
-	}
-	if (command === "chain" && !steps[0]?.task && (perStep || !sharedTask)) {
-		ctx.ui.notify(`First step must have a task: /chain agent "task" -> agent2`, "error");
-		return null;
-	}
-	if (command === "parallel" && !steps.some((s) => s.task) && !sharedTask) {
-		ctx.ui.notify("At least one step must have a task", "error");
-		return null;
-	}
-	return { steps, task: sharedTask };
-};
+	parseSuperpowersWorkflowArgs,
+	resolveSuperpowersRunProfile,
+	type ResolvedSuperpowersRunProfile,
+} from "../superpowers/workflow-profile.ts";
+import { buildSuperpowersRootPrompt } from "../superpowers/root-prompt.ts";
 
 /**
  * Notify the user when config errors disable execution.
@@ -477,130 +36,108 @@ function notifyIfConfigBlocked(state: SubagentState, ctx: ExtensionContext): boo
 	return true;
 }
 
+/**
+ * Send a Superpowers root-session prompt, either immediately or as a follow-up
+ * when the agent is already streaming.
+ *
+ * @param pi Extension API for sending messages.
+ * @param ctx Current extension command context.
+ * @param profile Fully resolved run profile.
+ */
+async function sendSuperpowersPrompt(
+	pi: ExtensionAPI,
+	ctx: ExtensionContext,
+	profile: ResolvedSuperpowersRunProfile,
+): Promise<void> {
+	const prompt = buildSuperpowersRootPrompt({
+		task: profile.task,
+		useSubagents: profile.useSubagents,
+		useTestDrivenDevelopment: profile.useTestDrivenDevelopment,
+		bg: profile.bg,
+		fork: profile.fork,
+		usingSuperpowersSkill: undefined,
+	});
+	if (ctx.isIdle()) {
+		pi.sendUserMessage(prompt);
+		return;
+	}
+	pi.sendUserMessage(prompt, { deliverAs: "followUp" });
+	if (ctx.hasUI) ctx.ui.notify("Queued Superpowers workflow as a follow-up", "info");
+}
+
+/**
+ * Register a single Superpowers slash command with argument parsing and prompt dispatch.
+ *
+ * @param pi Extension API for command registration and message sending.
+ * @param state Shared extension state for config gate checks.
+ * @param config Effective extension config for default resolution.
+ * @param commandName Slash command name without leading slash.
+ * @param description Command description shown in help.
+ */
+function registerSuperpowersCommand(
+	pi: ExtensionAPI,
+	state: SubagentState,
+	config: ExtensionConfig,
+	commandName: string,
+	description: string,
+): void {
+	pi.registerCommand(commandName, {
+		description,
+		handler: async (rawArgs, ctx) => {
+			if (notifyIfConfigBlocked(state, ctx)) return;
+			const parsed = parseSuperpowersWorkflowArgs(rawArgs);
+			if (!parsed?.task) {
+				ctx.ui.notify(`Usage: /${commandName} [lean|full|tdd|direct|subagents|no-subagents] <task> [--bg] [--fork]`, "error");
+				return;
+			}
+			const profile = resolveSuperpowersRunProfile({ config, commandName, parsed });
+			await sendSuperpowersPrompt(pi, ctx, profile);
+		},
+	});
+}
+
+/**
+ * Register all Superpowers slash commands with the Pi extension API.
+ *
+ * Registers:
+ * - `/superpowers` — primary workflow command
+ * - `/superpowers-status` — status and settings overlay
+ * - Any configured custom command presets from `config.superagents.commands`
+ *
+ * @param pi Extension API for command registration.
+ * @param state Shared extension state for config gate checks.
+ * @param config Effective extension config for default resolution.
+ */
 export function registerSlashCommands(
 	pi: ExtensionAPI,
 	state: SubagentState,
+	config: ExtensionConfig,
 ): void {
-	pi.registerCommand("agents", {
-		description: "Open the Agents Manager",
-		handler: async (_args, ctx) => {
-			await openAgentManager(pi, ctx);
-		},
-	});
+	registerSuperpowersCommand(
+		pi,
+		state,
+		config,
+		"superpowers",
+		"Run a Superpowers workflow: /superpowers [lean|full|tdd|direct|subagents|no-subagents] <task> [--bg] [--fork]",
+	);
 
-	pi.registerCommand("run", {
-		description: "Run a subagent directly: /run agent[output=file] task [--bg] [--fork]",
-		getArgumentCompletions: makeAgentCompletions(state, false),
-		handler: async (args, ctx) => {
-			if (notifyIfConfigBlocked(state, ctx)) return;
-			const { args: cleanedArgs, bg, fork } = extractExecutionFlags(args);
-			const input = cleanedArgs.trim();
-			const firstSpace = input.indexOf(" ");
-			if (firstSpace === -1) { ctx.ui.notify("Usage: /run <agent> <task> [--bg] [--fork]", "error"); return; }
-			const { name: agentName, config: inline } = parseAgentToken(input.slice(0, firstSpace));
-			const task = input.slice(firstSpace + 1).trim();
-			if (!task) { ctx.ui.notify("Usage: /run <agent> <task> [--bg] [--fork]", "error"); return; }
+	for (const [commandName, preset] of Object.entries(config.superagents?.commands ?? {})) {
+		registerSuperpowersCommand(
+			pi,
+			state,
+			config,
+			commandName,
+			preset.description ?? `Run Superpowers using the ${commandName} preset`,
+		);
+	}
 
-			const agents = discoverAgents(state.baseCwd, "both").agents;
-			if (!agents.find((a) => a.name === agentName)) { ctx.ui.notify(`Unknown agent: ${agentName}`, "error"); return; }
-
-			let finalTask = task;
-			if (inline.reads && Array.isArray(inline.reads) && inline.reads.length > 0) {
-				finalTask = `[Read from: ${inline.reads.join(", ")}]\n\n${finalTask}`;
-			}
-			const params: SubagentParamsLike = { agent: agentName, task: finalTask, clarify: false, agentScope: "both" };
-			if (inline.output !== undefined) params.output = inline.output;
-			if (inline.skill !== undefined) params.skill = inline.skill;
-			if (inline.model) params.model = inline.model;
-			if (bg) params.async = true;
-			if (fork) params.context = "fork";
-			await runSlashSubagent(pi, ctx, params);
-		},
-	});
-
-	pi.registerCommand("superpowers", {
-		description: "Run the Superpowers workflow: /superpowers [tdd|direct] <task> [--bg] [--fork]",
-		handler: async (rawArgs, ctx) => {
-			if (notifyIfConfigBlocked(state, ctx)) return;
-			const parsed = parseSuperpowersArgs(rawArgs);
-			if (!parsed?.task) {
-				ctx.ui.notify("Usage: /superpowers [tdd|direct] <task> [--bg] [--fork]", "error");
-				return;
-			}
-
-			const prompt = buildSuperpowersUserPrompt(parsed);
-			if (ctx.isIdle()) {
-				pi.sendUserMessage(prompt);
-				return;
-			}
-
-			pi.sendUserMessage(prompt, { deliverAs: "followUp" });
-			if (ctx.hasUI) ctx.ui.notify("Queued Superpowers workflow as a follow-up", "info");
-		},
-	});
-
-	pi.registerCommand("chain", {
-		description: "Run agents in sequence: /chain scout \"task\" -> planner [--bg] [--fork]",
-		getArgumentCompletions: makeAgentCompletions(state, true),
-		handler: async (args, ctx) => {
-			if (notifyIfConfigBlocked(state, ctx)) return;
-			const { args: cleanedArgs, bg, fork } = extractExecutionFlags(args);
-			const parsed = parseAgentArgs(state, cleanedArgs, "chain", ctx);
-			if (!parsed) return;
-			const chain = parsed.steps.map(({ name, config, task: stepTask }, i) => ({
-				agent: name,
-				...(stepTask ? { task: stepTask } : i === 0 && parsed.task ? { task: parsed.task } : {}),
-				...(config.output !== undefined ? { output: config.output } : {}),
-				...(config.reads !== undefined ? { reads: config.reads } : {}),
-				...(config.model ? { model: config.model } : {}),
-				...(config.skill !== undefined ? { skill: config.skill } : {}),
-				...(config.progress !== undefined ? { progress: config.progress } : {}),
-			}));
-			const params: SubagentParamsLike = { chain, task: parsed.task, clarify: false, agentScope: "both" };
-			if (bg) params.async = true;
-			if (fork) params.context = "fork";
-			await runSlashSubagent(pi, ctx, params);
-		},
-	});
-
-	pi.registerCommand("parallel", {
-		description: "Run agents in parallel: /parallel scout \"task1\" -> reviewer \"task2\" [--bg] [--fork]",
-		getArgumentCompletions: makeAgentCompletions(state, true),
-		handler: async (args, ctx) => {
-			if (notifyIfConfigBlocked(state, ctx)) return;
-			const { args: cleanedArgs, bg, fork } = extractExecutionFlags(args);
-			const parsed = parseAgentArgs(state, cleanedArgs, "parallel", ctx);
-			if (!parsed) return;
-			if (parsed.steps.length > MAX_PARALLEL) { ctx.ui.notify(`Max ${MAX_PARALLEL} parallel tasks`, "error"); return; }
-			const tasks = parsed.steps.map(({ name, config, task: stepTask }) => ({
-				agent: name,
-				task: stepTask ?? parsed.task,
-				...(config.output !== undefined ? { output: config.output } : {}),
-				...(config.reads !== undefined ? { reads: config.reads } : {}),
-				...(config.model ? { model: config.model } : {}),
-				...(config.skill !== undefined ? { skill: config.skill } : {}),
-				...(config.progress !== undefined ? { progress: config.progress } : {}),
-			}));
-			const params: SubagentParamsLike = { tasks, clarify: false, agentScope: "both" };
-			if (bg) params.async = true;
-			if (fork) params.context = "fork";
-			await runSlashSubagent(pi, ctx, params);
-		},
-	});
-
-	pi.registerCommand("subagents-status", {
-		description: "Show active and recent async subagent runs",
+	pi.registerCommand("superpowers-status", {
+		description: "Show Superpowers run status and settings",
 		handler: async (_args, ctx) => {
 			await ctx.ui.custom<void>(
-				(tui, theme, _kb, done) => new SubagentsStatusComponent(tui, theme, () => done(undefined)),
-				{ overlay: true, overlayOptions: { anchor: "center", width: 84, maxHeight: "80%" } },
+				(tui, theme, _kb, done) => new SuperpowersStatusComponent(tui, theme, state, config, () => done(undefined)),
+				{ overlay: true, overlayOptions: { anchor: "center", width: 92, maxHeight: "80%" } },
 			);
-		},
-	});
-
-	pi.registerShortcut("ctrl+shift+a", {
-		handler: async (ctx) => {
-			await openAgentManager(pi, ctx);
 		},
 	});
 }
