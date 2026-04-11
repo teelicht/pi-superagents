@@ -64,7 +64,7 @@ export async function runSync(
 	const shareEnabled = options.share === true;
 	const sessionEnabled = Boolean(options.sessionFile || options.sessionDir) || shareEnabled;
 	const workflow = options.workflow ?? "default";
-	const implementerMode = options.implementerMode ?? "tdd";
+	const useTestDrivenDevelopment = options.useTestDrivenDevelopment ?? true;
 	const config = options.config ?? {};
 	const role = inferExecutionRole(agent.name);
 	const tierModel = resolveModelForAgent({
@@ -87,7 +87,7 @@ export async function runSync(
 		workflow,
 		role,
 		config,
-		implementerMode,
+		useTestDrivenDevelopment,
 		skills: configuredSkills,
 	});
 

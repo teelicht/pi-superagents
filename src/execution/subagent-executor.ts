@@ -65,13 +65,6 @@ import {
 	wrapForkTask,
 } from "../shared/types.ts";
 
-/**
- * Convert useTestDrivenDevelopment boolean to the SuperpowersImplementerMode
- * string expected by lower-level runners.
- */
-function toImplementerMode(useTestDrivenDevelopment: boolean): "tdd" | "direct" {
-	return useTestDrivenDevelopment ? "tdd" : "direct";
-}
 
 interface TaskParam {
 	agent: string;
@@ -366,7 +359,6 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 		workflow,
 		useTestDrivenDevelopment,
 	} = data;
-	const implementerMode = toImplementerMode(useTestDrivenDevelopment);
 	const hasChain = (params.chain?.length ?? 0) > 0;
 	const hasTasks = (params.tasks?.length ?? 0) > 0;
 	const hasSingle = Boolean(params.agent && params.task);
@@ -420,7 +412,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			sessionFilesByFlatIndex: collectChainSessionFiles(chain, sessionFileForIndex),
 			maxSubagentDepth: currentMaxSubagentDepth,
 			workflow: data.workflow,
-			implementerMode: toImplementerMode(data.useTestDrivenDevelopment),
+			useTestDrivenDevelopment: data.useTestDrivenDevelopment,
 			config: deps.config,
 		});
 	}
@@ -458,7 +450,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			sessionFilesByFlatIndex: params.tasks.map((_, index) => sessionFileForIndex(index)),
 			maxSubagentDepth: currentMaxSubagentDepth,
 			workflow,
-			implementerMode,
+			useTestDrivenDevelopment,
 			config: deps.config,
 		});
 	}
@@ -492,7 +484,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			output: effectiveOutput,
 			maxSubagentDepth,
 			workflow: data.workflow,
-			implementerMode: toImplementerMode(data.useTestDrivenDevelopment),
+			useTestDrivenDevelopment: data.useTestDrivenDevelopment,
 			config: deps.config,
 		});
 	}
@@ -540,7 +532,7 @@ async function runChainPath(data: ExecutionContextData, deps: ExecutorDeps): Pro
 		maxSubagentDepth: currentMaxSubagentDepth,
 		config: deps.config,
 		workflow: data.workflow,
-		implementerMode: toImplementerMode(data.useTestDrivenDevelopment),
+		useTestDrivenDevelopment: data.useTestDrivenDevelopment,
 	});
 
 	if (chainResult.requestedAsync) {
@@ -568,7 +560,7 @@ async function runChainPath(data: ExecutionContextData, deps: ExecutorDeps): Pro
 			sessionFilesByFlatIndex: collectChainSessionFiles(asyncChain, sessionFileForIndex),
 			maxSubagentDepth: currentMaxSubagentDepth,
 			workflow: data.workflow,
-			implementerMode: toImplementerMode(data.useTestDrivenDevelopment),
+			useTestDrivenDevelopment: data.useTestDrivenDevelopment,
 			config: deps.config,
 		});
 	}
@@ -713,7 +705,7 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 			skills: effectiveSkills,
 			config: input.config,
 			workflow: input.workflow,
-			implementerMode: toImplementerMode(input.useTestDrivenDevelopment),
+			useTestDrivenDevelopment: input.useTestDrivenDevelopment,
 			onUpdate: input.onUpdate
 				? (progressUpdate) => {
 						const stepResults = progressUpdate.details?.results || [];
@@ -754,7 +746,6 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		workflow,
 		useTestDrivenDevelopment,
 	} = data;
-	const implementerMode = toImplementerMode(useTestDrivenDevelopment);
 	const allProgress: AgentProgress[] = [];
 	const allArtifactPaths: ArtifactPaths[] = [];
 	const tasks = params.tasks!;
@@ -877,7 +868,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 				sessionFilesByFlatIndex: tasks.map((_, index) => sessionFileForIndex(index)),
 				maxSubagentDepth: currentMaxSubagentDepth,
 				workflow,
-				implementerMode,
+				useTestDrivenDevelopment,
 				config: deps.config,
 			});
 		}
@@ -927,7 +918,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 			worktreeSetup,
 			config: deps.config,
 			workflow,
-			implementerMode,
+			useTestDrivenDevelopment,
 		});
 		for (let i = 0; i < results.length; i++) {
 			const run = results[i]!;
@@ -987,7 +978,6 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		workflow,
 		useTestDrivenDevelopment,
 	} = data;
-	const implementerMode = toImplementerMode(useTestDrivenDevelopment);
 	const allProgress: AgentProgress[] = [];
 	const allArtifactPaths: ArtifactPaths[] = [];
 	const agentConfig = agents.find((a) => a.name === params.agent);
@@ -1070,7 +1060,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 				output: effectiveOutput,
 				maxSubagentDepth,
 				workflow,
-				implementerMode,
+				useTestDrivenDevelopment,
 				config: deps.config,
 			});
 		}
@@ -1102,7 +1092,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		skills: effectiveSkills,
 		config: deps.config,
 		workflow,
-		implementerMode,
+		useTestDrivenDevelopment,
 	});
 	recordRun(params.agent!, cleanTask, r.exitCode, r.progressSummary?.durationMs ?? 0);
 

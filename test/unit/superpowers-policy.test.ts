@@ -4,7 +4,7 @@
  * Responsibilities:
  * - verify workflow gating for role-specific model resolution
  * - verify role skill merging for Superpowers runs
- * - verify implementer mode skill injection behavior
+ * - verify TDD skill injection behavior based on useTestDrivenDevelopment
  */
 
 import assert from "node:assert/strict";
@@ -135,6 +135,26 @@ describe("superpowers policy", () => {
 		);
 	});
 
+	it("resolves sp role agent frontmatter model tiers without role config", () => {
+		assert.deepEqual(
+			resolveModelForAgent({
+				workflow: "superpowers",
+				agentModel: "balanced",
+				config: {
+					superagents: {
+						modelTiers: {
+							balanced: {
+								model: "openai/gpt-5.4",
+								thinking: "medium",
+							},
+						},
+					},
+				},
+			}),
+			{ model: "openai/gpt-5.4", thinking: "medium" },
+		);
+	});
+
 	it("ignores config overlays and merges only agent and step skills for superpowers runs", () => {
 		const skills = resolveRoleSkillSet({
 			workflow: "superpowers",
@@ -158,17 +178,28 @@ describe("superpowers policy", () => {
 		assert.deepEqual(skills, ["vercel-react-native-skills", "react-native-best-practices"]);
 	});
 
-	it("adds test-driven-development only in tdd implementer mode", () => {
+	it("adds test-driven-development only when useTestDrivenDevelopment is true", () => {
 		assert.deepEqual(
 			resolveImplementerSkillSet({
 				workflow: "superpowers",
-				implementerMode: "tdd",
+				useTestDrivenDevelopment: true,
 				config: {},
 				agentSkills: [],
 				stepSkills: [],
 				availableSkills: new Set(["test-driven-development"]),
 			}),
 			["test-driven-development"],
+		);
+		assert.deepEqual(
+			resolveImplementerSkillSet({
+				workflow: "superpowers",
+				useTestDrivenDevelopment: false,
+				config: {},
+				agentSkills: [],
+				stepSkills: [],
+				availableSkills: new Set(["test-driven-development"]),
+			}),
+			[],
 		);
 	});
 

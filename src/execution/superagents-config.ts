@@ -1,8 +1,8 @@
 /**
- * Superagents configuration helpers.
+ * Superpowers configuration helpers.
  *
  * Responsibilities:
- * - resolve the Superagents settings object from extension config
+ * - resolve the Superpowers settings object from extension config
  * - apply Superpowers-only worktree defaults in one shared place
  * - build scoped git-worktree options for sync and async execution paths
  */
@@ -12,10 +12,10 @@ import type { ExtensionConfig, WorkflowMode } from "../shared/types.ts";
 import type { CreateWorktreesOptions } from "./worktree.ts";
 
 /**
- * Resolve the Superagents settings object from config.
+ * Resolve the Superpowers settings object from config.
  *
  * @param config Extension config being normalized.
- * @returns Superagents settings, if present.
+ * @returns Superpowers settings, if present.
  */
 export function getSuperagentSettings(config: ExtensionConfig): ExtensionConfig["superagents"] | undefined {
 	return config.superagents;
@@ -34,7 +34,7 @@ export function getSuperagentSettings(config: ExtensionConfig): ExtensionConfig[
  *
  * @param requested Explicit worktree preference from the current run, if any.
  * @param workflow Active workflow for the current run.
- * @param config Extension config containing optional Superagents settings.
+ * @param config Extension config containing optional Superpowers settings.
  * @returns The effective worktree preference for the run.
  */
 export function resolveSuperagentWorktreeEnabled(
@@ -52,7 +52,7 @@ export function resolveSuperagentWorktreeEnabled(
  *
  * @param chain Chain steps to normalize.
  * @param workflow Active workflow for the current run.
- * @param config Extension config containing optional Superagents settings.
+ * @param config Extension config containing optional Superpowers settings.
  * @returns Chain steps with implicit Superpowers worktree defaults filled in.
  */
 export function applySuperagentWorktreeDefaultsToChain(
@@ -73,7 +73,7 @@ export function applySuperagentWorktreeDefaultsToChain(
  * Resolve the workflow-scoped worktree runtime settings without agent labels.
  *
  * @param workflow Active workflow for the current run.
- * @param config Extension config containing optional Superagents settings.
+ * @param config Extension config containing optional Superpowers settings.
  * @returns Resolved worktree root and hook settings for the active workflow.
  */
 export function resolveSuperagentWorktreeRuntimeOptions(

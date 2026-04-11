@@ -39,7 +39,6 @@ import {
 	type Details,
 	type ExtensionConfig,
 	type MaxOutputConfig,
-	type SuperpowersImplementerMode,
 	type WorkflowMode,
 	ASYNC_DIR,
 	RESULTS_DIR,
@@ -89,7 +88,7 @@ export interface AsyncChainParams {
 	sessionFilesByFlatIndex?: (string | undefined)[];
 	maxSubagentDepth: number;
 	workflow?: WorkflowMode;
-	implementerMode?: SuperpowersImplementerMode;
+	useTestDrivenDevelopment?: boolean;
 	config?: ExtensionConfig;
 }
 
@@ -109,7 +108,7 @@ export interface AsyncSingleParams {
 	output?: string | false;
 	maxSubagentDepth: number;
 	workflow?: WorkflowMode;
-	implementerMode?: SuperpowersImplementerMode;
+	useTestDrivenDevelopment?: boolean;
 	config?: ExtensionConfig;
 }
 
@@ -219,7 +218,7 @@ export function executeAsyncChain(
 		sessionFilesByFlatIndex,
 		maxSubagentDepth,
 		workflow,
-		implementerMode,
+		useTestDrivenDevelopment,
 		config,
 	} = params;
 	const chainSkills = params.chainSkills ?? [];
@@ -277,7 +276,7 @@ export function executeAsyncChain(
 			workflow: effectiveWorkflow,
 			role,
 			config: effectiveConfig,
-			implementerMode,
+			useTestDrivenDevelopment,
 			skills: behavior.skills,
 		});
 
@@ -430,7 +429,7 @@ export function executeAsyncSingle(
 		sessionFile,
 		maxSubagentDepth,
 		workflow,
-		implementerMode,
+		useTestDrivenDevelopment,
 		config,
 	} = params;
 	const role = inferExecutionRole(agent);
@@ -440,7 +439,7 @@ export function executeAsyncSingle(
 		workflow: workflow ?? "default",
 		role,
 		config,
-		implementerMode,
+		useTestDrivenDevelopment,
 		skills: configuredSkills,
 	});
 	let systemPrompt = agentConfig.systemPrompt?.trim() || null;
