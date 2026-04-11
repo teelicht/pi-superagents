@@ -44,7 +44,7 @@ function createRepo(prefix: string): string {
 }
 
 function cleanupRepo(repoDir: string): void {
-	try { fs.rmSync(repoDir, { recursive: true, force: true }); } catch {}
+	try { fs.rmSync(repoDir, { recursive: true, force: true }); } catch { /* empty */ }
 }
 
 function createHookScript(_repoDir: string, fileName: string, source: string): string {
@@ -158,7 +158,7 @@ describe("worktree", () => {
 				/Configured worktree root must be ignored by git/i,
 			);
 		} finally {
-			try { fs.rmSync(symlinkParent, { recursive: true, force: true }); } catch {}
+			try { fs.rmSync(symlinkParent, { recursive: true, force: true }); } catch { /* empty */ }
 			cleanupRepo(repoDir);
 		}
 	});

@@ -39,7 +39,7 @@ export function persistSingleOutput(
 	outputPath: string | undefined,
 	fullOutput: string,
 ): { savedPath?: string; error?: string } {
-	if (!outputPath) return {};
+	if (!outputPath) return { /* empty */ };
 	try {
 		fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 		fs.writeFileSync(outputPath, fullOutput, "utf-8");
@@ -67,7 +67,7 @@ export function resolveSingleOutput(
 				savedPath: outputPath,
 			};
 		}
-	} catch {}
+	} catch { /* empty */ }
 
 	const save = persistSingleOutput(outputPath, fallbackOutput);
 	if (save.savedPath) return { fullOutput: fallbackOutput, savedPath: save.savedPath };

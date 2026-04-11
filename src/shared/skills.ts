@@ -191,7 +191,7 @@ function collectSettingsSkillPaths(cwd: string): string[] {
 				}
 				results.push(resolved);
 			}
-		} catch {}
+		} catch { /* empty */ }
 	}
 
 	return results;
@@ -367,7 +367,7 @@ export function resolveExecutionSkills(input: {
 		? resolveImplementerSkillSet({
 			workflow: input.workflow,
 			useTestDrivenDevelopment: input.useTestDrivenDevelopment ?? true,
-			config: input.config ?? {},
+			config: input.config ?? { /* empty */ },
 			agentSkills: [],
 			stepSkills: configuredSkills,
 			availableSkills,
@@ -375,7 +375,7 @@ export function resolveExecutionSkills(input: {
 		: resolveRoleSkillSet({
 			workflow: input.workflow,
 			role: input.role,
-			config: input.config ?? {},
+			config: input.config ?? { /* empty */ },
 			agentSkills: [],
 			stepSkills: configuredSkills,
 			availableSkills,

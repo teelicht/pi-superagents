@@ -23,7 +23,7 @@ export function recordRun(agent: string, task: string, exitCode: number, duratio
 			ts: Math.floor(Date.now() / 1000),
 			status: exitCode === 0 ? "ok" : "error",
 			duration: durationMs,
-			...(exitCode !== 0 ? { exit: exitCode } : {}),
+			...(exitCode !== 0 ? { exit: exitCode } : { /* empty */ }),
 		};
 		fs.mkdirSync(path.dirname(HISTORY_PATH), { recursive: true });
 		fs.appendFileSync(HISTORY_PATH, `${JSON.stringify(entry)}\n`);
@@ -45,7 +45,7 @@ export function loadRunsForAgent(agent: string): RunEntry[] {
 
 	if (lines.length > ROTATE_READ_THRESHOLD) {
 		lines = lines.slice(-ROTATE_KEEP);
-		try { fs.writeFileSync(HISTORY_PATH, `${lines.join("\n")}\n`, "utf-8"); } catch {}
+		try { fs.writeFileSync(HISTORY_PATH, `${lines.join("\n")}\n`, "utf-8"); } catch { /* empty */ }
 	}
 
 	return lines

@@ -12,7 +12,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import { type ExtensionAPI, type ExtensionContext, type ToolDefinition } from "@mariozechner/pi-coding-agent";
-import { Box, Container, Spacer, Text } from "@mariozechner/pi-tui";
+import { Text } from "@mariozechner/pi-tui";
 import { discoverAgents } from "../agents/agents.ts";
 import { cleanupAllArtifactDirs, cleanupOldArtifacts, getArtifactsDir } from "../shared/artifacts.ts";
 import { renderSubagentResult } from "../ui/render.ts";
@@ -108,7 +108,7 @@ function loadConfigState(): LoadedConfigState {
  * @param state Current loaded config state.
  * @returns Tool result describing the migration outcome.
  */
-function migrateCopiedDefaultConfig(state: LoadedConfigState): AgentToolResult<Details> {
+function _migrateCopiedDefaultConfig(state: LoadedConfigState): AgentToolResult<Details> {
 	const canMigrate = state.diagnostics.some((diagnostic) => diagnostic.action === "replace_with_empty_override");
 	if (!canMigrate) {
 		return {
@@ -138,7 +138,7 @@ function expandTilde(p: string): string {
  * cloud SID cannot be resolved without network connectivity. This leaves
  * the directory completely inaccessible to the creating user.
  */
-function ensureAccessibleDir(dirPath: string): void {
+function _ensureAccessibleDir(dirPath: string): void {
 	fs.mkdirSync(dirPath, { recursive: true });
 	try {
 		fs.accessSync(dirPath, fs.constants.R_OK | fs.constants.W_OK);
