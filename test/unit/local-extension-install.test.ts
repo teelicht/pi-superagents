@@ -101,4 +101,45 @@ describe("installLocalExtensionFiles", () => {
 		assert.equal(fs.existsSync(path.join(targetRoot, "stale.ts")), false);
 		assert.equal(fs.readFileSync(path.join(targetRoot, "src", "extension", "index.ts"), "utf-8"), "export default 1;\n");
 	});
+
+	it("preserves user-owned config while refreshing package-owned files", () => {
+		const sourceRoot = createTempDir("pi-local-install-src-");
+		const targetRoot = createTempDir("pi-local-install-dst-");
+		tempDirs.push(sourceRoot, targetRoot);
+
+		fs.writeFileSync(path.join(sourceRoot, "package.json"), "{\n  \"name\": \"pi-superagents\"\n}\n", "utf-8");
+		fs.writeFileSync(path.join(sourceRoot, "config.example.json"), "{\n  \"asyncByDefault\": false\n}\n", "utf-8");
+		fs.writeFileSync(path.join(sourceRoot, "default-config.json"), "{\n  \"asyncByDefault\": false\n}\n", "utf-8");
+		fs.mkdirSync(targetRoot, { recursive: true });
+		fs.writeFileSync(path.join(targetRoot, "config.json"), "{\n  \"asyncByDefault\": true\n}\n", "utf-8");
+		fs.writeFileSync(path.join(targetRoot, "config.example.json"), "{\n  \"old\": true\n}\n", "utf-8");
+		fs.writeFileSync(path.join(targetRoot, "stale.ts"), "old\n", "utf-8");
+
+		installLocalExtensionFiles({
+			sourceRoot,
+			targetRoot,
+			relativePaths: ["package.json", "default-config.json", "config.example.json"],
+		});
+
+		assert.equal(fs.readFileSync(path.join(targetRoot, "config.json"), "utf-8"), "{\n  \"asyncByDefault\": true\n}\n");
+		assert.equal(fs.readFileSync(path.join(targetRoot, "config.example.json"), "utf-8"), "{\n  \"asyncByDefault\": false\n}\n");
+		assert.equal(fs.existsSync(path.join(targetRoot, "stale.ts")), false);
+	});
+
+	it("creates an empty user config when the target config is missing", () => {
+		const sourceRoot = createTempDir("pi-local-install-src-");
+		const targetRoot = createTempDir("pi-local-install-dst-");
+		tempDirs.push(sourceRoot, targetRoot);
+
+		fs.writeFileSync(path.join(sourceRoot, "package.json"), "{\n  \"name\": \"pi-superagents\"\n}\n", "utf-8");
+		fs.writeFileSync(path.join(sourceRoot, "config.example.json"), "{\n  \"asyncByDefault\": false\n}\n", "utf-8");
+
+		installLocalExtensionFiles({
+			sourceRoot,
+			targetRoot,
+			relativePaths: ["package.json", "config.example.json"],
+		});
+
+		assert.equal(fs.readFileSync(path.join(targetRoot, "config.json"), "utf-8"), "{}\n");
+	});
 });

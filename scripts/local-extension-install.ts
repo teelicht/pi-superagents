@@ -59,8 +59,13 @@ function normalizeRelativePath(relativePath: string): string {
 	return normalized;
 }
 
+const USER_CONFIG_FILE = "config.json";
+
 /**
  * Copy the installable files into the target Pi extension directory.
+ *
+ * Preserves the user-owned config.json across refreshes by saving and
+ * restoring it around the destructive target directory removal.
  *
  * @param options Source root, target root, and packaged relative file paths.
  * @returns Sorted list of copied relative paths.
@@ -74,6 +79,11 @@ export function installLocalExtensionFiles(options: InstallLocalExtensionFilesOp
 	if (relativePaths.length === 0) {
 		throw new Error("No packaged files were provided for local extension installation.");
 	}
+
+	const userConfigPath = path.join(targetRoot, USER_CONFIG_FILE);
+	const existingUserConfig = fs.statSync(userConfigPath, { throwIfNoEntry: false })?.isFile()
+		? fs.readFileSync(userConfigPath, "utf-8")
+		: undefined;
 
 	fs.rmSync(targetRoot, { recursive: true, force: true });
 	fs.mkdirSync(targetRoot, { recursive: true });
@@ -92,6 +102,13 @@ export function installLocalExtensionFiles(options: InstallLocalExtensionFilesOp
 		fs.mkdirSync(path.dirname(targetPath), { recursive: true });
 		fs.copyFileSync(sourcePath, targetPath);
 		fs.chmodSync(targetPath, sourceStat.mode);
+	}
+
+	const finalUserConfigPath = path.join(targetRoot, USER_CONFIG_FILE);
+	if (existingUserConfig !== undefined) {
+		fs.writeFileSync(finalUserConfigPath, existingUserConfig, "utf-8");
+	} else if (!fs.existsSync(finalUserConfigPath)) {
+		fs.writeFileSync(finalUserConfigPath, "{}\n", "utf-8");
 	}
 
 	return relativePaths;
