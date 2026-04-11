@@ -25,14 +25,11 @@ import {
 // Top-level await
 const utils = await tryImport<any>("./src/shared/utils.ts");
 const execution = await tryImport<any>("./src/execution/execution.ts");
-const chainMod = await tryImport<any>("./src/execution/chain-execution.ts");
 
 const piAvailable = !!(execution && utils);
-const chainAvailable = !!chainMod;
 
 const runSync = execution?.runSync;
 const detectSubagentError = utils?.detectSubagentError;
-const executeChain = chainMod?.executeChain;
 
 // ---------------------------------------------------------------------------
 // detectSubagentError
@@ -177,76 +174,3 @@ describe("runSync error handling", { skip: !piAvailable ? "pi packages not avail
 	});
 });
 
-// ---------------------------------------------------------------------------
-// Chain error propagation
-// ---------------------------------------------------------------------------
-
-describe("chain error propagation", { skip: !chainAvailable ? "chain module not available" : undefined }, () => {
-	let tempDir: string;
-	let mockPi: MockPi;
-
-	before(() => {
-		mockPi = createMockPi();
-		mockPi.install();
-	});
-
-	after(() => {
-		mockPi.uninstall();
-	});
-
-	beforeEach(() => {
-		tempDir = createTempDir();
-		mockPi.reset();
-	});
-
-	afterEach(() => {
-		removeTempDir(tempDir);
-	});
-
-	function makeChainParams(chain: any[], agents: any[]) {
-		return {
-			chain,
-			agents,
-			ctx: makeMinimalCtx(tempDir),
-			runId: "test-err",
-			shareEnabled: false,
-			sessionDirForIndex: () => undefined,
-			artifactsDir: path.join(tempDir, "artifacts"),
-			artifactConfig: { enabled: false },
-			clarify: false,
-		};
-	}
-
-	it("preserves error context from failed step", async () => {
-		mockPi.onCall({ exitCode: 1, stderr: "Step 1 exploded" });
-		const agents = [makeAgent("step1"), makeAgent("step2")];
-
-		const result = await executeChain(
-			makeChainParams(
-				[{ agent: "step1", task: "Fail here" }, { agent: "step2" }],
-				agents,
-			),
-		);
-
-		assert.ok(result.isError);
-		const failedResult = result.details.results[0];
-		assert.equal(failedResult.exitCode, 1);
-		assert.ok(failedResult.error?.includes("exploded"));
-	});
-
-	it("reports currentStepIndex on failure", async () => {
-		mockPi.onCall({ exitCode: 1 });
-		const agents = [makeAgent("a"), makeAgent("b"), makeAgent("c")];
-
-		const result = await executeChain(
-			makeChainParams(
-				[{ agent: "a", task: "First" }, { agent: "b" }, { agent: "c" }],
-				agents,
-			),
-		);
-
-		assert.ok(result.isError);
-		assert.equal(result.details.currentStepIndex, 0);
-		assert.equal(result.details.results.length, 1);
-	});
-});

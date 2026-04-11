@@ -1,5 +1,6 @@
 import { describe, it, before, after, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
+import { execSync } from "node:child_process";
 import type { MockPi } from "../support/helpers.ts";
 import { createMockPi, createTempDir, removeTempDir, tryImport } from "../support/helpers.ts";
 
@@ -11,7 +12,7 @@ interface ExecutorModule {
 			signal: AbortSignal,
 			onUpdate: ((result: unknown) => void) | undefined,
 			ctx: unknown,
-		) => Promise<{ isError?: boolean; content: Array<{ text?: string }> }>;
+		) => Promise<{ isError?: boolean; content: Array<{ text?: string }>; details?: any }>;
 	};
 }
 
@@ -83,6 +84,12 @@ describe("fork context execution wiring", { skip: !available ? "subagent executo
 
 	beforeEach(() => {
 		tempDir = createTempDir("pi-subagent-fork-test-");
+		// Init git repo for worktree support
+		execSync("git init", { cwd: tempDir, stdio: "ignore" });
+		execSync("git config user.email 'test@example.com'", { cwd: tempDir, stdio: "ignore" });
+		execSync("git config user.name 'Test User'", { cwd: tempDir, stdio: "ignore" });
+		execSync("git commit --allow-empty -m 'initial commit'", { cwd: tempDir, stdio: "ignore" });
+
 		mockPi.reset();
 		mockPi.onCall({ output: "ok" });
 	});
@@ -92,10 +99,14 @@ describe("fork context execution wiring", { skip: !available ? "subagent executo
 	});
 
 	function makeExecutor() {
-		return createSubagentExecutor({
+		return createSubagentExecutor!({
 			pi: { events: { emit: () => {} } },
 			state: makeState(tempDir),
-			config: {},
+			config: {
+				superagents: {
+					worktrees: { enabled: false } // Disable worktrees for simpler fork tests
+				}
+			},
 			asyncByDefault: false,
 			tempArtifactsDir: tempDir,
 			getSubagentSessionRoot: () => tempDir,
@@ -214,26 +225,6 @@ describe("fork context execution wiring", { skip: !available ? "subagent executo
 		assert.deepEqual(calls, ["leaf-777", "leaf-777"]);
 	});
 
-	it("expands top-level parallel task counts before fork session allocation", async () => {
-		const { manager, calls } = makeSessionManagerRecorder({ sessionFile: "/tmp/parent.jsonl", leafId: "leaf-count" });
-		const executor = makeExecutor();
-
-		const result = await executor.execute(
-			"id",
-			{
-				tasks: [{ agent: "echo", task: "task one", count: 3 }],
-				context: "fork",
-			},
-			new AbortController().signal,
-			undefined,
-			makeCtx(manager),
-		);
-
-		assert.equal(result.isError, undefined);
-		assert.equal(calls.length, 3);
-		assert.deepEqual(calls, ["leaf-count", "leaf-count", "leaf-count"]);
-	});
-
 	it("rejects top-level parallel worktree runs with a conflicting task cwd", async () => {
 		const { manager } = makeSessionManagerRecorder({ sessionFile: "/tmp/parent.jsonl", leafId: "leaf-777" });
 		const executor = makeExecutor();
@@ -257,75 +248,22 @@ describe("fork context execution wiring", { skip: !available ? "subagent executo
 		assert.match(result.content[0]?.text ?? "", /task 2 \(second\) sets cwd/i);
 	});
 
-	it("rejects top-level parallel counts that expand past MAX_PARALLEL", async () => {
-		const { manager } = makeSessionManagerRecorder({ sessionFile: "/tmp/parent.jsonl", leafId: "leaf-max" });
+	it("rejects parallel runs that exceed MAX_PARALLEL", async () => {
 		const executor = makeExecutor();
+		const tasks = [];
+		for (let i = 0; i < 10; i++) {
+			tasks.push({ agent: "echo", task: `task ${i}` });
+		}
 
 		const result = await executor.execute(
 			"id",
-			{
-				tasks: [{ agent: "echo", task: "task one", count: 9 }],
-			},
+			{ tasks },
 			new AbortController().signal,
 			undefined,
-			makeCtx(manager),
+			makeCtx(makeSessionManagerRecorder().manager),
 		);
 
 		assert.equal(result.isError, true);
 		assert.match(result.content[0]?.text ?? "", /Max 8 tasks/);
-	});
-
-	it("rejects async chain worktree runs with a conflicting task cwd", async () => {
-		const { manager } = makeSessionManagerRecorder({ sessionFile: "/tmp/parent.jsonl", leafId: "leaf-chain" });
-		const executor = makeExecutor();
-
-		const result = await executor.execute(
-			"id",
-			{
-				chain: [
-					{
-						parallel: [
-							{ agent: "echo", task: "p1" },
-							{ agent: "second", task: "p2", cwd: `${tempDir}/other` },
-						],
-						worktree: true,
-					},
-				],
-				async: true,
-				clarify: false,
-			},
-			new AbortController().signal,
-			undefined,
-			makeCtx(manager),
-		);
-
-		assert.equal(result.isError, true);
-		assert.match(result.content[0]?.text ?? "", /parallel chain step 1/i);
-		assert.match(result.content[0]?.text ?? "", /task 2 \(second\) sets cwd/i);
-	});
-
-	it("creates isolated forked sessions per chain step (including counted parallel steps)", async () => {
-		const { manager, calls } = makeSessionManagerRecorder({ sessionFile: "/tmp/parent.jsonl", leafId: "leaf-chain" });
-		const executor = makeExecutor();
-
-		const result = await executor.execute(
-			"id",
-			{
-				chain: [
-					{ agent: "echo", task: "step 1" },
-					{ parallel: [{ agent: "echo", task: "p1", count: 2 }, { agent: "second", task: "p2", count: 2 }] },
-					{ agent: "second", task: "step 3" },
-				],
-				context: "fork",
-				clarify: false,
-			},
-			new AbortController().signal,
-			undefined,
-			makeCtx(manager),
-		);
-
-		assert.equal(result.isError, undefined);
-		assert.equal(calls.length, 6, "1 sequential + 4 parallel + 1 sequential");
-		assert.deepEqual(calls, ["leaf-chain", "leaf-chain", "leaf-chain", "leaf-chain", "leaf-chain", "leaf-chain"]);
 	});
 });

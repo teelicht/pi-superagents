@@ -317,7 +317,6 @@ Bounded role agents are not allowed to call subagents.`,
 		renderCall(args, theme) {
 			const isParallel = (args.tasks?.length ?? 0) > 0;
 			const parallelCount = effectiveParallelTaskCount(args.tasks as Array<{ count?: unknown }> | undefined);
-			const asyncLabel = args.async === true && !isParallel ? theme.fg("warning", " [async]") : "";
 			if (isParallel)
 				return new Text(
 					`${theme.fg("toolTitle", theme.bold("subagent "))}parallel (${parallelCount})`,
@@ -325,7 +324,7 @@ Bounded role agents are not allowed to call subagents.`,
 					0,
 				);
 			return new Text(
-				`${theme.fg("toolTitle", theme.bold("subagent "))}${theme.fg("accent", args.agent || "?")}${asyncLabel}`,
+				`${theme.fg("toolTitle", theme.bold("subagent "))}${theme.fg("accent", args.agent || "?")}`,
 				0,
 				0,
 			);

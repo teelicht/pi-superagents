@@ -324,17 +324,17 @@ export function renderSubagentResult(
 		),
 	);
 
-	// === STATIC STEP LAYOUT (like clarification UI) ===
-	// Each step gets a fixed section with task/output/status
+	// === STATIC TASK LAYOUT (like clarification UI) ===
+	// Each task gets a fixed section with task/output/status
 	c.addChild(new Spacer(1));
 
 	for (let i = 0; i < d.results.length; i++) {
 		const r = d.results[i];
-		const agentName = r?.agent || `step-${i + 1}`;
+		const agentName = r?.agent || `task-${i + 1}`;
 
 		if (!r) {
-			// Pending step
-			c.addChild(new Text(truncLine(theme.fg("dim", `  Step ${i + 1}: ${agentName}`), w), 0, 0));
+			// Pending task
+			c.addChild(new Text(truncLine(theme.fg("dim", `  Task ${i + 1}: ${agentName}`), w), 0, 0));
 			c.addChild(new Text(theme.fg("dim", `    status: ○ pending`), 0, 0));
 			c.addChild(new Spacer(1));
 			continue;
@@ -355,10 +355,10 @@ export function renderSubagentResult(
 					: theme.fg("success", "✓");
 		const stats = rProg ? ` | ${rProg.toolCount} tools, ${formatDuration(rProg.durationMs)}` : "";
 		const modelDisplay = r.model ? theme.fg("dim", ` (${r.model})`) : "";
-		const stepHeader = rRunning
-			? `${statusIcon} Step ${i + 1}: ${theme.bold(theme.fg("warning", r.agent))}${modelDisplay}${stats}`
-			: `${statusIcon} Step ${i + 1}: ${theme.bold(r.agent)}${modelDisplay}${stats}`;
-		c.addChild(new Text(truncLine(stepHeader, w), 0, 0));
+		const taskHeader = rRunning
+			? `${statusIcon} Task ${i + 1}: ${theme.bold(theme.fg("warning", r.agent))}${modelDisplay}${stats}`
+			: `${statusIcon} Task ${i + 1}: ${theme.bold(r.agent)}${modelDisplay}${stats}`;
+		c.addChild(new Text(truncLine(taskHeader, w), 0, 0));
 
 		const taskMaxLen = Math.max(20, w - 12);
 		const taskPreview = r.task.length > taskMaxLen
