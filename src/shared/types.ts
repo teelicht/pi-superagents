@@ -212,6 +212,12 @@ export interface AsyncJobState {
 	sessionFile?: string;
 }
 
+export interface ConfigGateState {
+	blocked: boolean;
+	diagnostics: ConfigDiagnostic[];
+	message: string;
+}
+
 export interface SubagentState {
 	baseCwd: string;
 	currentSessionId: string | null;
@@ -226,6 +232,7 @@ export interface SubagentState {
 		schedule(file: string, delayMs?: number): boolean;
 		clear(): void;
 	};
+	configGate: ConfigGateState;
 }
 
 // ============================================================================
@@ -277,12 +284,22 @@ export interface RunSyncOptions {
 	implementerMode?: SuperpowersImplementerMode;
 }
 
+export type ConfigDiagnosticLevel = "warning" | "error";
+
+export interface ConfigDiagnostic {
+	level: ConfigDiagnosticLevel;
+	code: string;
+	path: string;
+	message: string;
+	action?: string;
+}
+
 export interface SuperpowersSettings {
 	/** Superpowers-only worktree defaults for parallel execution. */
 	worktrees?: {
 		enabled?: boolean;
-		root?: string;
-		setupHook?: string;
+		root?: string | null;
+		setupHook?: string | null;
 		setupHookTimeoutMs?: number;
 	};
 	/** Model configuration for each tier. Supports built-in (cheap, balanced, max) and custom tiers. */
@@ -292,7 +309,7 @@ export interface SuperpowersSettings {
 
 export interface ExtensionConfig {
 	asyncByDefault?: boolean;
-	defaultSessionDir?: string;
+	defaultSessionDir?: string | null;
 	maxSubagentDepth?: number;
 	superagents?: SuperpowersSettings;
 }
