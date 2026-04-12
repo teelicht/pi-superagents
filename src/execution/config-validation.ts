@@ -325,7 +325,7 @@ export function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfi
  * @param userConfig Parsed user override config, if present.
  * @returns Effective config plus diagnostics.
  */
-export function loadEffectiveConfig(defaults: ExtensionConfig, userConfig: unknown | undefined): EffectiveConfigResult {
+export function loadEffectiveConfig(defaults: ExtensionConfig, userConfig: unknown): EffectiveConfigResult {
 	if (userConfig === undefined) {
 		return { blocked: false, diagnostics: [], config: defaults };
 	}

@@ -68,7 +68,7 @@ void describe("worktree", () => {
 			assert.equal(setup.worktrees.length, 2);
 			assert.equal(setup.cwd, git(repoDir, ["rev-parse", "--show-toplevel"]));
 			for (let i = 0; i < setup.worktrees.length; i++) {
-				const worktree = setup.worktrees[i];
+				const worktree = setup.worktrees[i] as any;
 				assert.equal(worktree.branch, `pi-parallel-structure-${i}`);
 				assert.equal(worktree.index, i);
 				assert.equal(worktree.agentCwd, worktree.path);

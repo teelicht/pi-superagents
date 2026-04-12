@@ -36,11 +36,10 @@ const config: ExtensionConfig = {
 
 void describe("Superpowers workflow profile", () => {
 	void it("uses global defaults when no preset or inline token is present", () => {
-		const parsed = parseSuperpowersWorkflowArgs("fix auth");
+		const parsed = parseSuperpowersWorkflowArgs("fix auth")!;
 		assert.deepEqual(parsed, {
 			task: "fix auth",
 			overrides: {},
-			bg: false,
 			fork: false,
 		});
 		assert.deepEqual(resolveSuperpowersRunProfile({
@@ -52,13 +51,12 @@ void describe("Superpowers workflow profile", () => {
 			task: "fix auth",
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
-			bg: false,
 			fork: false,
 		});
 	});
 
 	void it("applies command preset values before inline tokens", () => {
-		const parsed = parseSuperpowersWorkflowArgs("tdd fix auth");
+		const parsed = parseSuperpowersWorkflowArgs("tdd fix auth")!;
 		assert.deepEqual(resolveSuperpowersRunProfile({
 			config,
 			commandName: "superpowers-lean",
@@ -68,51 +66,43 @@ void describe("Superpowers workflow profile", () => {
 			task: "fix auth",
 			useSubagents: false,
 			useTestDrivenDevelopment: true,
-			bg: false,
 			fork: false,
 		});
 	});
 
 	void it("parses lean, full, direct, tdd, subagents, no-subagents, and inline tokens", () => {
-		assert.deepEqual(parseSuperpowersWorkflowArgs("lean fix auth").overrides, {
+		assert.deepEqual(parseSuperpowersWorkflowArgs("lean fix auth")?.overrides, {
 			useSubagents: false,
 			useTestDrivenDevelopment: false,
 		});
-		assert.deepEqual(parseSuperpowersWorkflowArgs("full fix auth").overrides, {
+		assert.deepEqual(parseSuperpowersWorkflowArgs("full fix auth")?.overrides, {
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
 		});
-		assert.deepEqual(parseSuperpowersWorkflowArgs("direct no-subagents fix auth").overrides, {
+		assert.deepEqual(parseSuperpowersWorkflowArgs("direct no-subagents fix auth")?.overrides, {
 			useSubagents: false,
 			useTestDrivenDevelopment: false,
 		});
-		assert.deepEqual(parseSuperpowersWorkflowArgs("tdd subagents fix auth").overrides, {
+		assert.deepEqual(parseSuperpowersWorkflowArgs("tdd subagents fix auth")?.overrides, {
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
 		});
-		assert.deepEqual(parseSuperpowersWorkflowArgs("inline fix auth").overrides, {
+		assert.deepEqual(parseSuperpowersWorkflowArgs("inline fix auth")?.overrides, {
 			useSubagents: false,
 		});
 	});
 
-	void it("carries bg and fork flags in either order", () => {
-		assert.deepEqual(parseSuperpowersWorkflowArgs("direct fix auth --fork --bg"), {
+	void it("carries fork flags in either order", () => {
+		assert.deepEqual(parseSuperpowersWorkflowArgs("direct fix auth --fork"), {
 			task: "fix auth",
 			overrides: { useTestDrivenDevelopment: false },
-			bg: true,
-			fork: true,
-		});
-		assert.deepEqual(parseSuperpowersWorkflowArgs("direct fix auth --bg --fork"), {
-			task: "fix auth",
-			overrides: { useTestDrivenDevelopment: false },
-			bg: true,
 			fork: true,
 		});
 	});
 
 	void it("returns null when only workflow tokens are provided", () => {
 		assert.equal(parseSuperpowersWorkflowArgs("direct no-subagents"), null);
-		assert.equal(parseSuperpowersWorkflowArgs("--bg"), null);
+		assert.equal(parseSuperpowersWorkflowArgs("--fork"), null);
 		assert.equal(parseSuperpowersWorkflowArgs(""), null);
 	});
 });

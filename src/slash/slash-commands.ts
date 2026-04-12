@@ -46,11 +46,11 @@ function notifyIfConfigBlocked(state: SubagentState, ctx: ExtensionContext): boo
  * @param ctx Current extension command context.
  * @param profile Fully resolved run profile.
  */
-async function sendSuperpowersPrompt(
+function sendSuperpowersPrompt(
 	pi: ExtensionAPI,
 	ctx: ExtensionContext,
 	profile: ResolvedSuperpowersRunProfile,
-): Promise<void> {
+): void {
 	const usingSuperpowersSkill = resolveAvailableSkill(ctx.cwd, "using-superpowers");
 	const prompt = buildSuperpowersRootPrompt({
 		task: profile.task,
@@ -85,15 +85,16 @@ function registerSuperpowersCommand(
 ): void {
 	pi.registerCommand(commandName, {
 		description,
-		handler: async (rawArgs, ctx) => {
-			if (notifyIfConfigBlocked(state, ctx)) return;
+		handler: (rawArgs, ctx) => {
+			if (notifyIfConfigBlocked(state, ctx)) return Promise.resolve();
 			const parsed = parseSuperpowersWorkflowArgs(rawArgs);
 			if (!parsed?.task) {
 				ctx.ui.notify(`Usage: /${commandName} [lean|full|tdd|direct|subagents|no-subagents] <task> [--fork]`, "error");
-				return;
+				return Promise.resolve();
 			}
 			const profile = resolveSuperpowersRunProfile({ config, commandName, parsed });
-			await sendSuperpowersPrompt(pi, ctx, profile);
+			sendSuperpowersPrompt(pi, ctx, profile);
+			return Promise.resolve();
 		},
 	});
 }

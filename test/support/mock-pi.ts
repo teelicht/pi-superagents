@@ -89,7 +89,7 @@ export function createMockPi(): MockPi {
 			if (originalQueueEnv === undefined) delete process.env.MOCK_PI_QUEUE_DIR;
 			else process.env.MOCK_PI_QUEUE_DIR = originalQueueEnv;
 			if (process.platform === "win32") {
-				if (originalArgv1 === undefined) delete process.argv[1];
+				if (originalArgv1 === undefined) process.argv.splice(1, 1);
 				else process.argv[1] = originalArgv1;
 			}
 			try {

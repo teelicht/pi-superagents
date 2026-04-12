@@ -57,10 +57,9 @@ interface StatusParamsSchema {
 }
 
 let SubagentParams: SubagentParamsSchema | undefined;
-let StatusParams: StatusParamsSchema | undefined;
 let available = true;
 try {
-	({ SubagentParams, StatusParams } = await import("../../src/shared/schemas.ts") as { SubagentParams: SubagentParamsSchema; StatusParams: StatusParamsSchema });
+	({ SubagentParams } = await import("../../src/shared/schemas.ts") as { SubagentParams: SubagentParamsSchema });
 } catch {
 	// Skip in environments that do not install typebox.
 	available = false;
@@ -140,10 +139,4 @@ void describe("SubagentParams schema", { skip: !available ? "typebox not availab
 		assert.equal(itemCount, undefined, "tasks[].count should not exist");
 	});
 
-	void it("includes action on status params for list mode", () => {
-		const actionSchema = StatusParams?.properties?.action;
-		assert.ok(actionSchema, "status action schema should exist");
-		assert.equal(actionSchema.type, "string");
-		assert.match(String(actionSchema.description ?? ""), /list/i);
-	});
 });

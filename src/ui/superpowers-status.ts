@@ -68,7 +68,8 @@ export class SuperpowersStatusComponent extends Container {
 		const tierModel = (value: unknown): string => {
 			if (typeof value === "string") return value;
 			if (value && typeof value === "object" && "model" in value) {
-				return String((value as { model?: unknown }).model ?? "unknown");
+				const model = (value as { model?: unknown }).model;
+				return typeof model === "string" ? model : "unknown";
 			}
 			return "unknown";
 		};

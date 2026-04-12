@@ -11,7 +11,7 @@ export function resolvePiPackageRoot(): string | undefined {
 		let dir = path.dirname(fs.realpathSync(entry));
 		while (dir !== path.dirname(dir)) {
 			try {
-				const pkg = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf-8"));
+				const pkg = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf-8")) as { name?: unknown };
 				if (pkg.name === "@mariozechner/pi-coding-agent") return dir;
 			} catch { /* empty */ }
 			dir = path.dirname(dir);

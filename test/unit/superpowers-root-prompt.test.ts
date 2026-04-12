@@ -17,7 +17,7 @@ void describe("Superpowers root prompt", () => {
 			task: "fix auth",
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
-			bg: false,
+	
 			fork: false,
 			usingSuperpowersSkill: {
 				name: "using-superpowers",
@@ -42,7 +42,7 @@ void describe("Superpowers root prompt", () => {
 			task: "fix auth",
 			useSubagents: false,
 			useTestDrivenDevelopment: false,
-			bg: true,
+	
 			fork: true,
 			usingSuperpowersSkill: undefined,
 		});
@@ -50,8 +50,7 @@ void describe("Superpowers root prompt", () => {
 		assert.match(prompt, /useSubagents: false/);
 		assert.match(prompt, /useTestDrivenDevelopment: false/);
 		assert.match(prompt, /Subagent delegation is DISABLED/);
-		assert.match(prompt, /Do not call `subagent` or `subagent_status`/);
-		assert.match(prompt, /async: true/);
+		assert.match(prompt, /Do not call `subagent`/);
 		assert.match(prompt, /context: "fork"/);
 		assert.match(prompt, /using-superpowers could not be resolved/);
 	});

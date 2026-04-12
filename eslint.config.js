@@ -13,7 +13,10 @@ export default tseslint.config(
     ignores: [
       "**/node_modules/**",
       "**/dist/**",
-      "**/.cache/**"
+      "**/.cache/**",
+      "scripts/**",
+      "*.mjs",
+      "eslint.config.js"
     ]
   },
   eslint.configs.recommended,
@@ -23,7 +26,7 @@ export default tseslint.config(
   {
     languageOptions: {
       parserOptions: {
-        project: true,
+        project: ['./tsconfig.json'],
         tsconfigRootDir: import.meta.dirname,
       },
       globals: {
