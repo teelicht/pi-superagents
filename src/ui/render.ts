@@ -7,6 +7,8 @@ import { getMarkdownTheme, type ExtensionContext } from "@mariozechner/pi-coding
 import { Container, Markdown, Spacer, Text, visibleWidth, type Component } from "@mariozechner/pi-tui";
 import {
 	type Details,
+	type AgentProgress,
+	type ProgressSummary,
 } from "../shared/types.ts";
 import { formatUsage, formatDuration, formatToolCall, shortenPath } from "../shared/formatters.ts";
 import { getDisplayItems, getSingleResultOutput } from "../shared/utils.ts";
@@ -269,7 +271,7 @@ export function renderSubagentResult(
 
 		const progressFromArray = d.progress?.find((p) => p.index === i) 
 			|| d.progress?.find((p) => p.agent === r.agent && p.status === "running");
-		const rProg = r.progress || progressFromArray || r.progressSummary;
+		const rProg = (r.progress || progressFromArray || r.progressSummary) as (Partial<AgentProgress> & ProgressSummary) | undefined;
 		const rRunning = rProg?.status === "running";
 
 		const resultOutput = getSingleResultOutput(r);

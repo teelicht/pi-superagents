@@ -16,42 +16,8 @@ import {
 	resolveRoleTools,
 } from "../../src/execution/superpowers-policy.ts";
 
-describe("superpowers policy", () => {
-	it("resolves tiers in default workflow when configured", () => {
-		assert.deepEqual(
-			resolveModelForAgent({
-				workflow: "default",
-				agentModel: "balanced",
-				config: {
-					superagents: {
-						modelTiers: {
-							balanced: {
-								model: "openai/gpt-5.4",
-								thinking: "medium",
-							},
-						},
-					},
-				},
-			}),
-			{
-				model: "openai/gpt-5.4",
-				thinking: "medium",
-			},
-		);
-	});
-
-	it("returns undefined for unconfigured tiers", () => {
-		assert.equal(
-			resolveModelForAgent({
-				workflow: "default",
-				agentModel: "unconfigured-tier",
-				config: {},
-			}),
-			undefined,
-		);
-	});
-
-	it("resolves balanced tier model and thinking from agent frontmatter", () => {
+void describe("superpowers policy", () => {
+	void it("resolves tiers in default workflow when configured", () => {
 		assert.deepEqual(
 			resolveModelForAgent({
 				workflow: "superpowers",
@@ -74,7 +40,41 @@ describe("superpowers policy", () => {
 		);
 	});
 
-	it("supports string shorthand tier mappings without thinking", () => {
+	void it("returns undefined for unconfigured tiers", () => {
+		assert.equal(
+			resolveModelForAgent({
+				workflow: "superpowers",
+				agentModel: "unconfigured-tier",
+				config: {},
+			}),
+			undefined,
+		);
+	});
+
+	void it("resolves balanced tier model and thinking from agent frontmatter", () => {
+		assert.deepEqual(
+			resolveModelForAgent({
+				workflow: "superpowers",
+				agentModel: "balanced",
+				config: {
+					superagents: {
+						modelTiers: {
+							balanced: {
+								model: "openai/gpt-5.4",
+								thinking: "medium",
+							},
+						},
+					},
+				},
+			}),
+			{
+				model: "openai/gpt-5.4",
+				thinking: "medium",
+			},
+		);
+	});
+
+	void it("supports string shorthand tier mappings without thinking", () => {
 		assert.deepEqual(
 			resolveModelForAgent({
 				workflow: "superpowers",
@@ -93,7 +93,7 @@ describe("superpowers policy", () => {
 		);
 	});
 
-	it("supports custom tier names when configured", () => {
+	void it("supports custom tier names when configured", () => {
 		assert.deepEqual(
 			resolveModelForAgent({
 				workflow: "superpowers",
@@ -116,7 +116,7 @@ describe("superpowers policy", () => {
 		);
 	});
 
-	it("returns undefined for unconfigured custom tiers", () => {
+	void it("returns undefined for unconfigured custom tiers", () => {
 		assert.deepEqual(
 			resolveModelForAgent({
 				workflow: "superpowers",
@@ -135,7 +135,7 @@ describe("superpowers policy", () => {
 		);
 	});
 
-	it("resolves sp role agent frontmatter model tiers without role config", () => {
+	void it("resolves sp role agent frontmatter model tiers without role config", () => {
 		assert.deepEqual(
 			resolveModelForAgent({
 				workflow: "superpowers",
@@ -155,7 +155,7 @@ describe("superpowers policy", () => {
 		);
 	});
 
-	it("ignores config overlays and merges only agent and step skills for superpowers runs", () => {
+	void it("ignores config overlays and merges only agent and step skills for superpowers runs", () => {
 		const skills = resolveRoleSkillSet({
 			workflow: "superpowers",
 			role: "sp-spec-review",
@@ -178,7 +178,7 @@ describe("superpowers policy", () => {
 		assert.deepEqual(skills, ["vercel-react-native-skills", "react-native-best-practices"]);
 	});
 
-	it("adds test-driven-development only when useTestDrivenDevelopment is true", () => {
+	void it("adds test-driven-development only when useTestDrivenDevelopment is true", () => {
 		assert.deepEqual(
 			resolveImplementerSkillSet({
 				workflow: "superpowers",
@@ -203,7 +203,7 @@ describe("superpowers policy", () => {
 		);
 	});
 
-	it("assigns a non-delegating default tool set to bounded superpowers roles", () => {
+	void it("assigns a non-delegating default tool set to bounded superpowers roles", () => {
 		assert.deepEqual(
 			resolveRoleTools({
 				workflow: "superpowers",
@@ -213,7 +213,7 @@ describe("superpowers policy", () => {
 		);
 	});
 
-	it("strips subagent tools from explicit bounded-role tool lists", () => {
+	void it("strips subagent tools from explicit bounded-role tool lists", () => {
 		assert.deepEqual(
 			resolveRoleTools({
 				workflow: "superpowers",

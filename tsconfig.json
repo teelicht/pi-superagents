@@ -11,13 +11,10 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "allowJs": true
+    "allowJs": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true
   },
-  "include": [
-    "src/**/*",
-    "scripts/**/*",
-    "agents/**/*",
-    "test/**/*"
-  ],
+  "include": ["src/**/*", "scripts/**/*", "agents/**/*", "test/**/*"],
   "exclude": ["node_modules", "dist"]
 }

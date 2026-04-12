@@ -31,7 +31,7 @@ export interface ParallelStepGroup {
 export type RunnerStep = RunnerSubagentStep | ParallelStepGroup;
 
 export function isParallelGroup(step: RunnerStep): step is ParallelStepGroup {
-	return "parallel" in step && Array.isArray((step as ParallelStepGroup).parallel);
+	return "parallel" in step && Array.isArray((step).parallel);
 }
 
 /** Flatten runner steps into individual SubagentSteps for status tracking */

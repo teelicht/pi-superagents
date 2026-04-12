@@ -66,8 +66,8 @@ try {
 	available = false;
 }
 
-describe("SubagentParams schema", { skip: !available ? "typebox not available" : undefined }, () => {
-	it("includes context field for fresh/fork execution mode", () => {
+void describe("SubagentParams schema", { skip: !available ? "typebox not available" : undefined }, () => {
+	void it("includes context field for fresh/fork execution mode", () => {
 		const contextSchema = SubagentParams?.properties?.context;
 		assert.ok(contextSchema, "context schema should exist");
 		assert.equal(contextSchema.type, "string");
@@ -76,7 +76,7 @@ describe("SubagentParams schema", { skip: !available ? "typebox not available" :
 		assert.match(String(contextSchema.description ?? ""), /fork/);
 	});
 
-	it("describes workflow as superpowers-only role execution", () => {
+	void it("describes workflow as superpowers-only role execution", () => {
 		const workflowSchema = SubagentParams?.properties?.workflow;
 		assert.ok(workflowSchema, "workflow schema should exist");
 		assert.equal(workflowSchema.type, "string");
@@ -85,35 +85,35 @@ describe("SubagentParams schema", { skip: !available ? "typebox not available" :
 		assert.match(String(workflowSchema.description ?? ""), /only 'superpowers' is supported/i);
 	});
 
-	it("includes agent field with superpowers role description", () => {
+	void it("includes agent field with superpowers role description", () => {
 		const agentSchema = SubagentParams?.properties?.agent;
 		assert.ok(agentSchema, "agent schema should exist");
 		assert.match(String((agentSchema as { description?: string })?.description ?? ""), /sp-recon|sp-implementer|superpowers role/i);
 	});
 
-	it("includes task field", () => {
+	void it("includes task field", () => {
 		const taskSchema = SubagentParams?.properties?.task;
 		assert.ok(taskSchema, "task schema should exist");
 	});
 
-	it("includes useTestDrivenDevelopment field", () => {
+	void it("includes useTestDrivenDevelopment field", () => {
 		const schema = SubagentParams?.properties?.useTestDrivenDevelopment;
 		assert.ok(schema, "useTestDrivenDevelopment schema should exist");
 	});
 
-	it("includes tasks field for parallel role execution", () => {
+	void it("includes tasks field for parallel role execution", () => {
 		const tasksSchema = SubagentParams?.properties?.tasks;
 		assert.ok(tasksSchema, "tasks schema should exist");
 	});
 
-	it("does not expose generic management actions on the subagent schema", () => {
+	void it("does not expose generic management actions on the subagent schema", () => {
 		const properties = (SubagentParams as { properties?: Record<string, unknown> }).properties ?? {};
 		assert.equal("action" in properties, false);
 		assert.equal("chainName" in properties, false);
 		assert.equal("config" in properties, false);
 	});
 
-	it("keeps only Superpowers role execution fields", () => {
+	void it("keeps only Superpowers role execution fields", () => {
 		const properties = (SubagentParams as { properties?: Record<string, unknown> }).properties ?? {};
 		assert.equal("agent" in properties, true);
 		assert.equal("task" in properties, true);
@@ -125,7 +125,7 @@ describe("SubagentParams schema", { skip: !available ? "typebox not available" :
 		assert.equal("share" in properties, false);
 	});
 
-	it("tasks items use SuperpowersRoleNameSchema for agent", () => {
+	void it("tasks items use SuperpowersRoleNameSchema for agent", () => {
 		const tasksSchema = SubagentParams?.properties?.tasks;
 		assert.ok(tasksSchema, "tasks schema should exist");
 		const itemAgent = tasksSchema?.items?.properties?.agent;
@@ -133,14 +133,14 @@ describe("SubagentParams schema", { skip: !available ? "typebox not available" :
 		assert.match(String(itemAgent.description ?? ""), /sp-recon|superpowers role/i);
 	});
 
-	it("tasks items do not include count field", () => {
+	void it("tasks items do not include count field", () => {
 		const tasksSchema = SubagentParams?.properties?.tasks;
 		assert.ok(tasksSchema, "tasks schema should exist");
 		const itemCount = tasksSchema?.items?.properties?.count;
 		assert.equal(itemCount, undefined, "tasks[].count should not exist");
 	});
 
-	it("includes action on status params for list mode", () => {
+	void it("includes action on status params for list mode", () => {
 		const actionSchema = StatusParams?.properties?.action;
 		assert.ok(actionSchema, "status action schema should exist");
 		assert.equal(actionSchema.type, "string");

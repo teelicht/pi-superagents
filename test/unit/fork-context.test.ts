@@ -2,19 +2,19 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createForkContextResolver, resolveSubagentContext } from "../../src/execution/fork-context.ts";
 
-describe("resolveSubagentContext", () => {
-	it("defaults to fresh", () => {
+void describe("resolveSubagentContext", () => {
+	void it("defaults to fresh", () => {
 		assert.equal(resolveSubagentContext(undefined), "fresh");
 		assert.equal(resolveSubagentContext("anything"), "fresh");
 	});
 
-	it("accepts fork", () => {
+	void it("accepts fork", () => {
 		assert.equal(resolveSubagentContext("fork"), "fork");
 	});
 });
 
-describe("createForkContextResolver", () => {
-	it("fresh mode never calls createBranchedSession", () => {
+void describe("createForkContextResolver", () => {
+	void it("fresh mode never calls createBranchedSession", () => {
 		let calls = 0;
 		const resolver = createForkContextResolver({
 			getSessionFile: () => "/tmp/parent.jsonl",
@@ -29,7 +29,7 @@ describe("createForkContextResolver", () => {
 		assert.equal(calls, 0);
 	});
 
-	it("fails fast when parent session file is missing", () => {
+	void it("fails fast when parent session file is missing", () => {
 		assert.throws(
 			() => createForkContextResolver({
 				getSessionFile: () => undefined,
@@ -40,7 +40,7 @@ describe("createForkContextResolver", () => {
 		);
 	});
 
-	it("fails fast when leaf id is missing", () => {
+	void it("fails fast when leaf id is missing", () => {
 		assert.throws(
 			() => createForkContextResolver({
 				getSessionFile: () => "/tmp/parent.jsonl",
@@ -51,7 +51,7 @@ describe("createForkContextResolver", () => {
 		);
 	});
 
-	it("uses the exact current leaf id when creating branched sessions", () => {
+	void it("uses the exact current leaf id when creating branched sessions", () => {
 		const seenLeafIds: string[] = [];
 		const resolver = createForkContextResolver({
 			getSessionFile: () => "/tmp/parent.jsonl",
@@ -69,7 +69,7 @@ describe("createForkContextResolver", () => {
 		assert.deepEqual(seenLeafIds, ["leaf-xyz", "leaf-xyz", "leaf-xyz"]);
 	});
 
-	it("creates isolated branched sessions per index (parallel and chain compatible)", () => {
+	void it("creates isolated branched sessions per index (parallel and chain compatible)", () => {
 		let count = 0;
 		const resolver = createForkContextResolver({
 			getSessionFile: () => "/tmp/parent.jsonl",
@@ -90,7 +90,7 @@ describe("createForkContextResolver", () => {
 		assert.equal(count, 5);
 	});
 
-	it("memoizes per index to keep behavior deterministic", () => {
+	void it("memoizes per index to keep behavior deterministic", () => {
 		let count = 0;
 		const resolver = createForkContextResolver({
 			getSessionFile: () => "/tmp/parent.jsonl",
@@ -107,7 +107,7 @@ describe("createForkContextResolver", () => {
 		assert.equal(count, 1);
 	});
 
-	it("does not silently fallback to fresh when branch extraction fails", () => {
+	void it("does not silently fallback to fresh when branch extraction fails", () => {
 		const resolver = createForkContextResolver({
 			getSessionFile: () => "/tmp/parent.jsonl",
 			getLeafId: () => "leaf-abc",

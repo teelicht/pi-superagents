@@ -11,8 +11,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildSuperpowersRootPrompt } from "../../src/superpowers/root-prompt.ts";
 
-describe("Superpowers root prompt", () => {
-	it("bootstraps using-superpowers and enables delegation when configured", () => {
+void describe("Superpowers root prompt", () => {
+	void it("bootstraps using-superpowers and enables delegation when configured", () => {
 		const prompt = buildSuperpowersRootPrompt({
 			task: "fix auth",
 			useSubagents: true,
@@ -37,7 +37,7 @@ describe("Superpowers root prompt", () => {
 		assert.doesNotMatch(prompt, /Start with `sp-recon`/);
 	});
 
-	it("forbids subagent tools when delegation is disabled", () => {
+	void it("forbids subagent tools when delegation is disabled", () => {
 		const prompt = buildSuperpowersRootPrompt({
 			task: "fix auth",
 			useSubagents: false,

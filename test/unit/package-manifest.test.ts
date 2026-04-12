@@ -21,8 +21,8 @@ function readPackageJson(): Record<string, unknown> {
 	return JSON.parse(fs.readFileSync(packagePath, "utf-8")) as Record<string, unknown>;
 }
 
-describe("package.json manifest", () => {
-	it("publishes the src-based Pi extension entrypoints and files", () => {
+void describe("package.json manifest", () => {
+	void it("publishes the src-based Pi extension entrypoints and files", () => {
 		const packageJson = readPackageJson();
 		assert.equal(packageJson.version, "0.3.0");
 		assert.deepEqual((packageJson.pi as { extensions?: string[] }).extensions, [

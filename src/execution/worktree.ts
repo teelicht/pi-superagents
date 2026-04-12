@@ -145,7 +145,7 @@ export function findWorktreeTaskCwdConflict(
 ): WorktreeTaskCwdConflict | undefined {
 	const normalizedSharedCwd = normalizeComparableCwd(sharedCwd);
 	for (let index = 0; index < tasks.length; index++) {
-		const task = tasks[index]!;
+		const task = tasks[index];
 		if (!task.cwd) continue;
 		if (normalizeComparableCwd(task.cwd) === normalizedSharedCwd) continue;
 		return { index, agent: task.agent, cwd: task.cwd };
@@ -632,7 +632,7 @@ export function diffWorktrees(setup: WorktreeSetup, agents: string[], diffsDir: 
 
 	const diffs: WorktreeDiff[] = [];
 	for (let index = 0; index < setup.worktrees.length; index++) {
-		const worktree = setup.worktrees[index]!;
+		const worktree = setup.worktrees[index];
 		const agent = agents[index] ?? `task-${index + 1}`;
 		const patchPath = path.join(diffsDir, `task-${index}-${safePatchAgentName(agent)}.patch`);
 		try {
@@ -648,7 +648,7 @@ export function diffWorktrees(setup: WorktreeSetup, agents: string[], diffsDir: 
 
 export function cleanupWorktrees(setup: WorktreeSetup): void {
 	for (let index = setup.worktrees.length - 1; index >= 0; index--) {
-		cleanupSingleWorktree(setup.cwd, setup.worktrees[index]!);
+		cleanupSingleWorktree(setup.cwd, setup.worktrees[index]);
 	}
 	try { runGitChecked(setup.cwd, ["worktree", "prune"]); } catch { /* empty */ }
 }
@@ -668,7 +668,7 @@ export function formatWorktreeDiffSummary(diffs: WorktreeDiff[]): string {
 		lines.push("");
 	}
 
-	const patchesDir = path.dirname(changed[0]!.patchPath);
+	const patchesDir = path.dirname(changed[0].patchPath);
 	lines.push(`Full patches: ${patchesDir}`);
 	return lines.join("\n").trimEnd();
 }

@@ -10,8 +10,8 @@ import {
 	updateSuperpowersConfigText,
 } from "../../src/superpowers/config-writer.ts";
 
-describe("Superpowers config writer", () => {
-	it("toggles useSubagents without changing other settings", () => {
+void describe("Superpowers config writer", () => {
+	void it("toggles useSubagents without changing other settings", () => {
 		const updated = updateSuperpowersConfigText(
 			'{\n  "superagents": {\n    "useSubagents": true,\n    "useTestDrivenDevelopment": true\n  }\n}\n',
 			(config) => toggleSuperpowersBoolean(config, "useSubagents"),
@@ -24,7 +24,7 @@ describe("Superpowers config writer", () => {
 		});
 	});
 
-	it("creates superagents settings from an empty override", () => {
+	void it("creates superagents settings from an empty override", () => {
 		const updated = updateSuperpowersConfigText("{}", (config) =>
 			toggleSuperpowersBoolean(config, "useTestDrivenDevelopment"),
 		);
@@ -35,7 +35,7 @@ describe("Superpowers config writer", () => {
 		});
 	});
 
-	it("toggles Superpowers worktrees without changing model tiers", () => {
+	void it("toggles Superpowers worktrees without changing model tiers", () => {
 		const updated = updateSuperpowersConfigText(
 			'{\n  "superagents": {\n    "worktrees": { "enabled": false, "root": null },\n    "modelTiers": { "cheap": { "model": "a" } }\n  }\n}\n',
 			(config) => toggleSuperpowersWorktrees(config),
@@ -48,7 +48,7 @@ describe("Superpowers config writer", () => {
 		});
 	});
 
-	it("throws a readable error for malformed JSON", () => {
+	void it("throws a readable error for malformed JSON", () => {
 		assert.throws(
 			() => updateSuperpowersConfigText("{", (config) => config),
 			/Superpowers config is not valid JSON/,

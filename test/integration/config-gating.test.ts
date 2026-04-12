@@ -111,7 +111,7 @@ function createCtx(notifications: Array<{ message: string; type?: string }>) {
 	};
 }
 
-describe("extension config gating", { skip: !available ? "extension not importable" : undefined }, () => {
+void describe("extension config gating", { skip: !available ? "extension not importable" : undefined }, () => {
 	const originalHome = process.env.HOME;
 	const tempDirs: string[] = [];
 
@@ -121,7 +121,7 @@ describe("extension config gating", { skip: !available ? "extension not importab
 		for (const dir of tempDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 	});
 
-	it("notifies on session start and blocks subagent execution when config is invalid", async () => {
+	void it("notifies on session start and blocks subagent execution when config is invalid", async () => {
 		const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-config-gate-home-"));
 		tempDirs.push(home);
 		process.env.HOME = home;
@@ -137,16 +137,16 @@ describe("extension config gating", { skip: !available ? "extension not importab
 		mock.emitLifecycle("session_start", { type: "session_start", reason: "startup" }, ctx);
 
 		assert.equal(notifications.length, 1);
-		assert.equal(notifications[0]!.type, "error");
-		assert.match(notifications[0]!.message, /pi-superagents is disabled/);
-		assert.match(notifications[0]!.message, /asyncByDefalt/);
+		assert.equal(notifications[0].type, "error");
+		assert.match(notifications[0].message, /pi-superagents is disabled/);
+		assert.match(notifications[0].message, /asyncByDefalt/);
 
 		const result = await mock.tools.get("subagent")!.execute("blocked", { agent: "scout", task: "inspect" }, undefined, undefined, ctx);
 		assert.equal((result as { isError?: boolean }).isError, true);
 		assert.match(JSON.stringify(result), /config\.json needs attention/);
 	});
 
-	it("keeps config diagnostics available through subagent_status", async () => {
+	void it("keeps config diagnostics available through subagent_status", async () => {
 		const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-config-status-home-"));
 		tempDirs.push(home);
 		process.env.HOME = home;
@@ -168,7 +168,7 @@ describe("extension config gating", { skip: !available ? "extension not importab
 		assert.match(JSON.stringify(result), /maxSubagentDepth/);
 	});
 
-	it("can safely migrate an unchanged copied default config to an empty override", async () => {
+	void it("can safely migrate an unchanged copied default config to an empty override", async () => {
 		const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-config-migrate-home-"));
 		tempDirs.push(home);
 		process.env.HOME = home;

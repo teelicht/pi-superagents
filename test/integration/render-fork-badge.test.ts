@@ -33,8 +33,8 @@ const theme = {
 	bold: (text: string) => text,
 };
 
-describe("renderSubagentResult fork indicator", { skip: !available ? "render.ts not importable" : undefined }, () => {
-	it("shows [fork] when details are empty but context is fork", () => {
+void describe("renderSubagentResult fork indicator", { skip: !available ? "render.ts not importable" : undefined }, () => {
+	void it("shows [fork] when details are empty but context is fork", () => {
 		const widget = renderSubagentResult!({
 			content: [{ type: "text", text: "Async: reviewer [abc123]" }],
 			details: { mode: "single", context: "fork", results: [] },
@@ -44,7 +44,7 @@ describe("renderSubagentResult fork indicator", { skip: !available ? "render.ts 
 		assert.match(text, /\[fork\]/);
 	});
 
-	it("shows [fork] on single-result header", () => {
+	void it("shows [fork] on single-result header", () => {
 		const widget = renderSubagentResult!({
 			content: [{ type: "text", text: "done" }],
 			details: {

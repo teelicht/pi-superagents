@@ -113,7 +113,6 @@ function _migrateCopiedDefaultConfig(state: LoadedConfigState): AgentToolResult<
 	if (!canMigrate) {
 		return {
 			content: [{ type: "text", text: "No safe config migration is available for the current config.json." }],
-			isError: true,
 			details: { mode: "single", results: [] },
 		};
 	}
@@ -122,7 +121,6 @@ function _migrateCopiedDefaultConfig(state: LoadedConfigState): AgentToolResult<
 	fs.writeFileSync(state.configPath, "{}\n", "utf-8");
 	return {
 		content: [{ type: "text", text: `Migrated config.json to an empty override. Backup: ${backupPath}\nRestart or reload Pi to use the updated config.` }],
-		isError: false,
 		details: { mode: "single", results: [] },
 	};
 }
@@ -199,7 +197,6 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 function configBlockedResult(message: string): AgentToolResult<Details> {
 	return {
 		content: [{ type: "text", text: message }],
-		isError: true,
 		details: { mode: "single", results: [] },
 	};
 }
@@ -222,7 +219,7 @@ Bounded role agents are not allowed to call subagents.`,
 			if (state.configGate.blocked) {
 				return Promise.resolve(configBlockedResult(state.configGate.message));
 			}
-			return executor.execute(id, params, signal, onUpdate, ctx);
+			return executor.execute(id, params as any, signal ?? new AbortController().signal, onUpdate, ctx);
 		},
 
 		renderCall(args, theme) {

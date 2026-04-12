@@ -264,6 +264,7 @@ export interface SuperpowersSettings {
 
 export interface ExtensionConfig {
 	superagents?: SuperpowersSettings;
+	maxSubagentDepth?: number;
 }
 
 // ============================================================================

@@ -1,3 +1,15 @@
+/**
+ * Module: Fork Context Resolution
+ *
+ * Purpose: Manages the context ("fresh" or "fork") and history inheritance for subagent execution sessions.
+ * Key responsibilities:
+ * - Determines if a subagent should start from scratch or inherit the parent's session state.
+ * - Lazily clones and caches parent session files (forks) on demand using a given session manager.
+ * Important dependencies or side effects:
+ * - Interacts with `ForkableSessionManager` implementations to access and copy file-based session states.
+ * - Caches cloned sessions in-memory by index to avoid unnecessary duplicate on-disk forks.
+ */
+
 export type SubagentExecutionContext = "fresh" | "fork";
 
 export interface ForkableSessionManager {

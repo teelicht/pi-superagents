@@ -69,7 +69,7 @@ function makeState(cwd: string) {
 	};
 }
 
-describe("fork context execution wiring", { skip: !available ? "subagent executor not importable" : undefined }, () => {
+void describe("fork context execution wiring", { skip: !available ? "subagent executor not importable" : undefined }, () => {
 	let tempDir: string;
 	let mockPi: MockPi;
 
@@ -130,7 +130,7 @@ describe("fork context execution wiring", { skip: !available ? "subagent executo
 		};
 	}
 
-	it("fails fast when context=fork and parent session is missing", async () => {
+	void it("fails fast when context=fork and parent session is missing", async () => {
 		const { manager } = makeSessionManagerRecorder({ sessionFile: undefined, leafId: "leaf-current" });
 		const executor = makeExecutor();
 
@@ -146,7 +146,7 @@ describe("fork context execution wiring", { skip: !available ? "subagent executo
 		assert.match(result.content[0]?.text ?? "", /persisted parent session/);
 	});
 
-	it("fails fast when context=fork and leaf is missing", async () => {
+	void it("fails fast when context=fork and leaf is missing", async () => {
 		const { manager } = makeSessionManagerRecorder({ sessionFile: "/tmp/parent.jsonl", leafId: null });
 		const executor = makeExecutor();
 
@@ -162,7 +162,7 @@ describe("fork context execution wiring", { skip: !available ? "subagent executo
 		assert.match(result.content[0]?.text ?? "", /current leaf/);
 	});
 
-	it("returns a tool error (instead of throwing) when branch creation fails", async () => {
+	void it("returns a tool error (instead of throwing) when branch creation fails", async () => {
 		const executor = makeExecutor();
 		const manager = {
 			getSessionFile: () => "/tmp/parent.jsonl",
@@ -185,7 +185,7 @@ describe("fork context execution wiring", { skip: !available ? "subagent executo
 		assert.match(result.content[0]?.text ?? "", /branch write failed/);
 	});
 
-	it("creates one forked session for single mode", async () => {
+	void it("creates one forked session for single mode", async () => {
 		const { manager, calls } = makeSessionManagerRecorder({ sessionFile: "/tmp/parent.jsonl", leafId: "leaf-123" });
 		const executor = makeExecutor();
 
@@ -202,7 +202,7 @@ describe("fork context execution wiring", { skip: !available ? "subagent executo
 		assert.deepEqual(calls, ["leaf-123"]);
 	});
 
-	it("creates isolated forked sessions per parallel task", async () => {
+	void it("creates isolated forked sessions per parallel task", async () => {
 		const { manager, calls } = makeSessionManagerRecorder({ sessionFile: "/tmp/parent.jsonl", leafId: "leaf-777" });
 		const executor = makeExecutor();
 
@@ -225,7 +225,7 @@ describe("fork context execution wiring", { skip: !available ? "subagent executo
 		assert.deepEqual(calls, ["leaf-777", "leaf-777"]);
 	});
 
-	it("rejects top-level parallel worktree runs with a conflicting task cwd", async () => {
+	void it("rejects top-level parallel worktree runs with a conflicting task cwd", async () => {
 		const { manager } = makeSessionManagerRecorder({ sessionFile: "/tmp/parent.jsonl", leafId: "leaf-777" });
 		const executor = makeExecutor();
 
@@ -248,7 +248,7 @@ describe("fork context execution wiring", { skip: !available ? "subagent executo
 		assert.match(result.content[0]?.text ?? "", /task 2 \(second\) sets cwd/i);
 	});
 
-	it("rejects parallel runs that exceed MAX_PARALLEL", async () => {
+	void it("rejects parallel runs that exceed MAX_PARALLEL", async () => {
 		const executor = makeExecutor();
 		const tasks = [];
 		for (let i = 0; i < 10; i++) {

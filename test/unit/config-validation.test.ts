@@ -36,14 +36,14 @@ const defaults: ExtensionConfig = {
 	},
 };
 
-describe("config validation", () => {
-	it("treats missing and empty user config as valid overrides", () => {
+void describe("config validation", () => {
+	void it("treats missing and empty user config as valid overrides", () => {
 		assert.deepEqual(loadEffectiveConfig(defaults, undefined).config, defaults);
 		assert.deepEqual(loadEffectiveConfig(defaults, {}).config, defaults);
 		assert.equal(loadEffectiveConfig(defaults, {}).blocked, false);
 	});
 
-	it("deep merges user overrides over bundled defaults", () => {
+	void it("deep merges user overrides over bundled defaults", () => {
 		const result = loadEffectiveConfig(defaults, {
 			superagents: {
 				useSubagents: false,
@@ -70,7 +70,7 @@ describe("config validation", () => {
 		});
 	});
 
-	it("merges command presets and preserves defaults", () => {
+	void it("merges command presets and preserves defaults", () => {
 		const result = loadEffectiveConfig(defaults, {
 			superagents: {
 				commands: {
@@ -90,7 +90,7 @@ describe("config validation", () => {
 		assert.equal(result.config.superagents?.useTestDrivenDevelopment, true);
 	});
 
-	it("merges worktree settings deeply", () => {
+	void it("merges worktree settings deeply", () => {
 		const result = loadEffectiveConfig(defaults, {
 			superagents: {
 				worktrees: { enabled: true, root: "/tmp/worktrees" },
@@ -103,7 +103,7 @@ describe("config validation", () => {
 		assert.equal(result.config.superagents?.worktrees?.setupHookTimeoutMs, 30000);
 	});
 
-	it("blocks unknown top-level and nested keys", () => {
+	void it("blocks unknown top-level and nested keys", () => {
 		const result = validateConfigObject({
 			unknwonKey: true,
 			superagents: {
@@ -124,7 +124,7 @@ describe("config validation", () => {
 		]);
 	});
 
-	it("blocks wrong primitive types and invalid enum values", () => {
+	void it("blocks wrong primitive types and invalid enum values", () => {
 		const result = validateConfigObject({
 			superagents: {
 				useSubagents: "yes",
@@ -153,7 +153,7 @@ describe("config validation", () => {
 		]);
 	});
 
-	it("allows nullable path settings already present in default config", () => {
+	void it("allows nullable path settings already present in default config", () => {
 		const result = validateConfigObject({
 			superagents: {
 				worktrees: {
@@ -167,7 +167,7 @@ describe("config validation", () => {
 		assert.deepEqual(result.diagnostics, []);
 	});
 
-	it("accepts lean Superpowers command presets, worktrees, and model tiers", () => {
+	void it("accepts lean Superpowers command presets, worktrees, and model tiers", () => {
 		const result = validateConfigObject({
 			superagents: {
 				useSubagents: true,
@@ -192,7 +192,7 @@ describe("config validation", () => {
 		assert.deepEqual(result.diagnostics, []);
 	});
 
-	it("rejects removed generic config keys and old implementer mode", () => {
+	void it("rejects removed generic config keys and old implementer mode", () => {
 		const result = validateConfigObject({
 			asyncByDefault: true,
 			defaultSessionDir: "/tmp/sessions",
@@ -213,7 +213,7 @@ describe("config validation", () => {
 		assert.ok(codes.every((c) => c === "removed_key"));
 	});
 
-	it("rejects invalid custom command names, fields, and worktree values", () => {
+	void it("rejects invalid custom command names, fields, and worktree values", () => {
 		const result = validateConfigObject({
 			superagents: {
 				commands: {
@@ -241,7 +241,7 @@ describe("config validation", () => {
 		assert.ok(paths.includes("superagents.worktrees.unknownWtKey"));
 	});
 
-	it("formats diagnostics for Pi notifications and tool results", () => {
+	void it("formats diagnostics for Pi notifications and tool results", () => {
 		const result = validateConfigObject({
 			superagents: {
 				worktrees: {
@@ -266,7 +266,7 @@ describe("config validation", () => {
 		);
 	});
 
-	it("warns when config looks like a copied default file", () => {
+	void it("warns when config looks like a copied default file", () => {
 		const result = loadEffectiveConfig(defaults, defaults);
 
 		assert.equal(result.blocked, false);

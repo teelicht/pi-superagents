@@ -15,13 +15,13 @@ const available = !!harness;
 
 const EXTENSION = path.resolve("src/extension/index.ts");
 
-describe("extension loading", { skip: !available ? "pi-test-harness not available" : undefined }, () => {
+void describe("extension loading", { skip: !available ? "pi-test-harness not available" : undefined }, () => {
 	const { createTestSession, when, calls, says } = harness;
 	let t: any;
 
 	afterEach(() => t?.dispose());
 
-	it("loads extension and subagent tool responds", async () => {
+	void it("loads extension and subagent tool responds", async () => {
 		t = await createTestSession({
 			extensions: [EXTENSION],
 			mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },
@@ -40,7 +40,7 @@ describe("extension loading", { skip: !available ? "pi-test-harness not availabl
 		assert.ok(!results[0].isError, `should not be an error: ${results[0].text}`);
 	});
 
-	it("subagent_status tool responds", async () => {
+	void it("subagent_status tool responds", async () => {
 		t = await createTestSession({
 			extensions: [EXTENSION],
 			mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },

@@ -6,8 +6,8 @@ import { describe, it } from "node:test";
 import { pathToFileURL } from "node:url";
 import { resolve } from "../support/ts-loader.mjs";
 
-describe("ts-loader", () => {
-	it("rewrites .js imports when the parent path contains spaces", () => {
+void describe("ts-loader", () => {
+	void it("rewrites .js imports when the parent path contains spaces", () => {
 		const root = fs.mkdtempSync(path.join(os.tmpdir(), "pi-ts-loader space "));
 		const parentDir = path.join(root, "folder with spaces");
 		fs.mkdirSync(parentDir, { recursive: true });

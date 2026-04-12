@@ -39,8 +39,8 @@ class MockStream implements JsonlWriteStream {
 	}
 }
 
-describe("createJsonlWriter", () => {
-	it("writes lines with trailing newline", () => {
+void describe("createJsonlWriter", () => {
+	void it("writes lines with trailing newline", () => {
 		const source = new MockSource();
 		const stream = new MockStream();
 		const writer = createJsonlWriter("/tmp/out.jsonl", source, {
@@ -51,7 +51,7 @@ describe("createJsonlWriter", () => {
 		assert.deepEqual(stream.writes, ['{"type":"a"}\n', '{"type":"b"}\n']);
 	});
 
-	it("pauses on backpressure and resumes on drain", () => {
+	void it("pauses on backpressure and resumes on drain", () => {
 		const source = new MockSource();
 		const stream = new MockStream([false, true]);
 		const writer = createJsonlWriter("/tmp/out.jsonl", source, {
@@ -66,7 +66,7 @@ describe("createJsonlWriter", () => {
 		assert.deepEqual(stream.writes, ['{"type":"a"}\n', '{"type":"b"}\n']);
 	});
 
-	it("closes stream once", async () => {
+	void it("closes stream once", async () => {
 		const source = new MockSource();
 		const stream = new MockStream();
 		const writer = createJsonlWriter("/tmp/out.jsonl", source, {
@@ -78,7 +78,7 @@ describe("createJsonlWriter", () => {
 		assert.equal(stream.ended, true);
 	});
 
-	it("returns no-op writer when file path is undefined", async () => {
+	void it("returns no-op writer when file path is undefined", async () => {
 		const source = new MockSource();
 		const writer = createJsonlWriter(undefined, source);
 		writer.writeLine('{"type":"a"}');
@@ -87,7 +87,7 @@ describe("createJsonlWriter", () => {
 		assert.equal(source.resumed, 0);
 	});
 
-	it("stops writing when maxBytes exceeded without pausing source", () => {
+	void it("stops writing when maxBytes exceeded without pausing source", () => {
 		const source = new MockSource();
 		const stream = new MockStream();
 		const writer = createJsonlWriter("/tmp/out.jsonl", source, {
@@ -102,7 +102,7 @@ describe("createJsonlWriter", () => {
 		assert.equal(source.paused, 0);
 	});
 
-	it("allows writes up to exactly maxBytes", () => {
+	void it("allows writes up to exactly maxBytes", () => {
 		const source = new MockSource();
 		const stream = new MockStream();
 		const line = '{"x":"a"}';

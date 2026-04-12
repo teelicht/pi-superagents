@@ -21,38 +21,38 @@ afterEach(() => {
 	}
 });
 
-describe("resolveSingleOutputPath", () => {
-	it("keeps absolute paths unchanged", () => {
+void describe("resolveSingleOutputPath", () => {
+	void it("keeps absolute paths unchanged", () => {
 		const absolutePath = path.join(os.tmpdir(), "pi-superagents-abs", "report.md");
 		const resolved = resolveSingleOutputPath(absolutePath, "/repo", "/override");
 		assert.equal(resolved, absolutePath);
 	});
 
-	it("resolves relative paths against requested cwd", () => {
+	void it("resolves relative paths against requested cwd", () => {
 		const resolved = resolveSingleOutputPath("reviews/report.md", "/runtime", "/requested");
 		assert.equal(resolved, path.resolve("/requested", "reviews/report.md"));
 	});
 
-	it("resolves relative paths against runtime cwd when requested cwd is absent", () => {
+	void it("resolves relative paths against runtime cwd when requested cwd is absent", () => {
 		const resolved = resolveSingleOutputPath("reviews/report.md", "/runtime");
 		assert.equal(resolved, path.resolve("/runtime", "reviews/report.md"));
 	});
 
-	it("resolves relative requested cwd from runtime cwd before resolving output", () => {
+	void it("resolves relative requested cwd from runtime cwd before resolving output", () => {
 		const resolved = resolveSingleOutputPath("reviews/report.md", "/runtime", "nested/work");
 		assert.equal(resolved, path.resolve("/runtime", "nested/work", "reviews/report.md"));
 	});
 });
 
-describe("injectSingleOutputInstruction", () => {
-	it("appends output instruction with resolved path", () => {
+void describe("injectSingleOutputInstruction", () => {
+	void it("appends output instruction with resolved path", () => {
 		const output = injectSingleOutputInstruction("Analyze this", "/tmp/report.md");
 		assert.match(output, /Write your findings to: \/tmp\/report.md/);
 	});
 });
 
-describe("resolveSingleOutput", () => {
-	it("keeps agent-written file content when the file changed during the run", () => {
+void describe("resolveSingleOutput", () => {
+	void it("keeps agent-written file content when the file changed during the run", () => {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-superagents-output-test-"));
 		tempDirs.push(dir);
 		const outputPath = path.join(dir, "review.md");
@@ -66,7 +66,7 @@ describe("resolveSingleOutput", () => {
 		assert.equal(fs.readFileSync(outputPath, "utf-8"), "real file content");
 	});
 
-	it("falls back to persisting the assistant output when the file was not changed", () => {
+	void it("falls back to persisting the assistant output when the file was not changed", () => {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-superagents-output-test-"));
 		tempDirs.push(dir);
 		const outputPath = path.join(dir, "review.md");
@@ -81,8 +81,8 @@ describe("resolveSingleOutput", () => {
 	});
 });
 
-describe("finalizeSingleOutput", () => {
-	it("formats saved-path messaging around the already-resolved output", () => {
+void describe("finalizeSingleOutput", () => {
+	void it("formats saved-path messaging around the already-resolved output", () => {
 		const result = finalizeSingleOutput({
 			fullOutput: "line 1\nline 2\nline 3",
 			truncatedOutput: "[TRUNCATED]\nline 1",
@@ -95,7 +95,7 @@ describe("finalizeSingleOutput", () => {
 		assert.match(result.displayOutput, /📄 Output saved to:/);
 	});
 
-	it("does not add save messaging on failed runs", () => {
+	void it("does not add save messaging on failed runs", () => {
 		const result = finalizeSingleOutput({
 			fullOutput: "full output",
 			truncatedOutput: "truncated output",

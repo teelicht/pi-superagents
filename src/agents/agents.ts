@@ -25,6 +25,7 @@ export const KNOWN_FIELDS = new Set([
 
 
 export type AgentSource = "builtin" | "user" | "project";
+export type AgentScope = "project" | "user" | "both";
 
 export interface AgentConfig {
 	name: string;
