@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.3] - 2026-04-11
+
+- Hardened worktree behavoir
+- Encourage superpowers to tick off finished tasks
+
 ## [0.3.2] - 2026-04-11
 
 - More typescript linter fixes, project is now clean
