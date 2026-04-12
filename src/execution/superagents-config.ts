@@ -25,9 +25,11 @@ export function getSuperagentSettings(config: ExtensionConfig): ExtensionConfig[
  *
  * Inputs/outputs:
  * - accepts an optional explicit per-run worktree flag plus workflow/config
- * - returns the explicit value when present, otherwise the Superpowers default
+ * - returns false when Superpowers config disables worktrees, otherwise the
+ *   explicit value when present or the Superpowers default
  *
  * Invariants:
+ * - `superagents.worktrees.enabled: false` is a hard off switch for Superpowers
  * - only the explicit Superpowers workflow gets a config-driven default
  * - default workflow runs preserve caller behavior when no explicit flag is set
  *
@@ -41,6 +43,7 @@ export function resolveSuperagentWorktreeEnabled(
 	workflow: WorkflowMode,
 	config: ExtensionConfig,
 ): boolean | undefined {
+	if (workflow === "superpowers" && getSuperagentSettings(config)?.worktrees?.enabled === false) return false;
 	if (requested !== undefined) return requested;
 	if (workflow !== "superpowers") return undefined;
 	return getSuperagentSettings(config)?.worktrees?.enabled ?? true;

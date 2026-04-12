@@ -19,6 +19,9 @@ const config: ExtensionConfig = {
 	superagents: {
 		useSubagents: true,
 		useTestDrivenDevelopment: true,
+		worktrees: {
+			enabled: false,
+		},
 		commands: {
 			"superpowers-lean": {
 				description: "Lean mode",
@@ -51,6 +54,7 @@ void describe("Superpowers workflow profile", () => {
 			task: "fix auth",
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
+			worktreesEnabled: false,
 			fork: false,
 		});
 	});
@@ -66,6 +70,7 @@ void describe("Superpowers workflow profile", () => {
 			task: "fix auth",
 			useSubagents: false,
 			useTestDrivenDevelopment: true,
+			worktreesEnabled: false,
 			fork: false,
 		});
 	});

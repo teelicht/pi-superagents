@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { execSync } from "node:child_process";
 import type { MockPi } from "../support/helpers.ts";
 import { createMockPi, createTempDir, removeTempDir, tryImport } from "../support/helpers.ts";
+import type { ExtensionConfig } from "../../src/shared/types.ts";
 
 interface ExecutorModule {
 	createSubagentExecutor?: (...args: unknown[]) => {
@@ -98,15 +99,11 @@ void describe("fork context execution wiring", { skip: !available ? "subagent ex
 		removeTempDir(tempDir);
 	});
 
-	function makeExecutor() {
+	function makeExecutor(config: ExtensionConfig = { superagents: { worktrees: { enabled: false } } }) {
 		return createSubagentExecutor!({
 			pi: { events: { emit: () => {} } },
 			state: makeState(tempDir),
-			config: {
-				superagents: {
-					worktrees: { enabled: false } // Disable worktrees for simpler fork tests
-				}
-			},
+			config,
 			asyncByDefault: false,
 			tempArtifactsDir: tempDir,
 			getSubagentSessionRoot: () => tempDir,
@@ -227,7 +224,7 @@ void describe("fork context execution wiring", { skip: !available ? "subagent ex
 
 	void it("rejects top-level parallel worktree runs with a conflicting task cwd", async () => {
 		const { manager } = makeSessionManagerRecorder({ sessionFile: "/tmp/parent.jsonl", leafId: "leaf-777" });
-		const executor = makeExecutor();
+		const executor = makeExecutor({ superagents: { worktrees: { enabled: true } } });
 
 		const result = await executor.execute(
 			"id",

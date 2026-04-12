@@ -41,7 +41,14 @@ interface RegisterSlashCommandsModule {
 			resultFileCoalescer: { schedule(file: string, delayMs?: number): boolean; clear(): void };
 			configGate: { blocked: boolean; diagnostics: unknown[]; message: string; configPath?: string; examplePath?: string };
 		},
-		config: { superagents?: { useSubagents?: boolean; useTestDrivenDevelopment?: boolean; commands?: Record<string, { description?: string; useSubagents?: boolean; useTestDrivenDevelopment?: boolean }> } },
+		config: {
+			superagents?: {
+				useSubagents?: boolean;
+				useTestDrivenDevelopment?: boolean;
+				commands?: Record<string, { description?: string; useSubagents?: boolean; useTestDrivenDevelopment?: boolean }>;
+				worktrees?: { enabled?: boolean };
+			};
+		},
 	) => void;
 }
 
@@ -171,6 +178,7 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.match(prompt, /workflow:\s*"superpowers"/);
 		assert.match(prompt, /useSubagents:\s*true/);
 		assert.match(prompt, /useTestDrivenDevelopment:\s*true/);
+		assert.match(prompt, /worktrees\.enabled:\s*true/);
 		assert.match(prompt, /implement auth fix/);
 		assert.match(prompt, /Required bootstrap skill/);
 		// No options means it was sent directly (isIdle === true)
@@ -195,6 +203,7 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 			superagents: {
 				useSubagents: false,
 				useTestDrivenDevelopment: true,
+				worktrees: { enabled: false },
 				commands: {
 					review: { description: "Run code review", useSubagents: false, useTestDrivenDevelopment: false },
 				},
@@ -209,6 +218,8 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		const prompt = String(userMessages[0].content);
 		assert.match(prompt, /useSubagents:\s*false/);
 		assert.match(prompt, /useTestDrivenDevelopment:\s*false/);
+		assert.match(prompt, /worktrees\.enabled:\s*false/);
+		assert.match(prompt, /Do not use the `using-git-worktrees` skill/);
 
 		// Inline override: /review subagents check auth module → useSubagents: true
 		userMessages.length = 0;

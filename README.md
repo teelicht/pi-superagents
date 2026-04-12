@@ -64,7 +64,7 @@ See [Configuration Reference](docs/reference/configuration.md) for details on mo
 - **Superpowers Workflow**: Industry-standard pipeline for robust AI-assisted development.
 - **Role-Specific Agents**: Purpose-built agents for every phase of the development lifecycle.
 - **Parallel Execution**: Fan-out/fan-in patterns for multi-component analysis.
-- **Worktree Isolation**: Automatic git worktree creation for parallel tasks to prevent filesystem conflicts.
+- **Worktree Isolation**: Optional git worktree creation for parallel tasks to prevent filesystem conflicts.
 - **Async Execution**: Background mode with real-time progress overlay and desktop notifications.
 - **Model Tiers**: Abstract model selection (cheap, balanced, max) resolved via user configuration.
 - **Skill Injection**: Automatic injection of project-local and user-global skills into agent prompts.

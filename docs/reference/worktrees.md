@@ -4,10 +4,10 @@ When multiple agents run in parallel against the same repository, they can clobb
 
 ## Usage
 
-Worktree isolation is automatically enabled for Superpowers parallel tasks.
+Worktree isolation can be enabled for Superpowers parallel tasks with `superagents.worktrees.enabled`.
 
 ```typescript
-// Parallel with worktree isolation (default for Superpowers)
+// Parallel with worktree isolation when superagents.worktrees.enabled is true
 { tasks: [
   { agent: "sp-implementer", task: "Implement auth" },
   { agent: "sp-implementer", task: "Implement API" }
