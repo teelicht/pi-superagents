@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.3.4] - 2026-04-11
+
+- Encourage superpowers to tick off finished tasks (now for real)
+
 ## [0.3.3] - 2026-04-11
 
 - Hardened worktree behavoir
