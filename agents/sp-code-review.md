@@ -2,7 +2,7 @@
 name: sp-code-review
 description: Superpowers code-quality reviewer for a single task packet
 model: balanced
-tools: read, grep, find, ls
+tools: read, grep, find, ls, write
 maxSubagentDepth: 0
 ---
 

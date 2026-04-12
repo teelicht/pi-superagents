@@ -3,6 +3,7 @@
 ## [0.3.5] - 2026-04-12
 
 - (hopefully) fixed memleaks
+- review angents may now write to files
 
 ## [0.3.4] - 2026-04-12
 
