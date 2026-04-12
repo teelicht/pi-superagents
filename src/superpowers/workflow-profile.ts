@@ -4,7 +4,7 @@
  * Responsibilities:
  * - parse leading workflow tokens from slash command arguments
  * - preserve supported execution flags
- * - merge global defaults, custom command presets, and inline overrides
+ * - merge global defaults, custom command presets, inline overrides, and worktree policy
  *
  * Important side effects:
  * - none; this module is pure and safe to unit test
@@ -28,6 +28,7 @@ export interface ResolvedSuperpowersRunProfile {
 	task: string;
 	useSubagents: boolean;
 	useTestDrivenDevelopment: boolean;
+	worktreesEnabled: boolean;
 	fork: boolean;
 }
 
@@ -143,6 +144,7 @@ export function resolveSuperpowersRunProfile(input: {
 			?? preset.useTestDrivenDevelopment
 			?? settings.useTestDrivenDevelopment
 			?? true,
+		worktreesEnabled: settings.worktrees?.enabled ?? true,
 		fork: input.parsed.fork,
 	};
 }

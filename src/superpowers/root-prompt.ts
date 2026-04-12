@@ -4,6 +4,7 @@
  * Responsibilities:
  * - bootstrap the root session through using-superpowers
  * - express resolved workflow settings in model-readable form
+ * - constrain subagent and worktree behavior from resolved config
  * - keep Superpowers skill selection authoritative instead of forcing recon first
  *
  * Important side effects:
@@ -20,6 +21,7 @@ export interface SuperpowersRootPromptInput {
 	task: string;
 	useSubagents: boolean;
 	useTestDrivenDevelopment: boolean;
+	worktreesEnabled: boolean;
 	fork: boolean;
 	usingSuperpowersSkill?: SuperpowersRootPromptSkill;
 }
@@ -35,6 +37,7 @@ function buildMetadata(input: SuperpowersRootPromptInput): string {
 		'workflow: "superpowers"',
 		`useSubagents: ${input.useSubagents}`,
 		`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`,
+		`worktrees.enabled: ${input.worktreesEnabled}`,
 	];
 
 	if (input.fork) {
@@ -93,6 +96,29 @@ function buildDelegationContract(useSubagents: boolean): string {
 }
 
 /**
+ * Build the worktree policy block for the root session.
+ *
+ * @param worktreesEnabled Whether Superpowers worktree isolation is enabled.
+ * @returns Prompt block that constrains root-session and delegated worktree use.
+ */
+function buildWorktreeContract(worktreesEnabled: boolean): string {
+	if (worktreesEnabled) {
+		return [
+			"Worktree isolation is ENABLED by config.",
+			"Parallel Superpowers subagent runs may use the configured git worktree isolation.",
+			"Use the `using-git-worktrees` skill only when the active skill workflow explicitly requires root-session worktree setup.",
+		].join("\n");
+	}
+	return [
+		"Worktree isolation is DISABLED by config.",
+		"Treat this as an explicit user instruction that overrides any skill workflow that would normally create a worktree.",
+		"Do not use the `using-git-worktrees` skill.",
+		"Do not create, switch to, or request git worktrees.",
+		"Do not pass or request `worktree: true` for Superpowers subagent runs.",
+	].join("\n");
+}
+
+/**
  * Build the complete root-session prompt for a Superpowers slash command.
  *
  * @param input Resolved run profile plus optional skill content.
@@ -111,7 +137,7 @@ export function buildSuperpowersRootPrompt(input: SuperpowersRootPromptInput): s
 		"",
 		buildDelegationContract(input.useSubagents),
 		"",
-		"Do not use a fixed recon-first workflow. Use `sp-recon` only when the active skill flow or task shape calls for bounded reconnaissance.",
+		buildWorktreeContract(input.worktreesEnabled),
 		"",
 		"User task:",
 		input.task,

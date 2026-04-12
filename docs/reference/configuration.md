@@ -70,7 +70,7 @@ Configures the Superpowers workflow and role execution policy.
 | Key | Description |
 |-----|-------------|
 | `modelTiers` | Maps abstract tier names (`cheap`, `balanced`, `max`) to concrete model configs. |
-| `worktrees.enabled` | Whether to use git worktree isolation for parallel tasks (default: `true`). |
+| `worktrees.enabled` | Whether to use git worktree isolation for parallel tasks (bundled default: `false`). When false, Superpowers root prompts and subagent runs must not request worktrees. |
 | `worktrees.root` | Directory for Superpowers parallel worktrees (default: system temp). |
 | `worktrees.setupHook` | Path to a script to run for each created worktree. |
 | `worktrees.setupHookTimeoutMs` | Maximum time to wait for the setup hook (default: 30000ms). |

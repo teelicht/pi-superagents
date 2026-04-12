@@ -17,7 +17,8 @@ void describe("Superpowers root prompt", () => {
 			task: "fix auth",
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
-	
+			worktreesEnabled: true,
+
 			fork: false,
 			usingSuperpowersSkill: {
 				name: "using-superpowers",
@@ -31,26 +32,32 @@ void describe("Superpowers root prompt", () => {
 		assert.match(prompt, /USING SUPERPOWERS BODY/);
 		assert.match(prompt, /useSubagents: true/);
 		assert.match(prompt, /useTestDrivenDevelopment: true/);
+		assert.match(prompt, /worktrees\.enabled: true/);
 		assert.match(prompt, /Subagent delegation is ENABLED/);
 		assert.match(prompt, /must use the `subagent` tool/);
-		assert.match(prompt, /Do not use a fixed recon-first workflow/);
-		assert.doesNotMatch(prompt, /Start with `sp-recon`/);
+		assert.match(prompt, /Worktree isolation is ENABLED/);
 	});
 
-	void it("forbids subagent tools when delegation is disabled", () => {
+	void it("forbids subagent tools and worktrees when both are disabled", () => {
 		const prompt = buildSuperpowersRootPrompt({
 			task: "fix auth",
 			useSubagents: false,
 			useTestDrivenDevelopment: false,
-	
+			worktreesEnabled: false,
+
 			fork: true,
 			usingSuperpowersSkill: undefined,
 		});
 
 		assert.match(prompt, /useSubagents: false/);
 		assert.match(prompt, /useTestDrivenDevelopment: false/);
+		assert.match(prompt, /worktrees\.enabled: false/);
 		assert.match(prompt, /Subagent delegation is DISABLED/);
 		assert.match(prompt, /Do not call `subagent`/);
+		assert.match(prompt, /Worktree isolation is DISABLED/);
+		assert.match(prompt, /overrides any skill workflow/);
+		assert.match(prompt, /Do not use the `using-git-worktrees` skill/);
+		assert.match(prompt, /Do not create, switch to, or request git worktrees/);
 		assert.match(prompt, /context: "fork"/);
 		assert.match(prompt, /using-superpowers could not be resolved/);
 	});

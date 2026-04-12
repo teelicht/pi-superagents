@@ -11,7 +11,7 @@ These are the parameters the **LLM agent** passes when it calls the `subagent` t
 | `tasks`           | `TaskItem[]`                            | -                         | Array of tasks for parallel execution. Each item must specify `agent` and `task`. |
 | `workflow`        | `"superpowers"`                         | -                         | Explicitly marks the run as a Superpowers workflow. Required for role-based policy enforcement. |
 | `useTestDrivenDevelopment` | boolean                        | `true`                    | Enables test-driven development guidance for `sp-implementer` tasks. |
-| `worktree`        | boolean                                 | `true` (parallel)         | Whether to create isolated git worktrees for parallel tasks. |
+| `worktree`        | boolean                                 | config-derived            | Whether to create isolated git worktrees for parallel tasks. `superagents.worktrees.enabled: false` disables Superpowers worktrees even if this parameter is requested. |
 | `context`         | `"fresh" \| "fork"`                     | `"fresh"`                 | Execution context mode. `"fork"` branches from the current parent session. |
 | `cwd`             | string                                  | parent cwd                | Working directory for the subagent. |
 | `skill`           | `string \| string[] \| false`           | agent default             | Skills to inject into the agent prompt. `false` disables all skills. |

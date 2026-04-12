@@ -56,6 +56,7 @@ function sendSuperpowersPrompt(
 		task: profile.task,
 		useSubagents: profile.useSubagents,
 		useTestDrivenDevelopment: profile.useTestDrivenDevelopment,
+		worktreesEnabled: profile.worktreesEnabled,
 		fork: profile.fork,
 		usingSuperpowersSkill,
 	});

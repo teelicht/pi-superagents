@@ -50,6 +50,12 @@ void describe("superagents config helpers", () => {
 			}),
 			false,
 		);
+		assert.equal(
+			resolveSuperagentWorktreeEnabled(true, "superpowers", {
+				superagents: { worktrees: { enabled: false } },
+			}),
+			false,
+		);
 		assert.equal(resolveSuperagentWorktreeEnabled(false, "superpowers", {}), false);
 		assert.equal(resolveSuperagentWorktreeEnabled(true, "superpowers", {}), true);
 	});
@@ -86,4 +92,3 @@ void describe("superagents config helpers", () => {
 		);
 	});
 });
-
