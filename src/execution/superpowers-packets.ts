@@ -27,7 +27,6 @@ export function injectSuperpowersPacketInstructions(task: string, behavior: Reso
 	if (behavior.output) {
 		instructedTask += `\n\n[Write to: ${behavior.output}]`;
 	}
-	instructedTask += "\n\n[Task completion requirement: if you are executing a plan or todo list, you MUST actively check off your finished tasks/todos in the plan file (e.g. by changing [ ] to [x]) before you finish.]";
 	return instructedTask;
 }
 
