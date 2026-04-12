@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.3.2] - 2026-04-11
+
+- More typescript linter fixes, project is now clean
+
 ## [0.3.1] - 2026-04-11
 
 - Linter fixes
