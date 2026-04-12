@@ -119,6 +119,20 @@ function buildWorktreeContract(worktreesEnabled: boolean): string {
 }
 
 /**
+ * Build the task tracking policy block for the root session.
+ *
+ * @returns Prompt block that constrains task execution tracking behavior.
+ */
+function buildTaskTrackingContract(): string {
+	return [
+		"Task tracking is the responsibility of the root session.",
+		"When you delegate work through the `subagent` tool, the subagent will execute the task and report back.",
+		"After the subagent finishes a task successfully, YOU (the root session) MUST actively open the relevant plan file and check off the completed item (e.g. by changing [ ] to [x]).",
+		"Do not expect subagents to modify the plan file metadata.",
+	].join("\n");
+}
+
+/**
  * Build the complete root-session prompt for a Superpowers slash command.
  *
  * @param input Resolved run profile plus optional skill content.
@@ -138,6 +152,8 @@ export function buildSuperpowersRootPrompt(input: SuperpowersRootPromptInput): s
 		buildDelegationContract(input.useSubagents),
 		"",
 		buildWorktreeContract(input.worktreesEnabled),
+		"",
+		buildTaskTrackingContract(),
 		"",
 		"User task:",
 		input.task,
