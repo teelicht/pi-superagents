@@ -32,8 +32,8 @@ function makeDeps(input: {
 	};
 }
 
-describe("getPiSpawnCommand", () => {
-	it("uses node + argv1 script on non-Windows when argv1 is runnable JS", () => {
+void describe("getPiSpawnCommand", () => {
+	void it("uses node + argv1 script on non-Windows when argv1 is runnable JS", () => {
 		const argv1 = "/tmp/pi-entry.mjs";
 		const deps = makeDeps({
 			platform: "darwin",
@@ -47,7 +47,7 @@ describe("getPiSpawnCommand", () => {
 		assert.deepEqual(result.args, [argv1, ...args]);
 	});
 
-	it("resolves CLI script from package bin on non-Windows when argv1 is not runnable", () => {
+	void it("resolves CLI script from package bin on non-Windows when argv1 is not runnable", () => {
 		const packageJsonPath = "/opt/pi/package.json";
 		const cliPath = path.resolve(path.dirname(packageJsonPath), "dist/cli/index.js");
 		const deps = makeDeps({
@@ -63,13 +63,13 @@ describe("getPiSpawnCommand", () => {
 		assert.equal(result.args[0], cliPath);
 	});
 
-	it("falls back to plain pi command on non-Windows when CLI script cannot be resolved", () => {
+	void it("falls back to plain pi command on non-Windows when CLI script cannot be resolved", () => {
 		const args = ["--mode", "json", "Task: check output"];
 		const result = getPiSpawnCommand(args, { platform: "darwin" });
 		assert.deepEqual(result, { command: "pi", args });
 	});
 
-	it("uses node + argv1 script on Windows when argv1 is runnable JS", () => {
+	void it("uses node + argv1 script on Windows when argv1 is runnable JS", () => {
 		const argv1 = "/tmp/pi-entry.mjs";
 		const deps = makeDeps({
 			platform: "win32",
@@ -84,7 +84,7 @@ describe("getPiSpawnCommand", () => {
 		assert.equal(result.args[3], args[2]);
 	});
 
-	it("resolves CLI script from package bin when argv1 is not runnable JS", () => {
+	void it("resolves CLI script from package bin when argv1 is not runnable JS", () => {
 		const packageJsonPath = "/opt/pi/package.json";
 		// Compute expected path the same way the production code does:
 		// path.resolve(path.dirname(packageJsonPath), binPath) — which on Windows
@@ -103,7 +103,7 @@ describe("getPiSpawnCommand", () => {
 		assert.equal(result.args[0], cliPath);
 	});
 
-	it("falls back to pi when Windows CLI script cannot be resolved", () => {
+	void it("falls back to pi when Windows CLI script cannot be resolved", () => {
 		const deps = makeDeps({
 			platform: "win32",
 			argv1: "/opt/pi/subagent-runner.ts",
@@ -115,8 +115,8 @@ describe("getPiSpawnCommand", () => {
 	});
 });
 
-describe("getPiSpawnCommand with piPackageRoot", () => {
-	it("resolves CLI script via piPackageRoot when argv1 is not runnable", () => {
+void describe("getPiSpawnCommand with piPackageRoot", () => {
+	void it("resolves CLI script via piPackageRoot when argv1 is not runnable", () => {
 		const packageJsonPath = "/opt/pi/package.json";
 		const cliPath = path.resolve(path.dirname(packageJsonPath), "dist/cli/index.js");
 		const deps = makeDeps({
@@ -134,8 +134,8 @@ describe("getPiSpawnCommand with piPackageRoot", () => {
 	});
 });
 
-describe("resolveWindowsPiCliScript", () => {
-	it("supports package bin as string", () => {
+void describe("resolveWindowsPiCliScript", () => {
+	void it("supports package bin as string", () => {
 		const packageJsonPath = "/opt/pi/package.json";
 		const cliPath = path.resolve(path.dirname(packageJsonPath), "dist/cli/index.mjs");
 		const deps = makeDeps({

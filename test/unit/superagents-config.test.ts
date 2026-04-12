@@ -15,13 +15,13 @@ import {
 	resolveSuperagentWorktreeEnabled,
 } from "../../src/execution/superagents-config.ts";
 
-describe("superagents config helpers", () => {
+void describe("superagents config helpers", () => {
 	/**
 	 * Verifies the canonical settings accessor returns the configured Superagents settings.
 	 *
 	 * @returns Nothing; asserts canonical lookup behavior.
 	 */
-	it("returns only the configured superagents settings", () => {
+	void it("returns only the configured superagents settings", () => {
 		assert.deepEqual(
 			getSuperagentSettings({
 				superagents: { defaultImplementerMode: "direct" },
@@ -42,7 +42,7 @@ describe("superagents config helpers", () => {
 	 *
 	 * @returns Nothing; asserts the resolved effective worktree flag.
 	 */
-	it("defaults worktree isolation on for superpowers and respects explicit overrides", () => {
+	void it("defaults worktree isolation on for superpowers and respects explicit overrides", () => {
 		assert.equal(resolveSuperagentWorktreeEnabled(undefined, "superpowers", {}), true);
 		assert.equal(
 			resolveSuperagentWorktreeEnabled(undefined, "superpowers", {
@@ -51,8 +51,8 @@ describe("superagents config helpers", () => {
 			false,
 		);
 		assert.equal(resolveSuperagentWorktreeEnabled(false, "superpowers", {}), false);
-		assert.equal(resolveSuperagentWorktreeEnabled(true, "default", {}), true);
-		assert.equal(resolveSuperagentWorktreeEnabled(undefined, "default", {}), undefined);
+		assert.equal(resolveSuperagentWorktreeEnabled(true, "superpowers", {}), true);
+		assert.equal(resolveSuperagentWorktreeEnabled(undefined, "superpowers", {}), undefined);
 	});
 
 	/**
@@ -60,7 +60,7 @@ describe("superagents config helpers", () => {
 	 *
 	 * @returns Nothing; asserts resolved createWorktrees options.
 	 */
-	it("resolves root and hook settings only for superpowers runs", () => {
+	void it("resolves root and hook settings only for superpowers runs", () => {
 		assert.deepEqual(
 			resolveSuperagentWorktreeCreateOptions({
 				workflow: "superpowers",
@@ -88,7 +88,7 @@ describe("superagents config helpers", () => {
 
 		assert.deepEqual(
 			resolveSuperagentWorktreeCreateOptions({
-				workflow: "default",
+				workflow: "superpowers",
 					config: {
 						superagents: {
 							worktrees: {

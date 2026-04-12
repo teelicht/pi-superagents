@@ -48,7 +48,7 @@ function writeSkill(cwd: string, name: string): void {
 	);
 }
 
-describe("single sync execution", { skip: !available ? "pi packages not available" : undefined }, () => {
+void describe("single sync execution", { skip: !available ? "pi packages not available" : undefined }, () => {
 	let tempDir: string;
 	let mockPi: MockPi;
 
@@ -70,7 +70,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		removeTempDir(tempDir);
 	});
 
-	it("spawns agent and captures output", async () => {
+	void it("spawns agent and captures output", async () => {
 		mockPi.onCall({ output: "Hello from mock agent" });
 		const agents = makeAgentConfigs(["echo"]);
 
@@ -84,7 +84,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.equal(output, "Hello from mock agent");
 	});
 
-	it("returns error for unknown agent", async () => {
+	void it("returns error for unknown agent", async () => {
 		const agents = makeAgentConfigs(["echo"]);
 		const result = await runSync(tempDir, agents, "nonexistent", "Do something", {});
 
@@ -92,7 +92,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.ok(result.error?.includes("Unknown agent"));
 	});
 
-	it("captures non-zero exit code", async () => {
+	void it("captures non-zero exit code", async () => {
 		mockPi.onCall({ exitCode: 1, stderr: "Something went wrong" });
 		const agents = makeAgentConfigs(["fail"]);
 
@@ -102,7 +102,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.ok(result.error?.includes("Something went wrong"));
 	});
 
-	it("handles long tasks via temp file (ENAMETOOLONG prevention)", async () => {
+	void it("handles long tasks via temp file (ENAMETOOLONG prevention)", async () => {
 		mockPi.onCall({ output: "Got it" });
 		const longTask = "Analyze ".repeat(2000); // ~16KB
 		const agents = makeAgentConfigs(["echo"]);
@@ -114,7 +114,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.equal(output, "Got it");
 	});
 
-	it("uses agent model config", async () => {
+	void it("uses agent model config", async () => {
 		mockPi.onCall({ output: "Done" });
 		const agents = [makeAgent("echo", { model: "anthropic/claude-sonnet-4" })];
 
@@ -127,7 +127,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.equal(result.model, "anthropic/claude-sonnet-4");
 	});
 
-	it("model override from options takes precedence", async () => {
+	void it("model override from options takes precedence", async () => {
 		mockPi.onCall({ output: "Done" });
 		const agents = [makeAgent("echo", { model: "anthropic/claude-sonnet-4" })];
 
@@ -139,7 +139,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.equal(result.model, "openai/gpt-4o");
 	});
 
-	it("applies superpowers tier thinking when the tier config provides it", async () => {
+	void it("applies superpowers tier thinking when the tier config provides it", async () => {
 		mockPi.onCall({ output: "Done" });
 		const agents = [makeAgent("sp-code-review", { model: "balanced" })];
 
@@ -161,7 +161,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.equal(result.model, "openai/gpt-5.4:medium");
 	});
 
-	it("tracks usage from message events", async () => {
+	void it("tracks usage from message events", async () => {
 		mockPi.onCall({ output: "Done" });
 		const agents = makeAgentConfigs(["echo"]);
 
@@ -172,7 +172,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.equal(result.usage.output, 50); // from mock
 	});
 
-	it("tracks progress during execution", async () => {
+	void it("tracks progress during execution", async () => {
 		mockPi.onCall({ output: "Done" });
 		const agents = makeAgentConfigs(["echo"]);
 
@@ -185,7 +185,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.ok(result.progress.durationMs > 0, "should track duration");
 	});
 
-	it("sets progress.status to failed on non-zero exit", async () => {
+	void it("sets progress.status to failed on non-zero exit", async () => {
 		mockPi.onCall({ exitCode: 1 });
 		const agents = makeAgentConfigs(["fail"]);
 
@@ -194,7 +194,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.equal(result.progress.status, "failed");
 	});
 
-	it("handles multi-turn conversation from JSONL", async () => {
+	void it("handles multi-turn conversation from JSONL", async () => {
 		mockPi.onCall({
 			jsonl: [
 				events.toolStart("bash", { command: "ls" }),
@@ -213,7 +213,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.equal(result.progress.toolCount, 1, "should count tool calls");
 	});
 
-	it("writes artifacts when configured", async () => {
+	void it("writes artifacts when configured", async () => {
 		mockPi.onCall({ output: "Result text" });
 		const agents = makeAgentConfigs(["echo"]);
 		const artifactsDir = path.join(tempDir, "artifacts");
@@ -229,7 +229,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.ok(fs.existsSync(artifactsDir), "artifacts dir should exist");
 	});
 
-	it("preserves agent-written output files instead of overwriting them with the final receipt", async () => {
+	void it("preserves agent-written output files instead of overwriting them with the final receipt", async () => {
 		const outputPath = path.join(tempDir, "report.md");
 		const artifactsDir = path.join(tempDir, "artifacts");
 		mockPi.onCall({ output: `Wrote to ${outputPath}`, delay: 100 });
@@ -254,7 +254,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.equal(fs.readFileSync(result.artifactPaths.outputPath, "utf-8"), "real file content");
 	});
 
-	it("falls back to persisting assistant output when the target file was not changed", async () => {
+	void it("falls back to persisting assistant output when the target file was not changed", async () => {
 		const outputPath = path.join(tempDir, "report.md");
 		fs.writeFileSync(outputPath, "stale content", "utf-8");
 		mockPi.onCall({ output: "fresh assistant output" });
@@ -270,7 +270,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.equal(fs.readFileSync(outputPath, "utf-8"), "fresh assistant output");
 	});
 
-	it("passes maxSubagentDepth through to child execution env", async () => {
+	void it("passes maxSubagentDepth through to child execution env", async () => {
 		mockPi.onCall({ echoEnv: ["PI_SUBAGENT_DEPTH", "PI_SUBAGENT_MAX_DEPTH"] });
 		const agents = makeAgentConfigs(["echo"]);
 
@@ -286,7 +286,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		});
 	});
 
-	it("launches superpowers recon without mutation-capable tools", async () => {
+	void it("launches superpowers recon without mutation-capable tools", async () => {
 		mockPi.onCall({ echoArgs: true });
 		const agents = [makeAgent("sp-recon")];
 
@@ -305,7 +305,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.doesNotMatch(toolsArg, /\bwrite\b/);
 	});
 
-	it("replaces agent default skills when a runtime skill override is provided", async () => {
+	void it("replaces agent default skills when a runtime skill override is provided", async () => {
 		mockPi.onCall({ output: "Done" });
 		writeSkill(tempDir, "default-skill");
 		writeSkill(tempDir, "override-skill");
@@ -319,7 +319,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.deepEqual(result.skills, ["override-skill"]);
 	});
 
-	it("disables agent default skills when runtime skills are explicitly false", async () => {
+	void it("disables agent default skills when runtime skills are explicitly false", async () => {
 		mockPi.onCall({ output: "Done" });
 		writeSkill(tempDir, "default-skill");
 		const agents = [makeAgent("worker", { skills: ["default-skill"] })];
@@ -332,7 +332,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		assert.equal(result.skills, undefined);
 	});
 
-	it("handles abort signal (completes faster than delay)", async () => {
+	void it("handles abort signal (completes faster than delay)", async () => {
 		mockPi.onCall({ delay: 10000 }); // Long delay — process should be killed before this
 		const agents = makeAgentConfigs(["slow"]);
 		const controller = new AbortController();
@@ -351,7 +351,7 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 		// Exit code is platform-dependent (Windows: often 1 or 0, Linux: null/143)
 	});
 
-	it("handles stderr without exit code as info (not error)", async () => {
+	void it("handles stderr without exit code as info (not error)", async () => {
 		mockPi.onCall({ output: "Success", stderr: "Warning: something", exitCode: 0 });
 		const agents = makeAgentConfigs(["echo"]);
 

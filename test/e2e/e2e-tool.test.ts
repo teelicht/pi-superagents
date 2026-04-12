@@ -51,7 +51,7 @@ function writeTestAgents(cwd: string, agents: Array<{ name: string; description?
 	}
 }
 
-describe("subagent tool — validation", { skip: !available ? "pi-test-harness not available" : undefined }, () => {
+void describe("subagent tool — validation", { skip: !available ? "pi-test-harness not available" : undefined }, () => {
 	const { createTestSession, when, calls, says } = harness;
 	let t: any;
 
@@ -60,7 +60,7 @@ describe("subagent tool — validation", { skip: !available ? "pi-test-harness n
 		mockPi?.reset();
 	});
 
-	it("rejects unknown agent in single mode", async () => {
+	void it("rejects unknown agent in single mode", async () => {
 		t = await createTestSession({
 			extensions: [EXTENSION],
 			mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },
@@ -80,7 +80,7 @@ describe("subagent tool — validation", { skip: !available ? "pi-test-harness n
 	});
 });
 
-describe("subagent tool — single execution", { skip: !available ? "pi-test-harness not available" : undefined }, () => {
+void describe("subagent tool — single execution", { skip: !available ? "pi-test-harness not available" : undefined }, () => {
 	const { createTestSession, when, calls, says } = harness;
 	let t: any;
 
@@ -89,7 +89,7 @@ describe("subagent tool — single execution", { skip: !available ? "pi-test-har
 		mockPi?.reset();
 	});
 
-	it("executes single agent and returns output", async () => {
+	void it("executes single agent and returns output", async () => {
 		mockPi?.onCall({ output: "Hello from the subagent!" });
 
 		t = await createTestSession({
@@ -112,7 +112,7 @@ describe("subagent tool — single execution", { skip: !available ? "pi-test-har
 		assert.ok(results[0].text.includes("Hello from the subagent"), `should contain output: ${results[0].text.slice(0, 200)}`);
 	});
 
-	it("returns error for failed agent", async () => {
+	void it("returns error for failed agent", async () => {
 		mockPi?.onCall({ exitCode: 1, stderr: "Agent crashed hard" });
 
 		t = await createTestSession({

@@ -86,12 +86,12 @@ function assertPublicConfigSurface(config: Record<string, unknown>): void {
 	assert.deepEqual(metadataKeys, []);
 }
 
-describe("config templates", () => {
-	it("ships all supported runtime defaults", () => {
+void describe("config templates", () => {
+	void it("ships all supported runtime defaults", () => {
 		assertPublicConfigSurface(readConfigFile("default-config.json"));
 	});
 
-	it("ships a parseable user-facing example config with the same public surface", () => {
+	void it("ships a parseable user-facing example config with the same public surface", () => {
 		assertPublicConfigSurface(readConfigFile("config.example.json"));
 	});
 });

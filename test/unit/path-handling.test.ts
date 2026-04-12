@@ -11,11 +11,11 @@ import { describe, it } from "node:test";
  * - settings.ts — uses path.join() for path construction
  */
 
-describe("path.isAbsolute vs startsWith('/')", () => {
+void describe("path.isAbsolute vs startsWith('/')", () => {
 	// chain-execution.ts:496 uses startsWith("/") to detect absolute paths.
 	// On Windows, absolute paths look like "C:\\..." or "C:/..." — neither starts with "/".
 
-	it("startsWith('/') misses Windows absolute paths", () => {
+	void it("startsWith('/') misses Windows absolute paths", () => {
 		const windowsAbsolute = "C:\\dev\\pi-superagents\\output.md";
 		const windowsAbsoluteForward = "C:/dev/pi-superagents/output.md";
 
@@ -36,7 +36,7 @@ describe("path.isAbsolute vs startsWith('/')", () => {
 		assert.equal(path.isAbsolute("/home/user/output.md"), true);
 	});
 
-	it("path.isAbsolute is the correct cross-platform check", () => {
+	void it("path.isAbsolute is the correct cross-platform check", () => {
 		// Relative paths — both approaches agree
 		assert.equal(path.isAbsolute("output.md"), false);
 		assert.equal(path.isAbsolute("subdir/output.md"), false);
@@ -55,11 +55,11 @@ describe("path.isAbsolute vs startsWith('/')", () => {
 	});
 });
 
-describe("path.join vs template string concatenation", () => {
+void describe("path.join vs template string concatenation", () => {
 	// settings.ts uses `${chainDir}/${file}` in several places.
 	// This works but produces inconsistent separators on Windows.
 
-	it("template concatenation produces forward slashes regardless of platform", () => {
+	void it("template concatenation produces forward slashes regardless of platform", () => {
 		// chain-execution.ts:496 uses startsWith("/") to detect absolute paths.
 		const chainDir = "C:\\Users\\marc\\temp\\chain-abc";
 		const file = "progress.md";
@@ -77,7 +77,7 @@ describe("path.join vs template string concatenation", () => {
 		}
 	});
 
-	it("resolveChainPath pattern should use path.join for relative paths", () => {
+	void it("resolveChainPath pattern should use path.join for relative paths", () => {
 		// settings.ts:216: `${chainDir}/${filePath}` for relative paths
 		const chainDir = "C:\\temp\\chain-runs\\abc123";
 		const relative = "synthesis.md";
@@ -94,7 +94,7 @@ describe("path.join vs template string concatenation", () => {
 		}
 	});
 
-	it("parallel subdir naming should use path.join", () => {
+	void it("parallel subdir naming should use path.join", () => {
 		// settings.ts:302,306 pattern: `${subdir}/${task.output}`
 		const subdir = "parallel-0/0-_code-reviewer";
 		const output = "review.md";

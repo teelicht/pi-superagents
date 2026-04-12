@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildPiArgs } from "../../src/execution/pi-args.ts";
 
-describe("buildPiArgs session wiring", () => {
-	it("uses --session when sessionFile is provided", () => {
+void describe("buildPiArgs session wiring", () => {
+	void it("uses --session when sessionFile is provided", () => {
 		const { args } = buildPiArgs({
 			baseArgs: ["-p"],
 			task: "hello",
@@ -17,7 +17,7 @@ describe("buildPiArgs session wiring", () => {
 		assert.ok(!args.includes("--no-session"), "--no-session should not be emitted with --session");
 	});
 
-	it("keeps fresh mode behavior (no session file)", () => {
+	void it("keeps fresh mode behavior (no session file)", () => {
 		const { args } = buildPiArgs({
 			baseArgs: ["-p"],
 			task: "hello",

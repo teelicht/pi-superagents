@@ -12,6 +12,11 @@
 import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
 
+type EventBus = {
+	on(event: string, handler: (data: unknown) => void): () => void;
+	emit(event: string, data: unknown): void;
+};
+
 interface RegisterSlashCommandsModule {
 	registerSlashCommands?: (
 		pi: {
@@ -82,10 +87,10 @@ function createState(cwd: string) {
 		},
 		configGate: {
 			blocked: false,
-			diagnostics: [],
+			diagnostics: [] as unknown[],
 			message: "",
-			configPath: undefined,
-			examplePath: undefined,
+			configPath: undefined as string | undefined,
+			examplePath: undefined as string | undefined,
 		},
 	};
 }
@@ -107,8 +112,8 @@ function createCommandContext(
 	};
 }
 
-describe("lean superpowers slash commands", { skip: !available ? "slash-commands.ts not importable" : undefined }, () => {
-	it("registers only Superpowers commands and configured custom commands", () => {
+void describe("lean superpowers slash commands", { skip: !available ? "slash-commands.ts not importable" : undefined }, () => {
+	void it("registers only Superpowers commands and configured custom commands", () => {
 		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
 		const pi = {
 			events: createEventBus(),
@@ -144,7 +149,7 @@ describe("lean superpowers slash commands", { skip: !available ? "slash-commands
 		assert.equal(commands.get("review")!.description, "Run code review");
 	});
 
-	it("/superpowers sends a root-session prompt with resolved defaults", async () => {
+	void it("/superpowers sends a root-session prompt with resolved defaults", async () => {
 		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
 		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
 		const pi = {
@@ -162,17 +167,17 @@ describe("lean superpowers slash commands", { skip: !available ? "slash-commands
 		await commands.get("superpowers")!.handler("tdd implement auth fix", createCommandContext());
 
 		assert.equal(userMessages.length, 1);
-		const prompt = String(userMessages[0]!.content);
+		const prompt = String(userMessages[0].content);
 		assert.match(prompt, /workflow:\s*"superpowers"/);
 		assert.match(prompt, /useSubagents:\s*true/);
 		assert.match(prompt, /useTestDrivenDevelopment:\s*true/);
 		assert.match(prompt, /implement auth fix/);
 		assert.match(prompt, /Required bootstrap skill/);
 		// No options means it was sent directly (isIdle === true)
-		assert.equal(userMessages[0]!.options, undefined);
+		assert.equal(userMessages[0].options, undefined);
 	});
 
-	it("custom commands apply presets and inline tokens override them", async () => {
+	void it("custom commands apply presets and inline tokens override them", async () => {
 		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
 		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
 		const pi = {
@@ -201,7 +206,7 @@ describe("lean superpowers slash commands", { skip: !available ? "slash-commands
 		// /review inherits the preset so useSubagents: false, useTestDrivenDevelopment: false
 		await commands.get("review")!.handler("check auth module for bugs", createCommandContext());
 		assert.equal(userMessages.length, 1);
-		const prompt = String(userMessages[0]!.content);
+		const prompt = String(userMessages[0].content);
 		assert.match(prompt, /useSubagents:\s*false/);
 		assert.match(prompt, /useTestDrivenDevelopment:\s*false/);
 
@@ -209,11 +214,11 @@ describe("lean superpowers slash commands", { skip: !available ? "slash-commands
 		userMessages.length = 0;
 		await commands.get("review")!.handler("subagents check auth module", createCommandContext());
 		assert.equal(userMessages.length, 1);
-		const overridePrompt = String(userMessages[0]!.content);
+		const overridePrompt = String(userMessages[0].content);
 		assert.match(overridePrompt, /useSubagents:\s*true/);
 	});
 
-	it("/superpowers-status opens the status and settings overlay", async () => {
+	void it("/superpowers-status opens the status and settings overlay", async () => {
 		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
 		let customCalls = 0;
 		const pi = {
@@ -238,7 +243,7 @@ describe("lean superpowers slash commands", { skip: !available ? "slash-commands
 		assert.equal(customCalls, 1);
 	});
 
-	it("refuses to execute /superpowers when config is blocked", async () => {
+	void it("refuses to execute /superpowers when config is blocked", async () => {
 		const notifications: Array<{ message: string; type?: string }> = [];
 		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
 		const pi = {
@@ -264,11 +269,11 @@ describe("lean superpowers slash commands", { skip: !available ? "slash-commands
 		await commands.get("superpowers")!.handler("tdd fix bug", ctx);
 
 		assert.equal(notifications.length, 1);
-		assert.equal(notifications[0]!.type, "error");
-		assert.match(notifications[0]!.message, /disabled because config\.json needs attention/);
+		assert.equal(notifications[0].type, "error");
+		assert.match(notifications[0].message, /disabled because config\.json needs attention/);
 	});
 
-	it("/superpowers queues a follow-up when the agent is busy", async () => {
+	void it("/superpowers queues a follow-up when the agent is busy", async () => {
 		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
 		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
 		const pi = {
@@ -288,11 +293,11 @@ describe("lean superpowers slash commands", { skip: !available ? "slash-commands
 		await commands.get("superpowers")!.handler("direct update config", createCommandContext({ idle: false }));
 
 		assert.equal(userMessages.length, 1);
-		assert.equal(userMessages[0]!.options?.deliverAs, "followUp");
-		assert.match(String(userMessages[0]!.content), /useTestDrivenDevelopment:\s*false/);
+		assert.equal(userMessages[0].options?.deliverAs, "followUp");
+		assert.match(String(userMessages[0].content), /useTestDrivenDevelopment:\s*false/);
 	});
 
-	it("shows usage hint when /superpowers is called without a task", async () => {
+	void it("shows usage hint when /superpowers is called without a task", async () => {
 		const notifications: Array<{ message: string; type?: string }> = [];
 		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
 		const pi = {
@@ -312,17 +317,17 @@ describe("lean superpowers slash commands", { skip: !available ? "slash-commands
 
 		await commands.get("superpowers")!.handler("", ctx);
 		assert.equal(notifications.length, 1);
-		assert.equal(notifications[0]!.type, "error");
-		assert.match(notifications[0]!.message, /Usage:/);
+		assert.equal(notifications[0].type, "error");
+		assert.match(notifications[0].message, /Usage:/);
 
 		notifications.length = 0;
 		await commands.get("superpowers")!.handler("tdd", ctx);
 		assert.equal(notifications.length, 1);
-		assert.equal(notifications[0]!.type, "error");
-		assert.match(notifications[0]!.message, /Usage:/);
+		assert.equal(notifications[0].type, "error");
+		assert.match(notifications[0].message, /Usage:/);
 	});
 
-	it("renders Superpowers defaults, worktrees, model tiers, and custom commands in the status component", async () => {
+	void it("renders Superpowers defaults, worktrees, model tiers, and custom commands in the status component", async () => {
 		const module = await import("../../src/ui/superpowers-status.ts") as {
 			SuperpowersStatusComponent: new (...args: unknown[]) => { render(width: number): string[] };
 		};
@@ -363,7 +368,7 @@ describe("lean superpowers slash commands", { skip: !available ? "slash-commands
 		assert.match(rendered, /cheap: opencode-go\/minimax-m2.7/);
 	});
 
-	it("writes Superpowers setting toggles to the config file", async () => {
+	void it("writes Superpowers setting toggles to the config file", async () => {
 		const fs = await import("node:fs");
 		const os = await import("node:os");
 		const path = await import("node:path");

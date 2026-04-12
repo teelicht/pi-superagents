@@ -251,7 +251,7 @@ function getCachedSkills(cwd: string): CachedSkillEntry[] {
 	const dedupedByName = new Map<string, CachedSkillEntry>();
 
 	for (let i = 0; i < loaded.skills.length; i++) {
-		const skill = loaded.skills[i] as Skill;
+		const skill = loaded.skills[i];
 		const entry: CachedSkillEntry = {
 			name: skill.name,
 			filePath: skill.filePath,

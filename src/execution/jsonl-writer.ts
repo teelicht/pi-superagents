@@ -1,3 +1,15 @@
+/**
+ * Module: JSONL Stream Writer
+ *
+ * Purpose: Provides a safe, backpressure-aware writer for appending JSON Lines to a file.
+ * Key responsibilities:
+ * - Appends JSONL strings to a file stream.
+ * - Handles Node.js stream backpressure by pausing/resuming a `DrainableSource` to prevent unbounded memory usage.
+ * - Enforces a maximum file size limit (default 50MB) to prevent run-away log files.
+ * Important dependencies or side effects:
+ * - Uses `node:fs` to create write streams on the file system.
+ */
+
 import * as fs from "node:fs";
 
 export interface DrainableSource {

@@ -58,6 +58,7 @@ import {
 	resolveChildMaxSubagentDepth,
 	resolveCurrentMaxSubagentDepth,
 	wrapForkTask,
+	type ExecutionRole,
 } from "../shared/types.ts";
 
 
@@ -125,7 +126,6 @@ function validateExecutionInput(
 					text: `Provide exactly one mode. Agents: ${agents.map((a) => a.name).join(", ") || "none"}`,
 				},
 			],
-			isError: true,
 			details: { mode: "single" as const, results: [] },
 		};
 	}
@@ -143,7 +143,6 @@ function _buildRequestedModeError(params: SubagentParamsLike, message: string): 
 	return withForkContext(
 		{
 			content: [{ type: "text", text: message }],
-			isError: true,
 			details: { mode: getRequestedModeLabel(params), results: [] },
 		},
 		params.context,
@@ -169,7 +168,6 @@ function toExecutionErrorResult(params: SubagentParamsLike, error: unknown): Age
 	return withForkContext(
 		{
 			content: [{ type: "text", text: message }],
-			isError: true,
 			details: { mode: getRequestedModeLabel(params), results: [] },
 		},
 		params.context,
@@ -204,7 +202,6 @@ interface ForegroundParallelRunInput {
 function buildParallelModeError(message: string): AgentToolResult<Details> {
 	return {
 		content: [{ type: "text", text: message }],
-		isError: true,
 		details: { mode: "parallel" as const, results: [] },
 	};
 }
@@ -262,7 +259,7 @@ function resolveParallelTaskCwd(
 	worktreeSetup: WorktreeSetup | undefined,
 	index: number,
 ): string | undefined {
-	if (worktreeSetup) return worktreeSetup.worktrees[index]!.agentCwd;
+	if (worktreeSetup) return worktreeSetup.worktrees[index].agentCwd;
 	return task.cwd ?? paramsCwd;
 }
 
@@ -282,7 +279,7 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 		const overrideSkills = input.skillOverrides[index];
 		const effectiveSkills = overrideSkills === undefined ? input.behaviors[index]?.skills : overrideSkills;
 		const taskCwd = resolveParallelTaskCwd(task, input.paramsCwd, input.worktreeSetup, index);
-		return runSync(input.ctx.cwd, input.agents, task.agent, input.taskTexts[index]!, {
+		return runSync(input.ctx.cwd, input.agents, task.agent, input.taskTexts[index], {
 			cwd: taskCwd,
 			signal: input.signal,
 			runId: input.runId,
@@ -327,7 +324,6 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		signal,
 		runId,
 		sessionFileForIndex,
-		shareEnabled: _shareEnabled,
 		artifactConfig,
 		artifactsDir,
 		onUpdate,
@@ -341,7 +337,6 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 	if (tasks.length > MAX_PARALLEL)
 		return {
 			content: [{ type: "text", text: `Max ${MAX_PARALLEL} tasks` }],
-			isError: true,
 			details: { mode: "parallel" as const, results: [] },
 		};
 
@@ -351,7 +346,6 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		if (!config) {
 			return {
 				content: [{ type: "text", text: `Unknown agent: ${t.agent}` }],
-				isError: true,
 				details: { mode: "parallel" as const, results: [] },
 			};
 		}
@@ -378,17 +372,16 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 	const behaviors = agentConfigs.map((config, i) => {
 		const t = tasks[i];
 		const skillOverride = normalizeSkillInput(t.skill);
-		const packetDefaults = buildSuperpowersPacketPlan(config.name as any);
+		const packetDefaults = buildSuperpowersPacketPlan(config.name as ExecutionRole);
 		return resolveStepBehavior(
 			config,
 			{
 				output: undefined,
 				reads: undefined,
 				progress: undefined,
-				skills: skillOverride === true ? undefined : skillOverride,
+				skills: skillOverride,
 				model: t.model,
 			},
-			undefined,
 			packetDefaults,
 		);
 	});
@@ -408,7 +401,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 	try {
 		if (params.context === "fork") {
 			for (let i = 0; i < taskTexts.length; i++) {
-				taskTexts[i] = wrapForkTask(taskTexts[i]!);
+				taskTexts[i] = wrapForkTask(taskTexts[i]);
 			}
 		}
 
@@ -437,8 +430,8 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 			useTestDrivenDevelopment,
 		});
 		for (let i = 0; i < results.length; i++) {
-			const run = results[i]!;
-			recordRun(run.agent, taskTexts[i]!, run.exitCode, run.progressSummary?.durationMs ?? 0);
+			const run = results[i];
+			recordRun(run.agent, taskTexts[i], run.exitCode, run.progressSummary?.durationMs ?? 0);
 		}
 
 		for (const result of results) {
@@ -497,30 +490,28 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	if (!agentConfig) {
 		return {
 			content: [{ type: "text", text: `Unknown agent: ${params.agent}` }],
-			isError: true,
 			details: { mode: "single", results: [] },
 		};
 	}
 
 	let task = params.task!;
-	const modelOverride: string | undefined = params.model as string | undefined;
+	const modelOverride: string | undefined = params.model;
 	const skillOverride: string[] | false | undefined = normalizeSkillInput(params.skill);
 	const rawOutput = params.output !== undefined ? params.output : agentConfig.output;
-	const _effectiveOutput: string | false | undefined = rawOutput === true ? agentConfig.output : (rawOutput as string | false | undefined);
+	const _effectiveOutput: string | false | undefined = rawOutput === true ? agentConfig.output : (rawOutput);
 	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(deps.config.maxSubagentDepth);
 	const maxSubagentDepth = resolveChildMaxSubagentDepth(currentMaxSubagentDepth, agentConfig.maxSubagentDepth);
 
-	const packetDefaults = buildSuperpowersPacketPlan(agentConfig.name as any);
+	const packetDefaults = buildSuperpowersPacketPlan(agentConfig.name as ExecutionRole);
 	const behavior = resolveStepBehavior(
 		agentConfig,
 		{
-			output: params.output === true ? undefined : (params.output as string | false | undefined),
+			output: params.output === true ? undefined : (params.output),
 			reads: undefined,
 			progress: undefined,
-			skills: skillOverride === true ? undefined : skillOverride,
+			skills: skillOverride,
 			model: modelOverride,
 		},
-		undefined,
 		packetDefaults,
 	);
 	task = injectSuperpowersPacketInstructions(task, behavior);
@@ -576,7 +567,6 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 				artifacts: allArtifactPaths.length ? { dir: artifactsDir, files: allArtifactPaths } : undefined,
 				truncation: r.truncation,
 			},
-			isError: true,
 		};
 	return {
 		content: [{ type: "text", text: finalizedOutput.displayOutput || "(no output)" }],
@@ -619,7 +609,6 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 							"Complete your current task directly without delegating to further subagents.",
 					},
 				],
-				isError: true,
 				details: { mode: "single" as const, results: [] },
 			};
 		}
@@ -641,7 +630,7 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 
 		let sessionFileForIndex: (idx?: number) => string | undefined = () => undefined;
 		try {
-			sessionFileForIndex = createForkContextResolver(ctx.sessionManager, params.context).sessionFileForIndex;
+			sessionFileForIndex = createForkContextResolver(ctx.sessionManager as any, params.context).sessionFileForIndex;
 		} catch (error) {
 			return toExecutionErrorResult(params, error);
 		}
@@ -688,7 +677,6 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 
 		return withForkContext({
 			content: [{ type: "text", text: "Invalid params" }],
-			isError: true,
 			details: { mode: "single" as const, results: [] },
 		}, params.context);
 	};

@@ -35,7 +35,7 @@ function removeTempDir(dir: string): void {
 	} catch { /* empty */ }
 }
 
-describe("installLocalExtensionFiles", () => {
+void describe("installLocalExtensionFiles", () => {
 	const tempDirs: string[] = [];
 
 	afterEach(() => {
@@ -45,7 +45,7 @@ describe("installLocalExtensionFiles", () => {
 		}
 	});
 
-	it("copies the requested package files into the target extension directory", () => {
+	void it("copies the requested package files into the target extension directory", () => {
 		const sourceRoot = createTempDir("pi-local-install-src-");
 		const targetRoot = createTempDir("pi-local-install-dst-");
 		tempDirs.push(sourceRoot, targetRoot);
@@ -82,7 +82,7 @@ describe("installLocalExtensionFiles", () => {
 		assert.equal(fs.readFileSync(path.join(targetRoot, "agents", "worker.md"), "utf-8"), "# Worker\n");
 	});
 
-	it("replaces an existing install so stale files do not survive refreshes", () => {
+	void it("replaces an existing install so stale files do not survive refreshes", () => {
 		const sourceRoot = createTempDir("pi-local-install-src-");
 		const targetRoot = createTempDir("pi-local-install-dst-");
 		tempDirs.push(sourceRoot, targetRoot);
@@ -102,7 +102,7 @@ describe("installLocalExtensionFiles", () => {
 		assert.equal(fs.readFileSync(path.join(targetRoot, "src", "extension", "index.ts"), "utf-8"), "export default 1;\n");
 	});
 
-	it("preserves user-owned config while refreshing package-owned files", () => {
+	void it("preserves user-owned config while refreshing package-owned files", () => {
 		const sourceRoot = createTempDir("pi-local-install-src-");
 		const targetRoot = createTempDir("pi-local-install-dst-");
 		tempDirs.push(sourceRoot, targetRoot);
@@ -126,7 +126,7 @@ describe("installLocalExtensionFiles", () => {
 		assert.equal(fs.existsSync(path.join(targetRoot, "stale.ts")), false);
 	});
 
-	it("creates an empty user config when the target config is missing", () => {
+	void it("creates an empty user config when the target config is missing", () => {
 		const sourceRoot = createTempDir("pi-local-install-src-");
 		const targetRoot = createTempDir("pi-local-install-dst-");
 		tempDirs.push(sourceRoot, targetRoot);

@@ -16,13 +16,13 @@ const harness = await tryImport<any>("@marcfargas/pi-test-harness");
 const available = !!harness;
 const PACKAGE_DIR = path.resolve(".");
 
-describe(
+void describe(
 	"sandbox install",
 	{ skip: !available ? "pi-test-harness not available" : undefined },
 	() => {
 		const { verifySandboxInstall } = harness;
 
-		it("loads extension after npm pack+install with expected tools", { timeout: 120_000 }, async () => {
+		void it("loads extension after npm pack+install with expected tools", { timeout: 120_000 }, async () => {
 			const result = await verifySandboxInstall({
 				packageDir: PACKAGE_DIR,
 				expect: {

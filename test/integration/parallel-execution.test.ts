@@ -31,14 +31,14 @@ const mapConcurrent = utils?.mapConcurrent;
 // mapConcurrent — always runs (pure logic, no pi deps beyond utils.ts)
 // ---------------------------------------------------------------------------
 
-describe("mapConcurrent", { skip: !mapConcurrent ? "utils not importable" : undefined }, () => {
-	it("processes all items", async () => {
+void describe("mapConcurrent", { skip: !mapConcurrent ? "utils not importable" : undefined }, () => {
+	void it("processes all items", async () => {
 		const items = [1, 2, 3, 4, 5];
 		const results = await mapConcurrent(items, 2, async (item: number) => item * 2);
 		assert.deepEqual(results, [2, 4, 6, 8, 10]);
 	});
 
-	it("preserves order regardless of completion time", async () => {
+	void it("preserves order regardless of completion time", async () => {
 		const items = [80, 10, 40]; // delays in ms
 		const results = await mapConcurrent(items, 3, async (ms: number, i: number) => {
 			await new Promise((r) => setTimeout(r, ms));
@@ -47,7 +47,7 @@ describe("mapConcurrent", { skip: !mapConcurrent ? "utils not importable" : unde
 		assert.deepEqual(results, [0, 1, 2], "results should be in original order");
 	});
 
-	it("respects concurrency limit", async () => {
+	void it("respects concurrency limit", async () => {
 		let running = 0;
 		let maxRunning = 0;
 		const items = [1, 2, 3, 4, 5, 6];
@@ -62,12 +62,12 @@ describe("mapConcurrent", { skip: !mapConcurrent ? "utils not importable" : unde
 		assert.ok(maxRunning <= 2, `max concurrent should be ≤ 2, got ${maxRunning}`);
 	});
 
-	it("handles empty array", async () => {
+	void it("handles empty array", async () => {
 		const results = await mapConcurrent([], 4, async (item: unknown) => item);
 		assert.deepEqual(results, []);
 	});
 
-	it("propagates errors", async () => {
+	void it("propagates errors", async () => {
 		await assert.rejects(
 			() =>
 				mapConcurrent([1, 2, 3], 2, async (item: number) => {
@@ -83,7 +83,7 @@ describe("mapConcurrent", { skip: !mapConcurrent ? "utils not importable" : unde
 // Parallel agent execution via runSync
 // ---------------------------------------------------------------------------
 
-describe("parallel agent execution", { skip: !piAvailable ? "pi packages not available" : undefined }, () => {
+void describe("parallel agent execution", { skip: !piAvailable ? "pi packages not available" : undefined }, () => {
 	let tempDir: string;
 	let mockPi: MockPi;
 
@@ -105,7 +105,7 @@ describe("parallel agent execution", { skip: !piAvailable ? "pi packages not ava
 		removeTempDir(tempDir);
 	});
 
-	it("runs multiple agents concurrently via mapConcurrent + runSync", async () => {
+	void it("runs multiple agents concurrently via mapConcurrent + runSync", async () => {
 		mockPi.onCall({ output: "Done" });
 		const agents = makeAgentConfigs(["agent-a", "agent-b", "agent-c"]);
 		const tasks = ["Task A", "Task B", "Task C"];
@@ -125,7 +125,7 @@ describe("parallel agent execution", { skip: !piAvailable ? "pi packages not ava
 		assert.equal(results[2].agent, "agent-c");
 	});
 
-	it("all agents get independent results", async () => {
+	void it("all agents get independent results", async () => {
 		mockPi.onCall({ output: "Result" });
 		const agents = makeAgentConfigs(["a", "b"]);
 

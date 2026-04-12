@@ -99,7 +99,7 @@ export function parseSuperpowersWorkflowArgs(rawArgs: string): ParsedSuperpowers
 	const words = args.split(/\s+/).filter(Boolean);
 	const overrides: SuperpowersWorkflowOverrides = {};
 	let index = 0;
-	while (index < words.length && applyWorkflowToken(words[index]!, overrides)) {
+	while (index < words.length && applyWorkflowToken(words[index], overrides)) {
 		index++;
 	}
 	const task = words.slice(index).join(" ").trim();

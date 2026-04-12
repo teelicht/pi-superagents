@@ -27,11 +27,11 @@ import {
 const executorMod = await tryImport<any>("./src/execution/subagent-executor.ts");
 const createSubagentExecutor = executorMod?.createSubagentExecutor;
 
-describe("superpowers packets", () => {
+void describe("superpowers packets", () => {
 	/**
 	 * Verifies the implementer role uses Superpowers packet names instead of legacy defaults.
 	 */
-	it("uses task and review packet names instead of context.md/plan.md/progress.md", () => {
+	void it("uses task and review packet names instead of context.md/plan.md/progress.md", () => {
 		const packets = buildSuperpowersPacketPlan("sp-implementer");
 		assert.deepEqual(packets.reads, ["task-brief.md"]);
 		assert.equal(packets.output, "implementer-report.md");
@@ -41,7 +41,7 @@ describe("superpowers packets", () => {
 	/**
 	 * Verifies the built-in review and debug roles receive their canonical packet defaults.
 	 */
-	it("maps review, debug, and default roles to the expected packet defaults", () => {
+	void it("maps review, debug, and default roles to the expected packet defaults", () => {
 		assert.deepEqual(buildSuperpowersPacketPlan("sp-spec-review"), {
 			reads: ["task-brief.md", "implementer-report.md"],
 			output: "spec-review.md",
@@ -67,7 +67,7 @@ describe("superpowers packets", () => {
 	/**
 	 * Verifies packet defaults sit between explicit step overrides and agent frontmatter defaults.
 	 */
-	it("prefers explicit step overrides, then packet defaults, then agent defaults", () => {
+	void it("prefers explicit step overrides, then packet defaults, then agent defaults", () => {
 		const behavior = resolveStepBehavior(
 			{
 				name: "sp-implementer",
@@ -96,7 +96,7 @@ describe("superpowers packets", () => {
 	});
 });
 
-describe("superpowers packets in real execution paths", {
+void describe("superpowers packets in real execution paths", {
 	skip: !createSubagentExecutor ? "pi packages not available" : undefined,
 }, () => {
 	let tempDir: string;
@@ -187,7 +187,7 @@ describe("superpowers packets in real execution paths", {
 		};
 	}
 
-	it("injects superpowers packet instructions into foreground tasks", async () => {
+	void it("injects superpowers packet instructions into foreground tasks", async () => {
 		mockPi.onCall({ output: "Implemented task" });
 		const agents = [
 			{
@@ -223,7 +223,7 @@ describe("superpowers packets in real execution paths", {
 		assert.ok(!taskText.includes("progress.md"), taskText);
 	});
 
-	it("injects superpowers packet instructions into async runner tasks", async () => {
+	void it("injects superpowers packet instructions into async runner tasks", async () => {
 		mockPi.onCall({ output: "Async implemented task" });
 		const agents = [
 			{
@@ -259,7 +259,7 @@ describe("superpowers packets in real execution paths", {
 		assert.doesNotMatch(cfg.step.task, /progress\.md/);
 	});
 
-	it("preserves async reads and progress overrides per task", async () => {
+	void it("preserves async reads and progress overrides per task", async () => {
 		mockPi.onCall({ output: "Async review complete" });
 		const agents = [
 			{
@@ -293,7 +293,7 @@ describe("superpowers packets in real execution paths", {
 		assert.match(cfg.step.task, /implementer-report\.md/);
 	});
 
-	it("defaults async top-level parallel worktrees on for superpowers using superagents config", async () => {
+	void it("defaults async top-level parallel worktrees on for superpowers using superagents config", async () => {
 		const agents = [
 			{
 				name: "sp-implementer",

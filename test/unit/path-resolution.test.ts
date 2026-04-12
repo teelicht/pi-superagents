@@ -82,8 +82,8 @@ after(() => {
 	fs.rmSync(tempRoot, { recursive: true, force: true });
 });
 
-describe("Path resolution for .agents and ~/.agents", () => {
-	test("should resolve skills in .agents/skills", () => {
+void describe("Path resolution for .agents and ~/.agents", () => {
+	void test("should resolve skills in .agents/skills", () => {
 		assertModulesLoaded();
 
 		const skillsDir = path.join(cwdDir, ".agents", "skills");
@@ -100,7 +100,7 @@ describe("Path resolution for .agents and ~/.agents", () => {
 		assert.strictEqual(resolved?.path, path.join(skillsDir, "test-skill-1.md"));
 	});
 
-	test("should resolve skills in ~/.agents/skills", () => {
+	void test("should resolve skills in ~/.agents/skills", () => {
 		assertModulesLoaded();
 
 		const userSkillsDir = path.join(fakeUserAgentsDir, "skills");
@@ -117,7 +117,7 @@ describe("Path resolution for .agents and ~/.agents", () => {
 		assert.strictEqual(resolved?.path, path.join(userSkillsDir, "test-skill-2.md"));
 	});
 
-	test("should resolve agents in .agents", () => {
+	void test("should resolve agents in .agents", () => {
 		assertModulesLoaded();
 
 		const agentsDir = path.join(cwdDir, ".agents");
@@ -133,7 +133,7 @@ describe("Path resolution for .agents and ~/.agents", () => {
 		assert.strictEqual(agent?.filePath, path.join(agentsDir, "test-agent-1.md"));
 	});
 
-	test("should resolve agents in ~/.agents", () => {
+	void test("should resolve agents in ~/.agents", () => {
 		assertModulesLoaded();
 
 		const userAgentsDir = fakeUserAgentsDir;

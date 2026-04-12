@@ -34,8 +34,8 @@ const config: ExtensionConfig = {
 	},
 };
 
-describe("Superpowers workflow profile", () => {
-	it("uses global defaults when no preset or inline token is present", () => {
+void describe("Superpowers workflow profile", () => {
+	void it("uses global defaults when no preset or inline token is present", () => {
 		const parsed = parseSuperpowersWorkflowArgs("fix auth");
 		assert.deepEqual(parsed, {
 			task: "fix auth",
@@ -57,7 +57,7 @@ describe("Superpowers workflow profile", () => {
 		});
 	});
 
-	it("applies command preset values before inline tokens", () => {
+	void it("applies command preset values before inline tokens", () => {
 		const parsed = parseSuperpowersWorkflowArgs("tdd fix auth");
 		assert.deepEqual(resolveSuperpowersRunProfile({
 			config,
@@ -73,7 +73,7 @@ describe("Superpowers workflow profile", () => {
 		});
 	});
 
-	it("parses lean, full, direct, tdd, subagents, no-subagents, and inline tokens", () => {
+	void it("parses lean, full, direct, tdd, subagents, no-subagents, and inline tokens", () => {
 		assert.deepEqual(parseSuperpowersWorkflowArgs("lean fix auth").overrides, {
 			useSubagents: false,
 			useTestDrivenDevelopment: false,
@@ -95,7 +95,7 @@ describe("Superpowers workflow profile", () => {
 		});
 	});
 
-	it("carries bg and fork flags in either order", () => {
+	void it("carries bg and fork flags in either order", () => {
 		assert.deepEqual(parseSuperpowersWorkflowArgs("direct fix auth --fork --bg"), {
 			task: "fix auth",
 			overrides: { useTestDrivenDevelopment: false },
@@ -110,7 +110,7 @@ describe("Superpowers workflow profile", () => {
 		});
 	});
 
-	it("returns null when only workflow tokens are provided", () => {
+	void it("returns null when only workflow tokens are provided", () => {
 		assert.equal(parseSuperpowersWorkflowArgs("direct no-subagents"), null);
 		assert.equal(parseSuperpowersWorkflowArgs("--bg"), null);
 		assert.equal(parseSuperpowersWorkflowArgs(""), null);
