@@ -152,148 +152,173 @@ export async function runSync(
 	const spawnEnv = { ...process.env, ...sharedEnv, ...getSubagentDepthEnv(options.maxSubagentDepth) };
 
 	let closeJsonlWriter: (() => Promise<void>) | undefined;
-	const exitCode = await new Promise<number>((resolve) => {
-		const spawnSpec = getPiSpawnCommand(args);
-		const proc = spawn(spawnSpec.command, spawnSpec.args, {
-			cwd: cwd ?? runtimeCwd,
-			env: spawnEnv,
-			stdio: ["ignore", "pipe", "pipe"],
-		});
-		const jsonlWriter = createJsonlWriter(jsonlPath, proc.stdout);
-		closeJsonlWriter = () => jsonlWriter.close();
-		let buf = "";
-
-		let processClosed = false;
-
-		const fireUpdate = () => {
-			if (!onUpdate || processClosed) return;
-			progress.durationMs = Date.now() - startTime;
-			onUpdate({
-				content: [{ type: "text", text: getFinalOutput(result.messages) || "(running...)" }],
-				details: { mode: "single", results: [result], progress: [progress] },
+	let exitCode = 1;
+	try {
+		exitCode = await new Promise<number>((resolve) => {
+			const spawnSpec = getPiSpawnCommand(args);
+			const proc = spawn(spawnSpec.command, spawnSpec.args, {
+				cwd: cwd ?? runtimeCwd,
+				env: spawnEnv,
+				stdio: ["ignore", "pipe", "pipe"],
 			});
-		};
+			const jsonlWriter = createJsonlWriter(jsonlPath, proc.stdout);
+			closeJsonlWriter = () => jsonlWriter.close();
+			let buf = "";
 
-		const processLine = (line: string) => {
-			if (!line.trim()) return;
-			jsonlWriter.writeLine(line);
-			try {
-				const evt = JSON.parse(line) as { type?: string; message?: Message; toolName?: string; args?: unknown };
-				const now = Date.now();
-				progress.durationMs = now - startTime;
+			let processClosed = false;
+			let settled = false;
+			let killTimer: NodeJS.Timeout | undefined;
+			let abortListener: (() => void) | undefined;
 
-				if (evt.type === "tool_execution_start") {
-					progress.toolCount++;
-					progress.currentTool = evt.toolName;
-					progress.currentToolArgs = extractToolArgsPreview((evt.args || {}) as Record<string, unknown>);
-					fireUpdate();
+			/**
+			 * Detach per-process abort resources once the child process settles.
+			 */
+			const cleanupProcessListeners = () => {
+				if (killTimer) {
+					clearTimeout(killTimer);
+					killTimer = undefined;
 				}
+				if (signal && abortListener) {
+					signal.removeEventListener("abort", abortListener);
+					abortListener = undefined;
+				}
+			};
 
-				if (evt.type === "tool_execution_end") {
-					if (progress.currentTool) {
-						progress.recentTools.push({
-							tool: progress.currentTool,
-							args: progress.currentToolArgs || "",
-							endMs: now,
-						});
+			const fireUpdate = () => {
+				if (!onUpdate || processClosed) return;
+				progress.durationMs = Date.now() - startTime;
+				onUpdate({
+					content: [{ type: "text", text: getFinalOutput(result.messages) || "(running...)" }],
+					details: { mode: "single", results: [result], progress: [progress] },
+				});
+			};
+
+			const processLine = (line: string) => {
+				if (!line.trim()) return;
+				jsonlWriter.writeLine(line);
+				try {
+					const evt = JSON.parse(line) as { type?: string; message?: Message; toolName?: string; args?: unknown };
+					const now = Date.now();
+					progress.durationMs = now - startTime;
+
+					if (evt.type === "tool_execution_start") {
+						progress.toolCount++;
+						progress.currentTool = evt.toolName;
+						progress.currentToolArgs = extractToolArgsPreview((evt.args || {}) as Record<string, unknown>);
+						fireUpdate();
 					}
-					progress.currentTool = undefined;
-					progress.currentToolArgs = undefined;
-					fireUpdate();
-				}
 
-				if (evt.type === "message_end" && evt.message) {
-					result.messages.push(evt.message);
-					if (evt.message.role === "assistant") {
-						result.usage.turns++;
-						const u = evt.message.usage;
-						if (u) {
-							result.usage.input += u.input || 0;
-							result.usage.output += u.output || 0;
-							result.usage.cacheRead += u.cacheRead || 0;
-							result.usage.cacheWrite += u.cacheWrite || 0;
-							result.usage.cost += u.cost?.total || 0;
+					if (evt.type === "tool_execution_end") {
+						if (progress.currentTool) {
+							progress.recentTools.push({
+								tool: progress.currentTool,
+								args: progress.currentToolArgs || "",
+								endMs: now,
+							});
 						}
-						if (!result.model && evt.message.model) result.model = evt.message.model;
-						if (evt.message.errorMessage) result.error = evt.message.errorMessage;
+						progress.currentTool = undefined;
+						progress.currentToolArgs = undefined;
+						fireUpdate();
+					}
 
-						const text = extractTextFromContent(evt.message.content);
-						if (text) {
-							const lines = text
+					if (evt.type === "message_end" && evt.message) {
+						result.messages.push(evt.message);
+						if (evt.message.role === "assistant") {
+							result.usage.turns++;
+							const u = evt.message.usage;
+							if (u) {
+								result.usage.input += u.input || 0;
+								result.usage.output += u.output || 0;
+								result.usage.cacheRead += u.cacheRead || 0;
+								result.usage.cacheWrite += u.cacheWrite || 0;
+								result.usage.cost += u.cost?.total || 0;
+							}
+							if (!result.model && evt.message.model) result.model = evt.message.model;
+							if (evt.message.errorMessage) result.error = evt.message.errorMessage;
+
+							const text = extractTextFromContent(evt.message.content);
+							if (text) {
+								const lines = text
+									.split("\n")
+									.filter((l) => l.trim())
+									.slice(-10);
+								// Append to existing recentOutput (keep last 50 total) - mutate in place for efficiency
+								progress.recentOutput.push(...lines);
+								if (progress.recentOutput.length > 50) {
+									progress.recentOutput.splice(0, progress.recentOutput.length - 50);
+								}
+							}
+						}
+						fireUpdate();
+					}
+					if (evt.type === "tool_result_end" && evt.message) {
+						result.messages.push(evt.message);
+						// Also capture tool result text in recentOutput for streaming display
+						const toolText = extractTextFromContent(evt.message.content);
+						if (toolText) {
+							const toolLines = toolText
 								.split("\n")
 								.filter((l) => l.trim())
 								.slice(-10);
 							// Append to existing recentOutput (keep last 50 total) - mutate in place for efficiency
-							progress.recentOutput.push(...lines);
+							progress.recentOutput.push(...toolLines);
 							if (progress.recentOutput.length > 50) {
 								progress.recentOutput.splice(0, progress.recentOutput.length - 50);
 							}
 						}
+						fireUpdate();
 					}
-					fireUpdate();
+				} catch {
+					// Non-JSON stdout lines are expected; only structured events are parsed.
 				}
-				if (evt.type === "tool_result_end" && evt.message) {
-					result.messages.push(evt.message);
-					// Also capture tool result text in recentOutput for streaming display
-					const toolText = extractTextFromContent(evt.message.content);
-					if (toolText) {
-						const toolLines = toolText
-							.split("\n")
-							.filter((l) => l.trim())
-							.slice(-10);
-						// Append to existing recentOutput (keep last 50 total) - mutate in place for efficiency
-						progress.recentOutput.push(...toolLines);
-						if (progress.recentOutput.length > 50) {
-							progress.recentOutput.splice(0, progress.recentOutput.length - 50);
-						}
-					}
-					fireUpdate();
-				}
-			} catch {
-				// Non-JSON stdout lines are expected; only structured events are parsed.
-			}
-		};
-
-		let stderrBuf = "";
-
-		proc.stdout.on("data", (d: Buffer) => {
-			buf += d.toString();
-			const lines = buf.split("\n");
-			buf = lines.pop() || "";
-			lines.forEach(processLine);
-		});
-		proc.stderr.on("data", (d: Buffer) => {
-			stderrBuf += d.toString();
-		});
-		proc.on("close", (code) => {
-			processClosed = true;
-			if (buf.trim()) processLine(buf);
-			if (code !== 0 && stderrBuf.trim() && !result.error) {
-				result.error = stderrBuf.trim();
-			}
-			resolve(code ?? 0);
-		});
-		proc.on("error", () => resolve(1));
-
-		if (signal) {
-			const kill = () => {
-				proc.kill("SIGTERM");
-				setTimeout(() => !proc.killed && proc.kill("SIGKILL"), 3000);
 			};
-			if (signal.aborted) kill();
-			else signal.addEventListener("abort", kill, { once: true });
-		}
-	});
 
-	if (closeJsonlWriter) {
-		try {
-			await closeJsonlWriter();
-		} catch {
-			// JSONL artifact flush is best effort.
+			let stderrBuf = "";
+
+			const finish = (code: number | null) => {
+				if (settled) return;
+				settled = true;
+				processClosed = true;
+				if (buf.trim()) processLine(buf);
+				if (code !== 0 && stderrBuf.trim() && !result.error) {
+					result.error = stderrBuf.trim();
+				}
+				cleanupProcessListeners();
+				resolve(code ?? 0);
+			};
+
+			proc.stdout.on("data", (d: Buffer) => {
+				buf += d.toString();
+				const lines = buf.split("\n");
+				buf = lines.pop() || "";
+				lines.forEach(processLine);
+			});
+			proc.stderr.on("data", (d: Buffer) => {
+				stderrBuf += d.toString();
+			});
+			proc.on("close", finish);
+			proc.on("error", () => finish(1));
+
+			if (signal) {
+				abortListener = () => {
+					proc.kill("SIGTERM");
+					killTimer = setTimeout(() => !proc.killed && proc.kill("SIGKILL"), 3000);
+				};
+				if (signal.aborted) abortListener();
+				else signal.addEventListener("abort", abortListener, { once: true });
+			}
+		});
+	} finally {
+		if (closeJsonlWriter) {
+			try {
+				await closeJsonlWriter();
+			} catch {
+				// JSONL artifact flush is best effort.
+			}
 		}
+
+		cleanupTempDir(tempDir);
 	}
-
-	cleanupTempDir(tempDir);
 	result.exitCode = exitCode;
 
 	if (exitCode === 0 && !result.error) {

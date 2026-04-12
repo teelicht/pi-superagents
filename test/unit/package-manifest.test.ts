@@ -24,10 +24,9 @@ function readPackageJson(): Record<string, unknown> {
 void describe("package.json manifest", () => {
 	void it("publishes the src-based Pi extension entrypoints and files", () => {
 		const packageJson = readPackageJson();
-		assert.equal(packageJson.version, "0.3.0");
+		assert.equal(packageJson.version, "0.3.1");
 		assert.deepEqual((packageJson.pi as { extensions?: string[] }).extensions, [
 			"./src/extension/index.ts",
-			"./src/extension/notify.ts",
 		]);
 		assert.deepEqual(packageJson.files, [
 			"src/",
@@ -40,5 +39,16 @@ void describe("package.json manifest", () => {
 			"README.md",
 			"CHANGELOG.md",
 		]);
+	});
+
+	void it("only advertises Pi extension entrypoints that exist in the package", () => {
+		const packageJson = readPackageJson();
+		const extensions = (packageJson.pi as { extensions?: string[] }).extensions ?? [];
+		assert.ok(extensions.length > 0, "package should advertise at least one Pi extension entrypoint");
+
+		for (const extensionPath of extensions) {
+			const absolutePath = path.resolve(extensionPath);
+			assert.ok(fs.existsSync(absolutePath), `${extensionPath} should exist`);
+		}
 	});
 });

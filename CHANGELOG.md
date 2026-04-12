@@ -1,10 +1,14 @@
 # Changelog
 
-## [0.3.4] - 2026-04-11
+## [0.3.5] - 2026-04-12
+
+- (hopefully) fixed memleaks
+
+## [0.3.4] - 2026-04-12
 
 - Encourage superpowers to tick off finished tasks (now for real)
 
-## [0.3.3] - 2026-04-11
+## [0.3.3] - 2026-04-12
 
 - Hardened worktree behavoir
 - Encourage superpowers to tick off finished tasks
