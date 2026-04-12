@@ -256,13 +256,13 @@ export async function runSync(
 
 		let stderrBuf = "";
 
-		proc.stdout.on("data", (d) => {
+		proc.stdout.on("data", (d: Buffer) => {
 			buf += d.toString();
 			const lines = buf.split("\n");
 			buf = lines.pop() || "";
 			lines.forEach(processLine);
 		});
-		proc.stderr.on("data", (d) => {
+		proc.stderr.on("data", (d: Buffer) => {
 			stderrBuf += d.toString();
 		});
 		proc.on("close", (code) => {

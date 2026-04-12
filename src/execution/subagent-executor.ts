@@ -25,7 +25,7 @@ import {
 	resolveStepBehavior,
 } from "./settings.ts";
 import { normalizeSkillInput } from "../shared/skills.ts";
-import { createForkContextResolver } from "./fork-context.ts";
+import { createForkContextResolver, type ForkableSessionManager } from "./fork-context.ts";
 import { finalizeSingleOutput, injectSingleOutputInstruction, resolveSingleOutputPath } from "./single-output.ts";
 import {
 	resolveSuperagentWorktreeCreateOptions,
@@ -386,8 +386,8 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		);
 	});
 	const taskTexts = tasks.map((t, i) => injectSuperpowersPacketInstructions(t.task, behaviors[i]));
-	const liveResults: (SingleResult | undefined)[] = new Array(tasks.length).fill(undefined);
-	const liveProgress: (AgentProgress | undefined)[] = new Array(tasks.length).fill(undefined);
+	const liveResults: (SingleResult | undefined)[] = Array(tasks.length).fill(undefined) as (SingleResult | undefined)[];
+	const liveProgress: (AgentProgress | undefined)[] = Array(tasks.length).fill(undefined) as (AgentProgress | undefined)[];
 	const { setup: worktreeSetup, errorResult } = createParallelWorktreeSetup(
 		effectiveWorktree,
 		effectiveCwd,
@@ -630,7 +630,8 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 
 		let sessionFileForIndex: (idx?: number) => string | undefined = () => undefined;
 		try {
-			sessionFileForIndex = createForkContextResolver(ctx.sessionManager as any, params.context).sessionFileForIndex;
+			const forkContext = createForkContextResolver(ctx.sessionManager as unknown as ForkableSessionManager, params.context);
+			sessionFileForIndex = (idx?: number) => forkContext.sessionFileForIndex(idx);
 		} catch (error) {
 			return toExecutionErrorResult(params, error);
 		}

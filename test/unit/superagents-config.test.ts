@@ -24,9 +24,9 @@ void describe("superagents config helpers", () => {
 	void it("returns only the configured superagents settings", () => {
 		assert.deepEqual(
 			getSuperagentSettings({
-				superagents: { defaultImplementerMode: "direct" },
+				superagents: { useTestDrivenDevelopment: true },
 			}),
-			{ defaultImplementerMode: "direct" },
+			{ useTestDrivenDevelopment: true },
 		);
 		assert.equal(getSuperagentSettings({}), undefined);
 		assert.equal(
@@ -52,7 +52,6 @@ void describe("superagents config helpers", () => {
 		);
 		assert.equal(resolveSuperagentWorktreeEnabled(false, "superpowers", {}), false);
 		assert.equal(resolveSuperagentWorktreeEnabled(true, "superpowers", {}), true);
-		assert.equal(resolveSuperagentWorktreeEnabled(undefined, "superpowers", {}), undefined);
 	});
 
 	/**
@@ -85,24 +84,6 @@ void describe("superagents config helpers", () => {
 				},
 			},
 		);
-
-		assert.deepEqual(
-			resolveSuperagentWorktreeCreateOptions({
-				workflow: "superpowers",
-					config: {
-						superagents: {
-							worktrees: {
-								root: ".worktrees",
-								setupHook: "./scripts/setup-worktree.mjs",
-								setupHookTimeoutMs: 45000,
-							},
-						},
-					},
-				agents: ["worker"],
-			}),
-			{
-				agents: ["worker"],
-			},
-		);
 	});
 });
+

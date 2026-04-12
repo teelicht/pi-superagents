@@ -107,19 +107,20 @@ export function detectSubagentError(messages: Message[]): ErrorInfo {
 		const msg = messages[i];
 		if (msg.role !== "toolResult") continue;
 
-		if ((msg as any).isError) {
+		const isError = "isError" in msg && Boolean((msg as { isError?: boolean }).isError);
+		if (isError) {
 			const text = msg.content.find((c) => c.type === "text");
 			const details = text && "text" in text ? text.text : undefined;
 			const exitMatch = details?.match(/exit(?:ed)?\s*(?:with\s*)?(?:code|status)?\s*[:\s]?\s*(\d+)/i);
 			return {
 				hasError: true,
 				exitCode: exitMatch ? parseInt(exitMatch[1], 10) : 1,
-				errorType: (msg as any).toolName || "tool",
+				errorType: ("toolName" in msg ? String((msg as { toolName?: unknown }).toolName) : undefined) || "tool",
 				details: details?.slice(0, 200),
 			};
 		}
 
-		const toolName = (msg as any).toolName;
+		const toolName = "toolName" in msg ? String((msg as { toolName?: unknown }).toolName) : undefined;
 		if (toolName !== "bash") continue;
 
 		const text = msg.content.find((c) => c.type === "text");
@@ -170,8 +171,8 @@ export function extractToolArgsPreview(args: Record<string, unknown>): string {
 	
 	const previewKeys = ["command", "path", "file_path", "pattern", "query", "url", "task", "describe", "search"];
 	for (const key of previewKeys) {
-		if (args[key] && typeof args[key] === "string") {
-			const value = args[key];
+		const value = args[key];
+		if (value && typeof value === "string") {
 			return value.length > 60 ? `${value.slice(0, 57)}...` : value;
 		}
 	}
@@ -198,18 +199,19 @@ export function extractTextFromContent(content: unknown): string {
 	const texts: string[] = [];
 	for (const part of content) {
 		if (part && typeof part === "object") {
+			const p = part as Record<string, unknown>;
 			// Handle { type: "text", text: "..." }
-			if ("type" in part && part.type === "text" && "text" in part) {
-				texts.push(String(part.text));
+			if (p.type === "text" && "text" in p) {
+				texts.push(String(p.text));
 			}
 			// Handle { type: "tool_result", content: "..." }
-			else if ("type" in part && part.type === "tool_result" && "content" in part) {
-				const inner = extractTextFromContent(part.content);
+			else if (p.type === "tool_result" && "content" in p) {
+				const inner = extractTextFromContent(p.content);
 				if (inner) texts.push(inner);
 			}
 			// Handle { text: "..." } without type
-			else if ("text" in part) {
-				texts.push(String(part.text));
+			else if ("text" in p) {
+				texts.push(String(p.text));
 			}
 		}
 	}

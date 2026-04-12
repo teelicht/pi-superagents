@@ -35,7 +35,7 @@ let resolveSkillPath:
 	| undefined;
 let clearSkillCache: (() => void) | undefined;
 let discoverAvailableSkills:
-	| ((cwd: string) => Array<{ name: string; path: string }>)
+	| ((cwd: string) => Array<{ name: string; source: string; description?: string }>)
 	| undefined;
 let moduleLoadError: unknown;
 
@@ -90,10 +90,10 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 		fs.mkdirSync(skillsDir, { recursive: true });
 		fs.writeFileSync(path.join(skillsDir, "test-skill-1.md"), "---\nname: test-skill-1\ndescription: test desc\n---\nSkill content");
 
-		clearSkillCache();
-		const resolved = resolveSkillPath("test-skill-1", cwdDir);
+		clearSkillCache!();
+		const resolved = resolveSkillPath!("test-skill-1", cwdDir);
 		if (!resolved) {
-			console.error("DEBUG SKILLS:", discoverAvailableSkills(cwdDir));
+			console.error("DEBUG SKILLS:", discoverAvailableSkills!(cwdDir));
 			console.error("EXPECTED DIR:", skillsDir);
 		}
 		assert.ok(resolved);
@@ -107,10 +107,10 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 		fs.mkdirSync(userSkillsDir, { recursive: true });
 		fs.writeFileSync(path.join(userSkillsDir, "test-skill-2.md"), "---\nname: test-skill-2\ndescription: test desc\n---\nSkill content");
 
-		clearSkillCache();
-		const resolved = resolveSkillPath("test-skill-2", cwdDir);
+		clearSkillCache!();
+		const resolved = resolveSkillPath!("test-skill-2", cwdDir);
 		if (!resolved) {
-			console.error("DEBUG SKILLS 2:", discoverAvailableSkills(cwdDir));
+			console.error("DEBUG SKILLS 2:", discoverAvailableSkills!(cwdDir));
 			console.error("EXPECTED DIR 2:", userSkillsDir);
 		}
 		assert.ok(resolved);
@@ -127,7 +127,7 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 			"---\nname: test-agent-1\ndescription: Test agent\n---\nAgent content",
 		);
 
-		const result = discoverAgents(cwdDir, "project");
+		const result = discoverAgents!(cwdDir, "project");
 		const agent = result.agents.find((candidate) => candidate.name === "test-agent-1");
 		assert.ok(agent);
 		assert.strictEqual(agent?.filePath, path.join(agentsDir, "test-agent-1.md"));
@@ -143,7 +143,7 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 			"---\nname: test-agent-2\ndescription: Test agent\n---\nAgent content",
 		);
 
-		const result = discoverAgents(cwdDir, "user");
+		const result = discoverAgents!(cwdDir, "user");
 		const agent = result.agents.find((candidate) => candidate.name === "test-agent-2");
 		assert.ok(agent);
 		assert.strictEqual(agent?.filePath, path.join(userAgentsDir, "test-agent-2.md"));

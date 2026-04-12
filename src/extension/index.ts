@@ -19,7 +19,7 @@ import { renderSubagentResult } from "../ui/render.ts";
 import { SubagentParams } from "../shared/schemas.ts";
 import { formatConfigDiagnostics, loadEffectiveConfig } from "../execution/config-validation.ts";
 import type { ConfigDiagnostic } from "../shared/types.ts";
-import { createSubagentExecutor } from "../execution/subagent-executor.ts";
+import { createSubagentExecutor, type SubagentParamsLike } from "../execution/subagent-executor.ts";
 import { registerSlashCommands } from "../slash/slash-commands.ts";
 import {
 	type Details,
@@ -50,7 +50,7 @@ function getSubagentSessionRoot(parentSessionFile: string | null): string {
  * @param filePath Absolute path to the JSON file.
  * @returns Parsed JSON value or `undefined` when the file is absent.
  */
-function readJsonConfig(filePath: string): unknown | undefined {
+function readJsonConfig(filePath: string): unknown {
 	if (!fs.existsSync(filePath)) return undefined;
 	return JSON.parse(fs.readFileSync(filePath, "utf-8"));
 }
@@ -219,7 +219,7 @@ Bounded role agents are not allowed to call subagents.`,
 			if (state.configGate.blocked) {
 				return Promise.resolve(configBlockedResult(state.configGate.message));
 			}
-			return executor.execute(id, params as any, signal ?? new AbortController().signal, onUpdate, ctx);
+			return executor.execute(id, params as unknown as SubagentParamsLike, signal ?? new AbortController().signal, onUpdate, ctx);
 		},
 
 		renderCall(args, theme) {

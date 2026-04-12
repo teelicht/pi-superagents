@@ -6,7 +6,7 @@ import { execSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { loadSkills, type Skill } from "@mariozechner/pi-coding-agent";
+import { loadSkills } from "@mariozechner/pi-coding-agent";
 import {
 	resolveImplementerSkillSet,
 	resolveRoleSkillSet,
@@ -94,7 +94,7 @@ function getPackageSkillPaths(packageRoot: string): string[] {
 	const pkgJsonPath = path.join(packageRoot, "package.json");
 	try {
 		const content = fs.readFileSync(pkgJsonPath, "utf-8");
-		const pkg = JSON.parse(content);
+		const pkg = JSON.parse(content) as { pi?: { skills?: unknown } };
 		const piSkills = pkg?.pi?.skills;
 		if (!Array.isArray(piSkills)) return [];
 		return piSkills
@@ -178,7 +178,7 @@ function collectSettingsSkillPaths(cwd: string): string[] {
 	for (const { file, base } of settingsFiles) {
 		try {
 			const content = fs.readFileSync(file, "utf-8");
-			const settings = JSON.parse(content);
+			const settings = JSON.parse(content) as { skills?: unknown };
 			const skills = settings?.skills;
 			if (!Array.isArray(skills)) continue;
 			for (const entry of skills) {
@@ -411,7 +411,7 @@ export function normalizeSkillInput(
 	const trimmed = input.trim();
 	if (trimmed.startsWith("[")) {
 		try {
-			const parsed = JSON.parse(trimmed);
+			const parsed = JSON.parse(trimmed) as unknown;
 			if (Array.isArray(parsed)) {
 				return normalizeSkillInput(parsed);
 			}

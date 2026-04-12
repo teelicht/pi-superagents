@@ -48,7 +48,7 @@ interface RegisterSlashCommandsModule {
 let registerSlashCommands: RegisterSlashCommandsModule["registerSlashCommands"];
 let available = true;
 try {
-	({ registerSlashCommands } = await import("../../src/slash/slash-commands.ts") as RegisterSlashCommandsModule);
+	({ registerSlashCommands } = (await import("../../src/slash/slash-commands.ts")) as unknown as RegisterSlashCommandsModule);
 } catch {
 	available = false;
 }
@@ -259,6 +259,8 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 			blocked: true,
 			diagnostics: [{ level: "error", code: "unknown_key", path: "asyncByDefalt", message: "is not supported." }],
 			message: "pi-superagents is disabled because config.json needs attention.",
+			configPath: undefined,
+			examplePath: undefined,
 		};
 		const ctx = createCommandContext({ hasUI: true });
 		(ctx as { ui: { notify(message: string, type?: string): void } }).ui.notify = (message, type) => {

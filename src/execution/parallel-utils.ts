@@ -58,7 +58,7 @@ export async function mapConcurrent<T, R>(
 ): Promise<R[]> {
 	// Clamp to at least 1; NaN/undefined/0/negative all become 1
 	const safeLimit = Math.max(1, Math.floor(limit) || 1);
-	const results: R[] = new Array(items.length);
+	const results: R[] = Array(items.length).fill(undefined) as unknown as R[];
 	let next = 0;
 
 	async function worker(workerIndex: number): Promise<void> {

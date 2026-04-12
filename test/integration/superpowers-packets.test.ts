@@ -82,7 +82,6 @@ void describe("superpowers packets", () => {
 			{
 				output: "step-output.md",
 			},
-			undefined,
 			{
 				reads: ["task-brief.md"],
 				output: "implementer-report.md",

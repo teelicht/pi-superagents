@@ -42,8 +42,7 @@
   ],
   "scripts": {
     "prepublishOnly": "npm test",
-    "debug:pi-local": "node --experimental-transform-types ./scripts/local-extension-install.ts",
-    "lint": "eslint .",
+    "lint": "npm run typecheck && eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
