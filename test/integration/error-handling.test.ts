@@ -31,6 +31,60 @@ const piAvailable = !!(execution && utils);
 const runSync = execution?.runSync;
 const detectSubagentError = utils?.detectSubagentError;
 
+/**
+ * Minimal structural AbortSignal test double that records listener cleanup.
+ *
+ * Inputs/outputs:
+ * - add/remove methods accept abort event listeners
+ * - counters expose how many listeners were attached and detached
+ *
+ * Invariants:
+ * - only abort listeners are tracked
+ * - abort() invokes a snapshot so listeners can mutate registration safely
+ */
+class TrackingAbortSignal {
+	aborted = false;
+	added = 0;
+	removed = 0;
+	private readonly listeners = new Set<() => void>();
+
+	/**
+	 * Registers an abort listener and records the attachment.
+	 *
+	 * @param event Event name; only `abort` is tracked.
+	 * @param listener Callback to invoke on abort.
+	 * @param _options Listener options accepted for AbortSignal compatibility.
+	 */
+	addEventListener(event: "abort", listener: () => void, _options?: { once?: boolean }): void {
+		if (event !== "abort") return;
+		this.added++;
+		this.listeners.add(listener);
+	}
+
+	/**
+	 * Removes a tracked abort listener and records successful detachment.
+	 *
+	 * @param event Event name; only `abort` is tracked.
+	 * @param listener Previously registered listener.
+	 */
+	removeEventListener(event: "abort", listener: () => void): void {
+		if (event !== "abort") return;
+		if (this.listeners.delete(listener)) {
+			this.removed++;
+		}
+	}
+
+	/**
+	 * Marks the signal as aborted and invokes currently tracked listeners.
+	 */
+	abort(): void {
+		this.aborted = true;
+		for (const listener of Array.from(this.listeners)) {
+			listener();
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // detectSubagentError
 // ---------------------------------------------------------------------------
@@ -172,5 +226,18 @@ void describe("runSync error handling", { skip: !piAvailable ? "pi packages not 
 		// Key: should complete much faster than the 10s delay
 		assert.ok(elapsed < 5000, `should abort early, took ${elapsed}ms`);
 	});
-});
 
+	void it("removes abort listener after normal process completion", async () => {
+		mockPi.onCall({ output: "Done" });
+		const agents = makeAgentConfigs(["echo"]);
+		const signal = new TrackingAbortSignal();
+
+		const result = await runSync(tempDir, agents, "echo", "Task", {
+			signal: signal as unknown as AbortSignal,
+		});
+
+		assert.equal(result.exitCode, 0);
+		assert.equal(signal.added, 1);
+		assert.equal(signal.removed, 1);
+	});
+});

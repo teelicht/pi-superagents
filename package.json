@@ -55,8 +55,7 @@
   },
   "pi": {
     "extensions": [
-      "./src/extension/index.ts",
-      "./src/extension/notify.ts"
+      "./src/extension/index.ts"
     ]
   },
   "peerDependencies": {
