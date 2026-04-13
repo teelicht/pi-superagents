@@ -16,6 +16,7 @@ export default tseslint.config(
       "**/.cache/**",
       "scripts/**",
       "*.mjs",
+      ".scratch/**",
       "eslint.config.js"
     ]
   },

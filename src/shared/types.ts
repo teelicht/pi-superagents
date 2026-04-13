@@ -239,27 +239,52 @@ export interface ConfigDiagnostic {
 	action?: string;
 }
 
+/**
+ * Mapping from a root skill name to additional skill names loaded with it.
+ *
+ * Shape: { [rootSkillName]: [overlaySkillName, ...] }
+ *
+ * Example:
+ * {
+ *   "brainstorming": ["react-native-best-practices", "supabase-postgres-best-practices"],
+ *   "writing-plans": ["supabase-postgres-best-practices"]
+ * }
+ */
+export type SkillOverlayConfig = Record<string, string[]>;
+
 /** Preset for a named superpowers command. */
 export interface SuperpowersCommandPreset {
 	description?: string;
+	useBranches?: boolean;
 	useSubagents?: boolean;
 	useTestDrivenDevelopment?: boolean;
+	usePlannotator?: boolean;
+	worktrees?: SuperpowersCommandWorktreeSettings;
+}
+
+/** Worktree settings allowed inside command presets. */
+export interface SuperpowersCommandWorktreeSettings {
+	enabled?: boolean;
+	root?: string | null;
 }
 
 /** Worktree settings for superagents parallel execution. */
 export interface SuperpowersWorktreeSettings {
 	enabled?: boolean;
 	root?: string | null;
-	setupHook?: string | null;
-	setupHookTimeoutMs?: number;
 }
 
+
 export interface SuperpowersSettings {
+	useBranches?: boolean;
 	useSubagents?: boolean;
 	useTestDrivenDevelopment?: boolean;
+	usePlannotator?: boolean;
 	commands?: Record<string, SuperpowersCommandPreset>;
 	worktrees?: SuperpowersWorktreeSettings;
 	modelTiers?: Record<string, ModelTierSetting>;
+	skillOverlays?: SkillOverlayConfig;
+	interceptSkillCommands?: string[];
 }
 
 export interface ExtensionConfig {

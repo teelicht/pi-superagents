@@ -7,6 +7,7 @@
  * - verify custom commands apply presets and inline tokens override them
  * - verify /superpowers-status opens the status overlay
  * - verify config-gated refusal blocks execution
+ * - verify /sp-brainstorm sends a skill-entry prompt for brainstorming flows
  */
 
 import assert from "node:assert/strict";
@@ -45,8 +46,10 @@ interface RegisterSlashCommandsModule {
 			superagents?: {
 				useSubagents?: boolean;
 				useTestDrivenDevelopment?: boolean;
+				usePlannotator?: boolean;
 				commands?: Record<string, { description?: string; useSubagents?: boolean; useTestDrivenDevelopment?: boolean }>;
 				worktrees?: { enabled?: boolean };
+				skillOverlays?: Record<string, string[]>;
 			};
 		},
 	) => void;
@@ -156,6 +159,34 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.equal(commands.get("review")!.description, "Run code review");
 	});
 
+
+	void it("/superpowers includes the plannotator review contract when enabled", async () => {
+		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
+		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const pi = {
+			events: createEventBus(),
+			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+				commands.set(name, spec);
+			},
+			sendMessage() {},
+			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
+				userMessages.push({ content, options });
+			},
+		};
+
+		registerSlashCommands!(pi, createState(process.cwd()), {
+			superagents: {
+				usePlannotator: true,
+			},
+		});
+		await commands.get("superpowers")!.handler("tdd implement auth fix", createCommandContext());
+
+		assert.equal(userMessages.length, 1);
+		const prompt = String(userMessages[0].content);
+		assert.match(prompt, /usePlannotatorReview:\s*true/);
+		assert.match(prompt, /superpowers_plan_review/);
+	});
+
 	void it("/superpowers sends a root-session prompt with resolved defaults", async () => {
 		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
 		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
@@ -254,6 +285,30 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.equal(customCalls, 1);
 	});
 
+
+	void it("/superpowers-status returns cleanly when UI is unavailable", async () => {
+		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const pi = {
+			events: createEventBus(),
+			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+				commands.set(name, spec);
+			},
+			sendMessage() {},
+			sendUserMessage() {},
+		};
+
+		registerSlashCommands!(pi, createState(process.cwd()), {});
+
+		await assert.doesNotReject(async () => {
+			await commands.get("superpowers-status")!.handler("", {
+				cwd: process.cwd(),
+				isIdle: () => true,
+				hasUI: false,
+				modelRegistry: { getAvailable: () => [] },
+			} as never);
+		});
+	});
+
 	void it("refuses to execute /superpowers when config is blocked", async () => {
 		const notifications: Array<{ message: string; type?: string }> = [];
 		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
@@ -340,6 +395,30 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.match(notifications[0].message, /Usage:/);
 	});
 
+
+	void it("ignores /superpowers usage errors cleanly when UI is unavailable", async () => {
+		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const pi = {
+			events: createEventBus(),
+			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+				commands.set(name, spec);
+			},
+			sendMessage() {},
+			sendUserMessage() {},
+		};
+
+		registerSlashCommands!(pi, createState(process.cwd()), {});
+
+		await assert.doesNotReject(async () => {
+			await commands.get("superpowers")!.handler("", {
+				cwd: process.cwd(),
+				isIdle: () => true,
+				hasUI: false,
+				modelRegistry: { getAvailable: () => [] },
+			} as never);
+		});
+	});
+
 	void it("renders Superpowers defaults, worktrees, model tiers, and custom commands in the status component", async () => {
 		const module = await import("../../src/ui/superpowers-status.ts") as {
 			SuperpowersStatusComponent: new (...args: unknown[]) => { render(width: number): string[] };
@@ -415,5 +494,136 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		});
 
 		fs.rmSync(dir, { recursive: true, force: true });
+	});
+
+	// ─────────────────────────────────────────────────────────────────────────────
+	// /sp-brainstorm slash command tests
+	// ─────────────────────────────────────────────────────────────────────────────
+
+	void it("registers /sp-brainstorm and sends a brainstorming entry prompt", async () => {
+		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
+		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const pi = {
+			events: createEventBus(),
+			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+				commands.set(name, spec);
+			},
+			sendMessage() {},
+			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
+				userMessages.push({ content, options });
+			},
+		};
+
+		registerSlashCommands!(pi, createState(process.cwd()), {
+			superagents: {
+				usePlannotator: true,
+				skillOverlays: {
+					brainstorming: ["react-native-best-practices"],
+				},
+			} as never,
+		});
+
+		assert.ok(commands.has("sp-brainstorm"), "expected /sp-brainstorm to be registered");
+		await commands.get("sp-brainstorm")!.handler("design onboarding", createCommandContext());
+
+		assert.equal(userMessages.length, 1);
+		const prompt = String(userMessages[0].content);
+		assert.match(prompt, /Entry skill:/);
+		assert.match(prompt, /Name: brainstorming/);
+		assert.match(prompt, /design onboarding/);
+		assert.match(prompt, /superpowers_spec_review/);
+	});
+
+	void it("/sp-brainstorm shows usage when no task is provided", async () => {
+		const notifications: string[] = [];
+		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const pi = {
+			events: createEventBus(),
+			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+				commands.set(name, spec);
+			},
+			sendMessage() {},
+			sendUserMessage() {
+				throw new Error("sendUserMessage should not be called");
+			},
+		};
+
+		registerSlashCommands!(pi, createState(process.cwd()), {});
+		await commands.get("sp-brainstorm")!.handler("", {
+			...createCommandContext({ hasUI: true }),
+			ui: {
+				notify(message: string) {
+					notifications.push(message);
+				},
+			},
+		});
+
+		assert.deepEqual(notifications, ["Usage: /sp-brainstorm <task>"]);
+	});
+
+	void it("/sp-brainstorm applies global Superpowers policy", async () => {
+		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
+		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const pi = {
+			events: createEventBus(),
+			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+				commands.set(name, spec);
+			},
+			sendMessage() {},
+			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
+				userMessages.push({ content, options });
+			},
+		};
+
+		registerSlashCommands!(pi, createState(process.cwd()), {
+			superagents: {
+				useSubagents: false,
+				useTestDrivenDevelopment: false,
+				worktrees: { enabled: false },
+			},
+		});
+
+		await commands.get("sp-brainstorm")!.handler("design auth", createCommandContext());
+
+		const prompt = String(userMessages[0].content);
+		assert.match(prompt, /useSubagents:\s*false/);
+		assert.match(prompt, /useTestDrivenDevelopment:\s*false/);
+		assert.match(prompt, /worktrees\.enabled:\s*false/);
+	});
+
+	void it("/sp-brainstorm reports unresolved overlay skills without sending a prompt", async () => {
+		const notifications: string[] = [];
+		const userMessages: string[] = [];
+		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const pi = {
+			events: createEventBus(),
+			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+				commands.set(name, spec);
+			},
+			sendMessage() {},
+			sendUserMessage(content: string | unknown[]) {
+				userMessages.push(String(content));
+			},
+		};
+
+		registerSlashCommands!(pi, createState(process.cwd()), {
+			superagents: {
+				skillOverlays: {
+					brainstorming: ["definitely-missing-skill"],
+				},
+			} as never,
+		});
+
+		await commands.get("sp-brainstorm")!.handler("design onboarding", {
+			...createCommandContext({ hasUI: true }),
+			ui: {
+				notify(message: string) {
+					notifications.push(message);
+				},
+			},
+		});
+
+		assert.deepEqual(userMessages, []);
+		assert.deepEqual(notifications, ["Superpowers overlay skills could not be resolved: definitely-missing-skill"]);
 	});
 });
