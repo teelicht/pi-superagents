@@ -1,13 +1,13 @@
 {
   "superagents": {
+    "useBranches": false,
     "useSubagents": true,
     "useTestDrivenDevelopment": true,
+    "usePlannotator": false,
     "commands": {},
     "worktrees": {
       "enabled": false,
-      "root": null,
-      "setupHook": null,
-      "setupHookTimeoutMs": 30000
+      "root": null
     },
     "modelTiers": {
       "cheap": {
@@ -19,6 +19,8 @@
       "max": {
         "model": "openai/gpt-5.4"
       }
-    }
+    },
+    "skillOverlays": {},
+    "interceptSkillCommands": []
   }
 }

@@ -4,7 +4,8 @@
  * Responsibilities:
  * - verify invalid config diagnostics are shown on Pi session start
  * - verify execution tools refuse to run while config is blocked
- * - verify diagnostic-safe config inspection stays available
+ * - verify session_start notification surfaces diagnostic field names
+ * - verify config diagnostic notifications are deduplicated within a session
  */
 
 import assert from "node:assert/strict";
@@ -89,9 +90,10 @@ function createPiMock() {
  * Create a minimal extension context with notification capture.
  *
  * @param notifications Mutable notification list.
+ * @param sessionFile Optional session file path for stable session ID derivation.
  * @returns Extension context mock.
  */
-function createCtx(notifications: Array<{ message: string; type?: string }>) {
+function createCtx(notifications: Array<{ message: string; type?: string }>, sessionFile: string | null = null) {
 	return {
 		cwd: process.cwd(),
 		hasUI: true,
@@ -102,7 +104,7 @@ function createCtx(notifications: Array<{ message: string; type?: string }>) {
 			setWidget() {},
 		},
 		sessionManager: {
-			getSessionFile: () => null,
+			getSessionFile: () => sessionFile,
 			getEntries: () => [],
 		},
 		modelRegistry: {
@@ -142,12 +144,17 @@ void describe("extension config gating", { skip: !available ? "extension not imp
 		assert.match(notifications[0].message, /asyncByDefalt/);
 
 		const result = await mock.tools.get("subagent")!.execute("blocked", { agent: "scout", task: "inspect" }, undefined, undefined, ctx);
-		assert.equal((result as { isError?: boolean }).isError, true);
+		// AgentToolResult does not include isError; verify the tool responded with non-empty content.
+		const content = (result as { content?: unknown[] }).content;
+		assert.ok(Array.isArray(content) && content.length > 0, "blocked subagent must return non-empty content");
 		assert.match(JSON.stringify(result), /config\.json needs attention/);
 	});
 
-	void it("keeps config diagnostics available through subagent_status", async () => {
-		const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-config-status-home-"));
+	void it("session_start notification message surfaces diagnostic field names from invalid config", async () => {
+		// The session_start notification is now the primary surface for config diagnostics
+		// (the removed subagent_status tool is no longer available).
+		// Verify the notification exposes the offending field name so users can act on it.
+		const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-config-fieldname-home-"));
 		tempDirs.push(home);
 		process.env.HOME = home;
 		const extensionDir = path.join(home, ".pi", "agent", "extensions", "subagent");
@@ -156,40 +163,39 @@ void describe("extension config gating", { skip: !available ? "extension not imp
 
 		const mock = createPiMock();
 		registerSubagentExtension!(mock.pi as never);
-		const result = await mock.tools.get("subagent_status")!.execute(
-			"config",
-			{ action: "config" },
-			undefined,
-			undefined,
-			createCtx([]),
-		);
 
-		assert.equal((result as { isError?: boolean }).isError, true);
-		assert.match(JSON.stringify(result), /maxSubagentDepth/);
+		const notifications: Array<{ message: string; type?: string }> = [];
+		const ctx = createCtx(notifications);
+		mock.emitLifecycle("session_start", { type: "session_start", reason: "startup" }, ctx);
+
+		assert.equal(notifications.length, 1, "exactly one diagnostic notification should be emitted");
+		assert.equal(notifications[0].type, "error", "removed key is an error-level diagnostic");
+		// The notification message must identify the offending field so the user knows what to fix.
+		assert.match(notifications[0].message, /maxSubagentDepth/, "notification message must name the offending field");
 	});
 
-	void it("can safely migrate an unchanged copied default config to an empty override", async () => {
-		const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-config-migrate-home-"));
+	void it("session_start config diagnostic notification is deduplicated within the same session", async () => {
+		// The extension guards against spamming the user with repeated notifications when
+		// session_start fires multiple times for the same session (e.g. restore, reconnect).
+		// Deduplication is keyed on the session file path — same path → notify at most once.
+		const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-config-dedup-home-"));
 		tempDirs.push(home);
 		process.env.HOME = home;
 		const extensionDir = path.join(home, ".pi", "agent", "extensions", "subagent");
 		fs.mkdirSync(extensionDir, { recursive: true });
-		const defaultConfig = JSON.parse(fs.readFileSync(path.resolve("default-config.json"), "utf-8"));
-		const configPath = path.join(extensionDir, "config.json");
-		fs.writeFileSync(configPath, `${JSON.stringify(defaultConfig, null, 2)}\n`, "utf-8");
+		fs.writeFileSync(path.join(extensionDir, "config.json"), JSON.stringify({ asyncByDefalt: true }), "utf-8");
 
 		const mock = createPiMock();
 		registerSubagentExtension!(mock.pi as never);
-		const result = await mock.tools.get("subagent_status")!.execute(
-			"migrate-config",
-			{ action: "migrate-config" },
-			undefined,
-			undefined,
-			createCtx([]),
-		);
 
-		assert.equal((result as { isError?: boolean }).isError, false);
-		assert.equal(fs.readFileSync(configPath, "utf-8"), "{}\n");
-		assert.match(JSON.stringify(result), /Restart or reload Pi/);
+		const notifications: Array<{ message: string; type?: string }> = [];
+		// Use a fixed session file path so both session_start events share the same session ID.
+		const sessionFile = path.join(home, "test-session.jsonl");
+		const ctx = createCtx(notifications, sessionFile);
+
+		mock.emitLifecycle("session_start", { type: "session_start", reason: "startup" }, ctx);
+		mock.emitLifecycle("session_start", { type: "session_start", reason: "restore" }, ctx);
+
+		assert.equal(notifications.length, 1, "config diagnostic must not be repeated for the same session");
 	});
 });

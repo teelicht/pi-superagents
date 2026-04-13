@@ -108,8 +108,6 @@ Before doing substantive work or asking clarifying questions, follow `using-supe
 Subagent delegation is ENABLED by config. When a selected Superpowers skill calls for delegated work, you must use the `subagent` tool rather than doing that delegated work inline. This applies especially to implementation-plan execution, independent parallel investigations, bounded implementation, review, focused research, and debugging workflows.
 
 Do not skip subagent delegation merely because you can do the work yourself. Stay inline only for clarification, tiny answer-only tasks, or when the subagent tool is unavailable, blocked by config, or genuinely inappropriate. If you do not use a subagent for a non-trivial workflow step, state the concrete reason.
-
-Do not use a fixed recon-first workflow. Use `sp-recon` only when the active skill flow or task shape calls for bounded reconnaissance.
 ```
 
 The prompt should also preserve existing run metadata:
@@ -130,8 +128,6 @@ This is a Superpowers session. The `using-superpowers` skill is the workflow boo
 Before doing substantive work or asking clarifying questions, follow `using-superpowers` exactly and identify every relevant Superpowers skill for the task.
 
 Subagent delegation is DISABLED by config. Do not call `subagent` or `subagent_status`. When a selected Superpowers skill would normally dispatch delegated agents, adapt that workflow inline in the root session and briefly note that delegation is disabled by config.
-
-Do not use a fixed recon-first workflow. Use bounded reconnaissance inline only when the active skill flow or task shape calls for it.
 ```
 
 ## Dispatching Parallel Agents Compatibility
@@ -155,26 +151,26 @@ The feature must preserve that separation. Parallel dispatch is allowed when the
 
 ## Files To Modify
 
-| File | Purpose | Changes Needed |
-|------|---------|----------------|
-| `src/shared/types.ts` | Config and runtime type definitions | Add `useSubagents?: boolean` and `useTestDrivenDevelopment?: boolean` to `SuperpowersSettings`; replace runtime `implementerMode` metadata with boolean-first metadata where practical. |
-| `src/execution/config-validation.ts` | Strict config validation and merging | Add `useSubagents` and `useTestDrivenDevelopment` to supported `superagents` keys; validate boolean values; reject `defaultImplementerMode` with a migration-oriented diagnostic. |
-| `default-config.json` | Bundled runtime defaults | Add `"useSubagents": true` and `"useTestDrivenDevelopment": true` under `superagents`; remove `"defaultImplementerMode": "tdd"`. |
-| `config.example.json` | User-facing config reference | Add `"useSubagents": true` and `"useTestDrivenDevelopment": true` under `superagents`; remove `"defaultImplementerMode": "tdd"`. |
-| `src/slash/slash-commands.ts` | `/superpowers` prompt generation | Resolve effective `useSubagents` and `useTestDrivenDevelopment`; load/bootstrap `using-superpowers`; remove recon-first wording; emit enabled/disabled prompt contract; map `tdd` and `direct` tokens to the boolean. |
-| `src/execution/subagent-executor.ts` | Runtime metadata threading | Accept boolean-first Superpowers TDD metadata and pass it through single, chain, parallel, and async paths. |
-| `src/execution/execution.ts` | Spawned subagent execution | Use boolean-first Superpowers TDD metadata when resolving implementer skills. |
-| `src/execution/async-execution.ts` | Async runner setup | Persist and pass boolean-first Superpowers TDD metadata into async runner steps. |
-| `src/execution/chain-execution.ts` | Chain execution | Use boolean-first Superpowers TDD metadata for sequential and parallel chain steps. |
-| `src/execution/subagent-runner.ts` | Async subprocess runner | Read boolean-first Superpowers TDD metadata from async configs. |
-| `src/execution/superpowers-policy.ts` | Role policy helpers | Replace `SuperpowersImplementerMode` inputs with `useTestDrivenDevelopment: boolean`; keep behavior equivalent for implementer TDD skill injection. |
-| `src/shared/skills.ts` | Skill resolution utilities | Reuse existing resolution where possible; add a small root-bootstrap helper only if needed to resolve one named skill cleanly. |
-| `docs/reference/configuration.md` | Config reference | Document `superagents.useSubagents` and `superagents.useTestDrivenDevelopment`; remove `defaultImplementerMode` as supported config. |
-| `docs/guides/superpowers.md` | User guide | Explain that `/superpowers` starts with `using-superpowers`, not mandatory `sp-recon`. |
-| `README.md` | Short command docs | Adjust `/superpowers` description if it currently implies fixed recon-first behavior. |
-| `package.json` | Package metadata | Bump version from `0.2.0` to `0.3.0`. |
-| `package-lock.json` | Locked package metadata | Update lockfile version entries to `0.3.0`. |
-| `CHANGELOG.md` | Release notes | Add `0.3.0` entry describing skill bootstrap, `useSubagents`, and removal of fixed recon-first behavior. |
+| File                                  | Purpose                              | Changes Needed                                                                                                                                                                                                        |
+| ------------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/types.ts`                 | Config and runtime type definitions  | Add `useSubagents?: boolean` and `useTestDrivenDevelopment?: boolean` to `SuperpowersSettings`; replace runtime `implementerMode` metadata with boolean-first metadata where practical.                               |
+| `src/execution/config-validation.ts`  | Strict config validation and merging | Add `useSubagents` and `useTestDrivenDevelopment` to supported `superagents` keys; validate boolean values; reject `defaultImplementerMode` with a migration-oriented diagnostic.                                     |
+| `default-config.json`                 | Bundled runtime defaults             | Add `"useSubagents": true` and `"useTestDrivenDevelopment": true` under `superagents`; remove `"defaultImplementerMode": "tdd"`.                                                                                      |
+| `config.example.json`                 | User-facing config reference         | Add `"useSubagents": true` and `"useTestDrivenDevelopment": true` under `superagents`; remove `"defaultImplementerMode": "tdd"`.                                                                                      |
+| `src/slash/slash-commands.ts`         | `/superpowers` prompt generation     | Resolve effective `useSubagents` and `useTestDrivenDevelopment`; load/bootstrap `using-superpowers`; remove recon-first wording; emit enabled/disabled prompt contract; map `tdd` and `direct` tokens to the boolean. |
+| `src/execution/subagent-executor.ts`  | Runtime metadata threading           | Accept boolean-first Superpowers TDD metadata and pass it through single, chain, parallel, and async paths.                                                                                                           |
+| `src/execution/execution.ts`          | Spawned subagent execution           | Use boolean-first Superpowers TDD metadata when resolving implementer skills.                                                                                                                                         |
+| `src/execution/async-execution.ts`    | Async runner setup                   | Persist and pass boolean-first Superpowers TDD metadata into async runner steps.                                                                                                                                      |
+| `src/execution/chain-execution.ts`    | Chain execution                      | Use boolean-first Superpowers TDD metadata for sequential and parallel chain steps.                                                                                                                                   |
+| `src/execution/subagent-runner.ts`    | Async subprocess runner              | Read boolean-first Superpowers TDD metadata from async configs.                                                                                                                                                       |
+| `src/execution/superpowers-policy.ts` | Role policy helpers                  | Replace `SuperpowersImplementerMode` inputs with `useTestDrivenDevelopment: boolean`; keep behavior equivalent for implementer TDD skill injection.                                                                   |
+| `src/shared/skills.ts`                | Skill resolution utilities           | Reuse existing resolution where possible; add a small root-bootstrap helper only if needed to resolve one named skill cleanly.                                                                                        |
+| `docs/reference/configuration.md`     | Config reference                     | Document `superagents.useSubagents` and `superagents.useTestDrivenDevelopment`; remove `defaultImplementerMode` as supported config.                                                                                  |
+| `docs/guides/superpowers.md`          | User guide                           | Explain that `/superpowers` starts with `using-superpowers`, not mandatory `sp-recon`.                                                                                                                                |
+| `README.md`                           | Short command docs                   | Adjust `/superpowers` description if it currently implies fixed recon-first behavior.                                                                                                                                 |
+| `package.json`                        | Package metadata                     | Bump version from `0.2.0` to `0.3.0`.                                                                                                                                                                                 |
+| `package-lock.json`                   | Locked package metadata              | Update lockfile version entries to `0.3.0`.                                                                                                                                                                           |
+| `CHANGELOG.md`                        | Release notes                        | Add `0.3.0` entry describing skill bootstrap, `useSubagents`, and removal of fixed recon-first behavior.                                                                                                              |
 
 ## Tests
 
