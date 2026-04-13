@@ -73,7 +73,7 @@ Add a **Custom Commands** section showing the two shipped presets and explaining
 ## No-change files
 
 - `src/shared/types.ts` — `SuperpowersCommandPreset` already includes `usePlannotator`; no type changes needed.
-- `src/execution/config-validation.ts` — `COMMAND_NAME_PATTERN` and `COMMAND_PRESET_KEYS` already accept `sp-lean`, `sp-reviewed`, and `usePlannotator`.
+- `src/execution/config-validation.ts` — `COMMAND_NAME_PATTERN` and `COMMAND_PRESET_KEYS` already accept `sp-lean`, `sp-plannotator`, and `usePlannotator`.
 - `src/superpowers/workflow-profile.ts` — `resolveCommandPreset` already merges presets with global defaults.
 - `src/slash/slash-commands.ts` — already iterates `config.superagents?.commands` to register slash commands.
 - `test/integration/slash-commands.test.ts` — already tests configured custom commands.
