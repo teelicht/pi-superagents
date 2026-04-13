@@ -22,7 +22,7 @@ Adding two small presets gives users runnable examples the moment the extension 
     "useSubagents": false,
     "useTestDrivenDevelopment": false
   },
-  "sp-reviewed": {
+  "sp-plannotator": {
     "description": "Run Superpowers with Plannotator review enabled",
     "usePlannotator": true
   }
@@ -31,10 +31,10 @@ Adding two small presets gives users runnable examples the moment the extension 
 
 **Design choices:**
 
-- Each command demonstrates one concept — `sp-lean` shows workflow-mode overrides, `sp-reviewed` shows a policy flag override.
+- Each command demonstrates one concept — `sp-lean` shows workflow-mode overrides, `sp-plannotator` shows a policy flag override.
 - Only non-default booleans are included. Omitted fields inherit from global defaults through the existing merge chain.
 - Neither command includes `worktrees` or `useBranches` overrides, keeping the examples minimal and focused.
-- Command names follow the `sp-*` prefix convention already enforced by `COMMAND_NAME_PATTERN` in validation.
+- Command names follow the `sp-*` prefix convention already enforced by `COMMAND_NAME_PATTERN` in validation. `sp-plannotator` names the feature it enables, avoiding ambiguity with generic terms like "reviewed".
 
 ## Changes
 
@@ -59,7 +59,7 @@ void it("includes two illustrative slash command presets", () => {
     useSubagents: false,
     useTestDrivenDevelopment: false,
   });
-  assert.deepEqual(commands["sp-reviewed"], {
+  assert.deepEqual(commands["sp-plannotator"], {
     description: "Run Superpowers with Plannotator review enabled",
     usePlannotator: true,
   });
