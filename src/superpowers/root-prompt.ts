@@ -4,8 +4,10 @@
  * Responsibilities:
  * - bootstrap the root session through using-superpowers
  * - express resolved workflow settings in model-readable form
- * - constrain subagent and worktree behavior from resolved config
+ * - constrain subagent, plan-review, and worktree behavior from resolved config
  * - keep Superpowers skill selection authoritative instead of forcing recon first
+ * - render entry skill and overlay skill content for brainstorming flows
+ * - provide brainstorming-only saved-spec Plannotator contract
  *
  * Important side effects:
  * - none; callers resolve skill file content before invoking this module
@@ -21,9 +23,13 @@ export interface SuperpowersRootPromptInput {
 	task: string;
 	useSubagents: boolean;
 	useTestDrivenDevelopment: boolean;
+	usePlannotatorReview: boolean;
 	worktreesEnabled: boolean;
 	fork: boolean;
 	usingSuperpowersSkill?: SuperpowersRootPromptSkill;
+	entrySkill?: SuperpowersRootPromptSkill;
+	overlaySkills?: SuperpowersRootPromptSkill[];
+	entrySkillSource?: "command" | "intercepted-skill";
 }
 
 /**
@@ -37,6 +43,7 @@ function buildMetadata(input: SuperpowersRootPromptInput): string {
 		'workflow: "superpowers"',
 		`useSubagents: ${input.useSubagents}`,
 		`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`,
+		`usePlannotatorReview: ${input.usePlannotatorReview}`,
 		`worktrees.enabled: ${input.worktreesEnabled}`,
 	];
 
@@ -72,6 +79,69 @@ function buildSkillBootstrap(skill: SuperpowersRootPromptSkill | undefined): str
 }
 
 /**
+ * Build the entry-skill prompt block for Superpowers skill-entry runs.
+ *
+ * @param input Resolved root prompt input.
+ * @returns Prompt block, or an empty string for general Superpowers runs.
+ */
+function buildEntrySkillBlock(input: SuperpowersRootPromptInput): string {
+	if (!input.entrySkill) return "";
+	return [
+		"Entry skill:",
+		`Name: ${input.entrySkill.name}`,
+		`Path: ${input.entrySkill.path}`,
+		`Source: ${input.entrySkillSource ?? "command"}`,
+		"",
+		"This entry skill is the starting Superpowers skill for this run. Follow it after `using-superpowers` identifies relevant skills.",
+		"",
+		"Entry skill content:",
+		"```markdown",
+		input.entrySkill.content,
+		"```",
+	].join("\n");
+}
+
+/**
+ * Build additional overlay skill content for root skill-entry runs.
+ *
+ * @param overlaySkills Resolved overlay skills.
+ * @returns Prompt block, or an empty string when no overlays are configured.
+ */
+function buildOverlaySkillsBlock(overlaySkills: SuperpowersRootPromptSkill[] | undefined): string {
+	if (!overlaySkills || overlaySkills.length === 0) return "";
+	return [
+		"Overlay skills:",
+		...overlaySkills.flatMap((skill) => [
+			"",
+			`Name: ${skill.name}`,
+			`Path: ${skill.path}`,
+			"```markdown",
+			skill.content,
+			"```",
+		]),
+	].join("\n");
+}
+
+/**
+ * Build the saved-spec Plannotator contract for brainstorming entry flows.
+ *
+ * @param input Resolved root prompt input.
+ * @returns Prompt block for saved-spec review, or an empty string when not applicable.
+ */
+function buildBrainstormingSpecReviewContract(input: SuperpowersRootPromptInput): string {
+	if (input.entrySkill?.name !== "brainstorming" || !input.usePlannotatorReview) return "";
+	return [
+		"Brainstorming saved brainstorming spec Plannotator review is ENABLED by config.",
+		"Follow the normal brainstorming chat workflow first: ask clarifying questions, propose approaches, present design sections, and write the approved spec.",
+		"After the approved brainstorming spec is saved, and before invoking or transitioning to `writing-plans`, call `superpowers_spec_review` with the saved spec content and file path.",
+		"If `superpowers_spec_review` returns approved, continue the workflow.",
+		"If it returns rejected, treat the response as spec-review feedback, revise the spec, save it, and resubmit through the same tool.",
+		"If the tool returns unavailable, show one concise warning and continue with the normal text-based review gate.",
+		"Only call Plannotator for the final approved spec, not intermediate design sections.",
+	].join("\n");
+}
+
+/**
  * Build the delegation contract block.
  *
  * @param useSubagents Whether subagent delegation is enabled.
@@ -92,6 +162,27 @@ function buildDelegationContract(useSubagents: boolean): string {
 		"Subagent delegation is DISABLED by config.",
 		"Do not call `subagent` or `subagent_status`.",
 		"When a selected Superpowers skill would normally dispatch delegated agents, adapt that workflow inline in the root session and briefly note that delegation is disabled by config.",
+	].join("\n");
+}
+
+/**
+ * Build the Plannotator review contract for the root session.
+ *
+ * @param usePlannotatorReview Whether browser review is enabled by config.
+ * @returns Prompt block describing the exact plan-approval call site behavior.
+ */
+function buildPlannotatorReviewContract(usePlannotatorReview: boolean): string {
+	if (!usePlannotatorReview) {
+		return "Plannotator browser review is DISABLED by config. Use the normal Superpowers text-based plan approval flow.";
+	}
+
+	return [
+		"Plannotator browser review is ENABLED by config.",
+		"At the normal implementation-plan approval point, after final plan content and before plain-text approval, call `superpowers_plan_review` with the final plan content and saved plan file path when available.",
+		"Use `superpowers_plan_review` only at the normal plan approval point, not during brainstorming, clarifying questions, implementation, code review, or subagent delegation.",
+		"If `superpowers_plan_review` returns approved, continue the workflow.",
+		"If `superpowers_plan_review` returns rejected, treat the response as plan-review feedback, revise the plan, and resubmit through the same tool at the same approval point.",
+		"If the tool returns unavailable, show one concise warning and continue with normal text-based approval.",
 	].join("\n");
 }
 
@@ -149,7 +240,15 @@ export function buildSuperpowersRootPrompt(input: SuperpowersRootPromptInput): s
 		"",
 		buildSkillBootstrap(input.usingSuperpowersSkill),
 		"",
+		buildEntrySkillBlock(input),
+		"",
+		buildOverlaySkillsBlock(input.overlaySkills),
+		"",
+		buildBrainstormingSpecReviewContract(input),
+		"",
 		buildDelegationContract(input.useSubagents),
+		"",
+		buildPlannotatorReviewContract(input.usePlannotatorReview),
 		"",
 		buildWorktreeContract(input.worktreesEnabled),
 		"",

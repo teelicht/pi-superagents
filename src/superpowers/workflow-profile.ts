@@ -5,12 +5,20 @@
  * - parse leading workflow tokens from slash command arguments
  * - preserve supported execution flags
  * - merge global defaults, custom command presets, inline overrides, and worktree policy
+ * - carry entry skill source metadata and overlay skill names for skill-entry flows
  *
  * Important side effects:
  * - none; this module is pure and safe to unit test
  */
 
 import type { ExtensionConfig, SuperpowersCommandPreset } from "../shared/types.ts";
+
+export type SuperpowersEntrySkillSource = "command" | "intercepted-skill";
+
+export interface SuperpowersEntrySkillProfile {
+	name: string;
+	source: SuperpowersEntrySkillSource;
+}
 
 export interface SuperpowersWorkflowOverrides {
 	useSubagents?: boolean;
@@ -28,8 +36,11 @@ export interface ResolvedSuperpowersRunProfile {
 	task: string;
 	useSubagents: boolean;
 	useTestDrivenDevelopment: boolean;
+	usePlannotatorReview: boolean;
 	worktreesEnabled: boolean;
 	fork: boolean;
+	entrySkill?: SuperpowersEntrySkillProfile;
+	overlaySkillNames: string[];
 }
 
 /**
@@ -121,18 +132,22 @@ function resolveCommandPreset(config: ExtensionConfig, commandName: string): Sup
 }
 
 /**
- * Merge defaults, command preset, and inline overrides into one run profile.
+ * Merge defaults, command preset, inline overrides, and skill-entry metadata into one run profile.
  *
- * @param input Effective config, command name, and parsed arguments.
+ * @param input Effective config, command name, parsed arguments, and optional entry skill profile.
  * @returns Fully resolved Superpowers run profile.
  */
 export function resolveSuperpowersRunProfile(input: {
 	config: ExtensionConfig;
 	commandName: string;
 	parsed: ParsedSuperpowersWorkflowArgs;
+	entrySkill?: SuperpowersEntrySkillProfile;
 }): ResolvedSuperpowersRunProfile {
 	const settings = input.config.superagents ?? {};
 	const preset = resolveCommandPreset(input.config, input.commandName);
+	const overlaySkillNames = input.entrySkill
+		? settings.skillOverlays?.[input.entrySkill.name] ?? []
+		: [];
 	return {
 		commandName: input.commandName,
 		task: input.parsed.task,
@@ -144,7 +159,10 @@ export function resolveSuperpowersRunProfile(input: {
 			?? preset.useTestDrivenDevelopment
 			?? settings.useTestDrivenDevelopment
 			?? true,
-		worktreesEnabled: settings.worktrees?.enabled ?? true,
+		usePlannotatorReview: preset.usePlannotator ?? settings.usePlannotator ?? false,
+		worktreesEnabled: preset.worktrees?.enabled ?? settings.worktrees?.enabled ?? true,
 		fork: input.parsed.fork,
+		...(input.entrySkill ? { entrySkill: input.entrySkill } : {}),
+		overlaySkillNames,
 	};
 }

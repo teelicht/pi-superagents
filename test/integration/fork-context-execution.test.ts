@@ -5,6 +5,12 @@ import type { MockPi } from "../support/helpers.ts";
 import { createMockPi, createTempDir, removeTempDir, tryImport } from "../support/helpers.ts";
 import type { ExtensionConfig } from "../../src/shared/types.ts";
 
+/**
+ * Local view of the subagent executor module under test.
+ *
+ * `isError` was removed from AgentToolResult; error paths are now
+ * distinguished solely by content text (and by empty details.results).
+ */
 interface ExecutorModule {
 	createSubagentExecutor?: (...args: unknown[]) => {
 		execute: (
@@ -13,7 +19,7 @@ interface ExecutorModule {
 			signal: AbortSignal,
 			onUpdate: ((result: unknown) => void) | undefined,
 			ctx: unknown,
-		) => Promise<{ isError?: boolean; content: Array<{ text?: string }>; details?: any }>;
+		) => Promise<{ content: Array<{ text?: string }>; details?: any }>;
 	};
 }
 
@@ -74,6 +80,10 @@ void describe("fork context execution wiring", { skip: !available ? "subagent ex
 	let tempDir: string;
 	let mockPi: MockPi;
 
+	/** Saved env vars — restored after every test to keep runs hermetic. */
+	let savedDepth: string | undefined;
+	let savedMaxDepth: string | undefined;
+
 	before(() => {
 		mockPi = createMockPi();
 		mockPi.install();
@@ -84,6 +94,14 @@ void describe("fork context execution wiring", { skip: !available ? "subagent ex
 	});
 
 	beforeEach(() => {
+		// Save and clear PI_SUBAGENT_DEPTH / PI_SUBAGENT_MAX_DEPTH so tests are
+		// hermetic regardless of whether they run inside a pi session or CI
+		// environment that already has these variables set.
+		savedDepth = process.env.PI_SUBAGENT_DEPTH;
+		savedMaxDepth = process.env.PI_SUBAGENT_MAX_DEPTH;
+		delete process.env.PI_SUBAGENT_DEPTH;
+		delete process.env.PI_SUBAGENT_MAX_DEPTH;
+
 		tempDir = createTempDir("pi-subagent-fork-test-");
 		// Init git repo for worktree support
 		execSync("git init", { cwd: tempDir, stdio: "ignore" });
@@ -96,6 +114,18 @@ void describe("fork context execution wiring", { skip: !available ? "subagent ex
 	});
 
 	afterEach(() => {
+		// Restore PI_SUBAGENT_DEPTH / PI_SUBAGENT_MAX_DEPTH to their pre-test values.
+		if (savedDepth !== undefined) {
+			process.env.PI_SUBAGENT_DEPTH = savedDepth;
+		} else {
+			delete process.env.PI_SUBAGENT_DEPTH;
+		}
+		if (savedMaxDepth !== undefined) {
+			process.env.PI_SUBAGENT_MAX_DEPTH = savedMaxDepth;
+		} else {
+			delete process.env.PI_SUBAGENT_MAX_DEPTH;
+		}
+
 		removeTempDir(tempDir);
 	});
 
@@ -139,8 +169,9 @@ void describe("fork context execution wiring", { skip: !available ? "subagent ex
 			makeCtx(manager),
 		);
 
-		assert.equal(result.isError, true);
+		// No isError field — verify the error message is present and no results returned.
 		assert.match(result.content[0]?.text ?? "", /persisted parent session/);
+		assert.equal(result.details?.results?.length ?? 0, 0);
 	});
 
 	void it("fails fast when context=fork and leaf is missing", async () => {
@@ -155,8 +186,9 @@ void describe("fork context execution wiring", { skip: !available ? "subagent ex
 			makeCtx(manager),
 		);
 
-		assert.equal(result.isError, true);
+		// No isError field — verify the error message is present and no results returned.
 		assert.match(result.content[0]?.text ?? "", /current leaf/);
+		assert.equal(result.details?.results?.length ?? 0, 0);
 	});
 
 	void it("returns a tool error (instead of throwing) when branch creation fails", async () => {
@@ -177,9 +209,10 @@ void describe("fork context execution wiring", { skip: !available ? "subagent ex
 			makeCtx(manager),
 		);
 
-		assert.equal(result.isError, true);
+		// No isError field — verify the error message is present and no results returned.
 		assert.match(result.content[0]?.text ?? "", /Failed to create forked subagent session/);
 		assert.match(result.content[0]?.text ?? "", /branch write failed/);
+		assert.equal(result.details?.results?.length ?? 0, 0);
 	});
 
 	void it("creates one forked session for single mode", async () => {
@@ -194,7 +227,8 @@ void describe("fork context execution wiring", { skip: !available ? "subagent ex
 			makeCtx(manager),
 		);
 
-		assert.equal(result.isError, undefined);
+		// Success path — one branched session must have been created.
+		assert.ok(result.content[0]?.text, "expected non-empty response content");
 		assert.equal(calls.length, 1);
 		assert.deepEqual(calls, ["leaf-123"]);
 	});
@@ -217,7 +251,8 @@ void describe("fork context execution wiring", { skip: !available ? "subagent ex
 			makeCtx(manager),
 		);
 
-		assert.equal(result.isError, undefined);
+		// Success path — one branched session per parallel task must have been created.
+		assert.ok(result.content[0]?.text, "expected non-empty response content");
 		assert.equal(calls.length, 2);
 		assert.deepEqual(calls, ["leaf-777", "leaf-777"]);
 	});
@@ -240,9 +275,10 @@ void describe("fork context execution wiring", { skip: !available ? "subagent ex
 			makeCtx(manager),
 		);
 
-		assert.equal(result.isError, true);
+		// No isError field — verify the error message is present and no results returned.
 		assert.match(result.content[0]?.text ?? "", /worktree isolation uses the shared cwd/i);
 		assert.match(result.content[0]?.text ?? "", /task 2 \(second\) sets cwd/i);
+		assert.equal(result.details?.results?.length ?? 0, 0);
 	});
 
 	void it("rejects parallel runs that exceed MAX_PARALLEL", async () => {
@@ -260,7 +296,8 @@ void describe("fork context execution wiring", { skip: !available ? "subagent ex
 			makeCtx(makeSessionManagerRecorder().manager),
 		);
 
-		assert.equal(result.isError, true);
+		// No isError field — verify the error message is present and no results returned.
 		assert.match(result.content[0]?.text ?? "", /Max 8 tasks/);
+		assert.equal(result.details?.results?.length ?? 0, 0);
 	});
 });

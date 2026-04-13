@@ -15,18 +15,20 @@ import { describe, it } from "node:test";
 const TOP_LEVEL_OPTION_KEYS = ["superagents"] as const;
 
 const SUPERAGENTS_OPTION_KEYS = [
+	"useBranches",
 	"useSubagents",
 	"useTestDrivenDevelopment",
 	"commands",
 	"worktrees",
 	"modelTiers",
+	"usePlannotator",
+	"skillOverlays",
+	"interceptSkillCommands",
 ] as const;
 
 const WORKTREE_OPTION_KEYS = [
 	"enabled",
 	"root",
-	"setupHook",
-	"setupHookTimeoutMs",
 ] as const;
 
 /**
@@ -51,10 +53,14 @@ function assertPublicConfigSurface(config: Record<string, unknown>): void {
 		modelTiers?: Record<string, unknown>;
 		worktrees?: Record<string, unknown>;
 		commands?: Record<string, unknown>;
+		useBranches?: unknown;
 		useSubagents?: unknown;
 		useTestDrivenDevelopment?: unknown;
+		skillOverlays?: unknown;
+		interceptSkillCommands?: unknown;
 	};
 	const worktrees = superagents.worktrees as Record<string, unknown>;
+
 	const modelTiers = superagents.modelTiers as Record<string, unknown>;
 	const cheapTier = modelTiers.cheap as Record<string, unknown>;
 	const balancedTier = modelTiers.balanced as Record<string, unknown>;
@@ -71,12 +77,12 @@ function assertPublicConfigSurface(config: Record<string, unknown>): void {
 		assert.ok(key in worktrees, `Expected superagents.worktrees option '${key}' to be present`);
 	}
 
+	assert.equal(superagents.useBranches, false);
 	assert.equal(superagents.useSubagents, true);
 	assert.equal(superagents.useTestDrivenDevelopment, true);
+	assert.equal(superagents.usePlannotator, false);
 	assert.equal(worktrees.enabled, false);
 	assert.equal(worktrees.root, null);
-	assert.equal(worktrees.setupHook, null);
-	assert.equal(worktrees.setupHookTimeoutMs, 30000);
 	assert.equal(typeof cheapTier.model, "string");
 	assert.equal(typeof balancedTier.model, "string");
 	assert.equal(typeof maxTier.model, "string");
@@ -93,5 +99,18 @@ void describe("config templates", () => {
 
 	void it("ships a parseable user-facing example config with the same public surface", () => {
 		assertPublicConfigSurface(readConfigFile("config.example.json"));
+	});
+
+	void it("includes empty skill entry defaults", () => {
+		const config = readConfigFile("default-config.json");
+		assert.deepEqual((config.superagents as Record<string, unknown>).skillOverlays, {});
+		assert.deepEqual((config.superagents as Record<string, unknown>).interceptSkillCommands, []);
+	});
+
+	void it("keeps direct skill interception opt-in by default", () => {
+		const config = readConfigFile("default-config.json");
+		const superagents = config.superagents as Record<string, unknown>;
+		assert.deepEqual(superagents.skillOverlays, {});
+		assert.deepEqual(superagents.interceptSkillCommands, []);
 	});
 });

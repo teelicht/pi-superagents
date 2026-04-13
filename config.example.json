@@ -1,13 +1,13 @@
 {
   "superagents": {
+    "useBranches": false,
     "useSubagents": true,
     "useTestDrivenDevelopment": true,
+    "usePlannotator": false,
     "commands": {},
     "worktrees": {
       "enabled": false,
-      "root": null,
-      "setupHook": null,
-      "setupHookTimeoutMs": 30000
+      "root": null
     },
     "modelTiers": {
       "cheap": {
@@ -23,6 +23,8 @@
         "model": "anthropic/claude-sonnet-4",
         "thinking": "high"
       }
-    }
+    },
+    "skillOverlays": {},
+    "interceptSkillCommands": []
   }
 }
