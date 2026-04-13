@@ -7,6 +7,7 @@ import type { ExtensionConfig, IntercomBridgeConfig, IntercomBridgeMode } from "
 const DEFAULT_INTERCOM_EXTENSION_DIR = path.join(os.homedir(), ".pi", "agent", "extensions", "pi-intercom");
 const DEFAULT_INTERCOM_CONFIG_PATH = path.join(os.homedir(), ".pi", "agent", "intercom", "config.json");
 const DEFAULT_SUBAGENT_CONFIG_DIR = path.join(os.homedir(), ".pi", "agent", "extensions", "subagent");
+const DEFAULT_INTERCOM_TARGET_PREFIX = "subagent-chat";
 const INTERCOM_BRIDGE_MARKER = "Intercom orchestration channel:";
 const DEFAULT_INTERCOM_BRIDGE_TEMPLATE = `Use intercom only for coordination with the orchestrator session:
 - Need a decision or blocked: intercom({ action: "ask", to: "{orchestratorTarget}", message: "<question>" })
@@ -28,6 +29,13 @@ interface ResolveIntercomBridgeInput {
 	extensionDir?: string;
 	configPath?: string;
 	settingsDir?: string;
+}
+
+export function resolveIntercomSessionTarget(sessionName: string | undefined, sessionId: string): string {
+	const trimmedName = sessionName?.trim();
+	if (trimmedName) return trimmedName;
+	const normalizedSessionId = sessionId.startsWith("session-") ? sessionId.slice("session-".length) : sessionId;
+	return `${DEFAULT_INTERCOM_TARGET_PREFIX}-${normalizedSessionId.slice(0, 8)}`;
 }
 
 export function resolveIntercomBridgeMode(value: unknown): IntercomBridgeMode {

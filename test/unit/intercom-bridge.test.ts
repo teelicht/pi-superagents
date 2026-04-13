@@ -7,6 +7,7 @@ import type { AgentConfig } from "../../agents.ts";
 import {
 	applyIntercomBridgeToAgent,
 	resolveIntercomBridge,
+	resolveIntercomSessionTarget,
 	resolveIntercomBridgeMode,
 	type IntercomBridgeState,
 } from "../../intercom-bridge.ts";
@@ -32,6 +33,16 @@ describe("resolveIntercomBridgeMode", () => {
 		assert.equal(resolveIntercomBridgeMode("off"), "off");
 		assert.equal(resolveIntercomBridgeMode("fork-only"), "fork-only");
 		assert.equal(resolveIntercomBridgeMode("always"), "always");
+	});
+});
+
+describe("resolveIntercomSessionTarget", () => {
+	it("prefers an explicit session name", () => {
+		assert.equal(resolveIntercomSessionTarget("planner", "session-12345678"), "planner");
+	});
+
+	it("uses a runtime-only subagent chat alias when unnamed", () => {
+		assert.equal(resolveIntercomSessionTarget(undefined, "session-12345678"), "subagent-chat-12345678");
 	});
 });
 

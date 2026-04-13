@@ -808,8 +808,10 @@ If intercom is unavailable in this run, continue the task normally.
 Bridge activation also requires all of the following:
 - [pi-intercom](https://github.com/nicobailon/pi-intercom) is installed (`pi install npm:pi-intercom`)
 - `~/.pi/agent/intercom/config.json` is not set to `"enabled": false`
-- the current session has a target name (existing `/name`, or auto-assigned `session-<id>` when unnamed)
+- the current session can be targeted by intercom (existing `/name`, or the runtime-only fallback alias `subagent-chat-<id>` when unnamed)
 - if agent `extensions` is an explicit allowlist, it must include `pi-intercom`
+
+When an unnamed session falls back to `subagent-chat-<id>`, that alias is used only for the live intercom broker. It is not persisted as the Pi session title, so `pi --resume` can still show the transcript snippet.
 
 ### `worktreeSetupHook`
 

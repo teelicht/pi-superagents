@@ -22,7 +22,7 @@ import {
 import { discoverAvailableSkills, normalizeSkillInput } from "./skills.ts";
 import { executeAsyncChain, executeAsyncSingle, isAsyncAvailable } from "./async-execution.ts";
 import { createForkContextResolver } from "./fork-context.ts";
-import { applyIntercomBridgeToAgent, resolveIntercomBridge } from "./intercom-bridge.ts";
+import { applyIntercomBridgeToAgent, resolveIntercomBridge, resolveIntercomSessionTarget } from "./intercom-bridge.ts";
 import { finalizeSingleOutput, injectSingleOutputInstruction, resolveSingleOutputPath } from "./single-output.ts";
 import { getSingleResultOutput, mapConcurrent } from "./utils.ts";
 import {
@@ -1117,11 +1117,7 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 		const parentSessionFile = ctx.sessionManager.getSessionFile() ?? null;
 		deps.state.currentSessionId = parentSessionFile ?? `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 		const discoveredAgents = deps.discoverAgents(ctx.cwd, scope).agents;
-		let sessionName = deps.pi.getSessionName()?.trim();
-		if (!sessionName) {
-			sessionName = `session-${ctx.sessionManager.getSessionId().slice(0, 8)}`;
-			deps.pi.setSessionName(sessionName);
-		}
+		const sessionName = resolveIntercomSessionTarget(deps.pi.getSessionName(), ctx.sessionManager.getSessionId());
 		const intercomBridge = resolveIntercomBridge({
 			config: deps.config.intercomBridge,
 			context: normalizedParams.context,
