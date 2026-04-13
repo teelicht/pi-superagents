@@ -5,6 +5,7 @@
  * - verify inline workflow token parsing
  * - verify custom command presets override global defaults
  * - verify inline tokens override custom command presets
+ * - verify entry skill metadata and overlay skill names are resolved
  */
 
 import assert from "node:assert/strict";
@@ -54,8 +55,10 @@ void describe("Superpowers workflow profile", () => {
 			task: "fix auth",
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
+			usePlannotatorReview: false,
 			worktreesEnabled: false,
 			fork: false,
+			overlaySkillNames: [],
 		});
 	});
 
@@ -70,8 +73,10 @@ void describe("Superpowers workflow profile", () => {
 			task: "fix auth",
 			useSubagents: false,
 			useTestDrivenDevelopment: true,
+			usePlannotatorReview: false,
 			worktreesEnabled: false,
 			fork: false,
+			overlaySkillNames: [],
 		});
 	});
 
@@ -109,5 +114,57 @@ void describe("Superpowers workflow profile", () => {
 		assert.equal(parseSuperpowersWorkflowArgs("direct no-subagents"), null);
 		assert.equal(parseSuperpowersWorkflowArgs("--fork"), null);
 		assert.equal(parseSuperpowersWorkflowArgs(""), null);
+	});
+
+	void it("resolves brainstorming entry skill metadata and overlays", () => {
+		const parsed = parseSuperpowersWorkflowArgs("design onboarding")!;
+		const profile = resolveSuperpowersRunProfile({
+			config: {
+				superagents: {
+					useSubagents: true,
+					useTestDrivenDevelopment: true,
+					usePlannotator: true,
+					skillOverlays: {
+						brainstorming: ["react-native-best-practices"],
+					},
+				},
+			},
+			commandName: "sp-brainstorm",
+			parsed,
+			entrySkill: {
+				name: "brainstorming",
+				source: "command",
+			},
+		});
+
+		assert.equal(profile.entrySkill?.name, "brainstorming");
+		assert.equal(profile.entrySkill?.source, "command");
+		assert.deepEqual(profile.overlaySkillNames, ["react-native-best-practices"]);
+		assert.equal(profile.usePlannotatorReview, true);
+	});
+
+	void it("resolves intercepted entry skill source metadata", () => {
+		const parsed = parseSuperpowersWorkflowArgs("design middleware")!;
+		const profile = resolveSuperpowersRunProfile({
+			config: {
+				superagents: {
+					skillOverlays: {
+						brainstorming: ["react-native-best-practices"],
+					},
+				},
+			},
+			commandName: "skill:brainstorming",
+			parsed,
+			entrySkill: {
+				name: "brainstorming",
+				source: "intercepted-skill",
+			},
+		});
+
+		assert.deepEqual(profile.entrySkill, {
+			name: "brainstorming",
+			source: "intercepted-skill",
+		});
+		assert.deepEqual(profile.overlaySkillNames, ["react-native-best-practices"]);
 	});
 });

@@ -140,6 +140,6 @@ void describe("installLocalExtensionFiles", () => {
 			relativePaths: ["package.json", "config.example.json"],
 		});
 
-		assert.equal(fs.readFileSync(path.join(targetRoot, "config.json"), "utf-8"), "{ /* empty */ }\n");
+		assert.equal(fs.readFileSync(path.join(targetRoot, "config.json"), "utf-8"), "{}\n");
 	});
 });

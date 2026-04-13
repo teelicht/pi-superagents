@@ -21,6 +21,16 @@ export function getSuperagentSettings(config: ExtensionConfig): ExtensionConfig[
 }
 
 /**
+ * Resolve whether the plannotator bridge is enabled for Superpowers runs.
+ *
+ * @param config Extension config being normalized.
+ * @returns True when plannotator is explicitly enabled; otherwise false.
+ */
+export function isSuperagentPlannotatorEnabled(config: ExtensionConfig): boolean {
+	return getSuperagentSettings(config)?.usePlannotator ?? false;
+}
+
+/**
  * Resolve the effective default worktree flag for a run.
  *
  * Inputs/outputs:
@@ -54,7 +64,7 @@ export function resolveSuperagentWorktreeEnabled(
  *
  * @param workflow Active workflow for the current run.
  * @param config Extension config containing optional Superpowers settings.
- * @returns Resolved worktree root and hook settings for the active workflow.
+ * @returns Resolved worktree root settings for the active workflow.
  */
 export function resolveSuperagentWorktreeRuntimeOptions(
 	workflow: WorkflowMode,
@@ -68,13 +78,6 @@ export function resolveSuperagentWorktreeRuntimeOptions(
 	if (worktrees?.root) {
 		options.rootDir = worktrees.root;
 		options.requireIgnoredRoot = true;
-	}
-
-	if (worktrees?.setupHook) {
-		options.setupHook = {
-			hookPath: worktrees.setupHook,
-			timeoutMs: worktrees.setupHookTimeoutMs,
-		};
 	}
 
 	return options;

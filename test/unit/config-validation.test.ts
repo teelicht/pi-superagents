@@ -6,6 +6,7 @@
  * - verify unknown and malformed config blocks execution
  * - verify diagnostics are precise enough to show directly to users
  * - verify migration diagnostics identify copied full-default config
+ * - verify skill overlays and interception config validation
  */
 
 import assert from "node:assert/strict";
@@ -19,20 +20,22 @@ import {
 
 const defaults: ExtensionConfig = {
 	superagents: {
+		useBranches: false,
 		useSubagents: true,
 		useTestDrivenDevelopment: true,
 		commands: {},
+		usePlannotator: false,
 		worktrees: {
 			enabled: false,
 			root: null,
-			setupHook: null,
-			setupHookTimeoutMs: 30000,
 		},
 		modelTiers: {
 			cheap: { model: "opencode-go/minimax-m2.7" },
 			balanced: { model: "opencode-go/glm-5.1" },
 			max: { model: "openai/gpt-5.4" },
 		},
+		skillOverlays: {},
+		interceptSkillCommands: [],
 	},
 };
 
@@ -59,7 +62,6 @@ void describe("config validation", () => {
 		assert.equal(result.config.superagents?.useSubagents, false);
 		assert.equal(result.config.superagents?.useTestDrivenDevelopment, true);
 		assert.equal(result.config.superagents?.worktrees?.enabled, true);
-		assert.equal(result.config.superagents?.worktrees?.setupHookTimeoutMs, 30000);
 		assert.deepEqual(result.config.superagents?.modelTiers?.cheap, defaults.superagents?.modelTiers?.cheap);
 		assert.deepEqual(result.config.superagents?.modelTiers?.max, {
 			model: "openai/gpt-5.4",
@@ -68,6 +70,50 @@ void describe("config validation", () => {
 		assert.deepEqual(result.config.superagents?.modelTiers?.free, {
 			model: "google/gemini-flash",
 		});
+	});
+
+	void it("accepts usePlannotator true and false", () => {
+		const enabledResult = validateConfigObject({
+			superagents: {
+				usePlannotator: true,
+			},
+		});
+		const disabledResult = validateConfigObject({
+			superagents: {
+				usePlannotator: false,
+			},
+		});
+
+		assert.equal(enabledResult.blocked, false);
+		assert.deepEqual(enabledResult.diagnostics, []);
+		assert.equal(disabledResult.blocked, false);
+		assert.deepEqual(disabledResult.diagnostics, []);
+	});
+
+	void it("rejects non-boolean usePlannotator", () => {
+		const result = validateConfigObject({
+			superagents: {
+				usePlannotator: "yes",
+			},
+		});
+
+		assert.equal(result.blocked, true);
+		assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), [
+			"superagents.usePlannotator",
+		]);
+	});
+
+	void it("merges usePlannotator defaults and user overrides while preserving useSubagents", () => {
+		const result = loadEffectiveConfig(defaults, {
+			superagents: {
+				usePlannotator: true,
+			},
+		});
+
+		assert.equal(result.blocked, false);
+		assert.equal(result.config.superagents?.useSubagents, true);
+		assert.equal(result.config.superagents?.usePlannotator, true);
+		assert.equal(result.config.superagents?.useTestDrivenDevelopment, true);
 	});
 
 	void it("merges command presets and preserves defaults", () => {
@@ -99,8 +145,6 @@ void describe("config validation", () => {
 
 		assert.equal(result.config.superagents?.worktrees?.enabled, true);
 		assert.equal(result.config.superagents?.worktrees?.root, "/tmp/worktrees");
-		assert.equal(result.config.superagents?.worktrees?.setupHook, null);
-		assert.equal(result.config.superagents?.worktrees?.setupHookTimeoutMs, 30000);
 	});
 
 	void it("blocks unknown top-level and nested keys", () => {
@@ -131,7 +175,6 @@ void describe("config validation", () => {
 				useTestDrivenDevelopment: 1,
 				worktrees: {
 					enabled: "yes",
-					setupHookTimeoutMs: 0,
 				},
 				modelTiers: {
 					max: {
@@ -147,7 +190,6 @@ void describe("config validation", () => {
 			"superagents.useSubagents",
 			"superagents.useTestDrivenDevelopment",
 			"superagents.worktrees.enabled",
-			"superagents.worktrees.setupHookTimeoutMs",
 			"superagents.modelTiers.max.model",
 			"superagents.modelTiers.max.thinking",
 		]);
@@ -158,7 +200,6 @@ void describe("config validation", () => {
 			superagents: {
 				worktrees: {
 					root: null,
-					setupHook: null,
 				},
 			},
 		});
@@ -179,8 +220,6 @@ void describe("config validation", () => {
 				worktrees: {
 					enabled: true,
 					root: "/tmp/wt",
-					setupHook: "./setup.sh",
-					setupHookTimeoutMs: 60000,
 				},
 				modelTiers: {
 					creative: { model: "anthropic/claude-sonnet-4", thinking: "high" },
@@ -245,7 +284,7 @@ void describe("config validation", () => {
 		const result = validateConfigObject({
 			superagents: {
 				worktrees: {
-					setupHookTimeoutMs: "slow",
+					root: "",
 				},
 			},
 		});
@@ -259,7 +298,7 @@ void describe("config validation", () => {
 				"pi-superagents is disabled because config.json needs attention.",
 				"Path: ~/.pi/agent/extensions/subagent/config.json",
 				"",
-				"- superagents.worktrees.setupHookTimeoutMs: must be a positive integer.",
+				"- superagents.worktrees.root: must be a non-empty string or null.",
 				"",
 				"See ~/.pi/agent/extensions/subagent/config.example.json for the current config shape.",
 			].join("\n"),
@@ -277,5 +316,95 @@ void describe("config validation", () => {
 			message: "appears to duplicate the bundled defaults. Replace it with {} and keep only local overrides.",
 			action: "replace_with_empty_override",
 		}]);
+	});
+
+	// -------------------------------------------------------------------------
+	// Skill overlays and interception config (Task 1)
+	// -------------------------------------------------------------------------
+
+	void it("accepts skill overlays and skill command interception", () => {
+		const result = validateConfigObject({
+			superagents: {
+				skillOverlays: {
+					brainstorming: ["react-native-best-practices"],
+					"writing-plans": ["supabase-postgres-best-practices"],
+				},
+				interceptSkillCommands: ["brainstorming"],
+			},
+		});
+
+		assert.equal(result.blocked, false);
+		assert.deepEqual(result.diagnostics, []);
+	});
+
+	void it("rejects malformed skill overlay and interception config", () => {
+		const result = validateConfigObject({
+			superagents: {
+				skillOverlays: {
+					brainstorming: "react-native-best-practices",
+					"": ["react-native-best-practices"],
+					"writing-plans": ["", 42],
+				},
+				interceptSkillCommands: ["", 7, "writing-plans"],
+			},
+		});
+
+		assert.equal(result.blocked, true);
+		assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), [
+			"superagents.skillOverlays.brainstorming",
+			"superagents.skillOverlays.",
+			"superagents.skillOverlays.writing-plans[0]",
+			"superagents.skillOverlays.writing-plans[1]",
+			"superagents.interceptSkillCommands[0]",
+			"superagents.interceptSkillCommands[1]",
+			"superagents.interceptSkillCommands[2]",
+		]);
+	});
+
+	void it("rejects discarded skillHooks and removed worktree hook config", () => {
+		const result = validateConfigObject({
+			superagents: {
+				skillHooks: {
+					brainstorming: { modelTier: "balanced" },
+				},
+				worktrees: {
+					setupHook: "./setup.sh",
+					setupHookTimeoutMs: 30000,
+				},
+			},
+		});
+
+		assert.equal(result.blocked, true);
+		assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), [
+			"superagents.skillHooks",
+			"superagents.worktrees.setupHook",
+			"superagents.worktrees.setupHookTimeoutMs",
+		]);
+	});
+
+	void it("deep merges skill overlays while replacing intercepted skill commands", () => {
+		const result = loadEffectiveConfig({
+			superagents: {
+				...defaults.superagents,
+				skillOverlays: {
+					brainstorming: ["react-native-best-practices"],
+				},
+				interceptSkillCommands: [],
+			},
+		}, {
+			superagents: {
+				skillOverlays: {
+					"writing-plans": ["supabase-postgres-best-practices"],
+				},
+				interceptSkillCommands: ["brainstorming"],
+			},
+		});
+
+		assert.equal(result.blocked, false);
+		assert.deepEqual(result.config.superagents?.skillOverlays, {
+			brainstorming: ["react-native-best-practices"],
+			"writing-plans": ["supabase-postgres-best-practices"],
+		});
+		assert.deepEqual(result.config.superagents?.interceptSkillCommands, ["brainstorming"]);
 	});
 });

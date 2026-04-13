@@ -35,6 +35,33 @@ The workflow uses a sequence of specialized role agents. Each agent is purpose-b
 | Spec Review | `sp-spec-review` | Verification of changes against design specifications. |
 | Debug | `sp-debug` | Bounded failure investigation and root-cause analysis. |
 
+## Brainstorming Entry
+
+Use `/sp-brainstorm` to run brainstorming through the Superpowers workflow. This loads the `brainstorming` skill as the entry point with optional overlay skills and Plannotator saved-spec review.
+
+```text
+/sp-brainstorm design the new onboarding flow
+/sp-brainstorm explore mobile push notification options
+```
+
+### Skill Overlays
+
+Configure additional skills to load alongside the brainstorming entry skill:
+
+```json
+{
+  "superagents": {
+    "skillOverlays": {
+      "brainstorming": ["react-native-best-practices", "accessibility-guidelines"]
+    }
+  }
+}
+```
+
+### Saved-Spec Plannotator Review
+
+When `usePlannotator` is enabled, the Superpowers workflow calls `superpowers_spec_review` after the brainstorming session saves an approved spec. This triggers Plannotator's browser review for the saved spec before transitioning to `writing-plans`.
+
 ## Model Tiers
 
 Superpowers agents use abstract model tiers defined in your configuration. This allows you to scale quality and cost without modifying individual agent files.
@@ -57,7 +84,7 @@ You can define custom tiers (e.g., "creative", "legacy") in the `modelTiers` obj
 
 ## Worktree Isolation
 
-Parallel tasks within the Superpowers workflow automatically use git worktrees to prevent filesystem conflicts. This is enabled by default via `superagents.worktrees.enabled`.
+Parallel tasks within the Superpowers workflow can use git worktrees to prevent filesystem conflicts, but this is not enabled by default. Enable it with `superagents.worktrees.enabled` when you want isolated worktree execution for parallel tasks.
 
 Configure in `~/.pi/agent/extensions/subagent/config.json`:
 
@@ -73,6 +100,35 @@ Configure in `~/.pi/agent/extensions/subagent/config.json`:
 ```
 
 See [Worktree Reference](../reference/worktrees.md) for full details.
+
+## Optional Plannotator Browser Review
+
+Enable the optional browser review flow in `~/.pi/agent/extensions/subagent/config.json`:
+
+```json
+{
+  "superagents": {
+    "usePlannotator": true
+  }
+}
+```
+
+Install Plannotator separately before enabling the review UI:
+
+```text
+pi install npm:@plannotator/pi-extension
+```
+
+If you enable `usePlannotator` before installing Plannotator, Superpowers does not fail; it falls back to the normal in-chat approval flow.
+
+Behavior:
+
+1. When Superpowers reaches plan approval, it opens the Plannotator browser review UI if the extension is installed and `usePlannotator` is `true`.
+2. `pi-superagents` publishes the review request through Plannotator's shared event API and waits for an approval or rejection event.
+3. If you approve or reject in the browser UI, the Superpowers workflow resumes with that decision.
+4. If Plannotator is unavailable, not installed, or the browser review flow cannot start, Superpowers falls back to the standard in-chat approval flow.
+
+Do not enable Plannotator's native `/plannotator` planning mode for the same Superpowers workflow.
 
 ## Runtime Flags
 

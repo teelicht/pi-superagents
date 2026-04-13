@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
 	getSuperagentSettings,
+	isSuperagentPlannotatorEnabled,
 	resolveSuperagentWorktreeCreateOptions,
 	resolveSuperagentWorktreeEnabled,
 } from "../../src/execution/superagents-config.ts";
@@ -69,26 +70,42 @@ void describe("superagents config helpers", () => {
 		assert.deepEqual(
 			resolveSuperagentWorktreeCreateOptions({
 				workflow: "superpowers",
-					config: {
-						superagents: {
-							worktrees: {
-								root: ".worktrees",
-								setupHook: "./scripts/setup-worktree.mjs",
-								setupHookTimeoutMs: 45000,
-							},
+				config: {
+					superagents: {
+						worktrees: {
+							root: ".worktrees",
 						},
 					},
+				},
 				agents: ["sp-implementer", "sp-code-review"],
 			}),
 			{
 				agents: ["sp-implementer", "sp-code-review"],
 				rootDir: ".worktrees",
 				requireIgnoredRoot: true,
-				setupHook: {
-					hookPath: "./scripts/setup-worktree.mjs",
-					timeoutMs: 45000,
-				},
 			},
 		);
 	});
+
+	/**
+	 * Verifies the plannotator flag resolves off by default and mirrors explicit config.
+	 *
+	 * @returns Nothing; asserts resolved plannotator enabled state.
+	 */
+	void it("resolves plannotator enabled state from config with a false default", () => {
+		assert.equal(isSuperagentPlannotatorEnabled({}), false);
+		assert.equal(
+			isSuperagentPlannotatorEnabled({
+				superagents: { usePlannotator: false },
+			}),
+			false,
+		);
+		assert.equal(
+			isSuperagentPlannotatorEnabled({
+				superagents: { usePlannotator: true },
+			}),
+			true,
+		);
+	});
+
 });
