@@ -19,14 +19,16 @@ npx @teelicht/pi-superagents --remove
 
 ## Quick Commands
 
-| Command               | Description                                              |
-| --------------------- | -------------------------------------------------------- |
-| `/superpowers <task>` | Run a task through the Superpowers workflow              |
-| `/superpowers-status` | Open the async status overlay for active and recent runs |
+| Command                  | Description                                             |
+| ------------------------ | ------------------------------------------------------- |
+| `/sp-brainstorm <task>`  | Brainstorm a task and save a spec with Plannotator UI   |
+| `/sp-implement <task>`   | Run an implementation task through the Superpowers flow |
+| `/subagents-status`      | Open active and recent subagent run status              |
+| `/sp-settings`           | Open Superpowers and subagent workflow settings         |
 
 ### Superpowers Workflow
 
-The `/superpowers` command activates a structured multi-agent pipeline tailored for software engineering tasks. It uses a sequence of specialized roles:
+The `/sp-implement` command activates a structured workflow for task execution with role-specific agents, model tiers, and built-in quality gates.
 
 1. **Recon** (`sp-recon`): Initial codebase analysis and context gathering.
 2. **Research** (`sp-research`): Deep dive into specific APIs, libraries, or logic.
@@ -35,10 +37,10 @@ The `/superpowers` command activates a structured multi-agent pipeline tailored 
 5. **Debug** (`sp-debug`): Root cause analysis and fix verification for regressions.
 
 ```text
-/superpowers fix the auth regression
-/superpowers tdd implement the cache invalidation task
-/superpowers direct update the Expo config
-/superpowers tdd review the release branch --fork
+/sp-implement fix the auth regression
+/sp-implement tdd implement the cache invalidation task
+/sp-implement direct update the Expo config
+/sp-implement tdd review the release branch --fork
 ```
 
 - **`tdd`** (default): Uses the `test-driven-development` skill for the implementation phase.
@@ -46,7 +48,7 @@ The `/superpowers` command activates a structured multi-agent pipeline tailored 
 
 ### Background & Forked Execution
 
-- `--bg`: Run in the background. Check status with `/superpowers-status`.
+- `--bg`: Run in the background. Check status with `/subagents-status` or `Ctrl+Option+S` on macOS (`ctrl+alt+s` in Pi keybinding notation).
 - `--fork`: Run with `context: "fork"` (branched session from parent's current leaf).
 
 ## Configuration
@@ -68,6 +70,7 @@ See [Configuration Reference](docs/reference/configuration.md) for details on mo
 - **Async Execution**: Background mode with real-time progress overlay and desktop notifications.
 - **Model Tiers**: Abstract model selection (cheap, balanced, max) resolved via user configuration.
 - **Skill Injection**: Automatic injection of project-local and user-global skills into agent prompts.
+- **Plannotator Integration**: Optional event bridge to [Plannotator](https://plannotator.ai/) for visual browser-based plan review and approval.
 
 ## Documentation
 

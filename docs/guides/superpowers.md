@@ -1,16 +1,16 @@
 # Superpowers Guide
 
-The `/superpowers` command activates a structured workflow for task execution with role-specific agents, model tiers, and built-in quality gates.
+The `/sp-implement` command activates a structured workflow for task execution with role-specific agents, model tiers, and built-in quality gates.
 
 ## Overview
 
-When you use `/superpowers`, pi-superagents runs your task through a bounded workflow with specialized agents (recon, research, implement, review) instead of a single generic agent. This structured approach ensures that context is gathered before implementation and that results are verified before completion.
+When you use `/sp-implement`, pi-superagents runs your task through a bounded workflow with specialized agents (recon, research, implement, review) instead of a single generic agent. This structured approach ensures that context is gathered before implementation and that results are verified before completion.
 
 ```text
-/superpowers fix the auth regression
-/superpowers tdd implement the cache invalidation task
-/superpowers direct update the Expo config
-/superpowers tdd review the release branch --fork
+/sp-implement fix the auth regression
+/sp-implement tdd implement the cache invalidation task
+/sp-implement direct update the Expo config
+/sp-implement tdd review the release branch --fork
 ```
 
 ## Implementer Modes
@@ -20,7 +20,7 @@ When you use `/superpowers`, pi-superagents runs your task through a bounded wor
 | `tdd`     | Test-first implementer loop with the `test-driven-development` skill (default) |
 | `direct`  | Same review and verification loop, but code-first implementation |
 
-Specify the mode as the first argument: `/superpowers tdd <task>` or `/superpowers direct <task>`.
+Specify the mode as the first argument: `/sp-implement tdd <task>` or `/sp-implement direct <task>`.
 
 ## Role Agents
 
@@ -113,24 +113,32 @@ Enable the optional browser review flow in `~/.pi/agent/extensions/subagent/conf
 }
 ```
 
-Install Plannotator separately before enabling the review UI:
+Install [Plannotator](https://plannotator.ai/) separately before enabling the review UI. It is an optional dependency for the visual browser review flow:
 
 ```text
 pi install npm:@plannotator/pi-extension
 ```
 
-If you enable `usePlannotator` before installing Plannotator, Superpowers does not fail; it falls back to the normal in-chat approval flow.
+Important details regarding the Plannotator integration:
+- **Plannotator is optional**: If you enable `usePlannotator` without installing Plannotator, Superpowers falls back to the normal in-chat approval flow.
+- **Shared Event API**: `pi-superagents` exclusively uses Plannotator's shared event API.
+- **Browser Assets**: The currently published Plannotator Pi extension includes the browser assets and event listener. Standalone public web-component packages are not required for this integration.
+- **Distinct Workflows**: Installing Plannotator also registers Plannotator's own commands and shortcuts, but those are separate from this bridge. You should not activate Plannotator's native `/plannotator` plan mode for the same Superpowers workflow.
 
 Behavior:
-
 1. When Superpowers reaches plan approval, it opens the Plannotator browser review UI if the extension is installed and `usePlannotator` is `true`.
 2. `pi-superagents` publishes the review request through Plannotator's shared event API and waits for an approval or rejection event.
 3. If you approve or reject in the browser UI, the Superpowers workflow resumes with that decision.
 4. If Plannotator is unavailable, not installed, or the browser review flow cannot start, Superpowers falls back to the standard in-chat approval flow.
 
-Do not enable Plannotator's native `/plannotator` planning mode for the same Superpowers workflow.
+
+## Status and Settings
+
+Use `/subagents-status` to inspect active and recent subagent runs. The same overlay is available through `Ctrl+Option+S` on macOS, represented internally as `ctrl+alt+s`.
+
+Use `/sp-settings` to inspect and toggle workflow settings such as `useSubagents`, `useTestDrivenDevelopment`, and worktree behavior.
 
 ## Runtime Flags
 
-- `--bg`: Run in the background. Progress is shown in the async status overlay.
+- `--bg`: Run in the background. Check status with `/subagents-status` or `Ctrl+Option+S`.
 - `--fork`: Run with `context: "fork"`, branching from the current session state.
