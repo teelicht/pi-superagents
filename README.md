@@ -2,6 +2,17 @@
 
 Pi extension for Superpowers workflows: structured delegation to specialized role agents for recon, research, implementation, review, and debugging.
 
+## Features
+
+- **Superpowers Workflow**: Proven pipeline for robust AI-assisted development.
+- **Role-Specific Agents**: Purpose-built agents for every phase of the development lifecycle.
+- **Subagent Execution**: Automatically spawns sub-agents (setting).
+- **Worktree Isolation**: Optional git worktree creation for parallel tasks to prevent filesystem conflicts (setting).
+- **Model Tiers**: Abstract model selection (cheap, balanced, max) resolved via user configuration.
+- **Skill Injection**: Automatic injection of project-local and user-global skills into agent prompts.
+- **Skill Overlays**: Configure additional skills to load alongside entry skills (e.g., load `react-native-best-practices` when brainstorming). See [Configuration Reference](docs/reference/configuration.md#skill-overlays).
+- **Plannotator Integration**: Optional event bridge to [Plannotator](https://plannotator.ai/) for visual browser-based plan review and approval (setting).
+
 ## Installation
 
 ```bash
@@ -17,7 +28,7 @@ To remove:
 npx @teelicht/pi-superagents --remove
 ```
 
-## Quick Commands
+## Slash Commands
 
 | Command                 | Description                                                                 |
 | ----------------------- | --------------------------------------------------------------------------- |
@@ -70,22 +81,9 @@ On install, `pi-superagents` creates an empty user override file:
 
 See [Configuration Reference](docs/reference/configuration.md) for details on model tiers and worktree settings.
 
-## Features
-
-- **Superpowers Workflow**: Industry-standard pipeline for robust AI-assisted development.
-- **Role-Specific Agents**: Purpose-built agents for every phase of the development lifecycle.
-- **Parallel Execution**: Fan-out/fan-in patterns for multi-component analysis.
-- **Worktree Isolation**: Optional git worktree creation for parallel tasks to prevent filesystem conflicts.
-- **Async Execution**: Background mode with real-time progress overlay and desktop notifications.
-- **Model Tiers**: Abstract model selection (cheap, balanced, max) resolved via user configuration.
-- **Skill Injection**: Automatic injection of project-local and user-global skills into agent prompts.
-- **Skill Overlays**: Configure additional skills to load alongside entry skills (e.g., load `react-native-best-practices` when brainstorming). See [Configuration Reference](docs/reference/configuration.md#skill-overlays).
-- **Plannotator Integration**: Optional event bridge to [Plannotator](https://plannotator.ai/) for visual browser-based plan review and approval.
-
 ## Documentation
 
 - **[Superpowers Guide](docs/guides/superpowers.md)** — Workflow details, role agents, and command usage.
 - **[Worktree Isolation](docs/reference/worktrees.md)** — Git worktree setup, requirements, and hooks.
 - **[Configuration](docs/reference/configuration.md)** — Extension settings, model tiers, and performance tuning.
 - **[Parameters API](docs/reference/parameters.md)** — Full parameter reference for the `subagent` tool.
-- **[Contributing](docs/contributing.md)** — Project standards and development guidelines.
