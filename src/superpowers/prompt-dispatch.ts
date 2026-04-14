@@ -2,7 +2,7 @@
  * Superpowers prompt dispatch helpers.
  *
  * Responsibilities:
- * - display only concise Superpowers option summaries to users
+ * - display the user's task and a concise config summary to users
  * - inject the full root-session contract as hidden model context
  * - preserve normal and follow-up delivery behavior for slash commands
  *
@@ -17,10 +17,13 @@ import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-age
 export const SUPERPOWERS_CONTRACT_CUSTOM_TYPE = "superpowers-root-contract";
 
 /** Prefix that identifies visible Superpowers command summaries. */
-export const SUPERPOWERS_VISIBLE_SUMMARY_PREFIX = "Superpowers options:";
+export const SUPERPOWERS_VISIBLE_SUMMARY_PREFIX = "Superpowers ▸";
 
 /**
  * Determine whether a prompt is a visible Superpowers option summary.
+ *
+ * Matches the "Superpowers ▸ <task>" header that starts every visible
+ * summary produced by `buildSuperpowersVisiblePromptSummary`.
  *
  * @param prompt User-visible prompt text received by Pi.
  * @returns True when a pending hidden contract should be paired with the prompt.

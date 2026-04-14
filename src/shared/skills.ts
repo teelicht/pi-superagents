@@ -7,6 +7,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { loadSkills } from "@mariozechner/pi-coding-agent";
+import { parseFrontmatter } from "../agents/frontmatter.ts";
 import {
 	resolveImplementerSkillSet,
 	resolveRoleSkillSet,
@@ -52,6 +53,8 @@ interface CachedSkillEntry {
 	source: SkillSource;
 	description?: string;
 	order: number;
+	/** Whether this skill is restricted to root-planning agents. "root" = root-only, undefined or "agent" = available to all. */
+	scope?: "root" | "agent";
 }
 
 const skillCache = new Map<string, SkillCacheEntry>();
@@ -252,12 +255,26 @@ function getCachedSkills(cwd: string): CachedSkillEntry[] {
 
 	for (let i = 0; i < loaded.skills.length; i++) {
 		const skill = loaded.skills[i];
+
+		// Read scope from skill file frontmatter
+		let scope: "root" | "agent" | undefined;
+		try {
+			const raw = fs.readFileSync(skill.filePath, "utf-8");
+			const { frontmatter } = parseFrontmatter(raw);
+			if (frontmatter.scope === "root") {
+				scope = "root";
+			}
+		} catch {
+			// scope is optional; ignore read errors
+		}
+
 		const entry: CachedSkillEntry = {
 			name: skill.name,
 			filePath: skill.filePath,
 			source: inferSkillSource(skill.sourceInfo, skill.filePath, cwd),
 			description: skill.description,
 			order: i,
+			scope,
 		};
 		const current = dedupedByName.get(entry.name);
 		dedupedByName.set(entry.name, chooseHigherPrioritySkill(current, entry));
@@ -426,6 +443,7 @@ export function discoverAvailableSkills(cwd: string): Array<{
 	name: string;
 	source: SkillSource;
 	description?: string;
+	scope?: "root" | "agent";
 }> {
 	const skills = getCachedSkills(cwd);
 	return skills
@@ -433,6 +451,7 @@ export function discoverAvailableSkills(cwd: string): Array<{
 			name: s.name,
 			source: s.source,
 			description: s.description,
+			scope: s.scope,
 		}))
 		.sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -458,6 +477,22 @@ export function resolveAvailableSkill(cwd: string, name: string): ResolvedSkill 
  */
 export function getAvailableSkillNames(cwd: string): Set<string> {
 	return new Set(getCachedSkills(cwd).map((skill) => skill.name));
+}
+
+/**
+ * Return the set of skill names that are scoped as root-only
+ * (must not be delegated to bounded roles).
+ *
+ * @param cwd Current working directory for skill discovery.
+ * @returns Set of skill names with scope: root.
+ */
+export function getRootOnlySkillNames(cwd: string): Set<string> {
+	const skills = getCachedSkills(cwd);
+	return new Set(
+		skills
+			.filter((s) => s.scope === "root")
+			.map((s) => s.name),
+	);
 }
 
 export function clearSkillCache(): void {

@@ -291,17 +291,27 @@ export function buildSuperpowersRootPrompt(input: SuperpowersRootPromptInput): s
 /**
  * Build the short user-visible message for a Superpowers command.
  *
+ * The user's actual task is shown first and prominently. The resolved
+ * Superpowers config flags appear below as informational context,
+ * clearly separated so the user can always see what they asked for.
+ *
  * @param input Resolved run profile plus optional skill metadata.
- * @returns Concise option-flag summary safe to display in chat.
+ * @returns Visible summary with the user task and config flags.
  */
 export function buildSuperpowersVisiblePromptSummary(input: SuperpowersRootPromptInput): string {
-	return [
-		"Superpowers options:",
+	const configBlock = [
 		`useBranches: ${input.useBranches}`,
 		`useSubagents: ${input.useSubagents}`,
 		`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`,
 		`usePlannotatorReview: ${input.usePlannotatorReview}`,
 		`worktrees.enabled: ${input.worktreesEnabled}`,
 		`context: ${input.fork ? "fork" : "fresh"}`,
+	].join("\n");
+
+	return [
+		`Superpowers ▸ ${input.task}`,
+		"",
+		"Config:",
+		configBlock,
 	].join("\n");
 }

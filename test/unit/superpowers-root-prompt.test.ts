@@ -152,7 +152,8 @@ void describe("Superpowers root prompt", () => {
 			fork: true,
 		});
 
-		assert.match(summary, /Superpowers options:/);
+		assert.match(summary, /Superpowers ▸ fix auth/);
+		assert.match(summary, /Config:/);
 		assert.match(summary, /useBranches: true/);
 		assert.match(summary, /useSubagents: false/);
 		assert.match(summary, /useTestDrivenDevelopment: true/);
@@ -161,6 +162,6 @@ void describe("Superpowers root prompt", () => {
 		assert.match(summary, /context: fork/);
 		assert.doesNotMatch(summary, /Required bootstrap skill/);
 		assert.doesNotMatch(summary, /Subagent delegation is/);
-		assert.doesNotMatch(summary, /User task:/);
+		assert.doesNotMatch(summary, /User Task/);
 	});
 });

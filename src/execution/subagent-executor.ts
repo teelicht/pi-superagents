@@ -295,21 +295,21 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 			useTestDrivenDevelopment: input.useTestDrivenDevelopment,
 			onUpdate: input.onUpdate
 				? (progressUpdate) => {
-						const stepResults = progressUpdate.details?.results || [];
-						const stepProgress = progressUpdate.details?.progress || [];
-						if (stepResults.length > 0) input.liveResults[index] = stepResults[0];
-						if (stepProgress.length > 0) input.liveProgress[index] = stepProgress[0];
-						const mergedResults = input.liveResults.filter((result): result is SingleResult => result !== undefined);
-						const mergedProgress = input.liveProgress.filter((progress): progress is AgentProgress => progress !== undefined);
-						input.onUpdate?.({
-							content: progressUpdate.content,
-							details: {
-								mode: "parallel",
-								results: mergedResults,
-								progress: mergedProgress,
-							},
-						});
-					}
+					const stepResults = progressUpdate.details?.results || [];
+					const stepProgress = progressUpdate.details?.progress || [];
+					if (stepResults.length > 0) input.liveResults[index] = stepResults[0];
+					if (stepProgress.length > 0) input.liveProgress[index] = stepProgress[0];
+					const mergedResults = input.liveResults.filter((result): result is SingleResult => result !== undefined);
+					const mergedProgress = input.liveProgress.filter((progress): progress is AgentProgress => progress !== undefined);
+					input.onUpdate?.({
+						content: progressUpdate.content,
+						details: {
+							mode: "parallel",
+							results: mergedResults,
+							progress: mergedProgress,
+						},
+					});
+				}
 				: undefined,
 		});
 	});
@@ -513,7 +513,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	if (params.context === "fork") {
 		task = wrapForkTask(task);
 	}
-	const cleanTask = task;
+	const _cleanTask = task;
 	const outputPath = resolveSingleOutputPath(behavior.output || undefined, ctx.cwd, params.cwd);
 	task = injectSingleOutputInstruction(task, outputPath);
 

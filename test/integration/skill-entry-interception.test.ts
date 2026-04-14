@@ -155,7 +155,8 @@ Creative problem solving skill.`,
 
 		assert.deepEqual(result, { action: "handled" });
 		assert.equal(mock.userMessages.length, 1);
-		assert.match(mock.userMessages[0], /Superpowers options:/);
+		assert.match(mock.userMessages[0], /Superpowers ▸ design middleware/);
+		assert.match(mock.userMessages[0], /Config:/);
 		assert.match(mock.userMessages[0], /useBranches:\s*false/);
 		assert.match(mock.userMessages[0], /usePlannotatorReview:\s*true/);
 		assert.doesNotMatch(mock.userMessages[0], /Entry skill:/);

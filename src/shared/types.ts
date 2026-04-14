@@ -79,6 +79,7 @@ export interface ResolvedSkill {
 	path: string;
 	content: string;
 	source: "project" | "user";
+	scope?: "root" | "agent";
 }
 
 // ============================================================================

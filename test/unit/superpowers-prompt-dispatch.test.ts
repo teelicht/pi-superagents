@@ -37,12 +37,12 @@ void describe("Superpowers prompt dispatcher", () => {
 		} as never);
 
 		dispatcher.send(
-			"Superpowers options:\nuseBranches: true",
+			"Superpowers ▸ fix auth\n\nConfig:\nuseBranches: true",
 			"# Superpowers Root Session Contract\nsecret runtime contract",
 			{ isIdle: () => true },
 		);
 
-		assert.deepEqual(sentMessages, [{ content: "Superpowers options:\nuseBranches: true", options: undefined }]);
+		assert.deepEqual(sentMessages, [{ content: "Superpowers ▸ fix auth\n\nConfig:\nuseBranches: true", options: undefined }]);
 		const injected = beforeAgentStart?.({ prompt: sentMessages[0].content });
 		assert.equal(injected?.message?.customType, SUPERPOWERS_CONTRACT_CUSTOM_TYPE);
 		assert.equal(injected?.message?.display, false);
@@ -59,13 +59,13 @@ void describe("Superpowers prompt dispatcher", () => {
 		} as never);
 
 		dispatcher.send(
-			"Superpowers options:\nuseSubagents: true",
+			"Superpowers ▸ fix auth\n\nConfig:\nuseSubagents: true",
 			"# Hidden contract",
 			{ isIdle: () => false },
 		);
 
 		assert.deepEqual(sentMessages, [{
-			content: "Superpowers options:\nuseSubagents: true",
+			content: "Superpowers ▸ fix auth\n\nConfig:\nuseSubagents: true",
 			options: { deliverAs: "followUp" },
 		}]);
 	});
