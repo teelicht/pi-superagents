@@ -16,7 +16,6 @@ import { type AgentConfig, type AgentScope } from "../agents/agents.ts";
 import { getArtifactsDir } from "../shared/artifacts.ts";
 import { runSync } from "./execution.ts";
 import { aggregateParallelOutputs } from "./parallel-utils.ts";
-import { recordRun } from "./run-history.ts";
 import {
 	buildSuperpowersPacketPlan,
 	injectSuperpowersPacketInstructions,
@@ -429,18 +428,6 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 			workflow,
 			useTestDrivenDevelopment,
 		});
-		for (let i = 0; i < results.length; i++) {
-			const run = results[i];
-			recordRun({
-				agent: run.agent,
-				task: taskTexts[i].slice(0, 200),
-				ts: Math.floor(Date.now() / 1000),
-				status: run.exitCode === 0 ? "ok" : "error",
-				duration: run.progressSummary?.durationMs ?? 0,
-				...(run.exitCode !== 0 ? { exit: run.exitCode } : {}),
-			});
-		}
-
 		for (const result of results) {
 			if (result.progress) allProgress.push(result.progress);
 			if (result.artifactPaths) allArtifactPaths.push(result.artifactPaths);
@@ -549,15 +536,6 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		workflow,
 		useTestDrivenDevelopment,
 	});
-	recordRun({
-		agent: params.agent!,
-		task: cleanTask.slice(0, 200),
-		ts: Math.floor(Date.now() / 1000),
-		status: r.exitCode === 0 ? "ok" : "error",
-		duration: r.progressSummary?.durationMs ?? 0,
-		...(r.exitCode !== 0 ? { exit: r.exitCode } : {}),
-	});
-
 	if (r.progress) allProgress.push(r.progress);
 	if (r.artifactPaths) allArtifactPaths.push(r.artifactPaths);
 
