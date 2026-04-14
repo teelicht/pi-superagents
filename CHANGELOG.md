@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.1] - 2026-04-14
+
+- **Fix branching option** - branching config now works as expected
+- **Less noisy user feedback** - trimmed information show to the user after invoking superpowers via the slash command
+- **Better TUI** - improved TUI layout
+
+## [0.4.0] - 2026-04-13
+
+- **Optional plannotator integration** - specs can now be reviewed in plannotator if desired
+
 ## [0.3.5] - 2026-04-12
 
 - (hopefully) fixed memleaks
