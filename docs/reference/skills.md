@@ -39,6 +39,26 @@ Skills are specialized instructions loaded from `SKILL.md` files and injected in
 </skill>
 ```
 
+## Skill Frontmatter
+
+Skills declare metadata in YAML frontmatter at the top of their `SKILL.md` file:
+
+```yaml
+---
+name: my-skill
+description: When to use this skill
+scope: root   # optional
+---
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Unique skill identifier |
+| `description` | Yes | Short description of when to use the skill |
+| `scope` | No | `root` restricts the skill to root-planning agents only; omit or use `agent` for skills available to all roles |
+
+Skills with `scope: root` are orchestration-level skills that should never be delegated to bounded role agents (e.g., `sp-recon`, `sp-implementer`). The runtime enforces this restriction automatically.
+
 ## Missing Skills
 
 For delegated subagent runs, missing skills are reported in the result summary and execution continues with the skills that were found. For root Superpowers entry-skill flows, missing required entry or overlay skills block prompt dispatch so the user can fix the configuration.
