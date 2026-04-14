@@ -52,6 +52,7 @@ void describe("Superpowers skill entry helpers", () => {
 			profile: {
 				commandName: "sp-brainstorm",
 				task: "design onboarding",
+				useBranches: false,
 				useSubagents: true,
 				useTestDrivenDevelopment: true,
 				usePlannotatorReview: true,
@@ -90,6 +91,7 @@ void describe("Superpowers skill entry helpers", () => {
 		const profile = {
 			commandName: "sp-brainstorm",
 			task: "design onboarding",
+			useBranches: false,
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
 			usePlannotatorReview: false,
@@ -142,6 +144,7 @@ void describe("Superpowers skill entry helpers", () => {
 		const profile = {
 			commandName: "sp-brainstorm",
 			task: "design onboarding",
+			useBranches: false,
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
 			usePlannotatorReview: false,
@@ -174,6 +177,7 @@ void describe("Superpowers skill entry helpers", () => {
 		const profile = {
 			commandName: "sp-brainstorm",
 			task: "design onboarding",
+			useBranches: false,
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
 			usePlannotatorReview: false,
@@ -214,6 +218,7 @@ void describe("Superpowers skill entry helpers", () => {
 			profile: {
 				commandName: "skill:brainstorming",
 				task: "design middleware",
+				useBranches: false,
 				useSubagents: true,
 				useTestDrivenDevelopment: true,
 				usePlannotatorReview: false,

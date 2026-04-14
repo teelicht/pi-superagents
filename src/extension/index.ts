@@ -36,6 +36,8 @@ import {
 	parseSkillCommandInput,
 	shouldInterceptSkillCommand,
 } from "../superpowers/skill-entry.ts";
+import { buildSuperpowersVisiblePromptSummary } from "../superpowers/root-prompt.ts";
+import { createSuperpowersPromptDispatcher } from "../superpowers/prompt-dispatch.ts";
 import {
 	parseSuperpowersWorkflowArgs,
 	resolveSuperpowersRunProfile,
@@ -452,6 +454,7 @@ Bounded role agents are not allowed to call subagents.`,
 	pi.registerTool(specReviewTool);
 	pi.registerTool(tool);
 	registerSlashCommands(pi, state, config);
+	const skillCommandPromptDispatcher = createSuperpowersPromptDispatcher(pi);
 
 	/**
 	 * Intercept opted-in skill commands before native Pi skill expansion.
@@ -509,8 +512,20 @@ Bounded role agents are not allowed to call subagents.`,
 			return { action: "handled" as const };
 		}
 
-		// Send the prompt to the agent
-		pi.sendUserMessage(promptResult.prompt);
+		// Send the prompt to the agent with only flags visible in chat.
+		skillCommandPromptDispatcher.send(
+			buildSuperpowersVisiblePromptSummary({
+				task: profile.task,
+				useBranches: profile.useBranches,
+				useSubagents: profile.useSubagents,
+				useTestDrivenDevelopment: profile.useTestDrivenDevelopment,
+				usePlannotatorReview: profile.usePlannotatorReview,
+				worktreesEnabled: profile.worktreesEnabled,
+				fork: profile.fork,
+			}),
+			promptResult.prompt,
+			ctx,
+		);
 		return { action: "handled" as const };
 	});
 

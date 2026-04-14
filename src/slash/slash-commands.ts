@@ -25,8 +25,9 @@ import {
 	resolveSuperpowersRunProfile,
 	type ResolvedSuperpowersRunProfile,
 } from "../superpowers/workflow-profile.ts";
-import { buildSuperpowersRootPrompt } from "../superpowers/root-prompt.ts";
+import { buildSuperpowersRootPrompt, buildSuperpowersVisiblePromptSummary } from "../superpowers/root-prompt.ts";
 import { buildResolvedSkillEntryPrompt } from "../superpowers/skill-entry.ts";
+import { createSuperpowersPromptDispatcher } from "../superpowers/prompt-dispatch.ts";
 
 /**
  * Notify the user when config errors disable execution.
@@ -45,42 +46,44 @@ function notifyIfConfigBlocked(state: SubagentState, ctx: ExtensionContext): boo
  * Send a Superpowers root-session prompt, either immediately or as a follow-up
  * when the agent is already streaming.
  *
- * @param pi Extension API for sending messages.
+ * @param dispatcher Prompt dispatcher that pairs visible summaries with hidden contracts.
  * @param ctx Current extension command context.
  * @param profile Fully resolved run profile.
  */
 function sendSuperpowersPrompt(
-	pi: ExtensionAPI,
+	dispatcher: ReturnType<typeof createSuperpowersPromptDispatcher>,
 	ctx: ExtensionContext,
 	profile: ResolvedSuperpowersRunProfile,
 ): void {
 	const usingSuperpowersSkill = resolveAvailableSkill(ctx.cwd, "using-superpowers");
-	const prompt = buildSuperpowersRootPrompt({
+	const promptInput = {
 		task: profile.task,
+		useBranches: profile.useBranches,
 		useSubagents: profile.useSubagents,
 		useTestDrivenDevelopment: profile.useTestDrivenDevelopment,
 		usePlannotatorReview: profile.usePlannotatorReview,
 		worktreesEnabled: profile.worktreesEnabled,
 		fork: profile.fork,
 		usingSuperpowersSkill,
-	});
-	if (ctx.isIdle()) {
-		pi.sendUserMessage(prompt);
-		return;
-	}
-	pi.sendUserMessage(prompt, { deliverAs: "followUp" });
-	if (ctx.hasUI) ctx.ui.notify("Queued Superpowers workflow as a follow-up", "info");
+	};
+	const wasIdle = ctx.isIdle();
+	dispatcher.send(
+		buildSuperpowersVisiblePromptSummary(promptInput),
+		buildSuperpowersRootPrompt(promptInput),
+		ctx,
+	);
+	if (!wasIdle && ctx.hasUI) ctx.ui.notify("Queued Superpowers workflow as a follow-up", "info");
 }
 
 /**
  * Send a Superpowers root-session prompt for a supported entry skill.
  *
- * @param pi Extension API for sending messages.
+ * @param dispatcher Prompt dispatcher that pairs visible summaries with hidden contracts.
  * @param ctx Current command context.
  * @param profile Resolved Superpowers run profile with entry-skill metadata.
  */
 function sendSkillEntryPrompt(
-	pi: ExtensionAPI,
+	dispatcher: ReturnType<typeof createSuperpowersPromptDispatcher>,
 	ctx: ExtensionContext,
 	profile: ResolvedSuperpowersRunProfile,
 ): void {
@@ -95,18 +98,28 @@ function sendSkillEntryPrompt(
 		return;
 	}
 
-	if (ctx.isIdle()) {
-		pi.sendUserMessage(promptResult.prompt);
-		return;
-	}
-	pi.sendUserMessage(promptResult.prompt, { deliverAs: "followUp" });
-	if (ctx.hasUI) ctx.ui.notify("Queued Superpowers skill-entry workflow as a follow-up", "info");
+	const wasIdle = ctx.isIdle();
+	dispatcher.send(
+		buildSuperpowersVisiblePromptSummary({
+			task: profile.task,
+			useBranches: profile.useBranches,
+			useSubagents: profile.useSubagents,
+			useTestDrivenDevelopment: profile.useTestDrivenDevelopment,
+			usePlannotatorReview: profile.usePlannotatorReview,
+			worktreesEnabled: profile.worktreesEnabled,
+			fork: profile.fork,
+		}),
+		promptResult.prompt,
+		ctx,
+	);
+	if (!wasIdle && ctx.hasUI) ctx.ui.notify("Queued Superpowers skill-entry workflow as a follow-up", "info");
 }
 
 /**
  * Register a single Superpowers slash command with argument parsing and prompt dispatch.
  *
  * @param pi Extension API for command registration and message sending.
+ * @param dispatcher Prompt dispatcher used to hide strict contracts from chat.
  * @param state Shared extension state for config gate checks.
  * @param config Effective extension config for default resolution.
  * @param commandName Slash command name without leading slash.
@@ -114,6 +127,7 @@ function sendSkillEntryPrompt(
  */
 function registerSuperpowersCommand(
 	pi: ExtensionAPI,
+	dispatcher: ReturnType<typeof createSuperpowersPromptDispatcher>,
 	state: SubagentState,
 	config: ExtensionConfig,
 	commandName: string,
@@ -131,7 +145,7 @@ function registerSuperpowersCommand(
 				return Promise.resolve();
 			}
 			const profile = resolveSuperpowersRunProfile({ config, commandName, parsed });
-			sendSuperpowersPrompt(pi, ctx, profile);
+			sendSuperpowersPrompt(dispatcher, ctx, profile);
 			return Promise.resolve();
 		},
 	});
@@ -141,11 +155,13 @@ function registerSuperpowersCommand(
  * Register the explicit Superpowers-backed brainstorming command.
  *
  * @param pi Extension API for command registration and message sending.
+ * @param dispatcher Prompt dispatcher used to hide strict contracts from chat.
  * @param state Shared extension state for config gate checks.
  * @param config Effective extension config for profile resolution.
  */
 function registerBrainstormCommand(
 	pi: ExtensionAPI,
+	dispatcher: ReturnType<typeof createSuperpowersPromptDispatcher>,
 	state: SubagentState,
 	config: ExtensionConfig,
 ): void {
@@ -172,7 +188,7 @@ function registerBrainstormCommand(
 					source: "command",
 				},
 			});
-			sendSkillEntryPrompt(pi, ctx, profile);
+			sendSkillEntryPrompt(dispatcher, ctx, profile);
 			return Promise.resolve();
 		},
 	});
@@ -196,19 +212,23 @@ export function registerSlashCommands(
 	state: SubagentState,
 	config: ExtensionConfig,
 ): void {
+	const dispatcher = createSuperpowersPromptDispatcher(pi);
+
 	registerSuperpowersCommand(
 		pi,
+		dispatcher,
 		state,
 		config,
 		"superpowers",
 		"Run a Superpowers workflow: /superpowers [lean|full|tdd|direct|subagents|no-subagents] <task> [--fork]",
 	);
 
-	registerBrainstormCommand(pi, state, config);
+	registerBrainstormCommand(pi, dispatcher, state, config);
 
 	for (const [commandName, preset] of Object.entries(config.superagents?.commands ?? {})) {
 		registerSuperpowersCommand(
 			pi,
+			dispatcher,
 			state,
 			config,
 			commandName,

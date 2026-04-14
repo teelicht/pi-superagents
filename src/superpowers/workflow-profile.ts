@@ -34,6 +34,7 @@ export interface ParsedSuperpowersWorkflowArgs {
 export interface ResolvedSuperpowersRunProfile {
 	commandName: string;
 	task: string;
+	useBranches: boolean;
 	useSubagents: boolean;
 	useTestDrivenDevelopment: boolean;
 	usePlannotatorReview: boolean;
@@ -151,6 +152,7 @@ export function resolveSuperpowersRunProfile(input: {
 	return {
 		commandName: input.commandName,
 		task: input.parsed.task,
+		useBranches: preset.useBranches ?? settings.useBranches ?? false,
 		useSubagents: input.parsed.overrides.useSubagents
 			?? preset.useSubagents
 			?? settings.useSubagents
