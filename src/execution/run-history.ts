@@ -149,7 +149,7 @@ export const globalRunHistory = {
 			if (finalStatus === "error" && existing.exit === undefined) {
 				existing.exit = 1;
 			}
-			if (error && !existing.steps?.find(s => s.error)) {
+			if (error && !existing.steps?.some(s => s.error !== undefined)) {
 				existing.steps = existing.steps || [];
 				existing.steps.push({ index: 0, agent: existing.agent, status: "failed", error });
 			}
