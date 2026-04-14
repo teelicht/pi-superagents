@@ -3,9 +3,9 @@
  *
  * Responsibilities:
  * - verify only Superpowers commands and configured custom commands are registered
- * - verify /superpowers sends a root-session prompt with resolved defaults
+ * - verify /sp-implement sends a root-session prompt with resolved defaults
  * - verify custom commands apply presets and inline tokens override them
- * - verify /superpowers-status opens the status overlay
+ * - verify /subagents-status, ctrl+alt+s, and /sp-settings open their respective overlays
  * - verify config-gated refusal blocks execution
  * - verify /sp-brainstorm sends a skill-entry prompt for brainstorming flows
  */
@@ -18,6 +18,22 @@ type EventBus = {
 	emit(event: string, data: unknown): void;
 };
 
+type CommandSpec = {
+	description?: string;
+	handler(args: string, ctx: unknown): Promise<void>;
+};
+
+type ShortcutSpec = {
+	description?: string;
+	handler(ctx: unknown): Promise<void> | void;
+};
+
+type ThemeMock = {
+	fg(color: string, text: string): string;
+	bg(color: string, text: string): string;
+	bold(text: string): string;
+};
+
 interface RegisterSlashCommandsModule {
 	registerSlashCommands?: (
 		pi: {
@@ -26,6 +42,7 @@ interface RegisterSlashCommandsModule {
 				name: string,
 				spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> },
 			): void;
+			registerShortcut(name: string, spec: ShortcutSpec): void;
 			sendMessage(message: unknown): void;
 			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }): void;
 		},
@@ -106,6 +123,28 @@ function createState(cwd: string) {
 	};
 }
 
+function createPiHarness() {
+	const commands = new Map<string, CommandSpec>();
+	const shortcuts = new Map<string, ShortcutSpec>();
+	const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
+
+	const pi = {
+		events: createEventBus(),
+		registerCommand(name: string, spec: CommandSpec) {
+			commands.set(name, spec);
+		},
+		registerShortcut(name: string, spec: ShortcutSpec) {
+			shortcuts.set(name, spec);
+		},
+		sendMessage() {},
+		sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
+			userMessages.push({ content, options });
+		},
+	};
+
+	return { commands, shortcuts, userMessages, pi };
+}
+
 function createCommandContext(
 	overrides: Partial<{ hasUI: boolean; custom: (...args: unknown[]) => Promise<unknown>; idle: boolean }> = {},
 ) {
@@ -125,16 +164,7 @@ function createCommandContext(
 
 void describe("lean superpowers slash commands", { skip: !available ? "slash-commands.ts not importable" : undefined }, () => {
 	void it("registers only Superpowers commands and configured custom commands", () => {
-		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
-		const pi = {
-			events: createEventBus(),
-			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
-				commands.set(name, spec);
-			},
-			sendMessage() {},
-			sendUserMessage() {},
-		};
-
+		const { commands, shortcuts, pi } = createPiHarness();
 		const config = {
 			superagents: {
 				commands: {
@@ -142,33 +172,33 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 				},
 			},
 		};
-
 		registerSlashCommands!(pi, createState(process.cwd()), config);
-
-		// Should have superpowers, review, superpowers-status
-		assert.ok(commands.has("superpowers"), "expected /superpowers to be registered");
-		assert.ok(commands.has("superpowers-status"), "expected /superpowers-status to be registered");
+		assert.ok(commands.has("sp-implement"), "expected /sp-implement to be registered");
+		assert.ok(commands.has("sp-brainstorm"), "expected /sp-brainstorm to be registered");
+		assert.ok(commands.has("subagents-status"), "expected /subagents-status to be registered");
+		assert.ok(commands.has("sp-settings"), "expected /sp-settings to be registered");
 		assert.ok(commands.has("review"), "expected /review preset to be registered");
-
-		// Should NOT have old commands
+		assert.ok(shortcuts.has("ctrl+alt+s"), "expected ctrl+alt+s shortcut to be registered");
+		assert.ok(!commands.has("superpowers"), "expected /superpowers to NOT be registered");
+		assert.ok(!commands.has("superpowers-status"), "expected /superpowers-status to NOT be registered");
 		assert.ok(!commands.has("run"), "expected /run to NOT be registered");
 		assert.ok(!commands.has("chain"), "expected /chain to NOT be registered");
 		assert.ok(!commands.has("parallel"), "expected /parallel to NOT be registered");
 		assert.ok(!commands.has("agents"), "expected /agents to NOT be registered");
-
-		// review preset should have the configured description
 		assert.equal(commands.get("review")!.description, "Run code review");
+		assert.match(shortcuts.get("ctrl+alt+s")!.description ?? "", /subagents status/i);
 	});
 
 
-	void it("/superpowers includes the plannotator review contract when enabled", async () => {
+	void it("/sp-implement includes the plannotator review contract when enabled", async () => {
 		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
-		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const commands = new Map<string, CommandSpec>();
 		const pi = {
 			events: createEventBus(),
-			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+			registerCommand(name: string, spec: CommandSpec) {
 				commands.set(name, spec);
 			},
+			registerShortcut() {},
 			sendMessage() {},
 			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
 				userMessages.push({ content, options });
@@ -180,7 +210,7 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 				usePlannotator: true,
 			},
 		});
-		await commands.get("superpowers")!.handler("tdd implement auth fix", createCommandContext());
+		await commands.get("sp-implement")!.handler("tdd implement auth fix", createCommandContext());
 
 		assert.equal(userMessages.length, 1);
 		const prompt = String(userMessages[0].content);
@@ -188,14 +218,15 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.match(prompt, /superpowers_plan_review/);
 	});
 
-	void it("/superpowers sends a root-session prompt with resolved defaults", async () => {
+	void it("/sp-implement sends a root-session prompt with resolved defaults", async () => {
 		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
-		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const commands = new Map<string, CommandSpec>();
 		const pi = {
 			events: createEventBus(),
-			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+			registerCommand(name: string, spec: CommandSpec) {
 				commands.set(name, spec);
 			},
+			registerShortcut() {},
 			sendMessage() {},
 			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
 				userMessages.push({ content, options });
@@ -203,7 +234,7 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		};
 
 		registerSlashCommands!(pi, createState(process.cwd()), {});
-		await commands.get("superpowers")!.handler("tdd implement auth fix", createCommandContext());
+		await commands.get("sp-implement")!.handler("tdd implement auth fix", createCommandContext());
 
 		assert.equal(userMessages.length, 1);
 		const prompt = String(userMessages[0].content);
@@ -217,21 +248,22 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.equal(userMessages[0].options, undefined);
 	});
 
-	void it("/superpowers shows only option flags and injects the strict contract as hidden context", async () => {
+	void it("/sp-implement shows only option flags and injects the strict contract as hidden context", async () => {
 		type BeforeAgentStartHandler = (event: { prompt: string }) => {
 			message?: { customType: string; content: string; display: boolean };
 		} | undefined;
 		let beforeAgentStart: BeforeAgentStartHandler | undefined;
 		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
-		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const commands = new Map<string, CommandSpec>();
 		const pi = {
 			events: createEventBus(),
 			on(event: string, handler: BeforeAgentStartHandler) {
 				if (event === "before_agent_start") beforeAgentStart = handler;
 			},
-			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+			registerCommand(name: string, spec: CommandSpec) {
 				commands.set(name, spec);
 			},
+			registerShortcut() {},
 			sendMessage() {},
 			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
 				userMessages.push({ content, options });
@@ -247,7 +279,7 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 				worktrees: { enabled: false },
 			},
 		});
-		await commands.get("superpowers")!.handler("implement auth fix", createCommandContext());
+		await commands.get("sp-implement")!.handler("implement auth fix", createCommandContext());
 
 		assert.equal(userMessages.length, 1);
 		const visiblePrompt = String(userMessages[0].content);
@@ -268,12 +300,13 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 
 	void it("custom commands apply presets and inline tokens override them", async () => {
 		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
-		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const commands = new Map<string, CommandSpec>();
 		const pi = {
 			events: createEventBus(),
-			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+			registerCommand(name: string, spec: CommandSpec) {
 				commands.set(name, spec);
 			},
+			registerShortcut() {},
 			sendMessage() {},
 			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
 				userMessages.push({ content, options });
@@ -310,47 +343,45 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.match(overridePrompt, /useSubagents:\s*true/);
 	});
 
-	void it("/superpowers-status opens the status and settings overlay", async () => {
-		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+	void it("/subagents-status opens the run status overlay", async () => {
+		const { commands, pi } = createPiHarness();
 		let customCalls = 0;
-		const pi = {
-			events: createEventBus(),
-			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
-				commands.set(name, spec);
-			},
-			sendMessage() {},
-			sendUserMessage() {},
-		};
-
 		registerSlashCommands!(pi, createState(process.cwd()), {});
-
-		await commands.get("superpowers-status")!.handler("", createCommandContext({
+		await commands.get("subagents-status")!.handler("", createCommandContext({
 			hasUI: true,
-			custom: async () => {
-				customCalls++;
-				return undefined;
-			},
+			custom: async () => { customCalls++; return undefined; },
 		}));
-
 		assert.equal(customCalls, 1);
 	});
 
+	void it("ctrl+alt+s opens the run status overlay", async () => {
+		const { shortcuts, pi } = createPiHarness();
+		let customCalls = 0;
+		registerSlashCommands!(pi, createState(process.cwd()), {});
+		await shortcuts.get("ctrl+alt+s")!.handler(createCommandContext({
+			hasUI: true,
+			custom: async () => { customCalls++; return undefined; },
+		}));
+		assert.equal(customCalls, 1);
+	});
 
-	void it("/superpowers-status returns cleanly when UI is unavailable", async () => {
-		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
-		const pi = {
-			events: createEventBus(),
-			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
-				commands.set(name, spec);
-			},
-			sendMessage() {},
-			sendUserMessage() {},
-		};
+	void it("/sp-settings opens the settings overlay", async () => {
+		const { commands, pi } = createPiHarness();
+		let customCalls = 0;
+		registerSlashCommands!(pi, createState(process.cwd()), {});
+		await commands.get("sp-settings")!.handler("", createCommandContext({
+			hasUI: true,
+			custom: async () => { customCalls++; return undefined; },
+		}));
+		assert.equal(customCalls, 1);
+	});
 
+	void it("/subagents-status returns cleanly when UI is unavailable", async () => {
+		const { commands, pi } = createPiHarness();
 		registerSlashCommands!(pi, createState(process.cwd()), {});
 
 		await assert.doesNotReject(async () => {
-			await commands.get("superpowers-status")!.handler("", {
+			await commands.get("subagents-status")!.handler("", {
 				cwd: process.cwd(),
 				isIdle: () => true,
 				hasUI: false,
@@ -359,14 +390,29 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		});
 	});
 
-	void it("refuses to execute /superpowers when config is blocked", async () => {
+	void it("/sp-settings returns cleanly when UI is unavailable", async () => {
+		const { commands, pi } = createPiHarness();
+		registerSlashCommands!(pi, createState(process.cwd()), {});
+
+		await assert.doesNotReject(async () => {
+			await commands.get("sp-settings")!.handler("", {
+				cwd: process.cwd(),
+				isIdle: () => true,
+				hasUI: false,
+				modelRegistry: { getAvailable: () => [] },
+			} as never);
+		});
+	});
+
+	void it("refuses to execute /sp-implement when config is blocked", async () => {
 		const notifications: Array<{ message: string; type?: string }> = [];
-		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const commands = new Map<string, CommandSpec>();
 		const pi = {
 			events: createEventBus(),
-			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+			registerCommand(name: string, spec: CommandSpec) {
 				commands.set(name, spec);
 			},
+			registerShortcut() {},
 			sendMessage() {},
 			sendUserMessage() {},
 		};
@@ -384,21 +430,22 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		};
 
 		registerSlashCommands!(pi, state, {});
-		await commands.get("superpowers")!.handler("tdd fix bug", ctx);
+		await commands.get("sp-implement")!.handler("tdd fix bug", ctx);
 
 		assert.equal(notifications.length, 1);
 		assert.equal(notifications[0].type, "error");
 		assert.match(notifications[0].message, /disabled because config\.json needs attention/);
 	});
 
-	void it("/superpowers queues a follow-up when the agent is busy", async () => {
+	void it("/sp-implement queues a follow-up when the agent is busy", async () => {
 		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
-		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const commands = new Map<string, CommandSpec>();
 		const pi = {
 			events: createEventBus(),
-			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+			registerCommand(name: string, spec: CommandSpec) {
 				commands.set(name, spec);
 			},
+			registerShortcut() {},
 			sendMessage() {},
 			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
 				userMessages.push({ content, options });
@@ -408,21 +455,22 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		registerSlashCommands!(pi, createState(process.cwd()), {});
 
 		// isIdle() returns false → should use followUp delivery
-		await commands.get("superpowers")!.handler("direct update config", createCommandContext({ idle: false }));
+		await commands.get("sp-implement")!.handler("direct update config", createCommandContext({ idle: false }));
 
 		assert.equal(userMessages.length, 1);
 		assert.equal(userMessages[0].options?.deliverAs, "followUp");
 		assert.match(String(userMessages[0].content), /useTestDrivenDevelopment:\s*false/);
 	});
 
-	void it("shows usage hint when /superpowers is called without a task", async () => {
+	void it("shows usage hint when /sp-implement is called without a task", async () => {
 		const notifications: Array<{ message: string; type?: string }> = [];
-		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const commands = new Map<string, CommandSpec>();
 		const pi = {
 			events: createEventBus(),
-			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+			registerCommand(name: string, spec: CommandSpec) {
 				commands.set(name, spec);
 			},
+			registerShortcut() {},
 			sendMessage() {},
 			sendUserMessage() {},
 		};
@@ -433,26 +481,27 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 			notifications.push({ message, type });
 		};
 
-		await commands.get("superpowers")!.handler("", ctx);
+		await commands.get("sp-implement")!.handler("", ctx);
 		assert.equal(notifications.length, 1);
 		assert.equal(notifications[0].type, "error");
-		assert.match(notifications[0].message, /Usage:/);
+		assert.match(notifications[0].message, /Usage: \/sp-implement/);
 
 		notifications.length = 0;
-		await commands.get("superpowers")!.handler("tdd", ctx);
+		await commands.get("sp-implement")!.handler("tdd", ctx);
 		assert.equal(notifications.length, 1);
 		assert.equal(notifications[0].type, "error");
-		assert.match(notifications[0].message, /Usage:/);
+		assert.match(notifications[0].message, /Usage: \/sp-implement/);
 	});
 
 
-	void it("ignores /superpowers usage errors cleanly when UI is unavailable", async () => {
-		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+	void it("ignores /sp-implement usage errors cleanly when UI is unavailable", async () => {
+		const commands = new Map<string, CommandSpec>();
 		const pi = {
 			events: createEventBus(),
-			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+			registerCommand(name: string, spec: CommandSpec) {
 				commands.set(name, spec);
 			},
+			registerShortcut() {},
 			sendMessage() {},
 			sendUserMessage() {},
 		};
@@ -460,7 +509,7 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		registerSlashCommands!(pi, createState(process.cwd()), {});
 
 		await assert.doesNotReject(async () => {
-			await commands.get("superpowers")!.handler("", {
+			await commands.get("sp-implement")!.handler("", {
 				cwd: process.cwd(),
 				isIdle: () => true,
 				hasUI: false,
@@ -469,80 +518,55 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		});
 	});
 
-	void it("renders Superpowers defaults, worktrees, model tiers, and custom commands in the status component", async () => {
-		const module = await import("../../src/ui/superpowers-status.ts") as {
-			SuperpowersStatusComponent: new (...args: unknown[]) => { render(width: number): string[] };
+	void it("SubagentsStatusComponent renders active and recent runs", async () => {
+		const module = await import("../../src/ui/subagents-status.ts") as {
+			SubagentsStatusComponent: new (...args: unknown[]) => { render(width: number): string[]; dispose(): void };
 		};
-		const component = new module.SuperpowersStatusComponent(
-			{},
-			{},
-			createState(process.cwd()),
-			{
-				superagents: {
-					useSubagents: false,
-					useTestDrivenDevelopment: true,
-					commands: {
-						"superpowers-lean": {
-							description: "Lean mode",
-							useSubagents: false,
-							useTestDrivenDevelopment: false,
-						},
-					},
-					worktrees: {
-						enabled: true,
-						root: "/tmp/superpowers-worktrees",
-					},
-					modelTiers: {
-						cheap: { model: "opencode-go/minimax-m2.7" },
-						balanced: { model: "opencode-go/glm-5.1" },
-					},
-				},
-			},
+		const component = new module.SubagentsStatusComponent(
+			{ requestRender: () => {} },
+			{ fg: (_color: string, text: string) => text, bg: (_color: string, text: string) => text },
 			() => {},
+			{
+				refreshMs: 60_000,
+				getActiveRuns: () => [{ agent: "sp-implementer", task: "Fix auth bug", ts: 1, status: "ok", duration: 1250, model: "test", tokens: { total: 300 } }],
+				getRecentRuns: () => [],
+			},
 		);
-
-		const rendered = component.render(100).join("\n");
-		assert.match(rendered, /useSubagents: false/);
-		assert.match(rendered, /useTestDrivenDevelopment: true/);
-		assert.match(rendered, /superpowers-lean/);
-		assert.match(rendered, /worktrees\.enabled: true/);
-		assert.match(rendered, /worktrees\.root: \/tmp\/superpowers-worktrees/);
-		assert.match(rendered, /cheap: opencode-go\/minimax-m2.7/);
+		const rendered = component.render(84).join("\n");
+		assert.match(rendered, /Fix auth bug/);
+		component.dispose();
 	});
 
 	void it("writes Superpowers setting toggles to the config file", async () => {
 		const fs = await import("node:fs");
 		const os = await import("node:os");
 		const path = await import("node:path");
-		const module = await import("../../src/ui/superpowers-status.ts") as {
-			SuperpowersStatusComponent: new (...args: unknown[]) => {
+		const module = await import("../../src/ui/sp-settings.ts") as {
+			SuperpowersSettingsComponent: new (...args: unknown[]) => {
 				toggleUseSubagents(): void;
 				toggleWorktrees(): void;
 			};
 		};
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "superpowers-config-"));
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-settings-"));
 		const configPath = path.join(dir, "config.json");
 		fs.writeFileSync(configPath, '{\n  "superagents": { "useSubagents": true, "worktrees": { "enabled": false } }\n}\n', "utf-8");
 		const state = createState(process.cwd());
 		state.configGate.configPath = configPath;
-
-		const component = new module.SuperpowersStatusComponent(
-			{},
-			{},
+		const component = new module.SuperpowersSettingsComponent(
+			{ requestRender: () => {} },
+			{ fg: (_color: string, text: string) => text, bg: (_color: string, text: string) => text },
 			state,
 			{ superagents: { useSubagents: true, worktrees: { enabled: false } } },
 			() => {},
 		);
 		component.toggleUseSubagents();
 		component.toggleWorktrees();
-
 		assert.deepEqual(JSON.parse(fs.readFileSync(configPath, "utf-8")), {
 			superagents: {
 				useSubagents: false,
 				worktrees: { enabled: true },
 			},
 		});
-
 		fs.rmSync(dir, { recursive: true, force: true });
 	});
 
@@ -552,12 +576,13 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 
 	void it("registers /sp-brainstorm and sends a brainstorming entry prompt", async () => {
 		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
-		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const commands = new Map<string, CommandSpec>();
 		const pi = {
 			events: createEventBus(),
-			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+			registerCommand(name: string, spec: CommandSpec) {
 				commands.set(name, spec);
 			},
+			registerShortcut() {},
 			sendMessage() {},
 			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
 				userMessages.push({ content, options });
@@ -586,12 +611,13 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 
 	void it("/sp-brainstorm shows usage when no task is provided", async () => {
 		const notifications: string[] = [];
-		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const commands = new Map<string, CommandSpec>();
 		const pi = {
 			events: createEventBus(),
-			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+			registerCommand(name: string, spec: CommandSpec) {
 				commands.set(name, spec);
 			},
+			registerShortcut() {},
 			sendMessage() {},
 			sendUserMessage() {
 				throw new Error("sendUserMessage should not be called");
@@ -613,12 +639,13 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 
 	void it("/sp-brainstorm applies global Superpowers policy", async () => {
 		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
-		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const commands = new Map<string, CommandSpec>();
 		const pi = {
 			events: createEventBus(),
-			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+			registerCommand(name: string, spec: CommandSpec) {
 				commands.set(name, spec);
 			},
+			registerShortcut() {},
 			sendMessage() {},
 			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
 				userMessages.push({ content, options });
@@ -644,12 +671,13 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 	void it("/sp-brainstorm reports unresolved overlay skills without sending a prompt", async () => {
 		const notifications: string[] = [];
 		const userMessages: string[] = [];
-		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const commands = new Map<string, CommandSpec>();
 		const pi = {
 			events: createEventBus(),
-			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+			registerCommand(name: string, spec: CommandSpec) {
 				commands.set(name, spec);
 			},
+			registerShortcut() {},
 			sendMessage() {},
 			sendUserMessage(content: string | unknown[]) {
 				userMessages.push(String(content));
