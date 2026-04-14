@@ -82,6 +82,15 @@ Superpowers agents use abstract model tiers defined in your configuration. This 
 
 You can define custom tiers (e.g., "creative", "legacy") in the `modelTiers` object and reference them in project-local agent overrides.
 
+## Custom Commands
+
+You can define preset slash commands in your `config.json` that use the same Superpowers workflow as `/sp-implement`. Two example presets ship in `config.example.json`:
+
+- `/sp-lean` — Disables subagents and TDD for a minimal workflow.
+- `/sp-plannotator` — Enables Plannotator browser review.
+
+Each preset field overrides the corresponding global default. Omitted fields inherit their values from the top-level `superagents` settings. See [Configuration Reference](../reference/configuration.md#custom-command-presets) for the full schema.
+
 ## Worktree Isolation
 
 Parallel tasks within the Superpowers workflow can use git worktrees to prevent filesystem conflicts, but this is not enabled by default. Enable it with `superagents.worktrees.enabled` when you want isolated worktree execution for parallel tasks.

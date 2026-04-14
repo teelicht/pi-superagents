@@ -105,6 +105,15 @@ Configures the Superpowers workflow and role execution policy.
 
 Custom command presets register additional slash commands that use the same Superpowers prompt builder as `/sp-implement`.
 
+The `config.example.json` file ships with two illustrative presets:
+
+| Command | Description | Overrides |
+|---------|-------------|-----------|
+| `sp-lean` | Run Superpowers lean: no subagents, no TDD | `useSubagents: false`, `useTestDrivenDevelopment: false` |
+| `sp-plannotator` | Run Superpowers with Plannotator review enabled | `usePlannotator: true` |
+
+Copy either or both into your own `config.json` to try them out, or define your own:
+
 ```json
 {
   "superagents": {
@@ -125,7 +134,11 @@ Custom command presets register additional slash commands that use the same Supe
 }
 ```
 
+**Preset field inheritance:** Each preset field overrides the corresponding global `superagents` default. Omitted fields inherit from global defaults through the existing merge chain. The `sp-lean` preset only sets `useSubagents` and `useTestDrivenDevelopment` — all other fields (like `useBranches`, `usePlannotator`) still inherit their default values.
+
 Supported preset keys are `description`, `useBranches`, `useSubagents`, `useTestDrivenDevelopment`, `usePlannotator`, and `worktrees`. Preset `worktrees` supports only `enabled` and `root`.
+
+Command names must match `superpowers-<name>` or `sp-<name>` (lowercase alphanumeric and hyphens).
 
 When `usePlannotator` is `true`:
 
@@ -167,6 +180,13 @@ Map entry skills to additional skills that should be loaded together. Useful for
 ```
 
 Keys must be non-empty skill names. Values must be arrays of non-empty skill names. Missing overlay skills are blocking errors at runtime.
+
+The `config.example.json` file ships with two overlay presets that demonstrate common pairings:
+
+- `brainstorming` → `["react-native-best-practices"]`
+- `writing-plans` → `["supabase-postgres-best-practices"]`
+
+Copy these into your own `config.json` to try them out.
 
 ### Direct Skill Interception
 
