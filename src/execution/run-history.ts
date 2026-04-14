@@ -1,3 +1,12 @@
+/**
+ * Run history recording and access utilities.
+ *
+ * Responsibilities:
+ * - persist run entries to a JSONL file
+ * - track active runs with start/update/finish lifecycle
+ * - provide query methods for UI components
+ */
+
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -9,22 +18,29 @@ export interface RunEntry {
 	status: "ok" | "error";
 	duration: number;
 	exit?: number;
+	model?: string;
+	tokens?: { total: number };
+	steps?: Array<{
+		index: number;
+		agent: string;
+		status: string;
+		durationMs?: number;
+		tokens?: { total: number };
+		error?: string;
+	}>;
 }
 
 const HISTORY_PATH = path.join(os.homedir(), ".pi", "agent", "run-history.jsonl");
 const ROTATE_READ_THRESHOLD = 1200;
 const ROTATE_KEEP = 1000;
 
-export function recordRun(agent: string, task: string, exitCode: number, durationMs: number): void {
+/**
+ * Record a completed run entry to the history file.
+ *
+ * @param entry - Complete run entry with all required fields.
+ */
+export function recordRun(entry: RunEntry): void {
 	try {
-		const entry: RunEntry = {
-			agent,
-			task: task.slice(0, 200),
-			ts: Math.floor(Date.now() / 1000),
-			status: exitCode === 0 ? "ok" : "error",
-			duration: durationMs,
-			...(exitCode !== 0 ? { exit: exitCode } : { /* empty */ }),
-		};
 		fs.mkdirSync(path.dirname(HISTORY_PATH), { recursive: true });
 		fs.appendFileSync(HISTORY_PATH, `${JSON.stringify(entry)}\n`);
 	} catch {
@@ -87,7 +103,63 @@ export function loadAllRuns(): RunEntry[] {
  */
 export const globalRunHistory = {
 	/**
-	 * Get the most recent runs.
+	 * Map of currently active run IDs to their entries.
+	 */
+	activeRuns: new Map<string, RunEntry>(),
+
+	/**
+	 * Start tracking a new run.
+	 *
+	 * @param id - Unique run identifier.
+	 * @param entry - Run entry data without ts/status/duration (these are set here).
+	 */
+	startRun(id: string, entry: Omit<RunEntry, "ts" | "status" | "duration">): void {
+		this.activeRuns.set(id, {
+			...entry,
+			ts: Math.floor(Date.now() / 1000),
+			status: "ok",
+			duration: 0,
+		});
+	},
+
+	/**
+	 * Update an active run with new values (e.g., progress, duration, model).
+	 *
+	 * @param id - Run identifier.
+	 * @param updates - Partial run entry fields to merge.
+	 */
+	updateRun(id: string, updates: Partial<RunEntry>): void {
+		const existing = this.activeRuns.get(id);
+		if (existing) {
+			this.activeRuns.set(id, { ...existing, ...updates });
+		}
+	},
+
+	/**
+	 * Mark a run as finished and persist to history.
+	 *
+	 * @param id - Run identifier.
+	 * @param finalStatus - "ok" or "error".
+	 * @param error - Optional error message to add to steps.
+	 */
+	finishRun(id: string, finalStatus: "ok" | "error", error?: string): void {
+		const existing = this.activeRuns.get(id);
+		if (existing) {
+			existing.status = finalStatus;
+			if (finalStatus === "error" && existing.exit === undefined) {
+				existing.exit = 1;
+			}
+			if (error && !existing.steps?.find(s => s.error)) {
+				existing.steps = existing.steps || [];
+				existing.steps.push({ index: 0, agent: existing.agent, status: "failed", error });
+			}
+			this.activeRuns.delete(id);
+			recordRun({ ...existing, task: existing.task.slice(0, 200) });
+		}
+	},
+
+	/**
+	 * Get the most recent completed runs.
 	 *
 	 * @param limit - Maximum number of runs to return.
 	 * @returns Array of recent run entries.
