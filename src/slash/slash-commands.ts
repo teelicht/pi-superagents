@@ -2,7 +2,7 @@
  * Lean slash command registration for Superpowers workflows.
  *
  * Responsibilities:
- * - register `/superpowers`, `/sp-brainstorm`, `/superpowers-status`, and configured custom commands
+ * - register `/sp-implement`, `/sp-brainstorm`, `/subagents-status`, `/sp-settings`, and configured custom commands
  * - parse workflow arguments and resolve run profiles from config defaults
  * - send root-session prompts via `sendUserMessage`
  * - send skill-entry prompts for supported entry skills (e.g. brainstorming)
@@ -13,13 +13,15 @@
  * - `superpowers/skill-entry` for skill-entry prompt building
  * - `shared/types` for `ExtensionConfig`, `SubagentState`
  * - `shared/skills` for `resolveAvailableSkill` and `resolveSkills`
- * - `ui/superpowers-status` for the status overlay
+ * - `ui/subagents-status` for the run status overlay
+ * - `ui/sp-settings` for the settings overlay
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import type { ExtensionConfig, SubagentState } from "../shared/types.ts";
 import { resolveAvailableSkill, resolveSkills } from "../shared/skills.ts";
-import { SuperpowersStatusComponent } from "../ui/superpowers-status.ts";
+import { SubagentsStatusComponent } from "../ui/subagents-status.ts";
+import { SuperpowersSettingsComponent } from "../ui/sp-settings.ts";
 import {
 	parseSuperpowersWorkflowArgs,
 	resolveSuperpowersRunProfile,
@@ -116,6 +118,38 @@ function sendSkillEntryPrompt(
 }
 
 /**
+ * Open the Subagents status overlay when UI is available.
+ *
+ * @param ctx Current extension command or shortcut context.
+ */
+async function openSubagentsStatusOverlay(ctx: ExtensionContext): Promise<void> {
+	if (!ctx.hasUI) return;
+	await ctx.ui.custom<void>(
+		(tui, theme, _kb, done) => new SubagentsStatusComponent(tui, theme, () => done(undefined)),
+		{ overlay: true, overlayOptions: { anchor: "center", width: 92, maxHeight: "80%" } },
+	);
+}
+
+/**
+ * Open the Superpowers settings overlay when UI is available.
+ *
+ * @param ctx Current extension command context.
+ * @param state Shared extension state for config gate checks.
+ * @param config Effective extension config displayed in the overlay.
+ */
+async function openSuperpowersSettingsOverlay(
+	ctx: ExtensionContext,
+	state: SubagentState,
+	config: ExtensionConfig,
+): Promise<void> {
+	if (!ctx.hasUI) return;
+	await ctx.ui.custom<void>(
+		(tui, theme, _kb, done) => new SuperpowersSettingsComponent(tui, theme, state, config, () => done(undefined)),
+		{ overlay: true, overlayOptions: { anchor: "center", width: 92, maxHeight: "80%" } },
+	);
+}
+
+/**
  * Register a single Superpowers slash command with argument parsing and prompt dispatch.
  *
  * @param pi Extension API for command registration and message sending.
@@ -198,9 +232,11 @@ function registerBrainstormCommand(
  * Register all Superpowers slash commands with the Pi extension API.
  *
  * Registers:
- * - `/superpowers` — primary workflow command
+ * - `/sp-implement` — primary workflow command
  * - `/sp-brainstorm` — Superpowers-backed brainstorming entry command
- * - `/superpowers-status` — status and settings overlay
+ * - `/subagents-status` — subagent run status overlay
+ * - `/sp-settings` — Superpowers and subagent workflow settings overlay
+ * - `Ctrl+Alt+S` — keyboard shortcut for subagents status
  * - Any configured custom command presets from `config.superagents.commands`
  *
  * @param pi Extension API for command registration.
@@ -219,8 +255,8 @@ export function registerSlashCommands(
 		dispatcher,
 		state,
 		config,
-		"superpowers",
-		"Run a Superpowers workflow: /superpowers [lean|full|tdd|direct|subagents|no-subagents] <task> [--fork]",
+		"sp-implement",
+		"Run a Superpowers implementation workflow: /sp-implement [lean|full|tdd|direct|subagents|no-subagents] <task> [--fork]",
 	);
 
 	registerBrainstormCommand(pi, dispatcher, state, config);
@@ -236,14 +272,24 @@ export function registerSlashCommands(
 		);
 	}
 
-	pi.registerCommand("superpowers-status", {
-		description: "Show Superpowers run status and settings",
+	pi.registerCommand("subagents-status", {
+		description: "Show active and recent subagent run status",
 		handler: async (_args, ctx) => {
-			if (!ctx.hasUI) return;
-			await ctx.ui.custom<void>(
-				(tui, theme, _kb, done) => new SuperpowersStatusComponent(tui, theme, state, config, () => done(undefined)),
-				{ overlay: true, overlayOptions: { anchor: "center", width: 92, maxHeight: "80%" } },
-			);
+			await openSubagentsStatusOverlay(ctx);
+		},
+	});
+
+	pi.registerShortcut("ctrl+alt+s", {
+		description: "Open subagents status",
+		handler: async (ctx) => {
+			await openSubagentsStatusOverlay(ctx);
+		},
+	});
+
+	pi.registerCommand("sp-settings", {
+		description: "Show Superpowers and subagent workflow settings",
+		handler: async (_args, ctx) => {
+			await openSuperpowersSettingsOverlay(ctx, state, config);
 		},
 	});
 }
