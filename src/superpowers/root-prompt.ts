@@ -21,6 +21,7 @@ export interface SuperpowersRootPromptSkill {
 
 export interface SuperpowersRootPromptInput {
 	task: string;
+	useBranches: boolean;
 	useSubagents: boolean;
 	useTestDrivenDevelopment: boolean;
 	usePlannotatorReview: boolean;
@@ -41,6 +42,7 @@ export interface SuperpowersRootPromptInput {
 function buildMetadata(input: SuperpowersRootPromptInput): string {
 	const lines = [
 		'workflow: "superpowers"',
+		`useBranches: ${input.useBranches}`,
 		`useSubagents: ${input.useSubagents}`,
 		`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`,
 		`usePlannotatorReview: ${input.usePlannotatorReview}`,
@@ -142,6 +144,26 @@ function buildBrainstormingSpecReviewContract(input: SuperpowersRootPromptInput)
 }
 
 /**
+ * Build the branch policy block for the root session.
+ *
+ * @param useBranches Whether dedicated git branch policy is enabled.
+ * @returns Prompt block that constrains branch setup behavior.
+ */
+function buildBranchContract(useBranches: boolean): string {
+	if (useBranches) {
+		return [
+			"Branch policy is ENABLED by config.",
+			"Use a dedicated git branch for this implementation plan/spec before implementation work begins.",
+			"Treat git branches and Pi session forks as separate concepts.",
+			"Prefer one git branch per implementation plan/spec, not one branch per delegated subtask or follow-up prompt.",
+			"Do not create a new git branch for every delegated subtask or follow-up prompt unless the active workflow explicitly requires it.",
+			"If branch creation or switching is not possible, say so clearly and adapt the workflow without pretending the branch requirement was satisfied.",
+		].join("\n");
+	}
+	return "Branch policy is DISABLED by config. Do not impose branch-specific workflow requirements beyond the user's existing repository practice.";
+}
+
+/**
  * Build the delegation contract block.
  *
  * @param useSubagents Whether subagent delegation is enabled.
@@ -231,18 +253,28 @@ function buildTaskTrackingContract(): string {
  */
 export function buildSuperpowersRootPrompt(input: SuperpowersRootPromptInput): string {
 	return [
-		"This is a Superpowers session. The `using-superpowers` skill is the workflow bootstrap for this turn.",
+		"# Superpowers Root Session Contract",
 		"",
-		"Before doing substantive work or asking clarifying questions, follow `using-superpowers` exactly and identify every relevant Superpowers skill for the task.",
+		"This is a Superpowers session. This is a strict hidden instruction block for one Superpowers turn. Follow it as authoritative runtime policy. The user-visible command summary may be terse; do not ask the user to restate details that are present here.",
 		"",
-		"Resolved run metadata:",
+		"## User Task",
+		input.task,
+		"",
+		"## Resolved Options",
 		buildMetadata(input),
 		"",
+		"## Mandatory Startup",
+		"Before doing substantive work or asking clarifying questions, follow `using-superpowers` exactly and identify every relevant Superpowers skill for the task.",
+		"",
+		"## Skill Bootstrap",
 		buildSkillBootstrap(input.usingSuperpowersSkill),
 		"",
 		buildEntrySkillBlock(input),
 		"",
 		buildOverlaySkillsBlock(input.overlaySkills),
+		"",
+		"## Runtime Policy",
+		buildBranchContract(input.useBranches),
 		"",
 		buildBrainstormingSpecReviewContract(input),
 		"",
@@ -253,8 +285,23 @@ export function buildSuperpowersRootPrompt(input: SuperpowersRootPromptInput): s
 		buildWorktreeContract(input.worktreesEnabled),
 		"",
 		buildTaskTrackingContract(),
-		"",
-		"User task:",
-		input.task,
+	].join("\n");
+}
+
+/**
+ * Build the short user-visible message for a Superpowers command.
+ *
+ * @param input Resolved run profile plus optional skill metadata.
+ * @returns Concise option-flag summary safe to display in chat.
+ */
+export function buildSuperpowersVisiblePromptSummary(input: SuperpowersRootPromptInput): string {
+	return [
+		"Superpowers options:",
+		`useBranches: ${input.useBranches}`,
+		`useSubagents: ${input.useSubagents}`,
+		`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`,
+		`usePlannotatorReview: ${input.usePlannotatorReview}`,
+		`worktrees.enabled: ${input.worktreesEnabled}`,
+		`context: ${input.fork ? "fork" : "fresh"}`,
 	].join("\n");
 }

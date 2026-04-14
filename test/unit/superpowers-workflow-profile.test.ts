@@ -18,6 +18,7 @@ import type { ExtensionConfig } from "../../src/shared/types.ts";
 
 const config: ExtensionConfig = {
 	superagents: {
+		useBranches: false,
 		useSubagents: true,
 		useTestDrivenDevelopment: true,
 		worktrees: {
@@ -26,6 +27,7 @@ const config: ExtensionConfig = {
 		commands: {
 			"superpowers-lean": {
 				description: "Lean mode",
+				useBranches: true,
 				useSubagents: false,
 				useTestDrivenDevelopment: false,
 			},
@@ -53,6 +55,7 @@ void describe("Superpowers workflow profile", () => {
 		}), {
 			commandName: "superpowers",
 			task: "fix auth",
+			useBranches: false,
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
 			usePlannotatorReview: false,
@@ -71,6 +74,7 @@ void describe("Superpowers workflow profile", () => {
 		}), {
 			commandName: "superpowers-lean",
 			task: "fix auth",
+			useBranches: true,
 			useSubagents: false,
 			useTestDrivenDevelopment: true,
 			usePlannotatorReview: false,
@@ -100,6 +104,42 @@ void describe("Superpowers workflow profile", () => {
 		assert.deepEqual(parseSuperpowersWorkflowArgs("inline fix auth")?.overrides, {
 			useSubagents: false,
 		});
+	});
+
+	void it("resolves branch policy from root config and command presets without inline token overrides", () => {
+		const parsed = parseSuperpowersWorkflowArgs("branches fix auth")!;
+		assert.equal(parsed.task, "branches fix auth");
+		assert.deepEqual(parsed.overrides, {});
+
+		assert.equal(resolveSuperpowersRunProfile({
+			config: {
+				superagents: {
+					useBranches: true,
+					commands: {
+						"superpowers-no-branch": {
+							useBranches: false,
+						},
+					},
+				},
+			},
+			commandName: "superpowers",
+			parsed,
+		}).useBranches, true);
+
+		assert.equal(resolveSuperpowersRunProfile({
+			config: {
+				superagents: {
+					useBranches: true,
+					commands: {
+						"superpowers-no-branch": {
+							useBranches: false,
+						},
+					},
+				},
+			},
+			commandName: "superpowers-no-branch",
+			parsed,
+		}).useBranches, false);
 	});
 
 	void it("carries fork flags in either order", () => {

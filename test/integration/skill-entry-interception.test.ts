@@ -14,6 +14,7 @@ import * as path from "node:path";
 import { afterEach, describe, it } from "node:test";
 
 type InputHandler = (event: { text: string; source: "interactive" | "rpc" | "extension" }, ctx: ReturnType<typeof createCtx>) => { action: "continue" | "handled" | "transform" } | undefined;
+type LifecycleHandler = (event: unknown, ctx?: unknown) => unknown;
 
 function createEventBus() {
 	return {
@@ -25,7 +26,7 @@ function createEventBus() {
 }
 
 function createPiMock() {
-	const lifecycle = new Map<string, InputHandler[]>();
+	const lifecycle = new Map<string, LifecycleHandler[]>();
 	const userMessages: string[] = [];
 	return {
 		lifecycle,
@@ -40,7 +41,7 @@ function createPiMock() {
 			sendUserMessage(content: string | unknown[]) {
 				userMessages.push(String(content));
 			},
-			on(event: string, handler: InputHandler) {
+			on(event: string, handler: LifecycleHandler) {
 				const existing = lifecycle.get(event) ?? [];
 				existing.push(handler);
 				lifecycle.set(event, existing);
@@ -147,17 +148,26 @@ Creative problem solving skill.`,
 
 		const notifications: string[] = [];
 		const ctx = createCtx(cwd, notifications);
-		const result = inputHandler(
+		const result = (inputHandler as InputHandler)(
 			{ text: "/skill:brainstorming design middleware", source: "interactive" },
 			ctx,
 		);
 
 		assert.deepEqual(result, { action: "handled" });
 		assert.equal(mock.userMessages.length, 1);
-		assert.match(mock.userMessages[0], /Entry skill:/);
-		assert.match(mock.userMessages[0], /Name: brainstorming/);
-		assert.match(mock.userMessages[0], /design middleware/);
-		assert.match(mock.userMessages[0], /superpowers_spec_review/);
+		assert.match(mock.userMessages[0], /Superpowers options:/);
+		assert.match(mock.userMessages[0], /useBranches:\s*false/);
+		assert.match(mock.userMessages[0], /usePlannotatorReview:\s*true/);
+		assert.doesNotMatch(mock.userMessages[0], /Entry skill:/);
+
+		const hidden = mock.lifecycle.get("before_agent_start")
+			?.map((handler) => handler({ prompt: mock.userMessages[0] }) as { message?: { content: string; display: boolean } } | undefined)
+			.find((entry) => entry?.message);
+		assert.equal(hidden?.message?.display, false);
+		assert.match(hidden?.message?.content ?? "", /Entry skill:/);
+		assert.match(hidden?.message?.content ?? "", /Name: brainstorming/);
+		assert.match(hidden?.message?.content ?? "", /design middleware/);
+		assert.match(hidden?.message?.content ?? "", /superpowers_spec_review/);
 	});
 
 	void it("continues for non-opted-in and extension-sourced skill input", async () => {
@@ -169,11 +179,11 @@ Creative problem solving skill.`,
 		const inputHandler = mock.lifecycle.get("input")?.[0];
 		assert.ok(inputHandler, "expected input handler to be registered");
 
-		assert.deepEqual(inputHandler(
+		assert.deepEqual((inputHandler as InputHandler)(
 			{ text: "/skill:brainstorming design middleware", source: "interactive" },
 			createCtx(cwd),
 		), { action: "continue" });
-		assert.deepEqual(inputHandler(
+		assert.deepEqual((inputHandler as InputHandler)(
 			{ text: "/skill:brainstorming design middleware", source: "extension" },
 			createCtx(cwd),
 		), { action: "continue" });

@@ -100,6 +100,7 @@ export function shouldInterceptSkillCommand(skillName: string, config: Extension
 export function buildSkillEntryPromptInput(params: BuildSkillEntryPromptInputParams): SkillEntryPromptInput {
 	return {
 		task: params.profile.task,
+		useBranches: params.profile.useBranches,
 		useSubagents: params.profile.useSubagents,
 		useTestDrivenDevelopment: params.profile.useTestDrivenDevelopment,
 		usePlannotatorReview: params.profile.usePlannotatorReview,

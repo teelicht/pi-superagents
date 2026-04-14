@@ -44,10 +44,11 @@ interface RegisterSlashCommandsModule {
 		},
 		config: {
 			superagents?: {
+				useBranches?: boolean;
 				useSubagents?: boolean;
 				useTestDrivenDevelopment?: boolean;
 				usePlannotator?: boolean;
-				commands?: Record<string, { description?: string; useSubagents?: boolean; useTestDrivenDevelopment?: boolean }>;
+				commands?: Record<string, { description?: string; useBranches?: boolean; useSubagents?: boolean; useTestDrivenDevelopment?: boolean }>;
 				worktrees?: { enabled?: boolean };
 				skillOverlays?: Record<string, string[]>;
 			};
@@ -214,6 +215,55 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.match(prompt, /Required bootstrap skill/);
 		// No options means it was sent directly (isIdle === true)
 		assert.equal(userMessages[0].options, undefined);
+	});
+
+	void it("/superpowers shows only option flags and injects the strict contract as hidden context", async () => {
+		type BeforeAgentStartHandler = (event: { prompt: string }) => {
+			message?: { customType: string; content: string; display: boolean };
+		} | undefined;
+		let beforeAgentStart: BeforeAgentStartHandler | undefined;
+		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
+		const commands = new Map<string, { description?: string; handler(args: string, ctx: unknown): Promise<void> }>();
+		const pi = {
+			events: createEventBus(),
+			on(event: string, handler: BeforeAgentStartHandler) {
+				if (event === "before_agent_start") beforeAgentStart = handler;
+			},
+			registerCommand(name: string, spec: { description?: string; handler(args: string, ctx: unknown): Promise<void> }) {
+				commands.set(name, spec);
+			},
+			sendMessage() {},
+			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
+				userMessages.push({ content, options });
+			},
+		};
+
+		registerSlashCommands!(pi as never, createState(process.cwd()), {
+			superagents: {
+				useBranches: true,
+				useSubagents: false,
+				useTestDrivenDevelopment: true,
+				usePlannotator: false,
+				worktrees: { enabled: false },
+			},
+		});
+		await commands.get("superpowers")!.handler("implement auth fix", createCommandContext());
+
+		assert.equal(userMessages.length, 1);
+		const visiblePrompt = String(userMessages[0].content);
+		assert.match(visiblePrompt, /Superpowers options:/);
+		assert.match(visiblePrompt, /useBranches:\s*true/);
+		assert.match(visiblePrompt, /useSubagents:\s*false/);
+		assert.match(visiblePrompt, /worktrees\.enabled:\s*false/);
+		assert.doesNotMatch(visiblePrompt, /Superpowers Root Session Contract/);
+		assert.doesNotMatch(visiblePrompt, /implement auth fix/);
+
+		const hidden = beforeAgentStart?.({ prompt: visiblePrompt });
+		assert.equal(hidden?.message?.customType, "superpowers-root-contract");
+		assert.equal(hidden?.message?.display, false);
+		assert.match(hidden?.message?.content ?? "", /Superpowers Root Session Contract/);
+		assert.match(hidden?.message?.content ?? "", /implement auth fix/);
+		assert.match(hidden?.message?.content ?? "", /Branch policy is ENABLED/);
 	});
 
 	void it("custom commands apply presets and inline tokens override them", async () => {
