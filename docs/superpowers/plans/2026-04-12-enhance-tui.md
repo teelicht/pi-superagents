@@ -16,7 +16,7 @@
 - Modify: `src/execution/run-history.ts`
 - Create: `test/unit/run-history.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 // test/unit/run-history.test.ts
@@ -48,12 +48,12 @@ test("globalRunHistory tracks active and finished runs", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm run test:unit -- test/unit/run-history.test.ts`
 Expected: FAIL with "globalRunHistory.startRun is not a function"
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Modify `src/execution/run-history.ts` to implement the new schema and tracking:
 
@@ -180,12 +180,12 @@ export const globalRunHistory = {
 };
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npm run test:unit -- test/unit/run-history.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Run: `git add src/execution/run-history.ts test/unit/run-history.test.ts && git commit -m "feat(history): track active runs and metrics"`
 
@@ -197,7 +197,7 @@ Run: `git add src/execution/run-history.ts test/unit/run-history.test.ts && git 
 - Modify: `src/execution/execution.ts`
 - Modify: `src/execution/subagent-executor.ts`
 
-- [ ] **Step 1: Write the minimal implementation for execution.ts**
+- [x] **Step 1: Write the minimal implementation for execution.ts**
 
 Modify `src/execution/execution.ts`. Add the import for `globalRunHistory` at the top:
 ```typescript
@@ -239,7 +239,7 @@ At the very end of `runSync`, just before `return result;`, finish the run:
 	globalRunHistory.finishRun(historyId, result.exitCode === 0 ? "ok" : "error", result.error);
 ```
 
-- [ ] **Step 2: Clean up subagent-executor.ts**
+- [x] **Step 2: Clean up subagent-executor.ts**
 
 Modify `src/execution/subagent-executor.ts` to remove manual `recordRun` calls.
 
@@ -261,12 +261,12 @@ In `runSinglePath` (around line 545), remove this line completely:
 	recordRun(params.agent!, cleanTask, r.exitCode, r.progressSummary?.durationMs ?? 0);
 ```
 
-- [ ] **Step 3: Verify all tests still pass**
+- [x] **Step 3: Verify all tests still pass**
 
 Run: `npm run test`
 Expected: PASS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 Run: `git add src/execution/execution.ts src/execution/subagent-executor.ts && git commit -m "refactor(history): move run recording into runSync for live tracking"`
 
@@ -278,7 +278,7 @@ Run: `git add src/execution/execution.ts src/execution/subagent-executor.ts && g
 - Create: `src/ui/render-helpers.ts`
 - Create: `test/unit/render-helpers.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 // test/unit/render-helpers.test.ts
@@ -297,12 +297,12 @@ test("formatScrollInfo returns correct labels", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm run test:unit -- test/unit/render-helpers.test.ts`
 Expected: FAIL with "Cannot find module"
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```typescript
 // src/ui/render-helpers.ts
@@ -354,7 +354,7 @@ Run: `git add src/ui/render-helpers.ts test/unit/render-helpers.test.ts && git c
 - Modify: `src/ui/superpowers-status.ts`
 - Create: `test/unit/superpowers-status.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 // test/unit/superpowers-status.test.ts
@@ -377,12 +377,12 @@ test("SuperpowersStatusComponent returns string array on render", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm run test:unit -- test/unit/superpowers-status.test.ts`
 Expected: FAIL because `comp.render()` currently returns an array from `Container` which might not be just strings, or `dispose` doesn't exist.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Rewrite `src/ui/superpowers-status.ts` entirely:
 
@@ -626,11 +626,11 @@ export class SuperpowersStatusComponent implements Component {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npm run test:unit -- test/unit/superpowers-status.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Run: `git add src/ui/superpowers-status.ts test/unit/superpowers-status.test.ts && git commit -m "feat(ui): refactor superpowers status to border-box TUI"`
