@@ -13,32 +13,8 @@ import type {
 	ModelTierConfig,
 	WorkflowMode,
 } from "../shared/types.ts";
+import { DELEGATION_TOOLS, READ_ONLY_TOOLS } from "../shared/tool-registry.ts";
 import { getSuperagentSettings } from "./superagents-config.ts";
-
-const ROOT_ONLY_WORKFLOW_SKILLS = new Set([
-	"using-superpowers",
-	"brainstorming",
-	"writing-plans",
-	"requesting-code-review",
-	"receiving-code-review",
-	"subagent-driven-development",
-	"executing-plans",
-	"verification-before-completion",
-	"using-git-worktrees",
-	"dispatching-parallel-agents",
-	"finishing-a-development-branch",
-]);
-
-const NON_DELEGATING_ROLE_TOOLS: Partial<Record<ExecutionRole, string[]>> = {
-	"sp-recon": ["read", "grep", "find", "ls"],
-	"sp-research": ["read", "grep", "find", "ls"],
-	"sp-implementer": ["read", "grep", "find", "ls", "bash", "write"],
-	"sp-spec-review": ["read", "grep", "find", "ls"],
-	"sp-code-review": ["read", "grep", "find", "ls"],
-	"sp-debug": ["read", "grep", "find", "ls", "bash"],
-};
-
-const DELEGATION_TOOLS = new Set(["subagent", "subagent_status"]);
 
 export interface ResolvedRoleModel {
 	model: string;
@@ -100,17 +76,8 @@ function resolveTierModelSetting(
  * the default workflow remains unchanged.
  */
 export function inferExecutionRole(agentName: string): ExecutionRole {
-	switch (agentName) {
-		case "sp-recon":
-		case "sp-research":
-		case "sp-implementer":
-		case "sp-spec-review":
-		case "sp-code-review":
-		case "sp-debug":
-			return agentName;
-		default:
-			return "root-planning";
-	}
+	if (agentName.startsWith("sp-")) return agentName as ExecutionRole;
+	return "root-planning";
 }
 
 /**
@@ -143,7 +110,7 @@ export function resolveModelForAgent(input: {
  * Merge agent skills and step overrides for a given execution role.
  *
  * Throws when a merged skill is unavailable or when a non-root role
- * receives a workflow-orchestration skill that should stay root-owned.
+ * receives a root-only workflow skill.
  */
 export function resolveRoleSkillSet(input: {
 	workflow: WorkflowMode;
@@ -152,17 +119,19 @@ export function resolveRoleSkillSet(input: {
 	agentSkills: string[];
 	stepSkills: string[];
 	availableSkills: ReadonlySet<string>;
+	rootOnlySkills?: ReadonlySet<string>;
 }): string[] {
 	if (input.workflow !== "superpowers") {
 		return [...new Set([...input.agentSkills, ...input.stepSkills])];
 	}
 
+	const rootOnly = input.rootOnlySkills ?? new Set();
 	const merged = [...new Set([...input.agentSkills, ...input.stepSkills])];
 	for (const skill of merged) {
 		if (!input.availableSkills.has(skill)) {
 			throw new Error(`Unknown skill: ${skill}`);
 		}
-		if (input.role !== "root-planning" && ROOT_ONLY_WORKFLOW_SKILLS.has(skill)) {
+		if (input.role !== "root-planning" && rootOnly.has(skill)) {
 			throw new Error(`Role ${input.role} cannot receive root-only workflow skill '${skill}'`);
 		}
 	}
@@ -179,9 +148,10 @@ export function resolveRoleSkillSet(input: {
  * Invariants:
  * - bounded Superpowers roles never receive delegation tools
  * - root-planning keeps orchestration access
+ * - when a bounded agent declares no tools, falls back to READ_ONLY_TOOLS
  *
  * Failure modes:
- * - none; missing tool declarations fall back to a safe built-in allowlist
+ * - none; missing tool declarations fall back to a safe read-only baseline
  */
 export function resolveRoleTools(input: {
 	workflow: WorkflowMode;
@@ -194,7 +164,8 @@ export function resolveRoleTools(input: {
 
 	const explicitTools = input.agentTools?.filter((tool) => !DELEGATION_TOOLS.has(tool));
 	if (explicitTools && explicitTools.length > 0) return explicitTools;
-	return NON_DELEGATING_ROLE_TOOLS[input.role];
+	// Safe read-only fallback for agents without tool declarations
+	return [...READ_ONLY_TOOLS];
 }
 
 /**
@@ -210,6 +181,7 @@ export function resolveImplementerSkillSet(input: {
 	agentSkills: string[];
 	stepSkills: string[];
 	availableSkills: ReadonlySet<string>;
+	rootOnlySkills?: ReadonlySet<string>;
 }): string[] {
 	const base = resolveRoleSkillSet({
 		workflow: input.workflow,
@@ -218,6 +190,7 @@ export function resolveImplementerSkillSet(input: {
 		agentSkills: input.agentSkills,
 		stepSkills: input.stepSkills,
 		availableSkills: input.availableSkills,
+		rootOnlySkills: input.rootOnlySkills,
 	});
 	if (input.workflow !== "superpowers" || !input.useTestDrivenDevelopment) return base;
 	if (!input.availableSkills.has("test-driven-development")) return base;

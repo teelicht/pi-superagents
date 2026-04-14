@@ -380,6 +380,7 @@ export function resolveExecutionSkills(input: {
 }): ExecutionSkillResolution {
 	const configuredSkills = input.skills === false ? [] : (input.skills ?? []);
 	const availableSkills = getAvailableSkillNames(input.cwd);
+	const rootOnlySkills = getRootOnlySkillNames(input.cwd);
 	const skillNames = input.role === "sp-implementer"
 		? resolveImplementerSkillSet({
 			workflow: input.workflow,
@@ -388,6 +389,7 @@ export function resolveExecutionSkills(input: {
 			agentSkills: [],
 			stepSkills: configuredSkills,
 			availableSkills,
+			rootOnlySkills,
 		})
 		: resolveRoleSkillSet({
 			workflow: input.workflow,
@@ -396,6 +398,7 @@ export function resolveExecutionSkills(input: {
 			agentSkills: [],
 			stepSkills: configuredSkills,
 			availableSkills,
+			rootOnlySkills,
 		});
 	const { resolved, missing } = resolveSkills(skillNames, input.cwd);
 	return {
