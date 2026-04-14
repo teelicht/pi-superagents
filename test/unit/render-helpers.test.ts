@@ -31,17 +31,17 @@ function createRecordingTheme() {
 	};
 }
 
-test("pad strings correctly", () => {
+void test("pad strings correctly", () => {
 	assert.strictEqual(pad("test", 6), "test  ");
 	assert.strictEqual(pad("longtest", 4), "longtest");
 });
 
-test("formatScrollInfo returns correct labels", () => {
+void test("formatScrollInfo returns correct labels", () => {
 	assert.strictEqual(formatScrollInfo(0, 0), "");
 	assert.strictEqual(formatScrollInfo(2, 3), "↑ 2 more ... ↓ 3 more");
 });
 
-test("renderFramedPanel wraps content in a stable green frame with background", () => {
+void test("renderFramedPanel wraps content in a stable green frame with background", () => {
 	const { calls, theme } = createRecordingTheme();
 	const lines = renderFramedPanel("Subagents Status", ["Active", "> sp-implementer | OK"], 32, theme as never, "q close");
 
@@ -59,7 +59,7 @@ test("renderFramedPanel wraps content in a stable green frame with background", 
 	assert.ok(calls.includes("bg:toolSuccessBg"), "expected green background calls");
 });
 
-test("renderFramedPanel truncates long rows inside the frame", () => {
+void test("renderFramedPanel truncates long rows inside the frame", () => {
 	const { theme } = createRecordingTheme();
 	const lines = renderFramedPanel("Title", ["abcdefghijklmnopqrstuvwxyz"], 14, theme as never);
 

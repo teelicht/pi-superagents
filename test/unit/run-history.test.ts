@@ -8,7 +8,7 @@ import { test } from "node:test";
 import * as assert from "node:assert";
 import { globalRunHistory, recordRun } from "../../src/execution/run-history.ts";
 
-test("globalRunHistory tracks active and finished runs", () => {
+void test("globalRunHistory tracks active and finished runs", () => {
 	globalRunHistory.activeRuns.clear();
 	const runId = "test-run-123";
 
