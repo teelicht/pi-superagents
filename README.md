@@ -19,12 +19,12 @@ npx @teelicht/pi-superagents --remove
 
 ## Quick Commands
 
-| Command                  | Description                                             |
-| ------------------------ | ------------------------------------------------------- |
-| `/sp-brainstorm <task>`  | Brainstorm a task and save a spec with Plannotator UI   |
-| `/sp-implement <task>`   | Run an implementation task through the Superpowers flow |
-| `/subagents-status`      | Open active and recent subagent run status              |
-| `/sp-settings`           | Open Superpowers and subagent workflow settings         |
+| Command                 | Description                                                                 |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `/sp-brainstorm <task>` | Brainstorm a task and save a spec, optionally review it with Plannotator UI |
+| `/sp-implement <task>`  | Run an implementation task through the Superpowers flow                     |
+| `/subagents-status`     | Open active and recent subagent run status                                  |
+| `/sp-settings`          | Open Superpowers and subagent workflow settings                             |
 
 ### Superpowers Workflow
 

@@ -4,33 +4,31 @@ Skills are specialized instructions loaded from `SKILL.md` files and injected in
 
 ## Skill Locations (project-first precedence)
 
-- **Project:** `.pi/skills/{name}/SKILL.md`
+- **Project:** `.pi/skills/{name}/SKILL.md` and `.agents/skills/{name}/SKILL.md`
 - **Project packages:** `.pi/npm/node_modules/*` via `package.json -> pi.skills`
 - **Project settings:** `.pi/settings.json -> skills`
-- **User:** `~/.pi/agent/skills/{name}/SKILL.md`
+- **User:** `~/.pi/agent/skills/{name}/SKILL.md` and `~/.agents/skills/{name}/SKILL.md`
 - **User packages:** `~/.pi/agent/npm/node_modules/*` via `package.json -> pi.skills`
 - **User settings:** `~/.pi/agent/settings.json -> skills`
+- **Global packages:** global npm packages with `package.json -> pi.skills`
 
 ## Usage
 
 ```typescript
-// Agent with skills from frontmatter
-{ agent: "scout", task: "..." }  // uses agent's default skills
+// Role agent with skills from its default policy/frontmatter
+{ agent: "sp-recon", task: "Inspect the auth flow" }
 
 // Override skills at runtime
-{ agent: "scout", task: "...", skill: "tmux, safe-bash" }
+{ agent: "sp-implementer", task: "Implement auth", skill: "test-driven-development" }
 
 // Disable all skills (including agent defaults)
-{ agent: "scout", task: "...", skill: false }
+{ agent: "sp-research", task: "Check the SDK docs", skill: false }
 
-// Chain with chain-level skills (additive to agent skills)
-{ chain: [...], skill: "code-review" }
-
-// Chain step with skill override
-{ chain: [
-  { agent: "scout", skill: "safe-bash" },  // only safe-bash
-  { agent: "worker", skill: false }        // no skills at all
-]}
+// Parallel tasks can override skills per task
+{ tasks: [
+  { agent: "sp-research", task: "Check config", skill: "openai-docs" },
+  { agent: "sp-code-review", task: "Review the diff", skill: false }
+] }
 ```
 
 ## Injection Format
@@ -43,4 +41,4 @@ Skills are specialized instructions loaded from `SKILL.md` files and injected in
 
 ## Missing Skills
 
-If a skill cannot be found, execution continues with a warning shown in the result summary.
+For delegated subagent runs, missing skills are reported in the result summary and execution continues with the skills that were found. For root Superpowers entry-skill flows, missing required entry or overlay skills block prompt dispatch so the user can fix the configuration.

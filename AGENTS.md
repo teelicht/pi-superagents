@@ -5,7 +5,7 @@
 - Prefer `.ts` / `.tsx` and shared typed contracts over untyped code.
 - If JavaScript is unavoidable (for example, tool-specific config files), keep it minimal and document the reason in the relevant spec/plan artifact.
 
-## Documentation Header Rules
+## Documentation Rules
 
 Every source file and every non-trivial function must include documentation headers.
 
@@ -28,7 +28,17 @@ Use doc comments (for example TSDoc/JSDoc) for each function:
 
 Keep comments precise and maintained with code changes.
 
-### TypeScript development/testing/linting libraries (mandatory baseline)
+### User Documentation
+
+- After each change, make sure that the user documentation is updated:
+  - `README.md`
+  - `docs/guides/superpowers.md`
+  - `docs/reference/worktrees.md`
+  - `docs/reference/configuration.md`
+  - `docs/reference/parameters.md`
+  - `docs/reference/skills.md`
+
+## TypeScript development/testing/linting libraries (mandatory baseline)
 
 These are required to satisfy the TypeScript-first and quality-gate requirements:
 
