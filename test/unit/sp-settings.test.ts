@@ -37,7 +37,7 @@ function createState(configPath?: string) {
 	};
 }
 
-test("SuperpowersSettingsComponent renders settings in a framed panel", () => {
+void test("SuperpowersSettingsComponent renders settings in a framed panel", () => {
 	const component = new SuperpowersSettingsComponent(
 		createTuiMock() as never,
 		createThemeMock() as never,
@@ -66,7 +66,7 @@ test("SuperpowersSettingsComponent renders settings in a framed panel", () => {
 	assert.match(rendered, /┘/);
 });
 
-test("SuperpowersSettingsComponent writes setting toggles to config", () => {
+void test("SuperpowersSettingsComponent writes setting toggles to config", () => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-settings-"));
 	const configPath = path.join(dir, "config.json");
 	fs.writeFileSync(configPath, '{\n  "superagents": { "useSubagents": true, "worktrees": { "enabled": false } }\n}\n', "utf-8");
@@ -90,7 +90,7 @@ test("SuperpowersSettingsComponent writes setting toggles to config", () => {
 	fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test("SuperpowersSettingsComponent reports unavailable config path", () => {
+void test("SuperpowersSettingsComponent reports unavailable config path", () => {
 	const component = new SuperpowersSettingsComponent(
 		createTuiMock() as never,
 		createThemeMock() as never,

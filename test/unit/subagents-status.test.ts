@@ -52,7 +52,7 @@ function createRun(overrides: Partial<RunEntry> = {}): RunEntry {
 	};
 }
 
-test("SubagentsStatusComponent renders a framed status panel", () => {
+void test("SubagentsStatusComponent renders a framed status panel", () => {
 	const tuiMock = createTuiMock();
 	const component = new SubagentsStatusComponent(
 		tuiMock.tui as never,
@@ -75,7 +75,7 @@ test("SubagentsStatusComponent renders a framed status panel", () => {
 	component.dispose();
 });
 
-test("SubagentsStatusComponent keeps empty-run navigation safe", () => {
+void test("SubagentsStatusComponent keeps empty-run navigation safe", () => {
 	const tuiMock = createTuiMock();
 	const component = new SubagentsStatusComponent(
 		tuiMock.tui as never,
@@ -96,7 +96,7 @@ test("SubagentsStatusComponent keeps empty-run navigation safe", () => {
 	component.dispose();
 });
 
-test("SubagentsStatusComponent renders selected step details", () => {
+void test("SubagentsStatusComponent renders selected step details", () => {
 	const component = new SubagentsStatusComponent(
 		createTuiMock().tui as never,
 		createThemeMock() as never,
@@ -120,7 +120,7 @@ test("SubagentsStatusComponent renders selected step details", () => {
 	component.dispose();
 });
 
-test("SubagentsStatusComponent closes and disposes safely", () => {
+void test("SubagentsStatusComponent closes and disposes safely", () => {
 	let closed = 0;
 	const component = new SubagentsStatusComponent(
 		createTuiMock().tui as never,
