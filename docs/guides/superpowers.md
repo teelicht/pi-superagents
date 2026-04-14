@@ -93,13 +93,29 @@ Configure in `~/.pi/agent/extensions/subagent/config.json`:
   "superagents": {
     "worktrees": {
       "enabled": true,
-      "setupHook": "./scripts/setup-worktree.mjs"
+      "root": ".worktrees"
     }
   }
 }
 ```
 
+If `root` is inside your repository, make sure it is ignored by git before enabling it. Custom Superpowers commands can also override worktree behavior with `superagents.commands.<name>.worktrees`.
+
 See [Worktree Reference](../reference/worktrees.md) for full details.
+
+## Branch Policy
+
+Branch policy is separate from worktree isolation. Enable `superagents.useBranches` when you want the root Superpowers workflow to require one dedicated git branch for an implementation plan or spec.
+
+```json
+{
+  "superagents": {
+    "useBranches": true
+  }
+}
+```
+
+Worktrees are temporary filesystem isolation for parallel subagents. Branch policy is a root workflow rule for organizing implementation work.
 
 ## Optional Plannotator Browser Review
 
@@ -136,9 +152,8 @@ Behavior:
 
 Use `/subagents-status` to inspect active and recent subagent runs. The same overlay is available through `Ctrl+Option+S` on macOS, represented internally as `ctrl+alt+s`.
 
-Use `/sp-settings` to inspect and toggle workflow settings such as `useSubagents`, `useTestDrivenDevelopment`, and worktree behavior.
+Use `/sp-settings` to inspect and toggle workflow settings such as `useSubagents`, `useTestDrivenDevelopment`, and worktree behavior. It also surfaces config validation diagnostics.
 
 ## Runtime Flags
 
-- `--bg`: Run in the background. Check status with `/subagents-status` or `Ctrl+Option+S`.
 - `--fork`: Run with `context: "fork"`, branching from the current session state.

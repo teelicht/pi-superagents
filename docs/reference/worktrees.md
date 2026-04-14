@@ -4,7 +4,7 @@ When multiple agents run in parallel against the same repository, they can clobb
 
 ## Usage
 
-Worktree isolation can be enabled for Superpowers parallel tasks with `superagents.worktrees.enabled`.
+Worktree isolation is optional. Enable it globally for Superpowers parallel tasks with `superagents.worktrees.enabled`:
 
 ```typescript
 // Parallel with worktree isolation when superagents.worktrees.enabled is true
@@ -14,39 +14,29 @@ Worktree isolation can be enabled for Superpowers parallel tasks with `superagen
 ], workflow: "superpowers" }
 ```
 
+You can also override worktree behavior for a custom Superpowers command with `superagents.commands.<name>.worktrees.enabled`.
+
+When resolved worktree config is `enabled: false`, Superpowers treats that as a hard off switch. Root prompts must not ask for worktrees, and Superpowers subagent runs ignore `worktree: true` requests.
+
 After parallel completion, per-agent diff stats are appended to the output. Full patch files are written to the artifacts directory.
 
 ## Requirements
 
 - Must be inside a git repository.
 - Working tree must be clean (no uncommitted changes). Commit or stash before running parallel tasks.
-- `node_modules/` is symlinked into each worktree to avoid re-installation.
+- `node_modules/` is symlinked into each worktree when it is safe to do so, avoiding unnecessary dependency installs.
 - Worktree runs use the shared parallel `cwd`. Task-level `cwd` overrides must be omitted or match that shared `cwd`.
+- A configured project-local `worktrees.root` must be ignored by git, such as through `.gitignore`.
 
 ## Internals
 
 1. `git worktree add` creates a temporary worktree per agent in the system temp directory.
-2. Optional `superagents.worktrees.setupHook` runs once per worktree (JSON in on stdin, JSON out on stdout).
+2. If `superagents.worktrees.root` is set, worktrees are created under that directory instead of the system temp directory.
 3. Each agent runs in its worktree's cwd.
-4. Before diff capture, declared synthetic helper paths are removed.
+4. Before diff capture, synthetic helper paths created by Pi Superagents, such as a safe `node_modules` symlink, are removed.
 5. After execution, `git add -A && git diff --cached` captures all changes.
 6. Diff stats appear in the aggregated output; full `.patch` files are written to the artifacts directory.
 7. Worktrees and temporary branches are cleaned up automatically.
-
-## Worktree Setup Hook
-
-`superagents.worktrees.setupHook` runs once per created worktree, after `git worktree add` succeeds and before the agent starts.
-
-**Path rules:**
-- Must be an absolute path or a repo-relative path.
-- Bare command names from `PATH` are rejected.
-- `~/...` is supported for home-directory hooks.
-
-**I/O contract (JSON only):**
-- **stdin:** `{ repoRoot, worktreePath, agentCwd, branch, index, runId, baseCommit }`
-- **stdout:** `{ "syntheticPaths": [".venv", ".env.local"] }`
-
-`syntheticPaths` must be relative to the worktree root. These paths are removed before diff capture so helper files or symlinks don't pollute generated patches.
 
 ## Configuration
 

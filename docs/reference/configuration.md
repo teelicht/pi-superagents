@@ -18,19 +18,15 @@ Full parseable examples are available in:
 ~/.pi/agent/extensions/subagent/config.example.json
 ```
 
-## Validation And Repair
+## Validation
 
 `pi-superagents` fails closed when `config.json` cannot be trusted. If the file has invalid JSON, unknown keys, or wrong value types, subagent execution is disabled until the file is fixed.
 
 When Pi starts, the extension shows a notification with the config path and exact diagnostics. You can also inspect diagnostics with:
 
-```json
-{
-  "action": "config"
-}
+```text
+/sp-settings
 ```
-
-using the `subagent_status` tool.
 
 ## Common Override Examples
 
@@ -49,7 +45,7 @@ Override one model tier while inheriting the rest:
 }
 ```
 
-Disable automatic worktree creation for parallel tasks:
+Keep worktree creation disabled for parallel tasks:
 
 ```json
 {
@@ -60,6 +56,21 @@ Disable automatic worktree creation for parallel tasks:
   }
 }
 ```
+
+Enable worktree isolation with a project-local root:
+
+```json
+{
+  "superagents": {
+    "worktrees": {
+      "enabled": true,
+      "root": ".worktrees"
+    }
+  }
+}
+```
+
+If `root` is inside your repository, it must be ignored by git.
 
 Enable the optional Plannotator browser review flow at the plan approval point:
 
@@ -79,12 +90,42 @@ Configures the Superpowers workflow and role execution policy.
 
 | Key | Description |
 |-----|-------------|
+| `useBranches` | Require a dedicated git branch for each Superpowers implementation plan or spec (default: `false`). |
+| `useSubagents` | Allow root Superpowers workflows to delegate through the `subagent` tool when active skills call for delegation (default: `true`). |
+| `useTestDrivenDevelopment` | Add test-driven-development guidance to `sp-implementer` runs (default: `true`). |
+| `usePlannotator` | Open the optional Plannotator browser review UI at Superpowers plan/spec approval points and wait for approval/rejection (default: `false`). |
+| `commands` | Map of custom Superpowers slash command presets. Command names must match `superpowers-<name>` or `sp-<name>`. |
 | `modelTiers` | Maps abstract tier names (`cheap`, `balanced`, `max`) to concrete model configs. |
 | `worktrees.enabled` | Whether to use git worktree isolation for parallel tasks (bundled default: `false`). When false, Superpowers root prompts and subagent runs must not request worktrees. |
 | `worktrees.root` | Directory for Superpowers parallel worktrees (default: system temp). |
-| `usePlannotator` | Open the optional Plannotator browser review UI at the Superpowers plan approval point and wait for approval/rejection (default: `false`). |
 | `skillOverlays` | Maps entry skill names to arrays of additional skill names to load with them (default: `{}`). |
 | `interceptSkillCommands` | List of skill names that should be intercepted and handled by Superpowers (default: `[]`). Only `brainstorming` is currently supported. |
+
+### Custom Command Presets
+
+Custom command presets register additional slash commands that use the same Superpowers prompt builder as `/sp-implement`.
+
+```json
+{
+  "superagents": {
+    "commands": {
+      "sp-review": {
+        "description": "Review-focused Superpowers run",
+        "useBranches": false,
+        "useSubagents": true,
+        "useTestDrivenDevelopment": false,
+        "usePlannotator": false,
+        "worktrees": {
+          "enabled": false,
+          "root": null
+        }
+      }
+    }
+  }
+}
+```
+
+Supported preset keys are `description`, `useBranches`, `useSubagents`, `useTestDrivenDevelopment`, `usePlannotator`, and `worktrees`. Preset `worktrees` supports only `enabled` and `root`.
 
 When `usePlannotator` is `true`:
 
