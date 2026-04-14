@@ -127,10 +127,15 @@ export class SuperpowersStatusComponent implements Component {
 		return lines;
 	}
 
-	private renderRunsPane(w: number, innerW: number): string[] {
+	/**
+	 * Build the flat rows array for the runs pane (section headers + run rows).
+	 * Shared between renderRunsPane and handleInput arrow-key handlers
+	 * so that cursor and scroll offset share the same coordinate space.
+	 */
+	private buildRunsPaneRows(): Array<{ kind: "section"; label: string } | { kind: "run"; run: import("../execution/run-history.ts").RunEntry }> {
 		const activeRuns = Array.from(globalRunHistory.activeRuns.values());
 		const recentRuns = globalRunHistory.getRecent(20);
-		const rows: Array<{ kind: "section"; label: string } | { kind: "run"; run: typeof recentRuns[number] }> = [];
+		const rows: Array<{ kind: "section"; label: string } | { kind: "run"; run: import("../execution/run-history.ts").RunEntry }> = [];
 
 		if (activeRuns.length > 0) {
 			rows.push({ kind: "section", label: "Active" });
@@ -141,14 +146,33 @@ export class SuperpowersStatusComponent implements Component {
 			for (const run of recentRuns) rows.push({ kind: "run", run });
 		}
 
+		return rows;
+	}
+
+	private renderRunsPane(w: number, innerW: number): string[] {
+		const rows = this.buildRunsPaneRows();
+
 		if (rows.length === 0) {
 			return [row("No runs recorded.", w, this.theme)];
 		}
 
-		const runRows = rows.filter(r => r.kind === "run");
-		if (this.cursor >= runRows.length) this.cursor = Math.max(0, runRows.length - 1);
+		// Clamp cursor to a valid run row (skip section headers)
+		if (this.cursor >= rows.length) this.cursor = rows.length - 1;
+		if (rows[this.cursor]?.kind === "section") {
+			// Move cursor to next run row
+			for (let i = this.cursor + 1; i < rows.length; i++) {
+				if (rows[i].kind === "run") { this.cursor = i; break; }
+			}
+		}
+		if (rows[this.cursor]?.kind === "section" && this.cursor > 0) {
+			// Move cursor to previous run row
+			for (let i = this.cursor - 1; i >= 0; i--) {
+				if (rows[i].kind === "run") { this.cursor = i; break; }
+			}
+		}
 
-		const selectedRun = runRows[this.cursor]?.run;
+		const selectedRow = rows[this.cursor];
+		const selectedRun = selectedRow?.kind === "run" ? selectedRow.run : undefined;
 
 		const visibleRows = rows.slice(this.scrollOffset, this.scrollOffset + this.viewportHeight);
 
@@ -244,11 +268,21 @@ export class SuperpowersStatusComponent implements Component {
 		} else {
 			if (matchesKey(data, "up")) {
 				this.cursor = Math.max(0, this.cursor - 1);
+				// Skip section headers
+				const runsPaneRows = this.buildRunsPaneRows();
+				while (this.cursor > 0 && runsPaneRows[this.cursor]?.kind === "section") {
+					this.cursor--;
+				}
 				if (this.cursor < this.scrollOffset) this.scrollOffset = this.cursor;
 				this.tui.requestRender();
 			}
 			if (matchesKey(data, "down")) {
-				this.cursor++;
+				const runsPaneRows = this.buildRunsPaneRows();
+				this.cursor = Math.min(runsPaneRows.length - 1, this.cursor + 1);
+				// Skip section headers
+				while (this.cursor < runsPaneRows.length - 1 && runsPaneRows[this.cursor]?.kind === "section") {
+					this.cursor++;
+				}
 				if (this.cursor >= this.scrollOffset + this.viewportHeight) {
 					this.scrollOffset = this.cursor - this.viewportHeight + 1;
 				}
