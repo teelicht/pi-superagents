@@ -102,7 +102,7 @@ function applyWorkflowToken(token: string, overrides: SuperpowersWorkflowOverrid
 }
 
 /**
- * Parse `/superpowers` or custom Superpowers command arguments.
+ * Parse `/sp-implement` or custom Superpowers command arguments.
  *
  * @param rawArgs Raw command arguments.
  * @returns Parsed workflow args or null when no task remains.
