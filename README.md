@@ -9,7 +9,6 @@ Pi extension for Superpowers workflows: structured delegation to specialized rol
 - **Subagent Execution**: Automatically spawns sub-agents (setting).
 - **Worktree Isolation**: Optional git worktree creation for parallel tasks to prevent filesystem conflicts (setting).
 - **Model Tiers**: Abstract model selection (cheap, balanced, max) resolved via user configuration.
-- **Skill Injection**: Automatic injection of project-local and user-global skills into agent prompts.
 - **Skill Overlays**: Configure additional skills to load alongside entry skills (e.g., load `react-native-best-practices` when brainstorming). See [Configuration Reference](docs/reference/configuration.md#skill-overlays).
 - **Plannotator Integration**: Optional event bridge to [Plannotator](https://plannotator.ai/) for visual browser-based plan review and approval (setting).
 
