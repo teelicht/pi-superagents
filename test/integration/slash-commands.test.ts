@@ -248,7 +248,7 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.equal(userMessages[0].options, undefined);
 	});
 
-	void it("/sp-implement shows only option flags and injects the strict contract as hidden context", async () => {
+	void it("sp-implement shows the user task and config flags, injecting the strict contract as hidden context", async () => {
 		type BeforeAgentStartHandler = (event: { prompt: string }) => {
 			message?: { customType: string; content: string; display: boolean };
 		} | undefined;
@@ -283,12 +283,12 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 
 		assert.equal(userMessages.length, 1);
 		const visiblePrompt = String(userMessages[0].content);
-		assert.match(visiblePrompt, /Superpowers options:/);
+		assert.match(visiblePrompt, /Superpowers ▸ implement auth fix/);
+		assert.match(visiblePrompt, /Config:/);
 		assert.match(visiblePrompt, /useBranches:\s*true/);
 		assert.match(visiblePrompt, /useSubagents:\s*false/);
 		assert.match(visiblePrompt, /worktrees\.enabled:\s*false/);
 		assert.doesNotMatch(visiblePrompt, /Superpowers Root Session Contract/);
-		assert.doesNotMatch(visiblePrompt, /implement auth fix/);
 
 		const hidden = beforeAgentStart?.({ prompt: visiblePrompt });
 		assert.equal(hidden?.message?.customType, "superpowers-root-contract");

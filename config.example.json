@@ -35,8 +35,12 @@
       }
     },
     "skillOverlays": {
-      "brainstorming": ["react-native-best-practices"],
-      "writing-plans": ["supabase-postgres-best-practices"]
+      "brainstorming": [
+        "react-native-best-practices"
+      ],
+      "writing-plans": [
+        "supabase-postgres-best-practices"
+      ]
     },
     "interceptSkillCommands": []
   }

@@ -1,7 +1,8 @@
 /**
- * Parallel execution utilities for the async runner.
- * Kept minimal and self-contained so the standalone runner can use them
- * without pulling in the full extension dependency tree.
+ * Parallel execution utilities for concurrent subagent orchestration.
+ * Kept minimal and self-contained — no heavy imports — so it can be
+ * re-exported through shared/utils.ts without pulling in the full
+ * extension dependency tree.
  */
 
 /** A single agent step in the runner config */
