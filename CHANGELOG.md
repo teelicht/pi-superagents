@@ -5,8 +5,9 @@
 - **Fixes:**
   - Branching config now works as expected
   - Removed write access from review agents, preventing them from creating .md files
+  - Removed hardcoded config values that shouldn't have been in the code in the first place
 
-- **Less noisy user feedback** - trimmed information show to the user after invoking superpowers via the slash command
+- **Less noisy user feedback** - trimmed information shown to the user after invoking superpowers via the slash command
 - **Better TUI** - improved TUI layout
 
 ## [0.4.0] - 2026-04-13
