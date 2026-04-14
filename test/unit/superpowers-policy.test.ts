@@ -5,16 +5,21 @@
  * - verify workflow gating for role-specific model resolution
  * - verify role skill merging for Superpowers runs
  * - verify TDD skill injection behavior based on useTestDrivenDevelopment
+ * - verify tool resolution with read-only fallback for bounded roles
+ * - verify root-only skill enforcement
+ * - verify execution role inference from agent name convention
  */
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+	inferExecutionRole,
 	resolveModelForAgent,
 	resolveRoleSkillSet,
 	resolveImplementerSkillSet,
 	resolveRoleTools,
 } from "../../src/execution/superpowers-policy.ts";
+import { DELEGATION_TOOLS, READ_ONLY_TOOLS } from "../../src/shared/tool-registry.ts";
 
 void describe("superpowers policy", () => {
 	void it("resolves tiers in default workflow when configured", () => {
@@ -203,16 +208,6 @@ void describe("superpowers policy", () => {
 		);
 	});
 
-	void it("assigns a non-delegating default tool set to bounded superpowers roles", () => {
-		assert.deepEqual(
-			resolveRoleTools({
-				workflow: "superpowers",
-				role: "sp-recon",
-			}),
-			["read", "grep", "find", "ls"],
-		);
-	});
-
 	void it("strips subagent tools from explicit bounded-role tool lists", () => {
 		assert.deepEqual(
 			resolveRoleTools({
@@ -221,6 +216,86 @@ void describe("superpowers policy", () => {
 				agentTools: ["read", "subagent", "write", "subagent_status", "bash"],
 			}),
 			["read", "write", "bash"],
+		);
+	});
+
+	void it("falls back to READ_ONLY_TOOLS for bounded roles without explicit tools", () => {
+		assert.deepEqual(
+			resolveRoleTools({
+				workflow: "superpowers",
+				role: "sp-recon",
+			}),
+			[...READ_ONLY_TOOLS],
+		);
+	});
+
+	void it("rejects root-scoped skills for bounded roles when rootOnlySkills is provided", () => {
+		assert.throws(() => {
+			resolveRoleSkillSet({
+				workflow: "superpowers",
+				role: "sp-recon",
+				config: {},
+				agentSkills: [],
+				stepSkills: ["brainstorming"],
+				availableSkills: new Set(["brainstorming"]),
+				rootOnlySkills: new Set(["brainstorming"]),
+			});
+		}, /cannot receive root-only workflow skill/);
+	});
+
+	void it("allows root-scoped skills for root-planning role", () => {
+		const skills = resolveRoleSkillSet({
+			workflow: "superpowers",
+			role: "root-planning",
+			config: {},
+			agentSkills: ["brainstorming"],
+			stepSkills: [],
+			availableSkills: new Set(["brainstorming"]),
+			rootOnlySkills: new Set(["brainstorming"]),
+		});
+		assert.deepEqual(skills, ["brainstorming"]);
+	});
+
+	void it("allows agent-scoped skills for bounded roles when not in rootOnlySkills", () => {
+		const skills = resolveRoleSkillSet({
+			workflow: "superpowers",
+			role: "sp-recon",
+			config: {},
+			agentSkills: ["test-driven-development"],
+			stepSkills: [],
+			availableSkills: new Set(["test-driven-development"]),
+			rootOnlySkills: new Set(["brainstorming"]),
+		});
+		assert.deepEqual(skills, ["test-driven-development"]);
+	});
+
+	void it("infers sp-roles from sp- prefix convention", () => {
+		assert.equal(inferExecutionRole("sp-recon"), "sp-recon");
+		assert.equal(inferExecutionRole("sp-research"), "sp-research");
+		assert.equal(inferExecutionRole("sp-implementer"), "sp-implementer");
+		assert.equal(inferExecutionRole("sp-custom-role"), "sp-custom-role");
+		assert.equal(inferExecutionRole("root"), "root-planning");
+		assert.equal(inferExecutionRole("any-other-name"), "root-planning");
+	});
+
+	void it("uses READ_ONLY_TOOLS as fallback for any bounded role without explicit tools", () => {
+		assert.deepEqual(
+			resolveRoleTools({
+				workflow: "superpowers",
+				role: "sp-implementer",
+			}),
+			[...READ_ONLY_TOOLS],
+		);
+	});
+
+	void it("prefers agent-declared tools over fallback for bounded roles", () => {
+		assert.deepEqual(
+			resolveRoleTools({
+				workflow: "superpowers",
+				role: "sp-implementer",
+				agentTools: ["read", "grep", "find", "ls", "bash", "write"],
+			}),
+			["read", "grep", "find", "ls", "bash", "write"],
 		);
 	});
 });
