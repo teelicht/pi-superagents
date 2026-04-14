@@ -4,7 +4,17 @@
     "useSubagents": true,
     "useTestDrivenDevelopment": true,
     "usePlannotator": false,
-    "commands": {},
+    "commands": {
+      "sp-lean": {
+        "description": "Run Superpowers lean: no subagents, no TDD",
+        "useSubagents": false,
+        "useTestDrivenDevelopment": false
+      },
+      "sp-plannotator": {
+        "description": "Run Superpowers with Plannotator review enabled",
+        "usePlannotator": true
+      }
+    },
     "worktrees": {
       "enabled": false,
       "root": null
@@ -24,7 +34,10 @@
         "thinking": "high"
       }
     },
-    "skillOverlays": {},
+    "skillOverlays": {
+      "brainstorming": ["react-native-best-practices"],
+      "writing-plans": ["supabase-postgres-best-practices"]
+    },
     "interceptSkillCommands": []
   }
 }
