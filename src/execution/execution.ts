@@ -36,6 +36,7 @@ import {
 	resolveModelForAgent,
 	resolveRoleTools,
 } from "./superpowers-policy.ts";
+import { globalRunHistory } from "./run-history.ts";
 
 /**
  * Run a subagent synchronously (blocking until complete)
@@ -135,6 +136,8 @@ export async function runSync(
 	result.progress = progress;
 
 	const startTime = Date.now();
+	const historyId = options.runId ? `${options.runId}-${agentName}-${index ?? 0}` : `run-${Date.now()}-${agentName}`;
+	globalRunHistory.startRun(historyId, { agent: agentName, task });
 
 	let artifactPathsResult: ArtifactPaths | undefined;
 	let jsonlPath: string | undefined;
@@ -187,6 +190,13 @@ export async function runSync(
 			const fireUpdate = () => {
 				if (!onUpdate || processClosed) return;
 				progress.durationMs = Date.now() - startTime;
+
+				globalRunHistory.updateRun(historyId, {
+					duration: progress.durationMs,
+					model: result.model,
+					tokens: { total: result.usage.input + result.usage.output },
+				});
+
 				onUpdate({
 					content: [{ type: "text", text: getFinalOutput(result.messages) || "(running...)" }],
 					details: { mode: "single", results: [result], progress: [progress] },
@@ -392,6 +402,13 @@ export async function runSync(
 			result.truncation = truncationResult;
 		}
 	}
+
+	globalRunHistory.updateRun(historyId, {
+		duration: progress.durationMs,
+		model: result.model,
+		tokens: { total: result.usage.input + result.usage.output },
+	});
+	globalRunHistory.finishRun(historyId, result.exitCode === 0 ? "ok" : "error", result.error);
 
 	return result;
 }
