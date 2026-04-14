@@ -98,6 +98,20 @@ export function makeAgent(name: string, overrides: Partial<AgentConfig> = {}): A
 	};
 }
 
+export interface MinimalCtx {
+	cwd: string;
+	hasUI: boolean;
+	ui: Record<string, never>;
+	sessionManager: {
+		getSessionId: () => string;
+		getSessionFile: () => string | null;
+	};
+	modelRegistry: {
+		getAvailable: () => Array<{ provider: string; id: string }>;
+	};
+	model?: { provider: string };
+}
+
 // ---------------------------------------------------------------------------
 // Minimal mock context for chain execution
 // ---------------------------------------------------------------------------
@@ -106,7 +120,7 @@ export function makeAgent(name: string, overrides: Partial<AgentConfig> = {}): A
  * Create a minimal ExtensionContext mock for chain execution.
  * Only provides what executeChain needs when clarify=false.
  */
-export function makeMinimalCtx(cwd: string): any {
+export function makeMinimalCtx(cwd: string): MinimalCtx {
 	return {
 		cwd,
 		hasUI: false,
@@ -146,11 +160,15 @@ export async function tryImport<T>(specifier: string): Promise<T | null> {
 		}
 		// Bare specifier — import directly (node_modules resolution)
 		return await import(specifier) as T;
-	} catch (error: any) {
-		const code = error?.code;
+	} catch (error: unknown) {
+		const code = typeof error === "object" && error !== null && "code" in error
+			? (error as { code?: unknown }).code
+			: undefined;
 		const isModuleNotFound = code === "MODULE_NOT_FOUND" || code === "ERR_MODULE_NOT_FOUND";
 		if (isBare && isModuleNotFound) {
-			const msg = String(error?.message ?? "");
+			const msg = typeof error === "object" && error !== null && "message" in error
+				? String((error as { message?: unknown }).message ?? "")
+				: "";
 			const missing = msg.match(/Cannot find (?:package|module) ['\"]([^'\"]+)['\"]/i)?.[1];
 			if (missing === specifier || msg.includes(`'${specifier}'`) || msg.includes(`\"${specifier}\"`)) {
 				return null;

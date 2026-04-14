@@ -14,17 +14,40 @@ import * as path from "node:path";
 import { createMockPi, createTempDir, events, makeAgent, removeTempDir, tryImport } from "../support/helpers.ts";
 import type { MockPi } from "../support/helpers.ts";
 
-// Top-level await
-const asyncMod = await tryImport<any>("./async-execution.ts");
-const utils = await tryImport<any>("./utils.ts");
-const typesMod = await tryImport<any>("./types.ts");
+interface AsyncExecutionResult {
+	content: Array<{ text?: string }>;
+	isError?: boolean;
+	details: { asyncId?: string };
+}
+
+interface AsyncExecutionModule {
+	isAsyncAvailable(): boolean;
+	executeAsyncSingle(id: string, params: Record<string, unknown>): AsyncExecutionResult;
+	executeAsyncChain(id: string, params: Record<string, unknown>): AsyncExecutionResult;
+}
+
+interface UtilsModule {
+	readStatus(dir: string): { runId: string; state: string; mode: string } | null;
+}
+
+interface TypesModule {
+	ASYNC_DIR: string;
+	RESULTS_DIR: string;
+	TEMP_ROOT_DIR: string;
+}
+
+const asyncMod = await tryImport<AsyncExecutionModule>("./async-execution.ts");
+const utils = await tryImport<UtilsModule>("./utils.ts");
+const typesMod = await tryImport<TypesModule>("./types.ts");
 const available = !!(asyncMod && utils && typesMod);
 
 const isAsyncAvailable = asyncMod?.isAsyncAvailable;
 const executeAsyncSingle = asyncMod?.executeAsyncSingle;
+const executeAsyncChain = asyncMod?.executeAsyncChain;
 const readStatus = utils?.readStatus;
 const ASYNC_DIR = typesMod?.ASYNC_DIR;
 const RESULTS_DIR = typesMod?.RESULTS_DIR;
+const TEMP_ROOT_DIR = typesMod?.TEMP_ROOT_DIR;
 
 describe("async execution utilities", { skip: !available ? "pi packages not available" : undefined }, () => {
 	let tempDir: string;
@@ -213,6 +236,123 @@ describe("async execution utilities", { skip: !available ? "pi packages not avai
 		assert.equal(payload.success, false);
 		assert.equal(payload.exitCode, 1);
 		assert.equal(payload.results[0].success, false);
+	});
+
+	it("background runs prefer the parent session provider for ambiguous bare model ids", { skip: !isAsyncAvailable() ? "jiti not available" : undefined }, async () => {
+		mockPi.onCall({ output: "Done asynchronously" });
+
+		const id = `async-provider-${Date.now().toString(36)}`;
+		const resultPath = path.join(RESULTS_DIR, `${id}.json`);
+		const sessionRoot = path.join(tempDir, "sessions");
+
+		executeAsyncSingle(id, {
+			agent: "worker",
+			task: "Do work",
+			agentConfig: makeAgent("worker", { model: "gpt-5-mini" }),
+			ctx: {
+				pi: { events: { emit() {} } },
+				cwd: tempDir,
+				currentSessionId: "session-1",
+				currentModelProvider: "github-copilot",
+			},
+			availableModels: [
+				{ provider: "openai", id: "gpt-5-mini", fullId: "openai/gpt-5-mini" },
+				{ provider: "github-copilot", id: "gpt-5-mini", fullId: "github-copilot/gpt-5-mini" },
+			],
+			artifactConfig: {
+				enabled: false,
+				includeInput: false,
+				includeOutput: false,
+				includeJsonl: false,
+				includeMetadata: false,
+				cleanupDays: 7,
+			},
+			shareEnabled: false,
+			sessionRoot,
+			maxSubagentDepth: 2,
+		});
+
+		const deadline = Date.now() + 10_000;
+		while (!fs.existsSync(resultPath)) {
+			if (Date.now() > deadline) {
+				assert.fail(`Timed out waiting for async result file: ${resultPath}`);
+			}
+			await new Promise((resolve) => setTimeout(resolve, 100));
+		}
+
+		const payload = JSON.parse(fs.readFileSync(resultPath, "utf-8"));
+		assert.equal(payload.success, true);
+		assert.equal(payload.results[0].model, "github-copilot/gpt-5-mini");
+		assert.deepEqual(payload.results[0].attemptedModels, ["github-copilot/gpt-5-mini"]);
+	});
+
+	it("returns a tool error when the detached runner config cannot be written", { skip: !isAsyncAvailable() ? "jiti not available" : undefined }, () => {
+		const id = `async-write-fail-${Date.now().toString(36)}`;
+		assert.ok(TEMP_ROOT_DIR, "TEMP_ROOT_DIR should be available for async tests");
+		fs.mkdirSync(TEMP_ROOT_DIR, { recursive: true });
+		fs.mkdirSync(ASYNC_DIR, { recursive: true });
+		const originalMode = fs.statSync(TEMP_ROOT_DIR).mode & 0o777;
+		fs.chmodSync(TEMP_ROOT_DIR, 0o555);
+
+		try {
+			const result = executeAsyncSingle(id, {
+				agent: "worker",
+				task: "Do work",
+				agentConfig: makeAgent("worker"),
+				ctx: { pi: { events: { emit() {} } }, cwd: tempDir, currentSessionId: "session-1" },
+				artifactConfig: {
+					enabled: false,
+					includeInput: false,
+					includeOutput: false,
+					includeJsonl: false,
+					includeMetadata: false,
+					cleanupDays: 7,
+				},
+				shareEnabled: false,
+				sessionRoot: path.join(tempDir, "sessions"),
+				maxSubagentDepth: 2,
+			});
+
+			assert.equal(result.isError, true);
+			assert.match(result.content[0]?.text ?? "", /Failed to start async run/);
+			assert.match(result.content[0]?.text ?? "", /async-cfg-/);
+		} finally {
+			fs.chmodSync(TEMP_ROOT_DIR, originalMode);
+		}
+	});
+
+	it("returns a tool error when an async chain cannot write its detached runner config", { skip: !isAsyncAvailable() ? "jiti not available" : undefined }, () => {
+		const id = `async-chain-write-fail-${Date.now().toString(36)}`;
+		assert.ok(TEMP_ROOT_DIR, "TEMP_ROOT_DIR should be available for async tests");
+		fs.mkdirSync(TEMP_ROOT_DIR, { recursive: true });
+		fs.mkdirSync(ASYNC_DIR, { recursive: true });
+		const originalMode = fs.statSync(TEMP_ROOT_DIR).mode & 0o777;
+		fs.chmodSync(TEMP_ROOT_DIR, 0o555);
+
+		try {
+			const result = executeAsyncChain(id, {
+				chain: [{ agent: "worker", task: "Do work" }],
+				agents: [makeAgent("worker")],
+				ctx: { pi: { events: { emit() {} } }, cwd: tempDir, currentSessionId: "session-1" },
+				artifactConfig: {
+					enabled: false,
+					includeInput: false,
+					includeOutput: false,
+					includeJsonl: false,
+					includeMetadata: false,
+					cleanupDays: 7,
+				},
+				shareEnabled: false,
+				sessionRoot: path.join(tempDir, "sessions"),
+				maxSubagentDepth: 2,
+			});
+
+			assert.equal(result.isError, true);
+			assert.match(result.content[0]?.text ?? "", /Failed to start async chain/);
+			assert.match(result.content[0]?.text ?? "", /async-cfg-/);
+		} finally {
+			fs.chmodSync(TEMP_ROOT_DIR, originalMode);
+		}
 	});
 
 	it("background runs stream child events and live output while active", { skip: !isAsyncAvailable() ? "jiti not available" : undefined }, async () => {

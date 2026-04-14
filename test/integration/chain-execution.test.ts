@@ -22,8 +22,58 @@ import {
 	tryImport,
 } from "../support/helpers.ts";
 
-// Top-level await: try importing pi-dependent modules
-const chainMod = await tryImport<any>("./chain-execution.ts");
+interface TestSequentialStep {
+	agent: string;
+	task?: string;
+	model?: string;
+	output?: string | false;
+	reads?: string[] | false;
+	skill?: string | string[] | false;
+	progress?: boolean;
+	cwd?: string;
+}
+
+interface TestParallelTask {
+	agent: string;
+	task?: string;
+	model?: string;
+	output?: string | false;
+	reads?: string[] | false;
+	skill?: string | string[] | false;
+	progress?: boolean;
+	cwd?: string;
+}
+
+type TestChainStep = TestSequentialStep | {
+	parallel: TestParallelTask[];
+	concurrency?: number;
+	failFast?: boolean;
+	worktree?: boolean;
+	cwd?: string;
+};
+
+interface ChainResultItem {
+	agent: string;
+	exitCode: number;
+	finalOutput?: string;
+	attemptedModels?: string[];
+}
+
+interface ChainExecutionResult {
+	isError?: boolean;
+	content: Array<{ text: string }>;
+	details: {
+		results: ChainResultItem[];
+		chainAgents?: string[];
+		totalSteps?: number;
+	};
+}
+
+interface ChainExecutionModule {
+	executeChain(params: Record<string, unknown>): Promise<ChainExecutionResult>;
+}
+
+const chainMod = await tryImport<ChainExecutionModule>("./chain-execution.ts");
 const available = !!chainMod;
 const executeChain = chainMod?.executeChain;
 
@@ -51,7 +101,11 @@ describe("chain execution — sequential", { skip: !available ? "pi packages not
 		removeTempDir(tempDir);
 	});
 
-	function makeChainParams(chain: any[], agents: any[], overrides: Record<string, any> = {}) {
+	function makeChainParams(
+		chain: TestChainStep[],
+		agents: ReturnType<typeof makeAgent>[],
+		overrides: Record<string, unknown> = {},
+	) {
 		return {
 			chain,
 			agents,
@@ -115,6 +169,35 @@ describe("chain execution — sequential", { skip: !available ? "pi packages not
 		assert.equal(result.details.results.length, 2);
 		assert.deepEqual(result.details.results[0].attemptedModels, ["openai/gpt-5-mini", "anthropic/claude-sonnet-4"]);
 		assert.equal(mockPi.callCount(), 3);
+	});
+
+	it("prefers the parent session provider for ambiguous bare chain step models", async () => {
+		mockPi.onCall({ output: "Step 1 ran" });
+		mockPi.onCall({ output: "Step 2 ran" });
+		const agents = [makeAgent("step1", { model: "gpt-5-mini" }), makeAgent("step2")];
+
+		const result = await executeChain(
+			makeChainParams(
+				[{ agent: "step1", task: "Do step 1" }, { agent: "step2" }],
+				agents,
+				{
+					ctx: {
+						...makeMinimalCtx(tempDir),
+						model: { provider: "github-copilot" },
+						modelRegistry: {
+							getAvailable: () => [
+								{ provider: "openai", id: "gpt-5-mini" },
+								{ provider: "github-copilot", id: "gpt-5-mini" },
+							],
+						},
+					},
+				},
+			),
+		);
+
+		assert.ok(!result.isError, `chain should succeed: ${JSON.stringify(result.content)}`);
+		assert.equal(result.details.results[0].model, "github-copilot/gpt-5-mini");
+		assert.deepEqual(result.details.results[0].attemptedModels, ["github-copilot/gpt-5-mini"]);
 	});
 
 	it("passes {previous} between steps (step 2 receives step 1 output)", async () => {
@@ -209,7 +292,7 @@ describe("chain execution — sequential", { skip: !available ? "pi packages not
 
 		assert.ok(!result.isError);
 		assert.equal(result.details.results.length, 3);
-		assert.ok(result.details.results.every((r: any) => r.exitCode === 0));
+		assert.ok(result.details.results.every((r) => r.exitCode === 0));
 	});
 
 	it("returns error for unknown agent in chain", async () => {
@@ -301,7 +384,11 @@ describe("chain execution — parallel steps", { skip: !available ? "pi packages
 		removeTempDir(tempDir);
 	});
 
-	function makeChainParams(chain: any[], agents: any[], overrides: Record<string, any> = {}) {
+	function makeChainParams(
+		chain: TestChainStep[],
+		agents: ReturnType<typeof makeAgent>[],
+		overrides: Record<string, unknown> = {},
+	) {
 		return {
 			chain,
 			agents,

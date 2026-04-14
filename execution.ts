@@ -186,61 +186,64 @@ async function runSingleAttempt(
 		const processLine = (line: string) => {
 			if (!line.trim()) return;
 			jsonlWriter.writeLine(line);
+			let evt: { type?: string; message?: Message; toolName?: string; args?: unknown };
 			try {
-				const evt = JSON.parse(line) as { type?: string; message?: Message; toolName?: string; args?: unknown };
-				const now = Date.now();
-				progress.durationMs = now - startTime;
-
-				if (evt.type === "tool_execution_start") {
-					if (options.allowIntercomDetach && evt.toolName === "intercom") {
-						intercomStarted = true;
-					}
-					progress.toolCount++;
-					progress.currentTool = evt.toolName;
-					progress.currentToolArgs = extractToolArgsPreview((evt.args || {}) as Record<string, unknown>);
-					fireUpdate();
-				}
-
-				if (evt.type === "tool_execution_end") {
-					if (progress.currentTool) {
-						progress.recentTools.push({
-							tool: progress.currentTool,
-							args: progress.currentToolArgs || "",
-							endMs: now,
-						});
-					}
-					progress.currentTool = undefined;
-					progress.currentToolArgs = undefined;
-					fireUpdate();
-				}
-
-				if (evt.type === "message_end" && evt.message) {
-					result.messages.push(evt.message);
-					if (evt.message.role === "assistant") {
-						result.usage.turns++;
-						const u = evt.message.usage;
-						if (u) {
-							result.usage.input += u.input || 0;
-							result.usage.output += u.output || 0;
-							result.usage.cacheRead += u.cacheRead || 0;
-							result.usage.cacheWrite += u.cacheWrite || 0;
-							result.usage.cost += u.cost?.total || 0;
-							progress.tokens = result.usage.input + result.usage.output;
-						}
-						if (!result.model && evt.message.model) result.model = evt.message.model;
-						if (evt.message.errorMessage) result.error = evt.message.errorMessage;
-						appendRecentOutput(progress, extractTextFromContent(evt.message.content).split("\n").slice(-10));
-					}
-					fireUpdate();
-				}
-
-				if (evt.type === "tool_result_end" && evt.message) {
-					result.messages.push(evt.message);
-					appendRecentOutput(progress, extractTextFromContent(evt.message.content).split("\n").slice(-10));
-					fireUpdate();
-				}
+				evt = JSON.parse(line) as { type?: string; message?: Message; toolName?: string; args?: unknown };
 			} catch {
 				// Non-JSON stdout lines are expected; only structured events are parsed.
+				return;
+			}
+
+			const now = Date.now();
+			progress.durationMs = now - startTime;
+
+			if (evt.type === "tool_execution_start") {
+				if (options.allowIntercomDetach && evt.toolName === "intercom") {
+					intercomStarted = true;
+				}
+				progress.toolCount++;
+				progress.currentTool = evt.toolName;
+				progress.currentToolArgs = extractToolArgsPreview((evt.args || {}) as Record<string, unknown>);
+				fireUpdate();
+			}
+
+			if (evt.type === "tool_execution_end") {
+				if (progress.currentTool) {
+					progress.recentTools.push({
+						tool: progress.currentTool,
+						args: progress.currentToolArgs || "",
+						endMs: now,
+					});
+				}
+				progress.currentTool = undefined;
+				progress.currentToolArgs = undefined;
+				fireUpdate();
+			}
+
+			if (evt.type === "message_end" && evt.message) {
+				result.messages.push(evt.message);
+				if (evt.message.role === "assistant") {
+					result.usage.turns++;
+					const u = evt.message.usage;
+					if (u) {
+						result.usage.input += u.input || 0;
+						result.usage.output += u.output || 0;
+						result.usage.cacheRead += u.cacheRead || 0;
+						result.usage.cacheWrite += u.cacheWrite || 0;
+						result.usage.cost += u.cost?.total || 0;
+						progress.tokens = result.usage.input + result.usage.output;
+					}
+					if (!result.model && evt.message.model) result.model = evt.message.model;
+					if (evt.message.errorMessage) result.error = evt.message.errorMessage;
+					appendRecentOutput(progress, extractTextFromContent(evt.message.content).split("\n").slice(-10));
+				}
+				fireUpdate();
+			}
+
+			if (evt.type === "tool_result_end" && evt.message) {
+				result.messages.push(evt.message);
+				appendRecentOutput(progress, extractTextFromContent(evt.message.content).split("\n").slice(-10));
+				fireUpdate();
 			}
 		};
 
@@ -379,6 +382,7 @@ export async function runSync(
 		options.modelOverride ?? agent.model,
 		agent.fallbackModels,
 		options.availableModels,
+		options.preferredModelProvider,
 	);
 	const attemptedModels: string[] = [];
 	const modelAttempts: ModelAttempt[] = [];

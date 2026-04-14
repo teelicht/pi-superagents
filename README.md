@@ -81,7 +81,7 @@ The `thinking` field sets a default extended thinking level for the agent. At ru
 
 `fallbackModels` is an optional ordered list of backup models to try when the primary model fails with a provider/model-style error such as quota, auth, timeout, or provider/model unavailable. In markdown frontmatter, declare it as a comma-separated string. In management `config` objects, you can pass either a comma-separated string or a string array.
 
-Fallback resolution follows the same conservative model lookup as normal execution. Explicit `provider/model` values are used as-is. Bare model IDs are only upgraded to a full `provider/model` when they map cleanly to a single registry entry. If a bare ID is ambiguous, it stays bare.
+Fallback resolution follows the same conservative model lookup as normal execution. Explicit `provider/model` values are used as-is. Bare model IDs first prefer the current session provider when that provider actually exposes the model, then fall back to a unique registry match. If a bare ID is still ambiguous, it stays bare.
 
 Fallback is only used for provider/model availability failures. Ordinary task failures such as bad `bash` commands, missing files, or other tool/runtime errors do not trigger a model hop.
 

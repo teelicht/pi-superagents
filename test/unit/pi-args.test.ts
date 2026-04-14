@@ -59,6 +59,7 @@ describe("buildPiArgs model wiring", () => {
 		assert.ok(!args.includes("--models"));
 	});
 
+
 	it("preserves thinking suffixes on model args", () => {
 		const { args } = buildPiArgs({
 			baseArgs: ["-p"],

@@ -14,7 +14,7 @@ export interface ModelAttemptSummary {
 	usage?: Usage;
 }
 
-function splitThinkingSuffix(model: string): { baseModel: string; thinkingSuffix: string } {
+export function splitThinkingSuffix(model: string): { baseModel: string; thinkingSuffix: string } {
 	const colonIdx = model.lastIndexOf(":");
 	if (colonIdx === -1) return { baseModel: model, thinkingSuffix: "" };
 	return {
@@ -26,6 +26,7 @@ function splitThinkingSuffix(model: string): { baseModel: string; thinkingSuffix
 export function resolveModelCandidate(
 	model: string | undefined,
 	availableModels: AvailableModelInfo[] | undefined,
+	preferredProvider?: string,
 ): string | undefined {
 	if (!model) return undefined;
 	if (model.includes("/")) return model;
@@ -33,6 +34,10 @@ export function resolveModelCandidate(
 
 	const { baseModel, thinkingSuffix } = splitThinkingSuffix(model);
 	const matches = availableModels.filter((entry) => entry.id === baseModel);
+	if (preferredProvider) {
+		const preferredMatch = matches.find((entry) => entry.provider === preferredProvider);
+		if (preferredMatch) return `${preferredMatch.fullId}${thinkingSuffix}`;
+	}
 	if (matches.length !== 1) return model;
 	return `${matches[0]!.fullId}${thinkingSuffix}`;
 }
@@ -41,12 +46,13 @@ export function buildModelCandidates(
 	primaryModel: string | undefined,
 	fallbackModels: string[] | undefined,
 	availableModels: AvailableModelInfo[] | undefined,
+	preferredProvider?: string,
 ): string[] {
 	const seen = new Set<string>();
 	const candidates: string[] = [];
 	for (const raw of [primaryModel, ...(fallbackModels ?? [])]) {
 		if (!raw) continue;
-		const normalized = resolveModelCandidate(raw.trim(), availableModels);
+		const normalized = resolveModelCandidate(raw.trim(), availableModels, preferredProvider);
 		if (!normalized || seen.has(normalized)) continue;
 		seen.add(normalized);
 		candidates.push(normalized);

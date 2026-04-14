@@ -10,6 +10,7 @@ import { executeChain } from "./chain-execution.ts";
 import { resolveExecutionAgentScope } from "./agent-scope.ts";
 import { handleManagementAction } from "./agent-management.ts";
 import { runSync } from "./execution.ts";
+import { resolveModelCandidate } from "./model-fallback.ts";
 import { aggregateParallelOutputs } from "./parallel-utils.ts";
 import { recordRun } from "./run-history.ts";
 import {
@@ -364,7 +365,12 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 		};
 	}
 	const id = randomUUID();
-	const asyncCtx = { pi: deps.pi, cwd: ctx.cwd, currentSessionId: deps.state.currentSessionId! };
+	const asyncCtx = {
+		pi: deps.pi,
+		cwd: ctx.cwd,
+		currentSessionId: deps.state.currentSessionId!,
+		currentModelProvider: ctx.model?.provider,
+	};
 	const availableModels: ModelInfo[] = ctx.modelRegistry.getAvailable().map((m) => ({
 		provider: m.provider,
 		id: m.id,
@@ -409,6 +415,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 		const normalizedSkills = normalizeSkillInput(params.skill);
 		const skills = normalizedSkills === false ? [] : normalizedSkills;
 		const maxSubagentDepth = resolveChildMaxSubagentDepth(currentMaxSubagentDepth, a.maxSubagentDepth);
+		const modelOverride = resolveModelCandidate((params.model as string | undefined) ?? a.model, availableModels, ctx.model?.provider);
 		return executeAsyncSingle(id, {
 			agent: params.agent!,
 			task: params.context === "fork" ? wrapForkTask(params.task!) : params.task!,
@@ -424,7 +431,7 @@ function runAsyncPath(data: ExecutionContextData, deps: ExecutorDeps): AgentTool
 			sessionFile: sessionFileForIndex(0),
 			skills,
 			output: effectiveOutput,
-			modelOverride: params.model as string | undefined,
+			modelOverride,
 			maxSubagentDepth,
 			worktreeSetupHook: deps.config.worktreeSetupHook,
 			worktreeSetupHookTimeoutMs: deps.config.worktreeSetupHookTimeoutMs,
@@ -485,7 +492,12 @@ async function runChainPath(data: ExecutionContextData, deps: ExecutorDeps): Pro
 			};
 		}
 		const id = randomUUID();
-		const asyncCtx = { pi: deps.pi, cwd: ctx.cwd, currentSessionId: deps.state.currentSessionId! };
+		const asyncCtx = {
+			pi: deps.pi,
+			cwd: ctx.cwd,
+			currentSessionId: deps.state.currentSessionId!,
+			currentModelProvider: ctx.model?.provider,
+		};
 		const asyncChain = wrapChainTasksForFork(chainResult.requestedAsync.chain, params.context);
 		return executeAsyncChain(id, {
 			chain: asyncChain,
@@ -632,6 +644,7 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 			maxSubagentDepth: input.maxSubagentDepths[index],
 			modelOverride: input.modelOverrides[index],
 			availableModels: input.availableModels,
+			preferredModelProvider: input.ctx.model?.provider,
 			skills: effectiveSkills === false ? [] : effectiveSkills,
 			onUpdate: input.onUpdate
 				? (progressUpdate) => {
@@ -707,13 +720,16 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		if (worktreeTaskCwdError) return buildParallelModeError(worktreeTaskCwdError);
 	}
 
+	const currentProvider = ctx.model?.provider;
 	const availableModels: ModelInfo[] = ctx.modelRegistry.getAvailable().map((m) => ({
 		provider: m.provider,
 		id: m.id,
 		fullId: `${m.provider}/${m.id}`,
 	}));
 	let taskTexts = tasks.map((t) => t.task);
-	const modelOverrides: (string | undefined)[] = tasks.map((t) => t.model);
+	const modelOverrides: (string | undefined)[] = tasks.map((t, i) =>
+		resolveModelCandidate(t.model ?? agentConfigs[i]?.model, availableModels, currentProvider),
+	);
 	const skillOverrides: (string[] | false | undefined)[] = tasks.map((t) =>
 		normalizeSkillInput(t.skill),
 	);
@@ -734,6 +750,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 					undefined,
 					behaviors,
 					availableModels,
+					currentProvider,
 					availableSkills,
 					done,
 					"parallel",
@@ -761,7 +778,12 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 				};
 			}
 			const id = randomUUID();
-			const asyncCtx = { pi: deps.pi, cwd: ctx.cwd, currentSessionId: deps.state.currentSessionId! };
+			const asyncCtx = {
+				pi: deps.pi,
+				cwd: ctx.cwd,
+				currentSessionId: deps.state.currentSessionId!,
+				currentModelProvider: ctx.model?.provider,
+			};
 			const parallelTasks = tasks.map((t, i) => ({
 				agent: t.agent,
 				task: params.context === "fork" ? wrapForkTask(taskTexts[i]!) : taskTexts[i]!,
@@ -901,13 +923,18 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		};
 	}
 
+	const currentProvider = ctx.model?.provider;
 	const availableModels: ModelInfo[] = ctx.modelRegistry.getAvailable().map((m) => ({
 		provider: m.provider,
 		id: m.id,
 		fullId: `${m.provider}/${m.id}`,
 	}));
 	let task = params.task!;
-	let modelOverride: string | undefined = params.model as string | undefined;
+	let modelOverride: string | undefined = resolveModelCandidate(
+		(params.model as string | undefined) ?? agentConfig.model,
+		availableModels,
+		currentProvider,
+	);
 	let skillOverride: string[] | false | undefined = normalizeSkillInput(params.skill);
 	const rawOutput = params.output !== undefined ? params.output : agentConfig.output;
 	let effectiveOutput: string | false | undefined = rawOutput === true ? agentConfig.output : (rawOutput as string | false | undefined);
@@ -928,6 +955,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 					undefined,
 					[behavior],
 					availableModels,
+					currentProvider,
 					availableSkills,
 					done,
 					"single",
@@ -954,7 +982,12 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 				};
 			}
 			const id = randomUUID();
-			const asyncCtx = { pi: deps.pi, cwd: ctx.cwd, currentSessionId: deps.state.currentSessionId! };
+			const asyncCtx = {
+				pi: deps.pi,
+				cwd: ctx.cwd,
+				currentSessionId: deps.state.currentSessionId!,
+				currentModelProvider: ctx.model?.provider,
+			};
 			return executeAsyncSingle(id, {
 				agent: params.agent!,
 				task: params.context === "fork" ? wrapForkTask(task) : task,
@@ -1009,6 +1042,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		onUpdate,
 		modelOverride,
 		availableModels,
+		preferredModelProvider: currentProvider,
 		skills: effectiveSkills,
 	});
 	recordRun(params.agent!, cleanTask, r.exitCode, r.progressSummary?.durationMs ?? 0);

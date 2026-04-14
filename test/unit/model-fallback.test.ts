@@ -32,10 +32,33 @@ describe("model fallback helpers", () => {
 		assert.equal(resolveModelCandidate("gpt-5-mini", ambiguous), "gpt-5-mini");
 	});
 
+	it("prefers the current provider when an ambiguous bare id exists there", () => {
+		const ambiguous = [
+			...availableModels,
+			{ provider: "github-copilot", id: "gpt-5-mini", fullId: "github-copilot/gpt-5-mini" },
+		];
+		assert.equal(resolveModelCandidate("gpt-5-mini", ambiguous, "github-copilot"), "github-copilot/gpt-5-mini");
+	});
+
+	it("falls back to the unique registry match when the current provider does not offer the model", () => {
+		assert.equal(resolveModelCandidate("claude-sonnet-4", availableModels, "github-copilot"), "anthropic/claude-sonnet-4");
+	});
+
 	it("builds a deduplicated ordered candidate list", () => {
 		assert.deepEqual(
 			buildModelCandidates("gpt-5-mini", ["openai/gpt-5-mini", "anthropic/claude-sonnet-4", "gpt-5-mini"], availableModels),
 			["openai/gpt-5-mini", "anthropic/claude-sonnet-4"],
+		);
+	});
+
+	it("applies the current provider preference to fallback candidates too", () => {
+		const ambiguous = [
+			...availableModels,
+			{ provider: "github-copilot", id: "gpt-5-mini", fullId: "github-copilot/gpt-5-mini" },
+		];
+		assert.deepEqual(
+			buildModelCandidates("gpt-5-mini", ["gpt-5-mini", "anthropic/claude-sonnet-4"], ambiguous, "github-copilot"),
+			["github-copilot/gpt-5-mini", "anthropic/claude-sonnet-4"],
 		);
 	});
 

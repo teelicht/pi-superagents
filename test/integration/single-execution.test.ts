@@ -24,10 +24,62 @@ import {
 	tryImport,
 } from "../support/helpers.ts";
 
-// Top-level await: try importing pi-dependent modules
-const execution = await tryImport<any>("./execution.ts");
-const utils = await tryImport<any>("./utils.ts");
-const types = await tryImport<any>("./types.ts");
+interface ModelAttempt {
+	success?: boolean;
+}
+
+interface ProgressSummary {
+	agent: string;
+	index: number;
+	status: string;
+	durationMs: number;
+	toolCount: number;
+}
+
+interface ArtifactPaths {
+	outputPath: string;
+}
+
+interface RunSyncResult {
+	exitCode: number;
+	agent: string;
+	messages: unknown[];
+	error?: string;
+	model?: string;
+	attemptedModels?: string[];
+	modelAttempts?: ModelAttempt[];
+	usage: { turns: number; input: number; output: number };
+	progress: ProgressSummary;
+	artifactPaths?: ArtifactPaths;
+	finalOutput?: string;
+	detached?: boolean;
+	detachedReason?: string;
+	savedOutputPath?: string;
+	outputSaveError?: string;
+}
+
+interface ExecutionModule {
+	runSync(
+		runtimeCwd: string,
+		agents: ReturnType<typeof makeAgentConfigs>,
+		agentName: string,
+		task: string,
+		options: Record<string, unknown>,
+	): Promise<RunSyncResult>;
+}
+
+interface UtilsModule {
+	getFinalOutput(messages: unknown[]): string;
+}
+
+interface TypesModule {
+	INTERCOM_DETACH_REQUEST_EVENT: string;
+	INTERCOM_DETACH_RESPONSE_EVENT: string;
+}
+
+const execution = await tryImport<ExecutionModule>("./execution.ts");
+const utils = await tryImport<UtilsModule>("./utils.ts");
+const types = await tryImport<TypesModule>("./types.ts");
 const available = !!(execution && utils);
 
 const runSync = execution?.runSync;
@@ -144,6 +196,23 @@ describe("single sync execution", { skip: !available ? "pi packages not availabl
 
 		assert.equal(result.exitCode, 0);
 		assert.equal(result.model, "openai/gpt-4o");
+	});
+
+	it("prefers the parent session provider for ambiguous bare model ids", async () => {
+		mockPi.onCall({ output: "Done" });
+		const agents = [makeAgent("echo", { model: "gpt-5-mini" })];
+
+		const result = await runSync(tempDir, agents, "echo", "Task", {
+			availableModels: [
+				{ provider: "openai", id: "gpt-5-mini", fullId: "openai/gpt-5-mini" },
+				{ provider: "github-copilot", id: "gpt-5-mini", fullId: "github-copilot/gpt-5-mini" },
+			],
+			preferredModelProvider: "github-copilot",
+		});
+
+		assert.equal(result.exitCode, 0);
+		assert.equal(result.model, "github-copilot/gpt-5-mini");
+		assert.deepEqual(result.attemptedModels, ["github-copilot/gpt-5-mini"]);
 	});
 
 	it("tracks usage from message events", async () => {

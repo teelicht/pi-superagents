@@ -175,8 +175,8 @@ async function runParallelChainTasks(input: ParallelChainRunInput): Promise<Sing
 
 			const taskAgentConfig = input.agents.find((agent) => agent.name === task.agent);
 			const effectiveModel =
-				(task.model ? resolveModelCandidate(task.model, input.availableModels) : null)
-				?? resolveModelCandidate(taskAgentConfig?.model, input.availableModels);
+				(task.model ? resolveModelCandidate(task.model, input.availableModels, input.ctx.model?.provider) : null)
+				?? resolveModelCandidate(taskAgentConfig?.model, input.availableModels, input.ctx.model?.provider);
 			const maxSubagentDepth = resolveChildMaxSubagentDepth(input.maxSubagentDepth, taskAgentConfig?.maxSubagentDepth);
 
 			const taskCwd = input.worktreeSetup
@@ -201,6 +201,7 @@ async function runParallelChainTasks(input: ParallelChainRunInput): Promise<Sing
 				maxSubagentDepth,
 				modelOverride: effectiveModel,
 				availableModels: input.availableModels,
+				preferredModelProvider: input.ctx.model?.provider,
 				skills: behavior.skills === false ? [] : behavior.skills,
 				onUpdate: input.onUpdate
 					? (progressUpdate) => {
@@ -376,6 +377,7 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 					chainDir,
 					resolvedBehaviors,
 					availableModels,
+					ctx.model?.provider,
 					availableSkills,
 					done,
 				),
@@ -628,8 +630,8 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 			// Resolve model: TUI override (already full format) or agent's model resolved to full format
 			const effectiveModel =
 				tuiOverride?.model
-				?? (seqStep.model ? resolveModelCandidate(seqStep.model, availableModels) : null)
-				?? resolveModelCandidate(agentConfig.model, availableModels);
+				?? (seqStep.model ? resolveModelCandidate(seqStep.model, availableModels, ctx.model?.provider) : null)
+				?? resolveModelCandidate(agentConfig.model, availableModels, ctx.model?.provider);
 
 			// Run step
 			const outputPath = typeof behavior.output === "string"
@@ -651,10 +653,10 @@ export async function executeChain(params: ChainExecutionParams): Promise<ChainE
 				maxSubagentDepth,
 				modelOverride: effectiveModel,
 				availableModels,
+				preferredModelProvider: ctx.model?.provider,
 				skills: behavior.skills === false ? [] : behavior.skills,
 				onUpdate: onUpdate
 					? (p) => {
-							// Use concat instead of spread for better performance
 							const stepResults = p.details?.results || [];
 							const stepProgress = p.details?.progress || [];
 							onUpdate({

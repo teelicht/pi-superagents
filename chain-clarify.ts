@@ -17,38 +17,33 @@ import type { TextEditorState } from "./text-editor.ts";
 import { createEditorState, ensureCursorVisible, getCursorDisplayPos, handleEditorInput, renderEditor, wrapText } from "./text-editor.ts";
 import { updateFrontmatterField } from "./agent-serializer.ts";
 import { serializeChain } from "./chain-serializer.ts";
+import { resolveModelCandidate, splitThinkingSuffix } from "./model-fallback.ts";
 
-/** Clarify TUI mode */
 export type ClarifyMode = 'single' | 'parallel' | 'chain';
 
-/** Model info for display */
 export interface ModelInfo {
 	provider: string;
 	id: string;
-	fullId: string;  // "provider/id"
+	fullId: string;
 }
 
-/** Modified behavior overrides from TUI editing */
 export interface BehaviorOverride {
 	output?: string | false;
 	reads?: string[] | false;
 	progress?: boolean;
-	model?: string;  // Override agent's default model (format: "provider/id")
+	model?: string;
 	skills?: string[] | false;
 }
 
 export interface ChainClarifyResult {
 	confirmed: boolean;
 	templates: string[];
-	/** User-modified behavior overrides per step (undefined = no changes) */
 	behaviorOverrides: (BehaviorOverride | undefined)[];
-	/** User requested background/async execution */
 	runInBackground?: boolean;
 }
 
 type EditMode = "template" | "output" | "reads" | "model" | "thinking" | "skills";
 
-/** Valid thinking levels */
 const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"] as const;
 type ThinkingLevel = typeof THINKING_LEVELS[number];
 
@@ -64,24 +59,13 @@ export class ChainClarifyComponent implements Component {
 	private editMode: EditMode = "template";
 	private editState: TextEditorState = createEditorState();
 
-	/** Lines visible in full edit mode */
 	private readonly EDIT_VIEWPORT_HEIGHT = 12;
-
-	/** Track user modifications to behaviors (sparse - only stores changes) */
 	private behaviorOverrides: Map<number, BehaviorOverride> = new Map();
-
-	/** Model selector state */
 	private modelSearchQuery: string = "";
 	private modelSelectedIndex: number = 0;
 	private filteredModels: ModelInfo[] = [];
-
-	/** Max models visible in selector */
 	private readonly MODEL_SELECTOR_HEIGHT = 10;
-
-	/** Thinking level selector state */
 	private thinkingSelectedIndex: number = 0;
-
-	/** Skill selector state */
 	private skillSearchQuery: string = "";
 	private skillSelectedNames: Set<string> = new Set();
 	private skillCursorIndex: number = 0;
@@ -100,6 +84,7 @@ export class ChainClarifyComponent implements Component {
 	private chainDir: string | undefined;
 	private resolvedBehaviors: ResolvedStepBehavior[];
 	private availableModels: ModelInfo[];
+	private preferredProvider: string | undefined;
 	private availableSkills: Array<{ name: string; source: string; description?: string }>;
 	private done: (result: ChainClarifyResult) => void;
 	private mode: ClarifyMode;
@@ -110,12 +95,13 @@ export class ChainClarifyComponent implements Component {
 		agentConfigs: AgentConfig[],
 		templates: string[],
 		originalTask: string,
-		chainDir: string | undefined,  // undefined for single/parallel modes
+		chainDir: string | undefined,
 		resolvedBehaviors: ResolvedStepBehavior[],
 		availableModels: ModelInfo[],
+		preferredProvider: string | undefined,
 		availableSkills: Array<{ name: string; source: string; description?: string }>,
 		done: (result: ChainClarifyResult) => void,
-		mode: ClarifyMode = 'chain',   // Mode: 'single', 'parallel', or 'chain'
+		mode: ClarifyMode = 'chain',
 	) {
 		this.tui = tui;
 		this.theme = theme;
@@ -125,10 +111,10 @@ export class ChainClarifyComponent implements Component {
 		this.chainDir = chainDir;
 		this.resolvedBehaviors = resolvedBehaviors;
 		this.availableModels = availableModels;
+		this.preferredProvider = preferredProvider;
 		this.availableSkills = availableSkills;
 		this.done = done;
 		this.mode = mode;
-		// Initialize filtered models
 		this.filteredModels = [...availableModels];
 		this.filteredSkills = [...availableSkills];
 	}
@@ -225,7 +211,6 @@ export class ChainClarifyComponent implements Component {
 			lines.push(this.row(` ${line}`));
 		}
 
-		// Scroll indicators
 		const linesBelow = wrapped.length - this.editState.viewportOffset - this.EDIT_VIEWPORT_HEIGHT;
 		const hasMore = linesBelow > 0;
 		const hasLess = this.editState.viewportOffset > 0;
@@ -235,7 +220,6 @@ export class ChainClarifyComponent implements Component {
 
 		lines.push(this.row(""));
 
-		// Footer with scroll indicators if applicable
 		const footerText = scrollInfo
 			? ` [Esc] Done • [Ctrl+C] Discard • ${scrollInfo} `
 			: " [Esc] Done • [Ctrl+C] Discard ";
@@ -266,7 +250,7 @@ export class ChainClarifyComponent implements Component {
 	/** Get the effective model for a step (override or agent default) */
 	private getEffectiveModel(stepIndex: number): string {
 		const override = this.behaviorOverrides.get(stepIndex);
-		if (override?.model) return override.model;  // Override is already in provider/model format
+		if (override?.model) return this.resolveModelFullId(override.model);
 
 		const baseModel = this.resolvedBehaviors[stepIndex]?.model;
 		if (baseModel) return this.resolveModelFullId(baseModel);
@@ -275,23 +259,7 @@ export class ChainClarifyComponent implements Component {
 
 	/** Resolve a model name to its full provider/model format */
 	private resolveModelFullId(modelName: string): string {
-		// If already in provider/model format, return as-is
-		if (modelName.includes("/")) return modelName;
-		
-		// Handle thinking level suffixes (e.g., "claude-sonnet-4-5:high")
-		// Strip the suffix for lookup, then add it back
-		const colonIdx = modelName.lastIndexOf(":");
-		const baseModel = colonIdx !== -1 ? modelName.substring(0, colonIdx) : modelName;
-		const thinkingSuffix = colonIdx !== -1 ? modelName.substring(colonIdx) : "";
-		
-		// Look up base model in available models to find provider
-		const match = this.availableModels.find(m => m.id === baseModel);
-		if (match) {
-			return thinkingSuffix ? `${match.fullId}${thinkingSuffix}` : match.fullId;
-		}
-		
-		// Fallback to just the model name if not found
-		return modelName;
+		return resolveModelCandidate(modelName, this.availableModels, this.preferredProvider) ?? modelName;
 	}
 
 	/** Update a behavior override for a step */
@@ -363,7 +331,7 @@ export class ChainClarifyComponent implements Component {
 				fs.writeFileSync(filePath, serializeChain(config), "utf-8");
 				this.showSaveMessage(`Saved ${name}.chain.md`, "info");
 			} catch (err) {
-				this.showSaveMessage(err instanceof Error ? err.message : "Failed to save chain", "error");
+				this.showSaveMessage(err instanceof Error ? err.message : String(err), "error");
 			}
 			this.savingChain = false;
 			this.saveChainNameState = createEditorState();
@@ -454,7 +422,7 @@ export class ChainClarifyComponent implements Component {
 			}
 			this.showSaveMessage("Saved agent settings", "info");
 		} catch (err) {
-			this.showSaveMessage(err instanceof Error ? err.message : "Failed to save agent settings", "error");
+			this.showSaveMessage(err instanceof Error ? err.message : String(err), "error");
 		}
 	}
 
@@ -477,14 +445,12 @@ export class ChainClarifyComponent implements Component {
 			return;
 		}
 
-		// Navigation mode
 		if (matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) {
 			this.done({ confirmed: false, templates: [], behaviorOverrides: [] });
 			return;
 		}
 
 		if (matchesKey(data, "return")) {
-			// Build behavior overrides array
 			const overrides: (BehaviorOverride | undefined)[] = [];
 			for (let i = 0; i < this.agentConfigs.length; i++) {
 				overrides.push(this.behaviorOverrides.get(i));
@@ -506,25 +472,21 @@ export class ChainClarifyComponent implements Component {
 			return;
 		}
 
-		// 'e' to edit template (all modes)
 		if (data === "e") {
 			this.enterEditMode("template");
 			return;
 		}
 
-		// 'm' to select model (all modes)
 		if (data === "m") {
 			this.enterModelSelector();
 			return;
 		}
 
-		// 't' to select thinking level (all modes)
 		if (data === "t") {
 			this.enterThinkingSelector();
 			return;
 		}
 
-		// 's' to select skills (all modes)
 		if (data === "s") {
 			this.editingStep = this.selectedStep;
 			this.editMode = "skills";
@@ -540,23 +502,18 @@ export class ChainClarifyComponent implements Component {
 			return;
 		}
 
-		// 'w' to edit writes (single and chain only - not parallel)
 		if (data === "w" && this.mode !== 'parallel') {
 			this.enterEditMode("output");
 			return;
 		}
 
-		// 'r' to edit reads (chain only)
 		if (data === "r" && this.mode === 'chain') {
 			this.enterEditMode("reads");
 			return;
 		}
 
-		// 'p' to toggle progress for ALL steps (chain only - chains share a single progress.md)
 		if (data === "p" && this.mode === 'chain') {
-			// Check if any step has progress enabled
 			const anyEnabled = this.agentConfigs.some((_, i) => this.getEffectiveBehavior(i).progress);
-			// Toggle all steps to the opposite state
 			const newState = !anyEnabled;
 			for (let i = 0; i < this.agentConfigs.length; i++) {
 				this.updateBehavior(i, "progress", newState);
@@ -565,7 +522,6 @@ export class ChainClarifyComponent implements Component {
 			return;
 		}
 
-		// 'b' to toggle background/async execution (all modes)
 		if (data === "b") {
 			this.runInBackground = !this.runInBackground;
 			this.tui.requestRender();
@@ -610,74 +566,66 @@ export class ChainClarifyComponent implements Component {
 		this.modelSearchQuery = "";
 		this.modelSelectedIndex = 0;
 		this.filteredModels = [...this.availableModels];
-		
-		// Pre-select current model if it exists in the list
-		const currentModel = this.getEffectiveModel(this.selectedStep);
-		const currentIndex = this.filteredModels.findIndex(m => m.fullId === currentModel || m.id === currentModel);
+		const currentModel = splitThinkingSuffix(this.getEffectiveModel(this.selectedStep)).baseModel;
+		const currentIndex = this.filteredModels.findIndex((m) => m.fullId === currentModel || m.id === currentModel);
 		if (currentIndex >= 0) {
 			this.modelSelectedIndex = currentIndex;
 		}
-		
+
 		this.tui.requestRender();
 	}
 
-	/** Filter models based on search query (fuzzy match) */
+	/** Filter models based on search query */
 	private filterModels(): void {
 		const query = this.modelSearchQuery.toLowerCase();
 		if (!query) {
 			this.filteredModels = [...this.availableModels];
 		} else {
-			this.filteredModels = this.availableModels.filter(m => 
+			this.filteredModels = this.availableModels.filter((m) =>
 				m.fullId.toLowerCase().includes(query) ||
 				m.id.toLowerCase().includes(query) ||
 				m.provider.toLowerCase().includes(query)
 			);
 		}
-		// Clamp selected index
 		this.modelSelectedIndex = Math.min(this.modelSelectedIndex, Math.max(0, this.filteredModels.length - 1));
 	}
 
-	/** Handle input in model selector mode */
 	private handleModelSelectorInput(data: string): void {
-		// Escape or Ctrl+C - cancel and exit
 		if (matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) {
 			this.exitEditMode();
 			return;
 		}
 
-		// Enter - select current model
 		if (matchesKey(data, "return")) {
 			const selected = this.filteredModels[this.modelSelectedIndex];
 			if (selected) {
-				this.updateBehavior(this.editingStep!, "model", selected.fullId);
+				const { thinkingSuffix } = splitThinkingSuffix(this.getEffectiveModel(this.editingStep!));
+				this.updateBehavior(this.editingStep!, "model", `${selected.fullId}${thinkingSuffix}`);
 			}
 			this.exitEditMode();
 			return;
 		}
 
-		// Up arrow - move selection up
 		if (matchesKey(data, "up")) {
 			if (this.filteredModels.length > 0) {
-				this.modelSelectedIndex = this.modelSelectedIndex === 0 
-					? this.filteredModels.length - 1 
+				this.modelSelectedIndex = this.modelSelectedIndex === 0
+					? this.filteredModels.length - 1
 					: this.modelSelectedIndex - 1;
 			}
 			this.tui.requestRender();
 			return;
 		}
 
-		// Down arrow - move selection down
 		if (matchesKey(data, "down")) {
 			if (this.filteredModels.length > 0) {
-				this.modelSelectedIndex = this.modelSelectedIndex === this.filteredModels.length - 1 
-					? 0 
+				this.modelSelectedIndex = this.modelSelectedIndex === this.filteredModels.length - 1
+					? 0
 					: this.modelSelectedIndex + 1;
 			}
 			this.tui.requestRender();
 			return;
 		}
 
-		// Backspace - delete last character from search
 		if (matchesKey(data, "backspace")) {
 			if (this.modelSearchQuery.length > 0) {
 				this.modelSearchQuery = this.modelSearchQuery.slice(0, -1);
@@ -687,7 +635,6 @@ export class ChainClarifyComponent implements Component {
 			return;
 		}
 
-		// Printable character - add to search query
 		if (data.length === 1 && data.charCodeAt(0) >= 32) {
 			this.modelSearchQuery += data;
 			this.filterModels();
@@ -698,10 +645,13 @@ export class ChainClarifyComponent implements Component {
 
 	/** Enter thinking level selector mode */
 	private enterThinkingSelector(): void {
+		if (!this.getEffectiveBehavior(this.selectedStep).model) {
+			this.showSaveMessage("Select a model first", "error");
+			return;
+		}
 		this.editingStep = this.selectedStep;
 		this.editMode = "thinking";
-		
-		// Pre-select current thinking level if set
+
 		const currentModel = this.getEffectiveModel(this.selectedStep);
 		const colonIdx = currentModel.lastIndexOf(":");
 		if (colonIdx !== -1) {
@@ -709,21 +659,18 @@ export class ChainClarifyComponent implements Component {
 			const levelIdx = THINKING_LEVELS.indexOf(suffix as ThinkingLevel);
 			this.thinkingSelectedIndex = levelIdx >= 0 ? levelIdx : 0;
 		} else {
-			this.thinkingSelectedIndex = 0; // Default to "off"
+			this.thinkingSelectedIndex = 0;
 		}
-		
+
 		this.tui.requestRender();
 	}
 
-	/** Handle input in thinking level selector mode */
 	private handleThinkingSelectorInput(data: string): void {
-		// Escape or Ctrl+C - cancel and exit
 		if (matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) {
 			this.exitEditMode();
 			return;
 		}
 
-		// Enter - select current thinking level
 		if (matchesKey(data, "return")) {
 			const selectedLevel = THINKING_LEVELS[this.thinkingSelectedIndex];
 			this.applyThinkingLevel(selectedLevel);
@@ -731,19 +678,17 @@ export class ChainClarifyComponent implements Component {
 			return;
 		}
 
-		// Up arrow - move selection up
 		if (matchesKey(data, "up")) {
-			this.thinkingSelectedIndex = this.thinkingSelectedIndex === 0 
-				? THINKING_LEVELS.length - 1 
+			this.thinkingSelectedIndex = this.thinkingSelectedIndex === 0
+				? THINKING_LEVELS.length - 1
 				: this.thinkingSelectedIndex - 1;
 			this.tui.requestRender();
 			return;
 		}
 
-		// Down arrow - move selection down
 		if (matchesKey(data, "down")) {
-			this.thinkingSelectedIndex = this.thinkingSelectedIndex === THINKING_LEVELS.length - 1 
-				? 0 
+			this.thinkingSelectedIndex = this.thinkingSelectedIndex === THINKING_LEVELS.length - 1
+				? 0
 				: this.thinkingSelectedIndex + 1;
 			this.tui.requestRender();
 			return;
@@ -753,19 +698,10 @@ export class ChainClarifyComponent implements Component {
 	/** Apply thinking level to the current step's model */
 	private applyThinkingLevel(level: ThinkingLevel): void {
 		const stepIndex = this.editingStep!;
-		const currentModel = this.getEffectiveModel(stepIndex);
-		
-		// Strip any existing thinking level suffix
-		const colonIdx = currentModel.lastIndexOf(":");
-		let baseModel = currentModel;
-		if (colonIdx !== -1) {
-			const suffix = currentModel.substring(colonIdx + 1);
-			if (THINKING_LEVELS.includes(suffix as ThinkingLevel)) {
-				baseModel = currentModel.substring(0, colonIdx);
-			}
-		}
-		
-		// Apply new thinking level (don't add suffix for "off")
+		const currentModel = this.getEffectiveBehavior(stepIndex).model;
+		if (!currentModel) return;
+
+		const { baseModel } = splitThinkingSuffix(currentModel);
 		const newModel = level === "off" ? baseModel : `${baseModel}:${level}`;
 		this.updateBehavior(stepIndex, "model", newModel);
 	}
@@ -1015,36 +951,31 @@ export class ChainClarifyComponent implements Component {
 		lines.push(this.renderHeader(headerText));
 		lines.push(this.row(""));
 
-		// Search input
 		const searchPrefix = th.fg("dim", "Search: ");
 		const cursor = "\x1b[7m \x1b[27m"; // Reverse video space for cursor
 		const searchDisplay = this.modelSearchQuery + cursor;
 		lines.push(this.row(` ${searchPrefix}${searchDisplay}`));
 		lines.push(this.row(""));
 
-		// Current model info
 		const currentModel = this.getEffectiveModel(this.editingStep!);
+		const currentModelBase = splitThinkingSuffix(currentModel).baseModel;
 		const currentLabel = th.fg("dim", "Current: ");
 		lines.push(this.row(` ${currentLabel}${th.fg("warning", currentModel)}`));
 		lines.push(this.row(""));
 
-		// Model list with scroll
 		if (this.filteredModels.length === 0) {
 			lines.push(this.row(` ${th.fg("dim", "No matching models")}`));
 		} else {
-			// Calculate visible range (scroll to keep selection visible)
 			const maxVisible = this.MODEL_SELECTOR_HEIGHT;
 			let startIdx = 0;
-			
-			// Keep selection centered if possible
+
 			if (this.filteredModels.length > maxVisible) {
 				startIdx = Math.max(0, this.modelSelectedIndex - Math.floor(maxVisible / 2));
 				startIdx = Math.min(startIdx, this.filteredModels.length - maxVisible);
 			}
-			
+
 			const endIdx = Math.min(startIdx + maxVisible, this.filteredModels.length);
 
-			// Show scroll indicator if needed
 			if (startIdx > 0) {
 				lines.push(this.row(` ${th.fg("dim", `  ↑ ${startIdx} more`)}`));
 			}
@@ -1052,31 +983,27 @@ export class ChainClarifyComponent implements Component {
 			for (let i = startIdx; i < endIdx; i++) {
 				const model = this.filteredModels[i]!;
 				const isSelected = i === this.modelSelectedIndex;
-				const isCurrent = model.fullId === currentModel || model.id === currentModel;
-				
+				const isCurrent = model.fullId === currentModelBase || model.id === currentModelBase;
 				const prefix = isSelected ? th.fg("accent", "→ ") : "  ";
 				const modelText = isSelected ? th.fg("accent", model.id) : model.id;
 				const providerBadge = th.fg("dim", ` [${model.provider}]`);
 				const currentBadge = isCurrent ? th.fg("success", " ✓") : "";
-				
+
 				lines.push(this.row(` ${prefix}${modelText}${providerBadge}${currentBadge}`));
 			}
 
-			// Show scroll indicator if needed
 			const remaining = this.filteredModels.length - endIdx;
 			if (remaining > 0) {
 				lines.push(this.row(` ${th.fg("dim", `  ↓ ${remaining} more`)}`));
 			}
 		}
 
-		// Pad to consistent height
 		const contentLines = lines.length;
-		const targetHeight = 18; // Consistent height
+		const targetHeight = 18;
 		for (let i = contentLines; i < targetHeight; i++) {
 			lines.push(this.row(""));
 		}
 
-		// Footer
 		const footerText = " [Enter] Select • [Esc] Cancel • Type to search ";
 		lines.push(this.renderFooter(footerText));
 
@@ -1088,7 +1015,6 @@ export class ChainClarifyComponent implements Component {
 		const th = this.theme;
 		const lines: string[] = [];
 
-		// Header (mode-aware terminology)
 		const agentName = this.agentConfigs[this.editingStep!]?.name ?? "unknown";
 		const stepLabel = this.mode === 'single' 
 			? agentName 
@@ -1099,17 +1025,14 @@ export class ChainClarifyComponent implements Component {
 		lines.push(this.renderHeader(headerText));
 		lines.push(this.row(""));
 
-		// Current model info
 		const currentModel = this.getEffectiveModel(this.editingStep!);
 		const currentLabel = th.fg("dim", "Model: ");
 		lines.push(this.row(` ${currentLabel}${th.fg("accent", currentModel)}`));
 		lines.push(this.row(""));
 
-		// Description
 		lines.push(this.row(` ${th.fg("dim", "Select thinking level (extended thinking budget):")}`));
 		lines.push(this.row(""));
 
-		// Thinking level options
 		const levelDescriptions: Record<ThinkingLevel, string> = {
 			"off": "No extended thinking",
 			"minimal": "Brief reasoning",
@@ -1128,14 +1051,12 @@ export class ChainClarifyComponent implements Component {
 			lines.push(this.row(` ${prefix}${levelText}${desc}`));
 		}
 
-		// Pad to consistent height
 		const contentLines = lines.length;
 		const targetHeight = 16;
 		for (let i = contentLines; i < targetHeight; i++) {
 			lines.push(this.row(""));
 		}
 
-		// Footer
 		const footerText = " [Enter] Select • [Esc] Cancel • ↑↓ Navigate ";
 		lines.push(this.renderFooter(footerText));
 
@@ -1210,7 +1131,6 @@ export class ChainClarifyComponent implements Component {
 		return lines;
 	}
 
-	/** Get footer text based on mode */
 	private getFooterText(): string {
 		const bgLabel = this.runInBackground ? '[b]g:ON' : '[b]g';
 		switch (this.mode) {
@@ -1229,33 +1149,27 @@ export class ChainClarifyComponent implements Component {
 		lines.push(this.row(` ${this.theme.fg(color, this.saveMessage.text)}`));
 	}
 
-	/** Render single agent mode (simplified view) */
 	private renderSingleMode(): string[] {
 		const innerW = this.width - 2;
 		const th = this.theme;
 		const lines: string[] = [];
 
-		// Header with agent name
 		const agentName = this.agentConfigs[0]?.name ?? "unknown";
 		const maxHeaderLen = innerW - 4;
 		const headerText = ` Agent: ${truncateToWidth(agentName, maxHeaderLen - 9)} `;
 		lines.push(this.renderHeader(headerText));
 		lines.push(this.row(""));
 
-		// Single step - always index 0, always selected
 		const config = this.agentConfigs[0]!;
 		const behavior = this.getEffectiveBehavior(0);
 
-		// Agent name with selection indicator
 		const stepLabel = config.name;
 		lines.push(this.row(` ${th.fg("accent", "▶ " + stepLabel)}`));
 
-		// Task line
 		const template = (this.templates[0] ?? "").split("\n")[0] ?? "";
 		const taskLabel = th.fg("dim", "task: ");
 		lines.push(this.row(`     ${taskLabel}${truncateToWidth(template, innerW - 12)}`));
 
-		// Model line
 		const effectiveModel = this.getEffectiveModel(0);
 		const override = this.behaviorOverrides.get(0);
 		const isOverridden = override?.model !== undefined;
@@ -1265,7 +1179,6 @@ export class ChainClarifyComponent implements Component {
 		const modelLabel = th.fg("dim", "model: ");
 		lines.push(this.row(`     ${modelLabel}${truncateToWidth(modelValue, innerW - 13)}`));
 
-		// Writes line (output file)
 		const writesValue = behavior.output === false
 			? th.fg("dim", "(disabled)")
 			: (behavior.output || th.fg("dim", "(none)"));
@@ -1280,30 +1193,25 @@ export class ChainClarifyComponent implements Component {
 
 		lines.push(this.row(""));
 
-		// Footer
 		this.appendSaveMessage(lines);
 		lines.push(this.renderFooter(this.getFooterText()));
 
 		return lines;
 	}
 
-	/** Render parallel mode (multi-task view without chain features) */
 	private renderParallelMode(): string[] {
 		const innerW = this.width - 2;
 		const th = this.theme;
 		const lines: string[] = [];
 
-		// Header with task count
 		const headerText = ` Parallel Tasks (${this.agentConfigs.length}) `;
 		lines.push(this.renderHeader(headerText));
 		lines.push(this.row(""));
 
-		// Each task
 		for (let i = 0; i < this.agentConfigs.length; i++) {
 			const config = this.agentConfigs[i]!;
 			const isSelected = i === this.selectedStep;
 
-			// Task header (truncate agent name to prevent overflow)
 			const color = isSelected ? "accent" : "dim";
 			const prefix = isSelected ? "▶ " : "  ";
 			const taskPrefix = `Task ${i + 1}: `;
@@ -1314,12 +1222,10 @@ export class ChainClarifyComponent implements Component {
 			const taskLabel = `${taskPrefix}${agentName}`;
 			lines.push(this.row(` ${th.fg(color, prefix + taskLabel)}`));
 
-			// Task line
 			const template = (this.templates[i] ?? "").split("\n")[0] ?? "";
 			const taskTextLabel = th.fg("dim", "task: ");
 			lines.push(this.row(`     ${taskTextLabel}${truncateToWidth(template, innerW - 12)}`));
 
-			// Model line
 			const effectiveModel = this.getEffectiveModel(i);
 			const override = this.behaviorOverrides.get(i);
 			const isOverridden = override?.model !== undefined;
@@ -1339,20 +1245,17 @@ export class ChainClarifyComponent implements Component {
 			lines.push(this.row(""));
 		}
 
-		// Footer
 		this.appendSaveMessage(lines);
 		lines.push(this.renderFooter(this.getFooterText()));
 
 		return lines;
 	}
 
-	/** Render chain mode (step selection, preview) */
 	private renderChainMode(): string[] {
 		const innerW = this.width - 2;
 		const th = this.theme;
 		const lines: string[] = [];
 
-		// Header with chain name (truncate if too long)
 		const chainLabel = this.agentConfigs.map((c) => c.name).join(" → ");
 		const maxHeaderLen = innerW - 4;
 		const headerText = ` Chain: ${truncateToWidth(chainLabel, maxHeaderLen - 9)} `;
@@ -1360,30 +1263,25 @@ export class ChainClarifyComponent implements Component {
 
 		lines.push(this.row(""));
 
-		// Original task (truncated) and chain dir
 		const taskPreview = truncateToWidth(this.originalTask, innerW - 16);
 		lines.push(this.row(` Original Task: ${taskPreview}`));
-		// chainDir is guaranteed to be defined in chain mode
 		const chainDirPreview = truncateToWidth(this.chainDir ?? "", innerW - 12);
 		lines.push(this.row(` Chain Dir: ${th.fg("dim", chainDirPreview)}`));
 
-		// Chain-wide progress setting
 		const progressEnabled = this.agentConfigs.some((_, i) => this.getEffectiveBehavior(i).progress);
 		const progressValue = progressEnabled ? th.fg("success", "✓ enabled") : th.fg("dim", "✗ disabled");
 		lines.push(this.row(` Progress: ${progressValue} ${th.fg("dim", "(press [p] to toggle)")}`));
 		lines.push(this.row(""));
 
-		// Each step
 		for (let i = 0; i < this.agentConfigs.length; i++) {
 			const config = this.agentConfigs[i]!;
 			const isSelected = i === this.selectedStep;
 			const behavior = this.getEffectiveBehavior(i);
 
-			// Step header (truncate agent name to prevent overflow)
 			const color = isSelected ? "accent" : "dim";
 			const prefix = isSelected ? "▶ " : "  ";
 			const stepPrefix = `Step ${i + 1}: `;
-			const maxNameLen = innerW - 4 - prefix.length - stepPrefix.length; // 4 for " " prefix and padding
+			const maxNameLen = innerW - 4 - prefix.length - stepPrefix.length;
 			const agentName = config.name.length > maxNameLen
 				? config.name.slice(0, maxNameLen - 1) + "…"
 				: config.name;
@@ -1392,7 +1290,6 @@ export class ChainClarifyComponent implements Component {
 				this.row(` ${th.fg(color, prefix + stepLabel)}`),
 			);
 
-			// Template line (with syntax highlighting for variables)
 			const template = (this.templates[i] ?? "").split("\n")[0] ?? "";
 			const highlighted = template
 				.replace(/\{task\}/g, th.fg("success", "{task}"))
@@ -1402,7 +1299,6 @@ export class ChainClarifyComponent implements Component {
 			const templateLabel = th.fg("dim", "task: ");
 			lines.push(this.row(`     ${templateLabel}${truncateToWidth(highlighted, innerW - 12)}`));
 
-			// Model line (show override indicator if modified)
 			const effectiveModel = this.getEffectiveModel(i);
 			const override = this.behaviorOverrides.get(i);
 			const isOverridden = override?.model !== undefined;
@@ -1412,14 +1308,12 @@ export class ChainClarifyComponent implements Component {
 			const modelLabel = th.fg("dim", "model: ");
 			lines.push(this.row(`     ${modelLabel}${truncateToWidth(modelValue, innerW - 13)}`));
 
-			// Writes line (output file) - renamed from "output" for clarity
 			const writesValue = behavior.output === false
 				? th.fg("dim", "(disabled)")
 				: (behavior.output || th.fg("dim", "(none)"));
 			const writesLabel = th.fg("dim", "writes: ");
 			lines.push(this.row(`     ${writesLabel}${truncateToWidth(writesValue, innerW - 14)}`));
 
-			// Reads line
 			const readsValue = behavior.reads === false
 				? th.fg("dim", "(disabled)")
 				: (behavior.reads && behavior.reads.length > 0
@@ -1434,8 +1328,6 @@ export class ChainClarifyComponent implements Component {
 			const skillsLabel = th.fg("dim", "skills: ");
 			lines.push(this.row(`     ${skillsLabel}${truncateToWidth(skillsValue, innerW - 14)}`));
 
-			// Progress line - show when chain-wide progress is enabled
-			// First step creates & updates, subsequent steps read & update
 			if (progressEnabled) {
 				const isFirstStep = i === 0;
 				const progressAction = isFirstStep 
@@ -1445,8 +1337,6 @@ export class ChainClarifyComponent implements Component {
 				lines.push(this.row(`     ${progressLabel}${progressAction}`));
 			}
 
-			// Show {previous} indicator for all steps except the last
-			// This shows that this step's text response becomes {previous} for the next step
 			if (i < this.agentConfigs.length - 1) {
 				const nextStepUsePrevious = (this.templates[i + 1] ?? "").includes("{previous}");
 				if (nextStepUsePrevious) {
@@ -1458,7 +1348,6 @@ export class ChainClarifyComponent implements Component {
 			lines.push(this.row(""));
 		}
 
-		// Footer with keybindings
 		this.appendSaveMessage(lines);
 		lines.push(this.renderFooter(this.getFooterText()));
 

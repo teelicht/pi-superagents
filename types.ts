@@ -271,6 +271,8 @@ export interface RunSyncOptions {
 	modelOverride?: string;
 	/** Registry models available for heuristic bare-model resolution */
 	availableModels?: Array<{ provider: string; id: string; fullId: string }>;
+	/** Current parent-session provider to prefer for ambiguous bare model ids */
+	preferredModelProvider?: string;
 	/** Skills to inject (overrides agent default if provided) */
 	skills?: string[];
 }

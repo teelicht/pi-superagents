@@ -55,6 +55,7 @@ export interface AsyncExecutionContext {
 	pi: ExtensionAPI;
 	cwd: string;
 	currentSessionId: string;
+	currentModelProvider?: string;
 }
 
 export interface AsyncChainParams {
@@ -130,6 +131,14 @@ function spawnRunner(cfg: object, suffix: string, cwd: string): number | undefin
 	return proc.pid;
 }
 
+function formatAsyncStartError(mode: "single" | "chain", message: string): AsyncExecutionResult {
+	return {
+		content: [{ type: "text", text: message }],
+		isError: true,
+		details: { mode, results: [] },
+	};
+}
+
 /**
  * Execute a chain asynchronously
  */
@@ -155,7 +164,6 @@ export function executeAsyncChain(
 	const chainSkills = params.chainSkills ?? [];
 	const availableModels = params.availableModels;
 
-	// Validate all agents exist before building steps
 	for (const s of chain) {
 		const stepAgents = isParallelStep(s)
 			? s.parallel.map((t) => t.agent)
@@ -183,7 +191,6 @@ export function executeAsyncChain(
 		};
 	}
 
-	/** Build a resolved runner step from a SequentialStep */
 	const buildSeqStep = (s: SequentialStep, sessionFile?: string) => {
 		const a = agents.find((x) => x.name === s.agent)!;
 		const stepSkillInput = normalizeSkillInput(s.skill);
@@ -198,18 +205,16 @@ export function executeAsyncChain(
 			systemPrompt = systemPrompt ? `${systemPrompt}\n\n${injection}` : injection;
 		}
 
-		// Resolve output path and inject instruction into task
-		// Use step's cwd if specified, otherwise fall back to chain-level cwd
 		const outputPath = resolveSingleOutputPath(s.output, ctx.cwd, s.cwd ?? cwd);
 		const task = injectSingleOutputInstruction(s.task ?? "{previous}", outputPath);
 
-		const primaryModel = resolveModelCandidate(s.model ?? a.model, availableModels);
+		const primaryModel = resolveModelCandidate(s.model ?? a.model, availableModels, ctx.currentModelProvider);
 		return {
 			agent: s.agent,
 			task,
 			cwd: s.cwd,
 			model: applyThinkingSuffix(primaryModel, a.thinking),
-			modelCandidates: buildModelCandidates(s.model ?? a.model, a.fallbackModels, availableModels).map((candidate) =>
+			modelCandidates: buildModelCandidates(s.model ?? a.model, a.fallbackModels, availableModels, ctx.currentModelProvider).map((candidate) =>
 				applyThinkingSuffix(candidate, a.thinking),
 			),
 			tools: a.tools,
@@ -230,8 +235,6 @@ export function executeAsyncChain(
 		return sessionFile;
 	};
 
-	// Build runner steps — sequential steps become flat objects,
-	// parallel steps become { parallel: [...], concurrency?, failFast? }
 	const steps: RunnerStep[] = chain.map((s) => {
 		if (isParallelStep(s)) {
 			return {
@@ -252,28 +255,34 @@ export function executeAsyncChain(
 	});
 
 	const runnerCwd = cwd ?? ctx.cwd;
-	const pid = spawnRunner(
-		{
+	let pid: number | undefined;
+	try {
+		pid = spawnRunner(
+			{
+				id,
+				steps,
+				resultPath: path.join(RESULTS_DIR, `${id}.json`),
+				cwd: runnerCwd,
+				placeholder: "{previous}",
+				maxOutput,
+				artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
+				artifactConfig,
+				share: shareEnabled,
+				sessionDir: sessionRoot ? path.join(sessionRoot, `async-${id}`) : undefined,
+				asyncDir,
+				sessionId: ctx.currentSessionId,
+				piPackageRoot,
+				piArgv1: process.argv[1],
+				worktreeSetupHook,
+				worktreeSetupHookTimeoutMs,
+			},
 			id,
-			steps,
-			resultPath: path.join(RESULTS_DIR, `${id}.json`),
-			cwd: runnerCwd,
-			placeholder: "{previous}",
-			maxOutput,
-			artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
-			artifactConfig,
-			share: shareEnabled,
-			sessionDir: sessionRoot ? path.join(sessionRoot, `async-${id}`) : undefined,
-			asyncDir,
-			sessionId: ctx.currentSessionId,
-			piPackageRoot,
-			piArgv1: process.argv[1],
-			worktreeSetupHook,
-			worktreeSetupHookTimeoutMs,
-		},
-		id,
-		runnerCwd,
-	);
+			runnerCwd,
+		);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		return formatAsyncStartError("chain", `Failed to start async chain '${id}': ${message}`);
+	}
 
 	if (pid) {
 		const firstStep = chain[0];
@@ -295,7 +304,6 @@ export function executeAsyncChain(
 		});
 	}
 
-	// Build chain description with parallel groups shown as [agent1+agent2]
 	const chainDesc = chain
 		.map((s) =>
 			isParallelStep(s) ? `[${s.parallel.map((t) => t.agent).join("+")}]` : (s as SequentialStep).agent,
@@ -355,46 +363,52 @@ export function executeAsyncSingle(
 	const runnerCwd = cwd ?? ctx.cwd;
 	const outputPath = resolveSingleOutputPath(params.output, ctx.cwd, cwd);
 	const taskWithOutputInstruction = injectSingleOutputInstruction(task, outputPath);
-	const pid = spawnRunner(
-		{
+	let pid: number | undefined;
+	try {
+		pid = spawnRunner(
+			{
+				id,
+				steps: [
+					{
+						agent,
+						task: taskWithOutputInstruction,
+						cwd,
+						model: applyThinkingSuffix(resolveModelCandidate(params.modelOverride ?? agentConfig.model, availableModels, ctx.currentModelProvider), agentConfig.thinking),
+						modelCandidates: buildModelCandidates(params.modelOverride ?? agentConfig.model, agentConfig.fallbackModels, availableModels, ctx.currentModelProvider).map((candidate) =>
+							applyThinkingSuffix(candidate, agentConfig.thinking),
+						),
+						tools: agentConfig.tools,
+						extensions: agentConfig.extensions,
+						mcpDirectTools: agentConfig.mcpDirectTools,
+						systemPrompt,
+						skills: resolvedSkills.map((r) => r.name),
+						outputPath,
+						sessionFile,
+						maxSubagentDepth: resolveChildMaxSubagentDepth(maxSubagentDepth, agentConfig.maxSubagentDepth),
+					},
+				],
+				resultPath: path.join(RESULTS_DIR, `${id}.json`),
+				cwd: runnerCwd,
+				placeholder: "{previous}",
+				maxOutput,
+				artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
+				artifactConfig,
+				share: shareEnabled,
+				sessionDir: sessionRoot ? path.join(sessionRoot, `async-${id}`) : undefined,
+				asyncDir,
+				sessionId: ctx.currentSessionId,
+				piPackageRoot,
+				piArgv1: process.argv[1],
+				worktreeSetupHook,
+				worktreeSetupHookTimeoutMs,
+			},
 			id,
-			steps: [
-				{
-					agent,
-					task: taskWithOutputInstruction,
-					cwd,
-					model: applyThinkingSuffix(resolveModelCandidate(params.modelOverride ?? agentConfig.model, availableModels), agentConfig.thinking),
-					modelCandidates: buildModelCandidates(params.modelOverride ?? agentConfig.model, agentConfig.fallbackModels, availableModels).map((candidate) =>
-						applyThinkingSuffix(candidate, agentConfig.thinking),
-					),
-					tools: agentConfig.tools,
-					extensions: agentConfig.extensions,
-					mcpDirectTools: agentConfig.mcpDirectTools,
-					systemPrompt,
-					skills: resolvedSkills.map((r) => r.name),
-					outputPath,
-					sessionFile,
-					maxSubagentDepth: resolveChildMaxSubagentDepth(maxSubagentDepth, agentConfig.maxSubagentDepth),
-				},
-			],
-			resultPath: path.join(RESULTS_DIR, `${id}.json`),
-			cwd: runnerCwd,
-			placeholder: "{previous}",
-			maxOutput,
-			artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
-			artifactConfig,
-			share: shareEnabled,
-			sessionDir: sessionRoot ? path.join(sessionRoot, `async-${id}`) : undefined,
-			asyncDir,
-			sessionId: ctx.currentSessionId,
-			piPackageRoot,
-			piArgv1: process.argv[1],
-			worktreeSetupHook,
-			worktreeSetupHookTimeoutMs,
-		},
-		id,
-		runnerCwd,
-	);
+			runnerCwd,
+		);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		return formatAsyncStartError("single", `Failed to start async run '${id}': ${message}`);
+	}
 
 	if (pid) {
 		ctx.pi.events.emit("subagent:started", {
