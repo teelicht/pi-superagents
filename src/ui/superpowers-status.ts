@@ -4,15 +4,19 @@
  * Responsibilities:
  * - display current Superpowers config defaults, commands, model tiers
  * - display config diagnostics and gate status
+ * - display active and recent runs with live metrics
  * - provide toggle keybindings for boolean settings (writes to config file)
- * - provide a focused replacement for the generic Agents Manager
+ * - implement the Component interface using string-array rendering
  *
  * Important side effects:
  * - writes to config file on toggle actions via config-writer module
+ * - auto-refreshes via timer to show live run progress
  */
 
 import * as fs from "node:fs";
-import { Container, Text, matchesKey } from "@mariozechner/pi-tui";
+import type { Component, TUI } from "@mariozechner/pi-tui";
+import { matchesKey, truncateToWidth } from "@mariozechner/pi-tui";
+import type { Theme } from "@mariozechner/pi-coding-agent";
 import type { ExtensionConfig, SubagentState } from "../shared/types.ts";
 import {
 	toggleSuperpowersBoolean,
@@ -20,48 +24,65 @@ import {
 	updateSuperpowersConfigText,
 } from "../superpowers/config-writer.ts";
 import { globalRunHistory } from "../execution/run-history.ts";
+import { formatScrollInfo, renderFooter, renderHeader, row } from "./render-helpers.ts";
 
-/**
- * Focused Superpowers status/settings TUI component.
- *
- * Renders a display of the current Superpowers configuration
- * and config gate status, with keybindings for toggling boolean settings.
- */
-export class SuperpowersStatusComponent extends Container {
+export class SuperpowersStatusComponent implements Component {
+	private readonly width = 84;
+	private readonly viewportHeight = 12;
+	private readonly refreshTimer: NodeJS.Timeout;
+
 	private lastWriteMessage = "";
 	private activePane: "settings" | "runs" = "settings";
 
+	private cursor = 0;
+	private scrollOffset = 0;
+
+	private readonly tui: TUI;
+	private readonly theme: Theme;
+	private readonly state: SubagentState;
+	private readonly config: ExtensionConfig;
+	private readonly done: () => void;
+
 	constructor(
-		_tui: unknown,
-		_theme: unknown,
-		private readonly state: SubagentState,
-		private readonly config: ExtensionConfig,
-		private readonly done: () => void,
+		tui: TUI,
+		theme: Theme,
+		state: SubagentState,
+		config: ExtensionConfig,
+		done: () => void,
 	) {
-		super();
+		this.tui = tui;
+		this.theme = theme;
+		this.state = state;
+		this.config = config;
+		this.done = done;
+		this.refreshTimer = setInterval(() => {
+			this.tui.requestRender();
+		}, 2000);
+		this.refreshTimer.unref?.();
 	}
 
-	override render(width: number): string[] {
-		this.clear();
+	dispose(): void {
+		clearInterval(this.refreshTimer);
+	}
+
+	render(width: number): string[] {
+		const w = Math.min(width, this.width);
+		const innerW = w - 2;
 
 		const tabs = this.activePane === "settings" ? "[ Settings ]  Runs" : "Settings  [ Runs ]";
-		const separator = "-".repeat(Math.max(20, tabs.length));
-
-		const lines = ["Superpowers", "", tabs, separator, ""];
+		const lines: string[] = [renderHeader(`Superpowers ${tabs}`, w, this.theme)];
 
 		if (this.activePane === "settings") {
-			lines.push(...this.renderSettingsPane());
+			lines.push(...this.renderSettingsPane(w, innerW));
 		} else {
-			lines.push(...this.renderRunsPane());
+			lines.push(...this.renderRunsPane(w, innerW));
 		}
 
-		lines.push("", "Tab: Switch View | q: Close");
-
-		this.addChild(new Text(lines.join("\n"), 0, 0));
-		return Container.prototype.render.call(this, width);
+		lines.push(renderFooter("Tab: Switch View | q: Close | ↑↓: Select", w, this.theme));
+		return lines;
 	}
 
-	private renderSettingsPane(): string[] {
+	private renderSettingsPane(w: number, _innerW: number): string[] {
 		const settings = this.config.superagents ?? {};
 		const commands = Object.entries(settings.commands ?? {});
 		const modelTiers = Object.entries(settings.modelTiers ?? {});
@@ -75,60 +96,97 @@ export class SuperpowersStatusComponent extends Container {
 		};
 
 		const lines = [
-			`useSubagents: ${settings.useSubagents ?? true} (s)`,
-			`useTestDrivenDevelopment: ${settings.useTestDrivenDevelopment ?? true} (t)`,
-			`configStatus: ${this.state.configGate.blocked ? "blocked" : "valid"}`,
-			`worktrees.enabled: ${settings.worktrees?.enabled ?? false} (w)`,
-			`worktrees.root: ${settings.worktrees?.root ?? "default"}`,
-			"",
-			"Commands:",
+			row(`useSubagents: ${settings.useSubagents ?? true} (s)`, w, this.theme),
+			row(`useTestDrivenDevelopment: ${settings.useTestDrivenDevelopment ?? true} (t)`, w, this.theme),
+			row(`configStatus: ${this.state.configGate.blocked ? "blocked" : "valid"}`, w, this.theme),
+			row(`worktrees.enabled: ${settings.worktrees?.enabled ?? false} (w)`, w, this.theme),
+			row(`worktrees.root: ${settings.worktrees?.root ?? "default"}`, w, this.theme),
+			row("", w, this.theme),
+			row("Commands:", w, this.theme),
 			...(commands.length
 				? commands.map(
 						([name, preset]) =>
-							`- ${name}: subagents=${preset.useSubagents ?? "default"}, tdd=${preset.useTestDrivenDevelopment ?? "default"}`,
+							row(`- ${name}: subagents=${preset.useSubagents ?? "default"}, tdd=${preset.useTestDrivenDevelopment ?? "default"}`, w, this.theme),
 					)
-				: ["- none"]),
-			"",
-			"Model tiers:",
+				: [row("- none", w, this.theme)]),
+			row("", w, this.theme),
+			row("Model tiers:", w, this.theme),
 			...(modelTiers.length
-				? modelTiers.map(([name, value]) => `- ${name}: ${tierModel(value)}`)
-				: ["- none"]),
+				? modelTiers.map(([name, value]) => row(`- ${name}: ${tierModel(value)}`, w, this.theme))
+				: [row("- none", w, this.theme)]),
 		];
 
 		if (this.state.configGate.message) {
-			lines.push("", this.state.configGate.message);
+			lines.push(row("", w, this.theme), row(this.theme.fg("error", this.state.configGate.message), w, this.theme));
 		}
 
 		if (this.lastWriteMessage) {
-			lines.push("", this.lastWriteMessage);
+			lines.push(row("", w, this.theme), row(this.theme.fg("warning", this.lastWriteMessage), w, this.theme));
 		}
 
 		return lines;
 	}
 
-	private renderRunsPane(): string[] {
-		const runs = globalRunHistory.getRecent(20);
-		if (runs.length === 0) {
-			return ["No recent runs recorded."];
+	private renderRunsPane(w: number, innerW: number): string[] {
+		const activeRuns = Array.from(globalRunHistory.activeRuns.values());
+		const recentRuns = globalRunHistory.getRecent(20);
+		const rows: Array<{ kind: "section"; label: string } | { kind: "run"; run: typeof recentRuns[number] }> = [];
+
+		if (activeRuns.length > 0) {
+			rows.push({ kind: "section", label: "Active" });
+			for (const run of activeRuns) rows.push({ kind: "run", run });
+		}
+		if (recentRuns.length > 0) {
+			rows.push({ kind: "section", label: "Recent" });
+			for (const run of recentRuns) rows.push({ kind: "run", run });
 		}
 
-		return [
-			"Recent Runs:",
-			"",
-			...runs.map((run) => {
-				const duration = (run.duration / 1000).toFixed(1) + "s";
-				const status = run.status === "ok" ? "OK" : "ERR";
-				const task = run.task.length > 50 ? run.task.slice(0, 47) + "..." : run.task;
-				return `${run.agent.padEnd(15)} | ${status.padEnd(3)} | ${duration.padStart(5)} | ${task}`;
-			}),
-		];
+		if (rows.length === 0) {
+			return [row("No runs recorded.", w, this.theme)];
+		}
+
+		const runRows = rows.filter(r => r.kind === "run");
+		if (this.cursor >= runRows.length) this.cursor = Math.max(0, runRows.length - 1);
+
+		const selectedRun = runRows[this.cursor]?.run;
+
+		const visibleRows = rows.slice(this.scrollOffset, this.scrollOffset + this.viewportHeight);
+
+		const lines: string[] = [];
+		for (const statusRow of visibleRows) {
+			if (statusRow.kind === "section") {
+				lines.push(row(this.theme.fg("accent", statusRow.label), w, this.theme));
+				continue;
+			}
+			const run = statusRow.run;
+			const isSelected = selectedRun === run;
+			const prefix = isSelected ? this.theme.fg("accent", ">") : " ";
+			const duration = (run.duration / 1000).toFixed(1) + "s";
+			const statusStr = run.status === "ok" ? "OK" : "ERR";
+			const color = run.status === "ok" ? "success" as const : "error" as const;
+			const task = run.task.length > 40 ? run.task.slice(0, 37) + "..." : run.task;
+			const formatted = `${prefix} ${run.agent.padEnd(15)} | ${this.theme.fg(color, statusStr.padEnd(3))} | ${duration.padStart(5)} | ${task}`;
+			lines.push(row(truncateToWidth(formatted, innerW), w, this.theme));
+		}
+
+		const above = this.scrollOffset;
+		const below = Math.max(0, rows.length - (this.scrollOffset + visibleRows.length));
+		const scrollInfo = formatScrollInfo(above, below);
+		if (scrollInfo) lines.push(row(this.theme.fg("dim", scrollInfo), w, this.theme));
+		else lines.push(row("", w, this.theme));
+
+		if (selectedRun) {
+			lines.push(row(this.theme.fg("accent", "Selected Details:"), w, this.theme));
+			lines.push(row(`  Model:  ${selectedRun.model || "unknown"}`, w, this.theme));
+			lines.push(row(`  Tokens: ${selectedRun.tokens?.total || 0}`, w, this.theme));
+			if (selectedRun.steps && selectedRun.steps.length > 0) {
+				lines.push(row(`  Steps:  ${selectedRun.steps.length}`, w, this.theme));
+			}
+		}
+
+		return lines;
 	}
 
-	/**
-	 * Write config file using the provided update function.
-	 *
-	 * @param update - Mutator function for the config object.
-	 */
 	private writeConfig(update: Parameters<typeof updateSuperpowersConfigText>[1]): void {
 		const configPath = this.state.configGate.configPath;
 		if (!configPath) {
@@ -145,51 +203,61 @@ export class SuperpowersStatusComponent extends Container {
 		}
 	}
 
-	/** Toggle the useSubagents boolean setting in the config file. */
 	toggleUseSubagents(): void {
 		this.writeConfig((config) => toggleSuperpowersBoolean(config, "useSubagents"));
 	}
 
-	/** Toggle the useTestDrivenDevelopment boolean setting in the config file. */
 	toggleUseTestDrivenDevelopment(): void {
 		this.writeConfig((config) => toggleSuperpowersBoolean(config, "useTestDrivenDevelopment"));
 	}
 
-	/** Toggle the worktrees.enabled boolean setting in the config file. */
 	toggleWorktrees(): void {
 		this.writeConfig((config) => toggleSuperpowersWorktrees(config));
 	}
 
-	/**
-	 * Handle keyboard input for key bindings.
-	 *
-	 * @param data - Raw terminal input data.
-	 */
 	handleInput(data: string): void {
 		if (matchesKey(data, "escape") || matchesKey(data, "q") || matchesKey(data, "ctrl+c")) {
-			this.close();
+			this.done();
 			return;
 		}
 		if (matchesKey(data, "tab")) {
 			this.activePane = this.activePane === "settings" ? "runs" : "settings";
+			this.tui.requestRender();
 			return;
 		}
+
 		if (this.activePane === "settings") {
 			if (matchesKey(data, "s")) {
 				this.toggleUseSubagents();
+				this.tui.requestRender();
 				return;
 			}
 			if (matchesKey(data, "t")) {
 				this.toggleUseTestDrivenDevelopment();
+				this.tui.requestRender();
 				return;
 			}
 			if (matchesKey(data, "w")) {
 				this.toggleWorktrees();
+				this.tui.requestRender();
+			}
+		} else {
+			if (matchesKey(data, "up")) {
+				this.cursor = Math.max(0, this.cursor - 1);
+				if (this.cursor < this.scrollOffset) this.scrollOffset = this.cursor;
+				this.tui.requestRender();
+			}
+			if (matchesKey(data, "down")) {
+				this.cursor++;
+				if (this.cursor >= this.scrollOffset + this.viewportHeight) {
+					this.scrollOffset = this.cursor - this.viewportHeight + 1;
+				}
+				this.tui.requestRender();
 			}
 		}
 	}
 
-	close(): void {
-		this.done();
+	invalidate(): void {
+		// No cached rendering state to invalidate
 	}
 }
