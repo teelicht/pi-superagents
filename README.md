@@ -26,6 +26,15 @@ npx @teelicht/pi-superagents --remove
 | `/subagents-status`     | Open active and recent subagent run status                                  |
 | `/sp-settings`          | Open Superpowers and subagent workflow settings                             |
 
+### Custom Commands
+
+Define your own slash commands with preset workflow options in `config.json`. Example presets ship in `config.example.json`:
+
+- **`/sp-lean`** — Run Superpowers without subagents or TDD.
+- **`/sp-plannotator`** — Run Superpowers with Plannotator browser review enabled.
+
+See [Configuration Reference](docs/reference/configuration.md#custom-command-presets) for the full preset schema and inheritance rules.
+
 ### Superpowers Workflow
 
 The `/sp-implement` command activates a structured workflow for task execution with role-specific agents, model tiers, and built-in quality gates.
@@ -70,6 +79,7 @@ See [Configuration Reference](docs/reference/configuration.md) for details on mo
 - **Async Execution**: Background mode with real-time progress overlay and desktop notifications.
 - **Model Tiers**: Abstract model selection (cheap, balanced, max) resolved via user configuration.
 - **Skill Injection**: Automatic injection of project-local and user-global skills into agent prompts.
+- **Skill Overlays**: Configure additional skills to load alongside entry skills (e.g., load `react-native-best-practices` when brainstorming). See [Configuration Reference](docs/reference/configuration.md#skill-overlays).
 - **Plannotator Integration**: Optional event bridge to [Plannotator](https://plannotator.ai/) for visual browser-based plan review and approval.
 
 ## Documentation
