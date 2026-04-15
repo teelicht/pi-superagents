@@ -50,6 +50,8 @@ Configures the Superpowers workflow and role execution policy.
 | `worktrees.root`           | Directory for Superpowers parallel worktrees (default: system temp).                                                                                                    |
 | `skillOverlays`            | Maps entry skill names to arrays of additional skill names to load alongside them in skill-entry flows (default: `{}`).                                                   |
 | `interceptSkillCommands`   | List of skill names that should be intercepted and handled by Superpowers (default: `[]`). Only `brainstorming` is currently supported.                                 |
+| `superpowersSkills` | List of Superpowers process skill names whose `skillOverlays` are resolved at session start (bundled default, not user-configurable yet). |
+
 
 ## Common Override Examples
 
@@ -292,7 +294,10 @@ Behavior:
 
 ## Skill Overlays
 
-Skill overlays load additional skills alongside an entry skill when that entry skill is invoked through a Superpowers skill-entry flow. This works for `/sp-brainstorm`, intercepted skill commands, and any other entry-skill path — not only for intercepted commands.
+Skill overlays load additional skills alongside the entry skill. Two mechanisms resolve overlays:
+
+- **Entry overlays** — resolve for the skill that starts the session (e.g., `skillOverlays["brainstorming"]` when `/sp-brainstorm` runs)
+- **Invocation overlays** — resolve for all skills in `superpowersSkills` regardless of entry path (e.g., `skillOverlays["writing-plans"]` resolves even for `/sp-implement`)
 
 ```json
 {
@@ -304,6 +309,20 @@ Skill overlays load additional skills alongside an entry skill when that entry s
   }
 }
 ```
+
+Keys must be non-empty skill names. Values must be arrays of non-empty skill names. Missing overlay skills are blocking errors at runtime.
+
+> [!NOTE]
+> `writing-plans` overlays (e.g., `supabase-postgres-best-practices`) now kick in for all Superpowers commands because `writing-plans` is in the bundled `superpowersSkills` list — not just for commands whose entry skill is `writing-plans`.
+
+### Overlay Resolution Behavior
+
+| Entry path | entrySkill | Entry overlay | Invocation overlays |
+|---|---|---|---|
+| `/sp-brainstorm` | `{ name: "brainstorming", source: "command" }` | `skillOverlays["brainstorming"]` | `skillOverlays[superpowersSkills[*]]` |
+| `/sp-implement` | `{ name: "using-superpowers", source: "implicit" }` | `skillOverlays["using-superpowers"]` | `skillOverlays[superpowersSkills[*]]` |
+| Custom command | `{ name: "using-superpowers", source: "implicit" }` | `skillOverlays["using-superpowers"]` | `skillOverlays[superpowersSkills[*]]` |
+| `/skill:brainstorming` (intercepted) | `{ name: "brainstorming", source: "intercepted-skill" }` | `skillOverlays["brainstorming"]` | `skillOverlays[superpowersSkills[*]]` |
 
 Keys must be non-empty skill names. Values must be arrays of non-empty skill names. Missing overlay skills are blocking errors at runtime.
 
@@ -347,6 +366,31 @@ Interception works independently of skill overlays. You can use `interceptSkillC
     }
   }
 }
+```
+
+## Superpowers Skills
+
+The `superpowersSkills` list defines which skill names are Superpowers process skills. It lives in the bundled `default-config.json` and is not user-configurable yet — defined in bundled defaults only.
+
+For skills in this list, invocation overlays resolve regardless of entry path. This means skill overlays for these names apply to all Superpowers commands, not just the command that directly invokes that skill.
+
+New Superpowers skills can be added by updating `default-config.json`. The current list:
+
+```json
+"superpowersSkills": [
+  "using-superpowers",
+  "brainstorming",
+  "writing-plans",
+  "executing-plans",
+  "test-driven-development",
+  "requesting-code-review",
+  "receiving-code-review",
+  "verification-before-completion",
+  "subagent-driven-development",
+  "dispatching-parallel-agents",
+  "using-git-worktrees",
+  "finishing-a-development-branch"
+]
 ```
 
 ## Status and Settings

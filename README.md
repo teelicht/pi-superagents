@@ -6,12 +6,11 @@ Pi extension for Superpowers workflows: structured delegation to specialized rol
 
 - **Superpowers Workflow**: Proven pipeline for robust AI-assisted development.
 - **Role-Specific Agents**: Purpose-built agents for every phase of the development lifecycle.
-- **Model Tiers**: Abstract model selection (cheap, balanced, max) for each agent to reduce costs. Models can be configured per tier. Custom tiers are possible.
+- **Model Tiers**: Abstract model selection (cheap, balanced, max) for each agent to reduce costs and to utilize AI models according to their strengths. One model can be configured per tier. Custom tiers are possible.
 - **Subagent Execution**: Automatically spawns sub-agents (setting).
 - **Worktree Isolation**: Optional git worktree creation for parallel tasks to prevent filesystem conflicts (setting).
-
-- **Skill Overlays**: Configure additional skills to load alongside entry skills (e.g., load `react-native-best-practices` when brainstorming). See [Configuration](docs/configuration.md#skill-overlays).
-- **Plannotator Integration**: Optional event bridge to [Plannotator](https://plannotator.ai/) for visual browser-based plan review and approval (setting).
+- **Skill Overlays**: Configure additional skills to load alongside entry skills or Superpowers process skills. Entry overlays resolve for the active entry skill; invocation overlays resolve for all Superpowers process skills at session start. See [Configuration](docs/configuration.md#skill-overlays).
+- **Plannotator Integration**: Optional event bridge to [Plannotator](https://plannotator.ai/) for browser-based spec/plan review and approval (setting).
 
 ## Installation
 
@@ -20,15 +19,15 @@ pi install npm:@teelicht/pi-superagents
 ```
 
 > [!NOTE]
-> This tool requires the `superpowers` skills to be installed. I recommend installing them through https://skills.sh/obra/superpowers.
+> This tool requires the `superpowers` skills to be installed. Easy installtion via [https://skills.sh/obra/superpowers](https://skills.sh/obra/superpowers).
 
 To remove:
 
 ```bash
-npx @teelicht/pi-superagents --remove
+pi remove npm:@teelicht/pi-superagents
 ```
 
-## Slash Commands
+## Integrated Slash Commands
 
 | Command                 | Description                                                                 |
 | ----------------------- | --------------------------------------------------------------------------- |
