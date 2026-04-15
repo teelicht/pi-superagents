@@ -20,8 +20,8 @@ The current Superpowers architecture has three issues:
 
 - **Add `/sp-plan`** wrapping the `writing-plans` skill as a first-class Superpowers command with its own Plannotator review gate.
 - **Unify all commands in config.** `sp-implement`, `sp-brainstorm`, `sp-plan`, and custom commands all follow one registration path driven by `default-config.json`.
-- **Move all policy booleans to per-command settings.** Remove global `useBranches`, `useSubagents`, `useTestDrivenDevelopment`, `usePlannotator`, and `worktrees` from the `superagents` level. Each command declares only the policies relevant to it.
-- **Eliminate contract noise.** The root prompt builder only emits a contract block when the corresponding boolean is present on the command preset. Absent booleans produce no output — not even a "DISABLED" message.
+- **Move all policy configuration options to per-command settings.** Remove global `useBranches`, `useSubagents`, `useTestDrivenDevelopment`, `usePlannotator`, and `worktrees` from the `superagents` level. Each command declares only the policies relevant to it.
+- **Eliminate contract noise.** The root prompt builder only emits a contract block when the corresponding configuration option is present on the command preset. Absent options produce no output — not even a "DISABLED" message.
 - **Simplify the entry skill type.** `entrySkill` becomes a plain string (the skill name). Remove the `SuperpowersEntrySkillProfile` interface and the `SuperpowersEntrySkillSource` type entirely.
 - **Unify the Plannotator review contract.** Replace the separate `buildBrainstormingSpecReviewContract` with a single generic `buildPlannotatorReviewContract`. Plannotator is context-agnostic — it receives a file and returns feedback. The skill content tells the AI when to call which tool endpoint.
 
@@ -37,7 +37,7 @@ The current Superpowers architecture has three issues:
 
 ### 1. Config schema
 
-All policy booleans move into per-command presets. The `superagents` level retains only structural settings.
+All policy configuration moves into per-command presets. The `superagents` level retains only structural settings.
 
 #### `default-config.json`
 
@@ -154,13 +154,13 @@ interface ResolvedSuperpowersRunProfile {
   useSubagents?: boolean;
   useTestDrivenDevelopment?: boolean;
   usePlannotatorReview?: boolean;
-  worktreesEnabled?: boolean;
+  worktrees?: { enabled: boolean; root: string | null };
   fork: boolean;
   overlaySkillNames: string[];
 }
 ```
 
-All policy booleans become optional. `undefined` means "not applicable to this command." `entrySkill` is a required string (every command has one — custom commands default to `"using-superpowers"`).
+All policy options become optional. `undefined` means "not applicable to this command." The `worktrees` field is an object with `enabled` (boolean) and `root` (string or null), not a flat boolean. `entrySkill` is a required string (every command has one — custom commands default to `"using-superpowers"`).
 
 ### 3. Command registration
 
@@ -184,7 +184,7 @@ Instead of hardcoding `{ name: "using-superpowers", source: "implicit" }`, the f
 
 #### Presence-based emission
 
-The root prompt builder checks whether each policy boolean is present (`!== undefined`) on the resolved profile. If present, the contract block is emitted with the boolean's value. If absent, nothing is emitted.
+The root prompt builder checks whether each policy option is present (`!== undefined`) on the resolved profile. If present, the contract block is emitted with its value. If absent, nothing is emitted.
 
 ```typescript
 if (input.useSubagents !== undefined) {
@@ -196,8 +196,8 @@ if (input.useTestDrivenDevelopment !== undefined) {
 if (input.useBranches !== undefined) {
   sections.push(buildBranchContract(input.useBranches));
 }
-if (input.worktreesEnabled !== undefined) {
-  sections.push(buildWorktreeContract(input.worktreesEnabled));
+if (input.worktrees !== undefined) {
+  sections.push(buildWorktreeContract(input.worktrees.enabled));
 }
 if (input.useSubagents === true) {
   sections.push(buildTaskTrackingContract());
@@ -207,7 +207,7 @@ if (input.usePlannotatorReview !== undefined) {
 }
 ```
 
-Task tracking is emitted when `useSubagents` is `true` because task tracking is inherently tied to delegation — the root session ticks off plan items after subagents complete.
+The `worktrees` check uses the presence of the object to decide whether to emit the worktree contract, then passes `worktrees.enabled` to the contract builder. Task tracking is emitted when `useSubagents` is `true` because task tracking is inherently tied to delegation — the root session ticks off plan items after subagents complete.
 
 #### What this eliminates
 
@@ -266,7 +266,7 @@ export function resolveSuperpowersRunProfile(input: {
     useTestDrivenDevelopment: parsed.overrides.useTestDrivenDevelopment ?? preset.useTestDrivenDevelopment,
     useBranches: preset.useBranches,
     usePlannotatorReview: preset.usePlannotator,
-    worktreesEnabled: preset.worktrees?.enabled,
+    worktrees: preset.worktrees,
 
     fork: parsed.fork,
     overlaySkillNames: resolveOverlaySkillNames(...),
@@ -309,7 +309,7 @@ The `buildEntrySkillBlock` function no longer emits a `Source:` line. It receive
 | `/sp-implement <task>` | `using-superpowers` | delegation, tdd, branches, worktrees, taskTracking | none |
 | `/sp-brainstorm <task>` | `brainstorming` | plannotatorReview | spec review after saved spec |
 | `/sp-plan <task>` | `writing-plans` | plannotatorReview | plan review after saved plan |
-| Custom command | configurable | depends on declared booleans | depends on `usePlannotator` |
+| Custom command | configurable | depends on declared options | depends on `usePlannotator` |
 | `/skill:brainstorming` (intercepted) | `brainstorming` | plannotatorReview | spec review after saved spec |
 | `/skill:writing-plans` (intercepted) | `writing-plans` | plannotatorReview | plan review after saved plan |
 
@@ -317,11 +317,11 @@ The `buildEntrySkillBlock` function no longer emits a `Source:` line. It receive
 
 | File | Change |
 |---|---|
-| `default-config.json` | Move all three built-in commands into `commands` with `entrySkill` and per-command booleans. Remove global booleans and `worktrees`. |
+| `default-config.json` | Move all three built-in commands into `commands` with `entrySkill` and per-command policy options. Remove global booleans and `worktrees`. |
 | `config.example.json` | Update to reflect new schema. Show custom command example with `entrySkill`. |
 | `src/shared/types.ts` | Remove global booleans from `SuperpowersSettings`. Add `entrySkill` to `SuperpowersCommandPreset`. Remove `worktrees` from `SuperpowersSettings`. |
 | `src/superpowers/workflow-profile.ts` | Remove `SuperpowersEntrySkillSource` and `SuperpowersEntrySkillProfile`. Change `entrySkill` to `string`. Resolve booleans from preset only, no global fallback. Make booleans optional on `ResolvedSuperpowersRunProfile`. |
-| `src/superpowers/root-prompt.ts` | Make all policy booleans optional on `SuperpowersRootPromptInput`. Emit contracts only when the boolean is present. Remove `buildBrainstormingSpecReviewContract`. Update `buildPlannotatorReviewContract` to be generic. Remove `entrySkillSource` from interfaces and `buildEntrySkillBlock`. Update `buildSuperpowersVisiblePromptSummary` to show only present flags. |
+| `src/superpowers/root-prompt.ts` | Make all policy options optional on `SuperpowersRootPromptInput`. Change `worktreesEnabled: boolean` to `worktrees?: { enabled: boolean; root: string \| null }`. Emit contracts only when the option is present. Remove `buildBrainstormingSpecReviewContract`. Update `buildPlannotatorReviewContract` to be generic. Remove `entrySkillSource` from interfaces and `buildEntrySkillBlock`. Update `buildSuperpowersVisiblePromptSummary` to show only present flags. |
 | `src/superpowers/skill-entry.ts` | Remove `SkillEntryPromptInput.entrySkillSource`. Remove `SuperpowersEntrySkillSource` import. Update `buildSkillEntryPromptInput` to pass `entrySkill` as string. Add `"writing-plans"` to `SUPPORTED_INTERCEPTED_SKILLS`. |
 | `src/slash/slash-commands.ts` | Delete `registerBrainstormCommand`. Register all commands (including built-ins) from config in a single loop. Read `preset.entrySkill` instead of hardcoding. Pass `entrySkill` as plain string to profile resolution. Update `sendSkillEntryPrompt` for optional booleans. |
 | `src/execution/config-validation.ts` | Remove global boolean validation from `superagents` level. Add `entrySkill` to `COMMAND_PRESET_KEYS`. Add built-in command name protection. Add `"writing-plans"` to `SUPPORTED_INTERCEPTED_SKILLS`. Remove global `useBranches`, `useSubagents`, `useTestDrivenDevelopment`, `usePlannotator`, `worktrees` from `SUPERAGENTS_KEYS`. |
