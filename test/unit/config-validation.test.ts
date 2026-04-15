@@ -69,15 +69,15 @@ void describe("config validation", () => {
 		});
 
 		assert.equal(result.blocked, false);
-		assert.ok(result.config.superagents?.commands["sp-implement"]);
-		assert.equal(result.config.superagents?.commands["sp-implement"]?.entrySkill, "using-superpowers");
-		assert.ok(result.config.superagents?.commands["sp-brainstorm"]);
-		assert.ok(result.config.superagents?.commands["sp-plan"]);
-		assert.deepEqual(result.config.superagents?.commands["sp-quick"], {
+		assert.ok(result.config.superagents?.commands?.["sp-implement"]);
+		assert.equal(result.config.superagents?.commands?.["sp-implement"]?.entrySkill, "using-superpowers");
+		assert.ok(result.config.superagents?.commands?.["sp-brainstorm"]);
+		assert.ok(result.config.superagents?.commands?.["sp-plan"]);
+		assert.deepEqual(result.config.superagents?.commands?.["sp-quick"], {
 			description: "Quick run",
 			useSubagents: false,
 		});
-		assert.deepEqual(result.config.superagents?.commands["superpowers-review"], {
+		assert.deepEqual(result.config.superagents?.commands?.["superpowers-review"], {
 			useTestDrivenDevelopment: false,
 		});
 	});
@@ -114,8 +114,8 @@ void describe("config validation", () => {
 			},
 		});
 
-		assert.equal(result.config.superagents?.commands["sp-implement"]?.worktrees?.enabled, true);
-		assert.equal(result.config.superagents?.commands["sp-implement"]?.worktrees?.root, "/tmp/worktrees");
+		assert.equal(result.config.superagents?.commands?.["sp-implement"]?.worktrees?.enabled, true);
+		assert.equal(result.config.superagents?.commands?.["sp-implement"]?.worktrees?.root, "/tmp/worktrees");
 	});
 
 	void it("blocks unknown top-level and nested keys", () => {
