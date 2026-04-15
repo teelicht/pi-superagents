@@ -7,7 +7,7 @@
  * - constrain subagent, plan-review, and worktree behavior from resolved config
  * - keep Superpowers skill selection authoritative instead of forcing recon first
  * - render entry skill and overlay skill content for brainstorming flows
- * - provide brainstorming-only saved-spec Plannotator contract
+ * - provide generic Plannotator contract for applicable workflows
  *
  * Important side effects:
  * - none; callers resolve skill file content before invoking this module
@@ -21,16 +21,15 @@ export interface SuperpowersRootPromptSkill {
 
 export interface SuperpowersRootPromptInput {
 	task: string;
-	useBranches: boolean;
-	useSubagents: boolean;
-	useTestDrivenDevelopment: boolean;
-	usePlannotatorReview: boolean;
-	worktreesEnabled: boolean;
+	useBranches?: boolean;
+	useSubagents?: boolean;
+	useTestDrivenDevelopment?: boolean;
+	usePlannotatorReview?: boolean;
+	worktrees?: { enabled: boolean; root?: string | null };
 	fork: boolean;
 	usingSuperpowersSkill?: SuperpowersRootPromptSkill;
 	entrySkill?: SuperpowersRootPromptSkill;
 	overlaySkills?: SuperpowersRootPromptSkill[];
-	entrySkillSource?: "command" | "intercepted-skill" | "implicit";
 }
 
 /**
@@ -40,18 +39,13 @@ export interface SuperpowersRootPromptInput {
  * @returns Human-readable metadata block.
  */
 function buildMetadata(input: SuperpowersRootPromptInput): string {
-	const lines = [
-		'workflow: "superpowers"',
-		`useBranches: ${input.useBranches}`,
-		`useSubagents: ${input.useSubagents}`,
-		`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`,
-		`usePlannotatorReview: ${input.usePlannotatorReview}`,
-		`worktrees.enabled: ${input.worktreesEnabled}`,
-	];
-
-	if (input.fork) {
-		lines.push('context: "fork"');
-	}
+	const lines: string[] = ['workflow: "superpowers"'];
+	if (input.useBranches !== undefined) lines.push(`useBranches: ${input.useBranches}`);
+	if (input.useSubagents !== undefined) lines.push(`useSubagents: ${input.useSubagents}`);
+	if (input.useTestDrivenDevelopment !== undefined) lines.push(`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`);
+	if (input.usePlannotatorReview !== undefined) lines.push(`usePlannotatorReview: ${input.usePlannotatorReview}`);
+	if (input.worktrees !== undefined) lines.push(`worktrees.enabled: ${input.worktrees.enabled}`);
+	if (input.fork) lines.push('context: "fork"');
 	return lines.join("\n");
 }
 
@@ -84,7 +78,7 @@ function buildSkillBootstrap(skill: SuperpowersRootPromptSkill | undefined): str
  * Build the entry-skill prompt block for Superpowers skill-entry runs.
  *
  * @param input Resolved root prompt input.
- * @returns Prompt block, or an empty string for general Superpowers runs.
+ * @returns Prompt block, or an empty string when no entry skill is configured.
  */
 function buildEntrySkillBlock(input: SuperpowersRootPromptInput): string {
 	if (!input.entrySkill) return "";
@@ -92,7 +86,6 @@ function buildEntrySkillBlock(input: SuperpowersRootPromptInput): string {
 		"Entry skill:",
 		`Name: ${input.entrySkill.name}`,
 		`Path: ${input.entrySkill.path}`,
-		`Source: ${input.entrySkillSource ?? "command"}`,
 		"",
 		"This entry skill is the starting Superpowers skill for this run. Follow it after `using-superpowers` identifies relevant skills.",
 		"",
@@ -121,25 +114,6 @@ function buildOverlaySkillsBlock(overlaySkills: SuperpowersRootPromptSkill[] | u
 			skill.content,
 			"```",
 		]),
-	].join("\n");
-}
-
-/**
- * Build the saved-spec Plannotator contract for brainstorming entry flows.
- *
- * @param input Resolved root prompt input.
- * @returns Prompt block for saved-spec review, or an empty string when not applicable.
- */
-function buildBrainstormingSpecReviewContract(input: SuperpowersRootPromptInput): string {
-	if (input.entrySkill?.name !== "brainstorming" || !input.usePlannotatorReview) return "";
-	return [
-		"Brainstorming saved brainstorming spec Plannotator review is ENABLED by config.",
-		"Follow the normal brainstorming chat workflow first: ask clarifying questions, propose approaches, present design sections, and write the approved spec.",
-		"After the approved brainstorming spec is saved, and before invoking or transitioning to `writing-plans`, call `superpowers_spec_review` with the saved spec content and file path.",
-		"If `superpowers_spec_review` returns approved, continue the workflow.",
-		"If it returns rejected, treat the response as spec-review feedback, revise the spec, save it, and resubmit through the same tool.",
-		"If the tool returns unavailable, show one concise warning and continue with the normal text-based review gate.",
-		"Only call Plannotator for the final approved spec, not intermediate design sections.",
 	].join("\n");
 }
 
@@ -191,19 +165,19 @@ function buildDelegationContract(useSubagents: boolean): string {
  * Build the Plannotator review contract for the root session.
  *
  * @param usePlannotatorReview Whether browser review is enabled by config.
- * @returns Prompt block describing the exact plan-approval call site behavior.
+ * @returns Prompt block describing the Plannotator review call site behavior.
  */
 function buildPlannotatorReviewContract(usePlannotatorReview: boolean): string {
 	if (!usePlannotatorReview) {
-		return "Plannotator browser review is DISABLED by config. Use the normal Superpowers text-based plan approval flow.";
+		return "Plannotator browser review is DISABLED by config. Use the normal Superpowers text-based approval flow.";
 	}
 
 	return [
 		"Plannotator browser review is ENABLED by config.",
-		"At the normal implementation-plan approval point, after final plan content and before plain-text approval, call `superpowers_plan_review` with the final plan content and saved plan file path when available.",
-		"Use `superpowers_plan_review` only at the normal plan approval point, not during brainstorming, clarifying questions, implementation, code review, or subagent delegation.",
-		"If `superpowers_plan_review` returns approved, continue the workflow.",
-		"If `superpowers_plan_review` returns rejected, treat the response as plan-review feedback, revise the plan, and resubmit through the same tool at the same approval point.",
+		"At the review gate for this workflow phase, call the appropriate Plannotator review tool with the saved artifact content and file path.",
+		"Use `superpowers_plan_review` for implementation plans and `superpowers_spec_review` for brainstorming specs.",
+		"If the review tool returns approved, continue the workflow.",
+		"If the review tool returns rejected, treat the response as review feedback, revise the artifact, save it, and resubmit.",
 		"If the tool returns unavailable, show one concise warning and continue with normal text-based approval.",
 	].join("\n");
 }
@@ -252,7 +226,7 @@ function buildTaskTrackingContract(): string {
  * @returns Prompt text to send through `pi.sendUserMessage`.
  */
 export function buildSuperpowersRootPrompt(input: SuperpowersRootPromptInput): string {
-	return [
+	const sections: string[] = [
 		"# Superpowers Root Session Contract",
 		"",
 		"This is a Superpowers session. This is a strict hidden instruction block for one Superpowers turn. Follow it as authoritative runtime policy. The user-visible command summary may be terse; do not ask the user to restate details that are present here.",
@@ -274,18 +248,30 @@ export function buildSuperpowersRootPrompt(input: SuperpowersRootPromptInput): s
 		buildOverlaySkillsBlock(input.overlaySkills),
 		"",
 		"## Runtime Policy",
-		buildBranchContract(input.useBranches),
-		"",
-		buildBrainstormingSpecReviewContract(input),
-		"",
-		buildDelegationContract(input.useSubagents),
-		"",
-		buildPlannotatorReviewContract(input.usePlannotatorReview),
-		"",
-		buildWorktreeContract(input.worktreesEnabled),
-		"",
-		buildTaskTrackingContract(),
-	].join("\n");
+	];
+
+	if (input.useBranches !== undefined) {
+		sections.push(buildBranchContract(input.useBranches));
+		sections.push("");
+	}
+	if (input.useSubagents !== undefined) {
+		sections.push(buildDelegationContract(input.useSubagents));
+		sections.push("");
+	}
+	if (input.worktrees !== undefined) {
+		sections.push(buildWorktreeContract(input.worktrees.enabled));
+		sections.push("");
+	}
+	if (input.useSubagents === true) {
+		sections.push(buildTaskTrackingContract());
+		sections.push("");
+	}
+	if (input.usePlannotatorReview !== undefined) {
+		sections.push(buildPlannotatorReviewContract(input.usePlannotatorReview));
+		sections.push("");
+	}
+
+	return sections.join("\n");
 }
 
 /**
@@ -299,19 +285,18 @@ export function buildSuperpowersRootPrompt(input: SuperpowersRootPromptInput): s
  * @returns Visible summary with the user task and config flags.
  */
 export function buildSuperpowersVisiblePromptSummary(input: SuperpowersRootPromptInput): string {
-	const configBlock = [
-		`useBranches: ${input.useBranches}`,
-		`useSubagents: ${input.useSubagents}`,
-		`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`,
-		`usePlannotatorReview: ${input.usePlannotatorReview}`,
-		`worktrees.enabled: ${input.worktreesEnabled}`,
-		`context: ${input.fork ? "fork" : "fresh"}`,
-	].join("\n");
+	const configLines: string[] = [];
+	if (input.useBranches !== undefined) configLines.push(`useBranches: ${input.useBranches}`);
+	if (input.useSubagents !== undefined) configLines.push(`useSubagents: ${input.useSubagents}`);
+	if (input.useTestDrivenDevelopment !== undefined) configLines.push(`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`);
+	if (input.usePlannotatorReview !== undefined) configLines.push(`usePlannotatorReview: ${input.usePlannotatorReview}`);
+	if (input.worktrees !== undefined) configLines.push(`worktrees.enabled: ${input.worktrees.enabled}`);
+	configLines.push(`context: ${input.fork ? "fork" : "fresh"}`);
 
 	return [
 		`Superpowers ▸ ${input.task}`,
 		"",
 		"Config:",
-		configBlock,
+		configLines.join("\n"),
 	].join("\n");
 }
