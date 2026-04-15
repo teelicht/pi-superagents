@@ -30,7 +30,7 @@ export interface SuperpowersRootPromptInput {
 	usingSuperpowersSkill?: SuperpowersRootPromptSkill;
 	entrySkill?: SuperpowersRootPromptSkill;
 	overlaySkills?: SuperpowersRootPromptSkill[];
-	entrySkillSource?: "command" | "intercepted-skill";
+	entrySkillSource?: "command" | "intercepted-skill" | "implicit";
 }
 
 /**

@@ -1,6 +1,6 @@
 {
-  "name": "@teelicht/pi-superagents",
-  "version": "0.3.1",
+  "name": "pi-superagents",
+  "version": "0.4.1",
   "description": "Pi extension for Superpowers workflows: recon, research, implementation, review, and debug",
   "author": "Thomas Lichtenecker",
   "license": "MIT",

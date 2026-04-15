@@ -45,8 +45,7 @@ Keep comments precise and maintained with code changes.
 
 - After each change, make sure that the user documentation is updated:
   - `README.md`
-  - `docs/guides/superpowers.md`
-  - `docs/reference/worktrees.md`
-  - `docs/reference/configuration.md`
-  - `docs/reference/parameters.md`
-  - `docs/reference/skills.md`
+  - `docs/configuration.md`
+  - `docs/worktrees.md`
+  - `docs/parameters.md`
+  - `docs/skills.md`

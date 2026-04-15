@@ -286,6 +286,7 @@ export interface SuperpowersSettings {
 	modelTiers?: Record<string, ModelTierSetting>;
 	skillOverlays?: SkillOverlayConfig;
 	interceptSkillCommands?: string[];
+	superpowersSkills?: string[];
 }
 
 export interface ExtensionConfig {

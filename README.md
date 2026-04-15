@@ -1,15 +1,16 @@
 # @teelicht/pi-superagents
 
-Pi extension for Superpowers workflows: structured delegation to specialized role agents for recon, research, implementation, review, and debugging.
+Pi extension for Superpowers workflows: structured delegation to specialized role agents for recon, research, implementation, review, and debugging. This was originally a fork of [pi-subagents](https://github.com/nicobailon/pi-subagents) but moved from a very flexible subagent implementation to an opinionated tool to integrate the superpowers skills with some of my own ideas.
 
 ## Features
 
 - **Superpowers Workflow**: Proven pipeline for robust AI-assisted development.
 - **Role-Specific Agents**: Purpose-built agents for every phase of the development lifecycle.
+- **Model Tiers**: Abstract model selection (cheap, balanced, max) for each agent to reduce costs. Models can be configured per tier. Custom tiers are possible.
 - **Subagent Execution**: Automatically spawns sub-agents (setting).
 - **Worktree Isolation**: Optional git worktree creation for parallel tasks to prevent filesystem conflicts (setting).
-- **Model Tiers**: Abstract model selection (cheap, balanced, max) resolved via user configuration.
-- **Skill Overlays**: Configure additional skills to load alongside entry skills (e.g., load `react-native-best-practices` when brainstorming). See [Configuration Reference](docs/reference/configuration.md#skill-overlays).
+
+- **Skill Overlays**: Configure additional skills to load alongside entry skills (e.g., load `react-native-best-practices` when brainstorming). See [Configuration](docs/configuration.md#skill-overlays).
 - **Plannotator Integration**: Optional event bridge to [Plannotator](https://plannotator.ai/) for visual browser-based plan review and approval (setting).
 
 ## Installation
@@ -43,7 +44,7 @@ Define your own slash commands with preset workflow options in `config.json`. Ex
 - **`/sp-lean`** — Run Superpowers without subagents or TDD.
 - **`/sp-plannotator`** — Run Superpowers with Plannotator browser review enabled.
 
-See [Configuration Reference](docs/reference/configuration.md#custom-command-presets) for the full preset schema and inheritance rules.
+See [Configuration](docs/configuration.md#custom-commands) for the full preset schema and inheritance rules.
 
 ### Superpowers Workflow
 
@@ -78,11 +79,11 @@ On install, `pi-superagents` creates an empty user override file:
 ~/.pi/agent/extensions/subagent/config.json
 ```
 
-See [Configuration Reference](docs/reference/configuration.md) for details on model tiers and worktree settings.
+See [Configuration](docs/configuration.md) for details on model tiers, custom tiers, and worktree settings.
 
 ## Documentation
 
-- **[Superpowers Guide](docs/guides/superpowers.md)** — Workflow details, role agents, and command usage.
-- **[Worktree Isolation](docs/reference/worktrees.md)** — Git worktree setup, requirements, and hooks.
-- **[Configuration](docs/reference/configuration.md)** — Extension settings, model tiers, and performance tuning.
-- **[Parameters API](docs/reference/parameters.md)** — Full parameter reference for the `subagent` tool.
+- **[Configuration](docs/configuration.md)** — Workflow, settings, model tiers, custom tiers, commands, and agent overrides.
+- **[Worktree Isolation](docs/worktrees.md)** — Git worktree setup, requirements, and hooks.
+- **[Parameters API](docs/parameters.md)** — Full parameter reference for the `subagent` tool.
+- **[Skills Reference](docs/skills.md)** — Skill locations, injection, and frontmatter.
