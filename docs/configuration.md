@@ -32,64 +32,94 @@ When Pi starts, the extension shows a notification with the config path and exac
 /sp-settings
 ```
 
+## Built-in Commands
+
+The bundled defaults define three built-in commands:
+
+| Command | Entry Skill | Policy Settings |
+|---|---|---|
+| `sp-implement` | `using-superpowers` | `useSubagents: true`, `useTestDrivenDevelopment: true`, `useBranches: false`, `worktrees: { enabled: false }` |
+| `sp-brainstorm` | `brainstorming` | `usePlannotator: true` |
+| `sp-plan` | `writing-plans` | `usePlannotator: true` |
+
+Built-in commands cannot be overridden by user config. Create a custom command with a different name instead.
+
 ## Configuration Keys
 
 ### `superagents`
 
-Configures the Superpowers workflow and role execution policy.
+Configures the Superpowers workflow.
 
-| Key                        | Description                                                                                                                                                             |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `useBranches`              | Require a dedicated git branch for each Superpowers implementation plan or spec (default: `false`).                                                                     |
-| `useSubagents`             | Allow root Superpowers workflows to delegate through the `subagent` tool when active skills call for delegation (default: `true`).                                      |
-| `useTestDrivenDevelopment` | Add test-driven-development guidance to `sp-implementer` runs (default: `true`).                                                                                        |
-| `usePlannotator`           | Open the optional Plannotator browser review UI at Superpowers plan/spec approval points and wait for approval/rejection (default: `false`).                            |
-| `commands`                 | Map of custom Superpowers slash command presets. Command names must match `superpowers-<name>` or `sp-<name>`.                                                          |
-| `modelTiers`               | Maps abstract tier names (`cheap`, `balanced`, `max`, plus any custom tiers) to concrete model configs. Custom tiers are defined by adding new keys.                    |
-| `worktrees.enabled`        | Whether to use git worktree isolation for parallel tasks (bundled default: `false`). When false, Superpowers root prompts and subagent runs must not request worktrees. |
-| `worktrees.root`           | Directory for Superpowers parallel worktrees (default: system temp).                                                                                                    |
-| `skillOverlays`            | Maps entry skill names to arrays of additional skill names to load alongside them in skill-entry flows (default: `{}`).                                                   |
-| `interceptSkillCommands`   | List of skill names that should be intercepted and handled by Superpowers (default: `[]`). Only `brainstorming` is currently supported.                                 |
-| `superpowersSkills` | List of Superpowers process skill names whose `skillOverlays` are resolved at session start (bundled default, not user-configurable yet). |
+| Key | Description |
+|---|---|
+| `commands` | Map of command presets. Each preset has an `entrySkill` and per-command policy booleans. |
+| `modelTiers` | Maps abstract tier names (`cheap`, `balanced`, `max`, plus any custom tiers) to concrete model configs. |
+| `skillOverlays` | Maps entry skill names to arrays of additional skill names to load alongside them. |
+| `interceptSkillCommands` | List of skill names intercepted for Superpowers entry (`brainstorming`, `writing-plans`). |
+| `superpowersSkills` | List of Superpowers process skill names (bundled default, not user-configurable). |
 
+### Command Presets
+
+Each command preset supports these keys:
+
+| Key | Description |
+|---|---|
+| `description` | Command description shown in help. |
+| `entrySkill` | Entry skill name (e.g., `using-superpowers`, `brainstorming`, `writing-plans`). |
+| `useBranches` | Require dedicated git branch for plans/specs. |
+| `useSubagents` | Allow delegation through `subagent` tool. |
+| `useTestDrivenDevelopment` | Enable TDD guidance. |
+| `usePlannotator` | Enable Plannotator browser review at approval points. |
+| `worktrees.enabled` | Use git worktree isolation for parallel tasks. |
+| `worktrees.root` | Directory for worktrees (default: system temp). |
 
 ## Common Override Examples
 
-Override one model tier while inheriting the rest:
+Create a custom command with lean settings:
 
 ```json
 {
   "superagents": {
-    "modelTiers": {
-      "max": {
-        "model": "anthropic/claude-3-5-sonnet",
-        "thinking": "medium"
+    "commands": {
+      "sp-lean": {
+        "description": "Lean: no subagents, no TDD",
+        "entrySkill": "using-superpowers",
+        "useSubagents": false,
+        "useTestDrivenDevelopment": false
       }
     }
   }
 }
 ```
 
-Keep worktree creation disabled for parallel tasks:
+Enable Plannotator for a custom planning command:
 
 ```json
 {
   "superagents": {
-    "worktrees": {
-      "enabled": false
+    "commands": {
+      "sp-review": {
+        "description": "Planning with browser review",
+        "entrySkill": "writing-plans",
+        "usePlannotator": true
+      }
     }
   }
 }
 ```
 
-Enable worktree isolation with a project-local root:
+Override worktree settings for the built-in `sp-implement`:
 
 ```json
 {
   "superagents": {
-    "worktrees": {
-      "enabled": true,
-      "root": ".worktrees"
+    "commands": {
+      "sp-implement": {
+        "worktrees": {
+          "enabled": true,
+          "root": ".worktrees"
+        }
+      }
     }
   }
 }
@@ -97,19 +127,34 @@ Enable worktree isolation with a project-local root:
 
 If `root` is inside your repository, it must be ignored by git.
 
-Enable the optional Plannotator browser review flow at the plan approval point:
+## Custom Commands
+
+Define preset slash commands in your `config.json`:
 
 ```json
 {
   "superagents": {
-    "usePlannotator": true
+    "commands": {
+      "sp-custom": {
+        "description": "Custom workflow",
+        "entrySkill": "using-superpowers",
+        "useSubagents": true,
+        "useTestDrivenDevelopment": true,
+        "useBranches": true,
+        "worktrees": {
+          "enabled": false
+        }
+      }
+    }
   }
 }
 ```
 
+Command names must match `superpowers-<name>` or `sp-<name>` (lowercase alphanumeric and hyphens).
+
 ## Model Tiers
 
-Superpowers agents use abstract model tiers defined in your configuration. This allows you to scale quality and cost without modifying individual agent files.
+Superpowers agents use abstract model tiers. Define tiers in your configuration:
 
 ```json
 {
@@ -123,181 +168,11 @@ Superpowers agents use abstract model tiers defined in your configuration. This 
 }
 ```
 
-### Tier Schema
-
-Each tier in `modelTiers` can be a string (model ID) or an object:
-
-```json
-{
-  "model": "anthropic/claude-4-6-sonnet",
-  "thinking": "low"
-}
-```
-
 **Supported thinking levels:** `off`, `minimal`, `low`, `medium`, `high`, `xhigh`.
-
-### Custom Tiers
-
-You can define custom tiers (e.g., `creative`, `legacy`) beyond the built-in `cheap`, `balanced`, and `max`. Any non-empty string key in `modelTiers` is valid:
-
-```json
-{
-  "superagents": {
-    "modelTiers": {
-      "creative": {
-        "model": "anthropic/claude-sonnet-4",
-        "thinking": "high"
-      },
-      "legacy": {
-        "model": "openai/gpt-4o"
-      }
-    }
-  }
-}
-```
-
-Reference a custom tier using either of two approaches:
-
-**Project-local agent override.** Place an agent `.md` file in your project's `.agents/` directory (or `.pi/agents/`) with the same `name` as a builtin agent and set `model` to your custom tier:
-
-```markdown
----
-name: sp-implementer
-description: Superpowers-native implementer for one bounded plan task
-model: creative
-tools: read, grep, find, ls, bash, write
-maxSubagentDepth: 0
----
-
-You are a bounded implementer.
-...
-```
-
-This overrides the builtin `sp-implementer` agent to use the `creative` tier instead of the default `cheap`.
-
-**Subagent tool parameter.** Pass a tier name (built-in or custom) as the `model` parameter when calling the subagent tool directly:
-
-```json
-{
-  "agent": "sp-research",
-  "task": "Investigate the auth flow",
-  "model": "creative"
-}
-```
-
-## Custom Commands
-
-You can define preset slash commands in your `config.json` that use the same Superpowers workflow as `/sp-implement`. Two example presets ship in `config.example.json`:
-
-- `/sp-lean` — Disables subagents and TDD for a minimal workflow.
-- `/sp-plannotator` — Enables Plannotator browser review.
-
-Each preset field overrides the corresponding global default. Omitted fields inherit their values from the top-level `superagents` settings.
-
-| Command          | Description                                     | Overrides                                                |
-| ---------------- | ----------------------------------------------- | -------------------------------------------------------- |
-| `sp-lean`        | Run Superpowers lean: no subagents, no TDD      | `useSubagents: false`, `useTestDrivenDevelopment: false` |
-| `sp-plannotator` | Run Superpowers with Plannotator review enabled | `usePlannotator: true`                                   |
-
-Copy either or both into your own `config.json` to try them out, or define your own:
-
-```json
-{
-  "superagents": {
-    "commands": {
-      "sp-review": {
-        "description": "Review-focused Superpowers run",
-        "useBranches": false,
-        "useSubagents": true,
-        "useTestDrivenDevelopment": false,
-        "usePlannotator": false,
-        "worktrees": {
-          "enabled": false,
-          "root": null
-        }
-      }
-    }
-  }
-}
-```
-
-**Preset field inheritance:** Each preset field overrides the corresponding global `superagents` default. Omitted fields inherit from global defaults through the existing merge chain. The `sp-lean` preset only sets `useSubagents` and `useTestDrivenDevelopment` — all other fields (like `useBranches`, `usePlannotator`) still inherit their default values.
-
-Supported preset keys are `description`, `useBranches`, `useSubagents`, `useTestDrivenDevelopment`, `usePlannotator`, and `worktrees`. Preset `worktrees` supports only `enabled` and `root`.
-
-Command names must match `superpowers-<name>` or `sp-<name>` (lowercase alphanumeric and hyphens).
-
-## Worktree Isolation
-
-Parallel tasks within the Superpowers workflow can use git worktrees to prevent filesystem conflicts, but this is not enabled by default. Enable it with `superagents.worktrees.enabled` when you want isolated worktree execution for parallel tasks.
-
-```json
-{
-  "superagents": {
-    "worktrees": {
-      "enabled": true,
-      "root": ".worktrees"
-    }
-  }
-}
-```
-
-If `root` is inside your repository, make sure it is ignored by git before enabling it. Custom Superpowers commands can also override worktree behavior with `superagents.commands.<name>.worktrees`.
-
-See [Worktree Reference](worktrees.md) for full details.
-
-## Branch Policy
-
-Branch policy is separate from worktree isolation. Enable `superagents.useBranches` when you want the root Superpowers workflow to require one dedicated git branch for an implementation plan or spec.
-
-```json
-{
-  "superagents": {
-    "useBranches": true
-  }
-}
-```
-
-Worktrees are temporary filesystem isolation for parallel subagents. Branch policy is a root workflow rule for organizing implementation work.
-
-## Plannotator Browser Review
-
-Enable the optional browser review flow in your config:
-
-```json
-{
-  "superagents": {
-    "usePlannotator": true
-  }
-}
-```
-
-Install [Plannotator](https://plannotator.ai/) separately before enabling the review UI. It is an optional dependency for the visual browser review flow:
-
-```text
-pi install npm:@plannotator/pi-extension
-```
-
-Important details regarding the Plannotator integration:
-
-- **Plannotator is optional**: If you enable `usePlannotator` without installing Plannotator, Superpowers falls back to the normal in-chat approval flow.
-- **Shared Event API**: `pi-superagents` exclusively uses Plannotator's shared event API.
-- **Browser Assets**: The currently published Plannotator Pi extension includes the browser assets and event listener. Standalone public web-component packages are not required for this integration.
-- **Distinct Workflows**: Installing Plannotator also registers Plannotator's own commands and shortcuts, but those are separate from this bridge. You should not activate Plannotator's native `/plannotator` plan mode for the same Superpowers workflow.
-
-Behavior:
-
-1. When Superpowers reaches plan approval, it opens the Plannotator browser review UI if the extension is installed and `usePlannotator` is `true`.
-2. `pi-superagents` publishes the review request through Plannotator's shared event API and waits for an approval or rejection event.
-3. If you approve or reject in the browser UI, the Superpowers workflow resumes with that decision.
-4. If Plannotator is unavailable, not installed, or the browser review flow cannot start, Superpowers falls back to the standard in-chat approval flow.
 
 ## Skill Overlays
 
-Skill overlays load additional skills alongside the entry skill. Two mechanisms resolve overlays:
-
-- **Entry overlays** — resolve for the skill that starts the session (e.g., `skillOverlays["brainstorming"]` when `/sp-brainstorm` runs)
-- **Invocation overlays** — resolve for all skills in `superpowersSkills` regardless of entry path (e.g., `skillOverlays["writing-plans"]` resolves even for `/sp-implement`)
+Skill overlays load additional skills alongside the entry skill:
 
 ```json
 {
@@ -310,71 +185,42 @@ Skill overlays load additional skills alongside the entry skill. Two mechanisms 
 }
 ```
 
-Keys must be non-empty skill names. Values must be arrays of non-empty skill names. Missing overlay skills are blocking errors at runtime.
-
-> [!NOTE]
-> `writing-plans` overlays (e.g., `supabase-postgres-best-practices`) now kick in for all Superpowers commands because `writing-plans` is in the bundled `superpowersSkills` list — not just for commands whose entry skill is `writing-plans`.
-
-### Overlay Resolution Behavior
-
-| Entry path | entrySkill | Entry overlay | Invocation overlays |
-|---|---|---|---|
-| `/sp-brainstorm` | `{ name: "brainstorming", source: "command" }` | `skillOverlays["brainstorming"]` | `skillOverlays[superpowersSkills[*]]` |
-| `/sp-implement` | `{ name: "using-superpowers", source: "implicit" }` | `skillOverlays["using-superpowers"]` | `skillOverlays[superpowersSkills[*]]` |
-| Custom command | `{ name: "using-superpowers", source: "implicit" }` | `skillOverlays["using-superpowers"]` | `skillOverlays[superpowersSkills[*]]` |
-| `/skill:brainstorming` (intercepted) | `{ name: "brainstorming", source: "intercepted-skill" }` | `skillOverlays["brainstorming"]` | `skillOverlays[superpowersSkills[*]]` |
-
-Keys must be non-empty skill names. Values must be arrays of non-empty skill names. Missing overlay skills are blocking errors at runtime.
-
-The `config.example.json` file ships with two overlay presets that demonstrate common pairings:
-
-- `brainstorming` → `["react-native-best-practices"]`
-- `writing-plans` → `["supabase-postgres-best-practices"]`
-
-Copy these into your own `config.json` to try them out.
-
-### Saved-Spec Plannotator Review
-
-When `usePlannotator` is enabled, the Superpowers workflow calls `superpowers_spec_review` after the brainstorming session saves an approved spec. This triggers Plannotator's browser review for the saved spec before transitioning to `writing-plans`.
+Overlay resolution happens at session start for skills in `superpowersSkills` (invocation overlays) and for the entry skill (entry overlays).
 
 ## Direct Skill Interception
 
-By default, Pi skill commands like `/skill:brainstorming` run through Pi's native skill expansion. You can opt in to intercept specific skill commands and route them through the Superpowers workflow instead.
+Route skill commands through Superpowers:
 
 ```json
 {
   "superagents": {
-    "interceptSkillCommands": ["brainstorming"]
+    "interceptSkillCommands": ["brainstorming", "writing-plans"]
   }
 }
 ```
 
-Currently only `brainstorming` is supported. When enabled:
+When enabled:
+- `/skill:brainstorming <task>` → Superpowers with `brainstorming` entry skill
+- `/skill:writing-plans <task>` → Superpowers with `writing-plans` entry skill
 
-- `/skill:brainstorming <task>` is handled by Superpowers with the same profile and Plannotator integration as `/sp-brainstorm`.
-- Skill commands not in the list continue through native Pi behavior.
-- Extension-injected messages are not re-intercepted.
+## Plannotator Browser Review
 
-Interception works independently of skill overlays. You can use `interceptSkillCommands` on its own, skill overlays on their own (e.g., with `/sp-brainstorm`), or combine both:
+Plannotator review is enabled per-command via `usePlannotator`. For built-in commands:
 
-```json
-{
-  "superagents": {
-    "interceptSkillCommands": ["brainstorming"],
-    "skillOverlays": {
-      "brainstorming": ["react-native-best-practices"]
-    }
-  }
-}
+- `sp-brainstorm`: `usePlannotator: true` — reviews saved specs
+- `sp-plan`: `usePlannotator: true` — reviews saved plans
+
+Install [Plannotator](https://plannotator.ai/) separately:
+
+```text
+pi install npm:@plannotator/pi-extension
 ```
+
+If Plannotator is unavailable, Superpowers falls back to in-chat approval.
 
 ## Superpowers Skills
 
-The `superpowersSkills` list defines which skill names are Superpowers process skills. It lives in the bundled `default-config.json` and is not user-configurable yet — defined in bundled defaults only.
-
-For skills in this list, invocation overlays resolve regardless of entry path. This means skill overlays for these names apply to all Superpowers commands, not just the command that directly invokes that skill.
-
-New Superpowers skills can be added by updating `default-config.json`. The current list:
+The bundled `superpowersSkills` list defines process skills. Current list:
 
 ```json
 "superpowersSkills": [
@@ -395,48 +241,49 @@ New Superpowers skills can be added by updating `default-config.json`. The curre
 
 ## Status and Settings
 
-Use `/subagents-status` to inspect active and recent subagent runs. The same overlay is available through `Ctrl+Option+S` on macOS, represented internally as `ctrl+alt+s`.
+Use `/subagents-status` to inspect active and recent subagent runs (`Ctrl+Alt+S`).
 
-Use `/sp-settings` to inspect and toggle workflow settings such as `useSubagents`, `useTestDrivenDevelopment`, and worktree behavior. It also surfaces config validation diagnostics.
+Use `/sp-settings` to inspect workflow settings and config diagnostics.
 
-# Superpowers Workflow
+## Superpowers Workflow Commands
 
-## Brainstorming
+### `/sp-implement`
 
-Use `/sp-brainstorm` to run brainstorming through the Superpowers workflow. This loads the `brainstorming` skill as the entry point with optional overlay skills and Plannotator saved-spec review.
-
-```text
-/sp-brainstorm design the new onboarding flow
-/sp-brainstorm explore mobile push notification options
-```
-
-## Implementation
-
-The `/sp-implement` command activates a structured workflow for task execution with role-specific agents, model tiers, and built-in quality gates.
+Run implementation through the Superpowers workflow:
 
 ```text
 /sp-implement fix the auth regression
-/sp-implement tdd implement the cache invalidation task
-/sp-implement direct update the Expo config
-/sp-implement tdd review the release branch --fork
+/sp-implement tdd implement the cache invalidation
+/sp-implement direct update the config
 ```
 
-| Mode     | Description                                                                    |
-| -------- | ------------------------------------------------------------------------------ |
-| `tdd`    | Test-first implementer loop with the `test-driven-development` skill (default) |
-| `direct` | Same review and verification loop, but code-first implementation               |
+**Inline tokens:** `lean`, `full`, `tdd`, `direct`, `subagents`, `no-subagents`, `--fork`
 
-You can specify the mode as the first argument: `/sp-implement tdd <task>` or `/sp-implement direct <task>`. If nothing is specified, the default configuration from `config.json` is applied.
+### `/sp-brainstorm`
 
-# Role Agents
+Run brainstorming with Plannotator spec review:
 
-The workflow uses a sequence of specialized role agents. Each agent is purpose-built for its phase:
+```text
+/sp-brainstorm design the new onboarding flow
+/sp-brainstorm explore mobile push options
+```
 
-| Role        | Agent            | Purpose                                                          |
-| ----------- | ---------------- | ---------------------------------------------------------------- |
-| Recon       | `sp-recon`       | Bounded reconnaissance for task discovery and context gathering. |
-| Research    | `sp-research`    | Focused evidence gathering for APIs or complex logic.            |
-| Implementer | `sp-implementer` | Execution of planned code changes with verification.             |
-| Code Review | `sp-code-review` | Code-quality reviewer for implementation results.                |
-| Spec Review | `sp-spec-review` | Verification of changes against design specifications.           |
-| Debug       | `sp-debug`       | Bounded failure investigation and root-cause analysis.           |
+### `/sp-plan`
+
+Run planning with Plannotator plan review:
+
+```text
+/sp-plan redesign the auth flow
+/sp-plan plan the mobile push integration
+```
+
+## Role Agents
+
+| Role | Agent | Purpose |
+|---|---|---|
+| Recon | `sp-recon` | Context gathering for task discovery |
+| Research | `sp-research` | Evidence gathering for complex logic |
+| Implementer | `sp-implementer` | Planned code changes with verification |
+| Code Review | `sp-code-review` | Quality reviewer for implementation |
+| Spec Review | `sp-spec-review` | Verification against design specs |
+| Debug | `sp-debug` | Failure investigation and root-cause analysis |

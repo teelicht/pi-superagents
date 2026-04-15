@@ -31,8 +31,9 @@ pi remove npm:@teelicht/pi-superagents
 
 | Command                 | Description                                                                 |
 | ----------------------- | --------------------------------------------------------------------------- |
-| `/sp-brainstorm <task>` | Brainstorm a task and save a spec, optionally review it with Plannotator UI |
 | `/sp-implement <task>`  | Run an implementation task through the Superpowers flow                     |
+| `/sp-brainstorm <task>` | Brainstorm a task and save a spec, optionally review it with Plannotator UI |
+| `/sp-plan <task>`      | Plan a task with optional Plannotator plan review                          |
 | `/subagents-status`     | Open active and recent subagent run status                                  |
 | `/sp-settings`          | Open Superpowers and subagent workflow settings                             |
 
