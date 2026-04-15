@@ -374,12 +374,12 @@ export function validateConfigObject(rawConfig: unknown): ConfigValidationResult
 				validateInterceptSkillCommands(diagnostics, superagents.interceptSkillCommands);
 			}
 			if ("superpowersSkills" in superagents) {
-				addError(
-					diagnostics,
-					"superagents.superpowersSkills",
-					"is not user-configurable. It is defined in the bundled defaults and cannot be overridden.",
-					"unknown_key",
-				);
+				diagnostics.push({
+					level: "warning",
+					code: "defaults_only_key",
+					path: "superagents.superpowersSkills",
+					message: "is not user-configurable. It is defined in the bundled defaults and cannot be overridden.",
+				});
 			}
 		}
 	}

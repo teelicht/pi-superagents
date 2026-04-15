@@ -16,7 +16,7 @@
 - Modify: `src/shared/types.ts`
 - Modify: `src/execution/superagents-config.ts`
 
-- [ ] **Step 1: Add `superpowersSkills` to `SuperpowersSettings` interface**
+- [x] **Step 1: Add `superpowersSkills` to `SuperpowersSettings` interface**
 
 In `src/shared/types.ts`, add `superpowersSkills?: string[]` to the `SuperpowersSettings` interface, after the `interceptSkillCommands` field:
 
@@ -35,7 +35,7 @@ export interface SuperpowersSettings {
 }
 ```
 
-- [ ] **Step 2: Add `"implicit"` to `SuperpowersEntrySkillSource` in `workflow-profile.ts`**
+- [x] **Step 2: Add `"implicit"` to `SuperpowersEntrySkillSource` in `workflow-profile.ts`**
 
 In `src/superpowers/workflow-profile.ts`, change:
 
@@ -49,7 +49,7 @@ to:
 export type SuperpowersEntrySkillSource = "command" | "intercepted-skill" | "implicit";
 ```
 
-- [ ] **Step 3: Verify TypeScript compiles**
+- [x] **Step 3: Verify TypeScript compiles**
 
 ```bash
 npx tsc --noEmit
@@ -57,7 +57,7 @@ npx tsc --noEmit
 
 Expected: clean compile with no errors.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/shared/types.ts src/superpowers/workflow-profile.ts
@@ -391,7 +391,7 @@ npx vitest run test/unit/superpowers-workflow-profile.test.ts
 
 Expected: all tests pass, including the new ones and the existing ones (which should still work because `superpowersSkills` defaults to `undefined` → `?? []`).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/superpowers/workflow-profile.ts test/unit/superpowers-workflow-profile.test.ts
