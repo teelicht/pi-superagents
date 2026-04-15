@@ -13,7 +13,7 @@
 
 import type { ExtensionConfig, SuperpowersCommandPreset } from "../shared/types.ts";
 
-export type SuperpowersEntrySkillSource = "command" | "intercepted-skill";
+export type SuperpowersEntrySkillSource = "command" | "intercepted-skill" | "implicit";
 
 export interface SuperpowersEntrySkillProfile {
 	name: string;

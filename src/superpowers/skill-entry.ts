@@ -27,7 +27,7 @@ export interface SkillEntryPromptInput extends SuperpowersRootPromptInput {
 	/** Resolved overlay skill contents. */
 	overlaySkills?: ResolvedSkill[];
 	/** Source of the entry skill (command vs intercepted-skill). */
-	entrySkillSource?: "command" | "intercepted-skill";
+	entrySkillSource?: "command" | "intercepted-skill" | "implicit";
 }
 
 /**

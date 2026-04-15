@@ -21,17 +21,23 @@
     },
     "modelTiers": {
       "cheap": {
-        "model": "opencode-go/minimax-m2.7"
+        "model": "opencode-go/minimax-m2.7",
+        "thinking": "low"
       },
       "balanced": {
-        "model": "opencode-go/glm-5.1"
+        "model": "opencode-go/glm-5.1",
+        "thinking": "medium"
       },
       "max": {
-        "model": "openai/gpt-5.4"
+        "model": "openai/gpt-5.4",
+        "thinking": "high"
       },
       "creative": {
-        "model": "anthropic/claude-sonnet-4",
+        "model": "anthropic/claude-opus-4.6",
         "thinking": "high"
+      },
+      "legacy": {
+        "model": "openai/gpt-4o"
       }
     },
     "skillOverlays": {
