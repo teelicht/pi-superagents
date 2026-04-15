@@ -2,7 +2,7 @@
  * Lean slash command registration for Superpowers workflows.
  *
  * Responsibilities:
- * - register `/sp-implement`, `/sp-brainstorm`, `/subagents-status`, `/sp-settings`, and configured custom commands
+ * - register `/sp-implement`, `/sp-brainstorm`, `/sp-plan`, `/subagents-status`, `/sp-settings`, and configured custom commands
  * - parse workflow arguments and resolve run profiles from config defaults
  * - send root-session prompts via `sendUserMessage`
  * - send skill-entry prompts for supported entry skills (e.g. brainstorming)
@@ -11,14 +11,14 @@
  * - `superpowers/workflow-profile` for argument parsing and profile resolution
  * - `superpowers/root-prompt` for prompt construction
  * - `superpowers/skill-entry` for skill-entry prompt building
- * - `shared/types` for `ExtensionConfig`, `SubagentState`
+ * - `shared/types` for `ExtensionConfig`, `SubagentState`, `SuperpowersCommandPreset`
  * - `shared/skills` for `resolveAvailableSkill` and `resolveSkills`
  * - `ui/subagents-status` for the run status overlay
  * - `ui/sp-settings` for the settings overlay
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import type { ExtensionConfig, SubagentState } from "../shared/types.ts";
+import type { ExtensionConfig, SubagentState, SuperpowersCommandPreset } from "../shared/types.ts";
 import { resolveAvailableSkill, resolveSkills } from "../shared/skills.ts";
 import { SubagentsStatusComponent } from "../ui/subagents-status.ts";
 import { SuperpowersSettingsComponent } from "../ui/sp-settings.ts";
@@ -45,11 +45,11 @@ function notifyIfConfigBlocked(state: SubagentState, ctx: ExtensionContext): boo
 }
 
 /**
- * Send a Superpowers root-session prompt for a supported entry skill.
+ * Send a Superpowers root-session prompt for a resolved profile.
  *
  * @param dispatcher Prompt dispatcher that pairs visible summaries with hidden contracts.
- * @param ctx Current command context.
- * @param profile Resolved Superpowers run profile with entry-skill metadata.
+ * @param ctx Current extension context.
+ * @param profile Resolved Superpowers run profile.
  */
 function sendSkillEntryPrompt(
 	dispatcher: ReturnType<typeof createSuperpowersPromptDispatcher>,
@@ -75,7 +75,7 @@ function sendSkillEntryPrompt(
 			useSubagents: profile.useSubagents,
 			useTestDrivenDevelopment: profile.useTestDrivenDevelopment,
 			usePlannotatorReview: profile.usePlannotatorReview,
-			worktreesEnabled: profile.worktreesEnabled,
+			worktrees: profile.worktrees,
 			fork: profile.fork,
 		}),
 		promptResult.prompt,
@@ -124,7 +124,7 @@ async function openSuperpowersSettingsOverlay(
  * @param state Shared extension state for config gate checks.
  * @param config Effective extension config for default resolution.
  * @param commandName Slash command name without leading slash.
- * @param description Command description shown in help.
+ * @param preset Command preset containing entrySkill and policy options.
  */
 function registerSuperpowersCommand(
 	pi: ExtensionAPI,
@@ -132,10 +132,10 @@ function registerSuperpowersCommand(
 	state: SubagentState,
 	config: ExtensionConfig,
 	commandName: string,
-	description: string,
+	preset: SuperpowersCommandPreset,
 ): void {
 	pi.registerCommand(commandName, {
-		description,
+		description: preset.description ?? `Run Superpowers using the ${commandName} preset`,
 		handler: (rawArgs, ctx) => {
 			if (notifyIfConfigBlocked(state, ctx)) return Promise.resolve();
 			const parsed = parseSuperpowersWorkflowArgs(rawArgs);
@@ -149,53 +149,7 @@ function registerSuperpowersCommand(
 				config,
 				commandName,
 				parsed,
-				entrySkill: {
-					name: "using-superpowers",
-					source: "implicit",
-				},
-			});
-			sendSkillEntryPrompt(dispatcher, ctx, profile);
-			return Promise.resolve();
-		},
-	});
-}
-
-/**
- * Register the explicit Superpowers-backed brainstorming command.
- *
- * @param pi Extension API for command registration and message sending.
- * @param dispatcher Prompt dispatcher used to hide strict contracts from chat.
- * @param state Shared extension state for config gate checks.
- * @param config Effective extension config for profile resolution.
- */
-function registerBrainstormCommand(
-	pi: ExtensionAPI,
-	dispatcher: ReturnType<typeof createSuperpowersPromptDispatcher>,
-	state: SubagentState,
-	config: ExtensionConfig,
-): void {
-	pi.registerCommand("sp-brainstorm", {
-		description: "Run brainstorming through the Superpowers workflow profile",
-		handler: (rawArgs, ctx) => {
-			if (notifyIfConfigBlocked(state, ctx)) return Promise.resolve();
-			const task = rawArgs.trim();
-			if (!task) {
-				if (ctx.hasUI) ctx.ui.notify("Usage: /sp-brainstorm <task>", "error");
-				return Promise.resolve();
-			}
-			const parsed = parseSuperpowersWorkflowArgs(task);
-			if (!parsed) {
-				if (ctx.hasUI) ctx.ui.notify("Usage: /sp-brainstorm <task>", "error");
-				return Promise.resolve();
-			}
-			const profile = resolveSuperpowersRunProfile({
-				config,
-				commandName: "sp-brainstorm",
-				parsed,
-				entrySkill: {
-					name: "brainstorming",
-					source: "command",
-				},
+				entrySkill: preset.entrySkill,
 			});
 			sendSkillEntryPrompt(dispatcher, ctx, profile);
 			return Promise.resolve();
@@ -207,8 +161,9 @@ function registerBrainstormCommand(
  * Register all Superpowers slash commands with the Pi extension API.
  *
  * Registers:
- * - `/sp-implement` — primary workflow command
+ * - `/sp-implement` — primary implementation workflow command
  * - `/sp-brainstorm` — Superpowers-backed brainstorming entry command
+ * - `/sp-plan` — Superpowers-backed planning entry command
  * - `/subagents-status` — subagent run status overlay
  * - `/sp-settings` — Superpowers and subagent workflow settings overlay
  * - `Ctrl+Alt+S` — keyboard shortcut for subagents status
@@ -225,26 +180,9 @@ export function registerSlashCommands(
 ): void {
 	const dispatcher = createSuperpowersPromptDispatcher(pi);
 
-	registerSuperpowersCommand(
-		pi,
-		dispatcher,
-		state,
-		config,
-		"sp-implement",
-		"Run a Superpowers implementation workflow: /sp-implement [lean|full|tdd|direct|subagents|no-subagents] <task> [--fork]",
-	);
-
-	registerBrainstormCommand(pi, dispatcher, state, config);
-
+	// Register all commands (built-in + custom) from config
 	for (const [commandName, preset] of Object.entries(config.superagents?.commands ?? {})) {
-		registerSuperpowersCommand(
-			pi,
-			dispatcher,
-			state,
-			config,
-			commandName,
-			preset.description ?? `Run Superpowers using the ${commandName} preset`,
-		);
+		registerSuperpowersCommand(pi, dispatcher, state, config, commandName, preset);
 	}
 
 	pi.registerCommand("subagents-status", {
