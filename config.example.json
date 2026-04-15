@@ -1,23 +1,17 @@
 {
   "superagents": {
-    "useBranches": false,
-    "useSubagents": true,
-    "useTestDrivenDevelopment": true,
-    "usePlannotator": false,
     "commands": {
       "sp-lean": {
         "description": "Run Superpowers lean: no subagents, no TDD",
+        "entrySkill": "using-superpowers",
         "useSubagents": false,
         "useTestDrivenDevelopment": false
       },
       "sp-plannotator": {
         "description": "Run Superpowers with Plannotator review enabled",
+        "entrySkill": "using-superpowers",
         "usePlannotator": true
       }
-    },
-    "worktrees": {
-      "enabled": false,
-      "root": null
     },
     "modelTiers": {
       "cheap": {
