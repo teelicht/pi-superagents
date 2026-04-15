@@ -27,7 +27,7 @@ import {
 	resolveSuperpowersRunProfile,
 	type ResolvedSuperpowersRunProfile,
 } from "../superpowers/workflow-profile.ts";
-import { buildSuperpowersRootPrompt, buildSuperpowersVisiblePromptSummary } from "../superpowers/root-prompt.ts";
+import { buildSuperpowersVisiblePromptSummary } from "../superpowers/root-prompt.ts";
 import { buildResolvedSkillEntryPrompt } from "../superpowers/skill-entry.ts";
 import { createSuperpowersPromptDispatcher } from "../superpowers/prompt-dispatch.ts";
 
@@ -42,39 +42,6 @@ function notifyIfConfigBlocked(state: SubagentState, ctx: ExtensionContext): boo
 	if (!state.configGate.blocked) return false;
 	if (ctx.hasUI) ctx.ui.notify(state.configGate.message, "error");
 	return true;
-}
-
-/**
- * Send a Superpowers root-session prompt, either immediately or as a follow-up
- * when the agent is already streaming.
- *
- * @param dispatcher Prompt dispatcher that pairs visible summaries with hidden contracts.
- * @param ctx Current extension command context.
- * @param profile Fully resolved run profile.
- */
-function sendSuperpowersPrompt(
-	dispatcher: ReturnType<typeof createSuperpowersPromptDispatcher>,
-	ctx: ExtensionContext,
-	profile: ResolvedSuperpowersRunProfile,
-): void {
-	const usingSuperpowersSkill = resolveAvailableSkill(ctx.cwd, "using-superpowers");
-	const promptInput = {
-		task: profile.task,
-		useBranches: profile.useBranches,
-		useSubagents: profile.useSubagents,
-		useTestDrivenDevelopment: profile.useTestDrivenDevelopment,
-		usePlannotatorReview: profile.usePlannotatorReview,
-		worktreesEnabled: profile.worktreesEnabled,
-		fork: profile.fork,
-		usingSuperpowersSkill,
-	};
-	const wasIdle = ctx.isIdle();
-	dispatcher.send(
-		buildSuperpowersVisiblePromptSummary(promptInput),
-		buildSuperpowersRootPrompt(promptInput),
-		ctx,
-	);
-	if (!wasIdle && ctx.hasUI) ctx.ui.notify("Queued Superpowers workflow as a follow-up", "info");
 }
 
 /**
@@ -178,8 +145,16 @@ function registerSuperpowersCommand(
 				}
 				return Promise.resolve();
 			}
-			const profile = resolveSuperpowersRunProfile({ config, commandName, parsed });
-			sendSuperpowersPrompt(dispatcher, ctx, profile);
+			const profile = resolveSuperpowersRunProfile({
+				config,
+				commandName,
+				parsed,
+				entrySkill: {
+					name: "using-superpowers",
+					source: "implicit",
+				},
+			});
+			sendSkillEntryPrompt(dispatcher, ctx, profile);
 			return Promise.resolve();
 		},
 	});
