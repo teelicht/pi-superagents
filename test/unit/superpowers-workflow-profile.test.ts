@@ -207,4 +207,83 @@ void describe("Superpowers workflow profile", () => {
 		});
 		assert.deepEqual(profile.overlaySkillNames, ["react-native-best-practices"]);
 	});
+
+	void it("resolves invocation overlays from superpowersSkills without entry skill", () => {
+		const parsed = parseSuperpowersWorkflowArgs("fix auth")!;
+		const profile = resolveSuperpowersRunProfile({
+			config: {
+				superagents: {
+					skillOverlays: {
+						"writing-plans": ["supabase-postgres-best-practices"],
+					},
+					superpowersSkills: ["writing-plans", "executing-plans"],
+				},
+			},
+			commandName: "sp-implement",
+			parsed,
+		});
+		assert.deepEqual(profile.overlaySkillNames, ["supabase-postgres-best-practices"]);
+	});
+
+	void it("merges entry overlays with invocation overlays from superpowersSkills", () => {
+		const parsed = parseSuperpowersWorkflowArgs("design onboarding")!;
+		const profile = resolveSuperpowersRunProfile({
+			config: {
+				superagents: {
+					skillOverlays: {
+						brainstorming: ["react-native-best-practices"],
+						"writing-plans": ["supabase-postgres-best-practices"],
+					},
+					superpowersSkills: ["writing-plans", "executing-plans"],
+				},
+			},
+			commandName: "sp-brainstorm",
+			parsed,
+			entrySkill: {
+				name: "brainstorming",
+				source: "command",
+			},
+		});
+		assert.deepEqual(profile.overlaySkillNames, [
+			"react-native-best-practices",
+			"supabase-postgres-best-practices",
+		]);
+	});
+
+	void it("deduplicates overlays when entry skill overlaps with superpowersSkills", () => {
+		const parsed = parseSuperpowersWorkflowArgs("design onboarding")!;
+		const profile = resolveSuperpowersRunProfile({
+			config: {
+				superagents: {
+					skillOverlays: {
+						brainstorming: ["react-native-best-practices"],
+					},
+					superpowersSkills: ["brainstorming", "writing-plans"],
+				},
+			},
+			commandName: "sp-brainstorm",
+			parsed,
+			entrySkill: {
+				name: "brainstorming",
+				source: "command",
+			},
+		});
+		assert.deepEqual(profile.overlaySkillNames, ["react-native-best-practices"]);
+	});
+
+	void it("returns empty overlays when superpowersSkills and entrySkill are absent", () => {
+		const parsed = parseSuperpowersWorkflowArgs("fix auth")!;
+		const profile = resolveSuperpowersRunProfile({
+			config: {
+				superagents: {
+					skillOverlays: {
+						brainstorming: ["react-native-best-practices"],
+					},
+				},
+			},
+			commandName: "sp-implement",
+			parsed,
+		});
+		assert.deepEqual(profile.overlaySkillNames, []);
+	});
 });
