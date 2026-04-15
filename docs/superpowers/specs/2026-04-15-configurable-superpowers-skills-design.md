@@ -10,10 +10,10 @@ The original hardcoded `ROOT_ONLY_WORKFLOW_SKILLS` set (removed in commit 65cc52
 
 ### Two overlay mechanisms
 
-| Mechanism | When it resolves | Example |
-|---|---|---|
-| **Entry overlay** | Session start, based on the entry skill | `skillOverlays["brainstorming"]` loads when `/sp-brainstorm` runs |
-| **Invocation overlay** | Session start, based on all superpowers process skills | `skillOverlays["writing-plans"]` loads regardless of entry path |
+| Mechanism              | When it resolves                                       | Example                                                           |
+| ---------------------- | ------------------------------------------------------ | ----------------------------------------------------------------- |
+| **Entry overlay**      | Session start, based on the entry skill                | `skillOverlays["brainstorming"]` loads when `/sp-brainstorm` runs |
+| **Invocation overlay** | Session start, based on all superpowers process skills | `skillOverlays["writing-plans"]` loads regardless of entry path   |
 
 Both resolve at session-start time, not lazily during the workflow. The root prompt injects all resolved overlay skills in one block.
 
@@ -49,6 +49,7 @@ Adding new superpowers skills later is a config change, not a code change.
 `/sp-implement` and custom slash commands get `entrySkill: { name: "using-superpowers", source: "implicit" }`.
 
 This enables:
+
 - `skillOverlays["using-superpowers"]` overlays to resolve for `/sp-implement`
 - The root prompt to include the entry-skill block for all Superpaths
 
@@ -57,6 +58,7 @@ No deduplication is needed. `using-superpowers` may appear in both the skill boo
 ### 3. Overlay resolution
 
 `resolveSuperpowersRunProfile` collects overlay skill names from two sources:
+
 1. The entry skill: `skillOverlays[entrySkill.name]`
 2. All superpowers process skills: `skillOverlays[skillName]` for each skill in `superpowersSkills`
 
@@ -71,7 +73,10 @@ All Superpowers command paths go through `sendSkillEntryPrompt` (the skill-entry
 Add `"implicit"` to `SuperpowersEntrySkillSource`:
 
 ```typescript
-export type SuperpowersEntrySkillSource = "command" | "intercepted-skill" | "implicit";
+export type SuperpowersEntrySkillSource =
+  | "command"
+  | "intercepted-skill"
+  | "implicit";
 ```
 
 The root prompt's entry-skill block shows `Source: implicit` for `/sp-implement` and custom commands.
@@ -89,28 +94,28 @@ Do **not** include `superpowersSkills` in `config.example.json` since it's not u
 
 ## Behavior matrix
 
-| Entry path | entrySkill | Entry overlay | Invocation overlays |
-|---|---|---|---|
-| `/sp-brainstorm` | `{ name: "brainstorming", source: "command" }` | `skillOverlays["brainstorming"]` | `skillOverlays[superpowersSkills[*]]` |
-| `/sp-implement` | `{ name: "using-superpowers", source: "implicit" }` | `skillOverlays["using-superpowers"]` | `skillOverlays[superpowersSkills[*]]` |
-| Custom command | `{ name: "using-superpowers", source: "implicit" }` | `skillOverlays["using-superpowers"]` | `skillOverlays[superpowersSkills[*]]` |
-| `/skill:brainstorming` (intercepted) | `{ name: "brainstorming", source: "intercepted-skill" }` | `skillOverlays["brainstorming"]` | `skillOverlays[superpowersSkills[*]]` |
+| Entry path                           | entrySkill                                               | Entry overlay                        | Invocation overlays                   |
+| ------------------------------------ | -------------------------------------------------------- | ------------------------------------ | ------------------------------------- |
+| `/sp-brainstorm`                     | `{ name: "brainstorming", source: "command" }`           | `skillOverlays["brainstorming"]`     | `skillOverlays[superpowersSkills[*]]` |
+| `/sp-implement`                      | `{ name: "using-superpowers", source: "implicit" }`      | `skillOverlays["using-superpowers"]` | `skillOverlays[superpowersSkills[*]]` |
+| Custom command                       | `{ name: "using-superpowers", source: "implicit" }`      | `skillOverlays["using-superpowers"]` | `skillOverlays[superpowersSkills[*]]` |
+| `/skill:brainstorming` (intercepted) | `{ name: "brainstorming", source: "intercepted-skill" }` | `skillOverlays["brainstorming"]`     | `skillOverlays[superpowersSkills[*]]` |
 
 Now `"writing-plans": ["supabase-postgres-best-practices"]` resolves for `/sp-brainstorm`, `/sp-implement`, and custom commands alike because `writing-plans` is in `superpowersSkills` and its overlay is collected at session start.
 
 ## Files to modify
 
-| File | Change |
-|---|---|
-| `src/shared/types.ts` | Add `superpowersSkills` to `SuperpowersSettings`, add `"implicit"` to entry skill source type |
-| `src/execution/config-validation.ts` | Add `"superpowersSkills"` to `SUPERAGENTS_KEYS`, add validation, reject in user overrides, merge from defaults only |
-| `src/execution/superagents-config.ts` | Add `superpowersSkills` to `getSuperagentSettings` return shape |
-| `src/superpowers/workflow-profile.ts` | Resolve overlays from entry skill + all `superpowersSkills`, add implicit entry skill handling |
-| `src/superpowers/skill-entry.ts` | Accept `"implicit"` source |
-| `src/slash/slash-commands.ts` | Merge `sendSuperpowersPrompt` into `sendSkillEntryPrompt`, add implicit entry skill for `/sp-implement` and custom commands |
-| `default-config.json` | Add `superpowersSkills` array |
-| `config.example.json` | No change (not user-configurable) |
-| `docs/configuration.md` | Update skill overlays section to document both mechanisms, add `superpowersSkills` to config keys table |
-| `test/unit/default-config.test.ts` | Add `superpowersSkills` to `SUPERAGENTS_OPTION_KEYS`, add test for default value |
-| `test/unit/config-validation.test.ts` | Add test: reject `superpowersSkills` in user overrides |
-| `test/unit/superpowers-policy.test.ts` | Add tests: invocation overlays resolve, implicit entry skill for `/sp-implement` |
+| File                                   | Change                                                                                                                      |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/types.ts`                  | Add `superpowersSkills` to `SuperpowersSettings`, add `"implicit"` to entry skill source type                               |
+| `src/execution/config-validation.ts`   | Add `"superpowersSkills"` to `SUPERAGENTS_KEYS`, add validation, reject in user overrides, merge from defaults only         |
+| `src/execution/superagents-config.ts`  | Add `superpowersSkills` to `getSuperagentSettings` return shape                                                             |
+| `src/superpowers/workflow-profile.ts`  | Resolve overlays from entry skill + all `superpowersSkills`, add implicit entry skill handling                              |
+| `src/superpowers/skill-entry.ts`       | Accept `"implicit"` source                                                                                                  |
+| `src/slash/slash-commands.ts`          | Merge `sendSuperpowersPrompt` into `sendSkillEntryPrompt`, add implicit entry skill for `/sp-implement` and custom commands |
+| `default-config.json`                  | Add `superpowersSkills` array                                                                                               |
+| `config.example.json`                  | No change (not user-configurable)                                                                                           |
+| `docs/configuration.md`                | Update skill overlays section to document both mechanisms, add `superpowersSkills` to config keys table                     |
+| `test/unit/default-config.test.ts`     | Add `superpowersSkills` to `SUPERAGENTS_OPTION_KEYS`, add test for default value                                            |
+| `test/unit/config-validation.test.ts`  | Add test: reject `superpowersSkills` in user overrides                                                                      |
+| `test/unit/superpowers-policy.test.ts` | Add tests: invocation overlays resolve, implicit entry skill for `/sp-implement`                                            |

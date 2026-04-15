@@ -71,7 +71,7 @@ git commit -m "feat: add superpowersSkills to SuperpowersSettings and implicit e
 **Files:**
 - Modify: `src/execution/config-validation.ts`
 
-- [ ] **Step 1: Add `superpowersSkills` to `SUPERAGENTS_KEYS` set**
+- [x] **Step 1: Add `superpowersSkills` to `SUPERAGENTS_KEYS` set**
 
 In `src/execution/config-validation.ts`, add `"superpowersSkills"` to the `SUPERAGENTS_KEYS` set:
 
@@ -90,7 +90,7 @@ const SUPERAGENTS_KEYS = new Set([
 ]);
 ```
 
-- [ ] **Step 2: Add validation for `superpowersSkills` — reject in user overrides**
+- [x] **Step 2: Add validation for `superpowersSkills` — reject in user overrides**
 
 After the `interceptSkillCommands` validation block in `validateConfigObject`, add a new block. When `superpowersSkills` appears in user overrides, reject it as not yet user-configurable with a clear diagnostic:
 
@@ -107,7 +107,7 @@ if ("superpowersSkills" in superagents) {
 
 This goes inside the `if ("superagents" in rawConfig)` / `else { for (const key ...)` block, after the `interceptSkillCommands` validation.
 
-- [ ] **Step 3: Add `superpowersSkills` to merge — always take from defaults**
+- [x] **Step 3: Add `superpowersSkills` to merge — always take from defaults**
 
 In the `mergeConfig` function, add `superpowersSkills` to the merged superagents object. The key rule: `superpowersSkills` always comes from defaults, never from user overrides (since user overrides are rejected in validation). Add after the `interceptSkillCommands` merge:
 
@@ -134,7 +134,7 @@ const mergedSuperagents = defaultSuperagents || overrideSuperagents
 
 Since user overrides are rejected at validation time, `overrideSuperagents.superpowersSkills` will never reach merge. But we explicitly take from defaults for clarity and safety.
 
-- [ ] **Step 4: Write unit tests for validation and merge**
+- [x] **Step 4: Write unit tests for validation and merge**
 
 In `test/unit/config-validation.test.ts`, add tests:
 
@@ -143,7 +143,7 @@ In `test/unit/config-validation.test.ts`, add tests:
 3. Invalid `superpowersSkills` types (not an array, empty strings in array) are rejected.
 4. Merge preserves defaults' `superpowersSkills` even when user override has a different value (since user override is blocked at validation, but test the merge path anyway).
 
-- [ ] **Step 5: Run all config-validation tests**
+- [x] **Step 5: Run all config-validation tests**
 
 ```bash
 npx vitest run test/unit/config-validation.test.ts
@@ -151,7 +151,7 @@ npx vitest run test/unit/config-validation.test.ts
 
 Expected: all tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/execution/config-validation.ts test/unit/config-validation.test.ts
@@ -166,7 +166,7 @@ git commit -m "feat: add superpowersSkills validation and merge — reject user 
 - Modify: `default-config.json`
 - Modify: `test/unit/default-config.test.ts`
 
-- [ ] **Step 1: Add `superpowersSkills` array to `default-config.json`**
+- [x] **Step 1: Add `superpowersSkills` array to `default-config.json`**
 
 Add the following key to the `superagents` object in `default-config.json`:
 
@@ -187,7 +187,7 @@ Add the following key to the `superagents` object in `default-config.json`:
 ]
 ```
 
-- [ ] **Step 2: Add `superpowersSkills` to `SUPERAGENTS_OPTION_KEYS` in default-config test**
+- [x] **Step 2: Add `superpowersSkills` to `SUPERAGENTS_OPTION_KEYS` in default-config test**
 
 In `test/unit/default-config.test.ts`, add `"superpowersSkills"` to the `SUPERAGENTS_OPTION_KEYS` array:
 
@@ -206,7 +206,7 @@ const SUPERAGENTS_OPTION_KEYS = [
 ] as const;
 ```
 
-- [ ] **Step 3: Add test that `default-config.json` has the expected `superpowersSkills` entries**
+- [x] **Step 3: Add test that `default-config.json` has the expected `superpowersSkills` entries**
 
 Add a test case that reads `default-config.json` and verifies `superpowersSkills` contains the expected skill names:
 
@@ -223,7 +223,7 @@ void it("includes superpowers skills in bundled defaults", () => {
 });
 ```
 
-- [ ] **Step 4: Assert `config.example.json` does NOT include `superpowersSkills`**
+- [x] **Step 4: Assert `config.example.json` does NOT include `superpowersSkills`**
 
 Since it's not user-configurable, it must not appear in the example config:
 
@@ -234,7 +234,7 @@ void it("does not include superpowersSkills in the example config", () => {
 });
 ```
 
-- [ ] **Step 5: Run default-config tests**
+- [x] **Step 5: Run default-config tests**
 
 ```bash
 npx vitest run test/unit/default-config.test.ts
@@ -242,7 +242,7 @@ npx vitest run test/unit/default-config.test.ts
 
 Expected: all tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add default-config.json test/unit/default-config.test.ts
@@ -257,7 +257,7 @@ git commit -m "feat: add superpowersSkills to bundled defaults and test surface"
 - Modify: `src/superpowers/workflow-profile.ts`
 - Modify: `test/unit/superpowers-workflow-profile.test.ts`
 
-- [ ] **Step 1: Add invocation overlay resolution to `resolveSuperpowersRunProfile`**
+- [x] **Step 1: Add invocation overlay resolution to `resolveSuperpowersRunProfile`**
 
 In `src/superpowers/workflow-profile.ts`, replace the current overlay resolution:
 
@@ -284,7 +284,7 @@ This ensures:
 - Invocation overlays (e.g., `skillOverlays["writing-plans"]`) resolve for all commands because `writing-plans` is in `superpowersSkills`
 - Both sources are deduplicated via `Set`
 
-- [ ] **Step 2: Write unit tests for invocation overlay resolution**
+- [x] **Step 2: Write unit tests for invocation overlay resolution**
 
 In `test/unit/superpowers-workflow-profile.test.ts`, add test cases:
 
@@ -383,7 +383,7 @@ void it("returns empty overlays when superpowersSkills and entrySkill are absent
 });
 ```
 
-- [ ] **Step 3: Run workflow-profile tests**
+- [x] **Step 3: Run workflow-profile tests**
 
 ```bash
 npx vitest run test/unit/superpowers-workflow-profile.test.ts
@@ -406,7 +406,7 @@ git commit -m "feat: resolve invocation overlays from superpowersSkills in workf
 - Modify: `src/slash/slash-commands.ts`
 - Modify: `test/unit/superpowers-workflow-profile.test.ts`
 
-- [ ] **Step 1: Add implicit entry skill to `registerSuperpowersCommand`**
+- [x] **Step 1: Add implicit entry skill to `registerSuperpowersCommand`**
 
 In `src/slash/slash-commands.ts`, modify `registerSuperpowersCommand` to pass an implicit entry skill for `/sp-implement` and custom commands. The `sendSuperpowersPrompt` function is replaced with `sendSkillEntryPrompt`, which requires a profile with an entry skill.
 
@@ -450,7 +450,7 @@ function registerSuperpowersCommand(
 
 This replaces the previous call to `sendSuperpowersPrompt`.
 
-- [ ] **Step 2: Remove `sendSuperpowersPrompt` function**
+- [x] **Step 2: Remove `sendSuperpowersPrompt` function**
 
 The `sendSuperpowersPrompt` function is no longer used — all paths now go through `sendSkillEntryPrompt`. Remove the function and its imports if they become unused. Check for any remaining callers first.
 
@@ -460,7 +460,7 @@ grep -n "sendSuperpowersPrompt" src/slash/slash-commands.ts
 
 If only the definition and the removed call remain, delete the function. If other callers exist, keep it but add a `@deprecated` JSDoc tag pointing to `sendSkillEntryPrompt`.
 
-- [ ] **Step 3: Verify the `using-superpowers` skill resolves in `buildResolvedSkillEntryPrompt`**
+- [x] **Step 3: Verify the `using-superpowers` skill resolves in `buildResolvedSkillEntryPrompt`**
 
 The `buildResolvedSkillEntryPrompt` function resolves `usingSuperpowersSkill`, `entrySkill`, and `overlaySkills` independently. With `entrySkill: { name: "using-superpowers", source: "implicit" }`, it will:
 
@@ -470,11 +470,11 @@ The `buildResolvedSkillEntryPrompt` function resolves `usingSuperpowersSkill`, `
 
 The `using-superpowers` skill will appear in both the "Mandatory Startup" bootstrap block and the "Entry skill" block, which is fine — no deduplication needed per the design spec.
 
-- [ ] **Step 4: Update the `buildEntrySkillBlock` in root-prompt.ts to show `Source: implicit`**
+- [x] **Step 4: Update the `buildEntrySkillBlock` in root-prompt.ts to show `Source: implicit`**
 
 In `src/superpowers/root-prompt.ts`, the `buildEntrySkillBlock` function already uses `input.entrySkillSource ?? "command"`. Since we added `"implicit"` to the type, this will display `Source: implicit` automatically. Verify no changes needed.
 
-- [ ] **Step 5: Write test for implicit entry skill**
+- [x] **Step 5: Write test for implicit entry skill**
 
 In `test/unit/superpowers-workflow-profile.test.ts`, add:
 
@@ -500,7 +500,7 @@ void it("resolves implicit entry skill for sp-implement command", () => {
 });
 ```
 
-- [ ] **Step 6: Run all affected tests**
+- [x] **Step 6: Run all affected tests**
 
 ```bash
 npx vitest run test/unit/superpowers-workflow-profile.test.ts
@@ -510,7 +510,7 @@ npx vitest run test/unit/superpowers-root-prompt.test.ts
 
 Expected: all tests pass.
 
-- [ ] **Step 7: Run TypeScript compile**
+- [x] **Step 7: Run TypeScript compile**
 
 ```bash
 npx tsc --noEmit
@@ -518,7 +518,7 @@ npx tsc --noEmit
 
 Expected: clean compilation.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/slash/slash-commands.ts src/superpowers/root-prompt.ts test/unit/superpowers-workflow-profile.test.ts
@@ -534,7 +534,7 @@ git commit -m "feat: give sp-implement and custom commands an implicit using-sup
 - Modify: `AGENTS.md` (doc list)
 - Modify: `README.md` (feature list)
 
-- [ ] **Step 1: Update `docs/configuration.md` — add `superpowersSkills` to config keys table**
+- [x] **Step 1: Update `docs/configuration.md` — add `superpowersSkills` to config keys table**
 
 Add a row to the Configuration Keys table after `interceptSkillCommands`:
 
@@ -542,7 +542,7 @@ Add a row to the Configuration Keys table after `interceptSkillCommands`:
 | `superpowersSkills` | List of Superpowers process skill names whose `skillOverlays` are resolved at session start (bundled default, not user-configurable yet). |
 ```
 
-- [ ] **Step 2: Update `docs/configuration.md` — rewrite Skill Overlays section**
+- [x] **Step 2: Update `docs/configuration.md` — rewrite Skill Overlays section**
 
 Replace the current Skill Overlays section intro to document both overlay mechanisms:
 
@@ -566,7 +566,7 @@ Update the example to show both mechanisms:
 
 With a note that `writing-plans` overlays now kick in for all Superpowers commands because `writing-plans` is in `superpowersSkills`.
 
-- [ ] **Step 3: Add the `superpowersSkills` bundled default to the Configuration section**
+- [x] **Step 3: Add the `superpowersSkills` bundled default to the Configuration section**
 
 Add a subsection after "Direct Skill Interception" that documents the bundled `superpowersSkills` list. Explain:
 
@@ -594,7 +594,7 @@ Show the full list:
 ]
 ```
 
-- [ ] **Step 4: Update `docs/configuration.md` — update the Behavior matrix**
+- [x] **Step 4: Update `docs/configuration.md` — update the Behavior matrix**
 
 Add a row for `/sp-implement` with its implicit entry skill and invocation overlays:
 
@@ -605,7 +605,7 @@ Add a row for `/sp-implement` with its implicit entry skill and invocation overl
 | Custom command | `{ name: "using-superpowers", source: "implicit" }` | `skillOverlays["using-superpowers"]` | `skillOverlays[superpowersSkills[*]]` |
 | `/skill:brainstorming` (intercepted) | `{ name: "brainstorming", source: "intercepted-skill" }` | `skillOverlays["brainstorming"]` | `skillOverlays[superpowersSkills[*]]` |
 
-- [ ] **Step 5: Update `README.md` feature list**
+- [x] **Step 5: Update `README.md` feature list**
 
 Add a mention of `superpowersSkills` and invocation overlays to the features:
 
@@ -613,7 +613,7 @@ Add a mention of `superpowersSkills` and invocation overlays to the features:
 - **Skill Overlays**: Configure additional skills to load alongside entry skills or Superpowers process skills. See [Configuration](docs/configuration.md#skill-overlays).
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add docs/configuration.md README.md
@@ -626,9 +626,9 @@ git commit -m "docs: document superpowersSkills and invocation overlay mechanism
 
 Run through after completing all tasks:
 
-- [ ] **Spec coverage**: Every design requirement in `docs/superpowers/specs/2026-04-15-configurable-superpowers-skills-design.md` has a corresponding task. List any gaps.
-- [ ] **Placeholder scan**: No "TBD", "TODO", or vague steps in the plan.
-- [ ] **Type consistency**: `SuperpowersEntrySkillSource` includes `"implicit"`, `SuperpowersSettings` includes `superpowersSkills`, all test type assertions match.
-- [ ] **Backward compatibility**: Existing tests in `superpowers-workflow-profile.test.ts` still pass because `superpowersSkills` defaults to `undefined` → `?? []`.
-- [ ] **Config validation**: `superpowersSkills` in user overrides is rejected with a clear diagnostic, not silently ignored.
-- [ ] **No deduplication logic needed**: The `using-superpowers` skill content may appear in both the bootstrap block and the entry-skill block of the root prompt. This is by design.
+- [x] **Spec coverage**: Every design requirement in `docs/superpowers/specs/2026-04-15-configurable-superpowers-skills-design.md` has a corresponding task. List any gaps.
+- [x] **Placeholder scan**: No "TBD", "TODO", or vague steps in the plan.
+- [x] **Type consistency**: `SuperpowersEntrySkillSource` includes `"implicit"`, `SuperpowersSettings` includes `superpowersSkills`, all test type assertions match.
+- [x] **Backward compatibility**: Existing tests in `superpowers-workflow-profile.test.ts` still pass because `superpowersSkills` defaults to `undefined` → `?? []`.
+- [x] **Config validation**: `superpowersSkills` in user overrides is rejected with a clear diagnostic, not silently ignored.
+- [x] **No deduplication logic needed**: The `using-superpowers` skill content may appear in both the bootstrap block and the entry-skill block of the root prompt. This is by design.
