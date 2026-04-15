@@ -652,7 +652,7 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			workflow: params.workflow ?? "superpowers",
 			useTestDrivenDevelopment:
 				params.useTestDrivenDevelopment
-				?? deps.config.superagents?.useTestDrivenDevelopment
+				?? deps.config.superagents?.commands?.["sp-implement"]?.useTestDrivenDevelopment
 				?? true,
 		};
 

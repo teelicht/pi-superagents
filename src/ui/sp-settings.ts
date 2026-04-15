@@ -50,13 +50,18 @@ export class SuperpowersSettingsComponent implements Component {
 			this.renderBody(),
 			Math.min(width, 84),
 			this.theme,
-			"s subagents | t tdd | w worktrees | q close",
+			"p plannotator | s subagents | t tdd | w worktrees | q close",
 		);
 	}
 
 	handleInput(data: string): void {
 		if (matchesKey(data, "escape") || matchesKey(data, "q") || matchesKey(data, "ctrl+c")) {
 			this.done();
+			return;
+		}
+		if (matchesKey(data, "p")) {
+			this.toggleUsePlannotator();
+			this.tui.requestRender();
 			return;
 		}
 		if (matchesKey(data, "s")) {
@@ -77,6 +82,10 @@ export class SuperpowersSettingsComponent implements Component {
 
 	invalidate(): void {}
 
+	toggleUsePlannotator(): void {
+		this.writeConfig((config) => toggleSuperpowersBoolean(config, "usePlannotator"));
+	}
+
 	toggleUseSubagents(): void {
 		this.writeConfig((config) => toggleSuperpowersBoolean(config, "useSubagents"));
 	}
@@ -93,25 +102,38 @@ export class SuperpowersSettingsComponent implements Component {
 		const settings = this.config.superagents ?? {};
 		const commands = Object.entries(settings.commands ?? {});
 		const modelTiers = Object.entries(settings.modelTiers ?? {});
-		const lines = [
-			`useSubagents: ${settings.useSubagents ?? true} (s)`,
-			`useTestDrivenDevelopment: ${settings.useTestDrivenDevelopment ?? true} (t)`,
+
+		const lines: string[] = [
 			`configStatus: ${this.state.configGate.blocked ? "blocked" : "valid"}`,
-			`worktrees.enabled: ${settings.worktrees?.enabled ?? false} (w)`,
-			`worktrees.root: ${settings.worktrees?.root ?? "default"}`,
 			"",
 			"Commands:",
 			...(commands.length
-				? commands.map(
-						([name, preset]) =>
-							`- ${name}: subagents=${preset.useSubagents ?? "default"}, tdd=${preset.useTestDrivenDevelopment ?? "default"}`,
-					)
-				: ["- none"]),
+				? commands.flatMap(([name, preset]) => {
+						const configuredSettings: string[] = [];
+						if ("usePlannotator" in preset)
+							configuredSettings.push(`    usePlannotator: ${preset.usePlannotator}`);
+						if ("useSubagents" in preset)
+							configuredSettings.push(`    useSubagents: ${preset.useSubagents}`);
+						if ("useTestDrivenDevelopment" in preset)
+							configuredSettings.push(`    useTestDrivenDevelopment: ${preset.useTestDrivenDevelopment}`);
+						if ("useBranches" in preset)
+							configuredSettings.push(`    useBranches: ${preset.useBranches}`);
+						if (preset.worktrees && "enabled" in preset.worktrees)
+							configuredSettings.push(`    worktrees.enabled: ${preset.worktrees.enabled}`);
+						if (preset.worktrees && "root" in preset.worktrees)
+							configuredSettings.push(`    worktrees.root: ${preset.worktrees.root ?? "default"}`);
+
+						return [
+							`  ${name}:`,
+							...(configuredSettings.length ? configuredSettings : ["    (default settings)"]),
+						];
+					})
+				: ["  none"]),
 			"",
 			"Model tiers:",
 			...(modelTiers.length
-				? modelTiers.map(([name, value]) => `- ${name}: ${tierModel(value)}`)
-				: ["- none"]),
+				? modelTiers.map(([name, value]) => `  ${name}: ${tierModel(value)}`)
+				: ["  none"]),
 		];
 
 		if (this.state.configGate.message) lines.push("", this.state.configGate.message);

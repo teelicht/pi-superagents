@@ -13,13 +13,34 @@ import {
 void describe("Superpowers config writer", () => {
 	void it("toggles useSubagents without changing other settings", () => {
 		const updated = updateSuperpowersConfigText(
-			'{\n  "superagents": {\n    "useSubagents": true,\n    "useTestDrivenDevelopment": true\n  }\n}\n',
+			'{\n  "superagents": {\n    "commands": {\n      "sp-implement": {\n        "useSubagents": true,\n        "useTestDrivenDevelopment": true\n      }\n    }\n  }\n}\n',
 			(config) => toggleSuperpowersBoolean(config, "useSubagents"),
 		);
 		assert.deepEqual(JSON.parse(updated), {
 			superagents: {
-				useSubagents: false,
-				useTestDrivenDevelopment: true,
+				commands: {
+					"sp-implement": {
+						useSubagents: false,
+						useTestDrivenDevelopment: true,
+					},
+				},
+			},
+		});
+	});
+
+	void it("toggles usePlannotator without changing other settings", () => {
+		const updated = updateSuperpowersConfigText(
+			'{\n  "superagents": {\n    "commands": {\n      "sp-implement": {\n        "usePlannotator": true,\n        "useSubagents": false\n      }\n    }\n  }\n}\n',
+			(config) => toggleSuperpowersBoolean(config, "usePlannotator"),
+		);
+		assert.deepEqual(JSON.parse(updated), {
+			superagents: {
+				commands: {
+					"sp-implement": {
+						usePlannotator: false,
+						useSubagents: false,
+					},
+				},
 			},
 		});
 	});
@@ -30,7 +51,11 @@ void describe("Superpowers config writer", () => {
 		);
 		assert.deepEqual(JSON.parse(updated), {
 			superagents: {
-				useTestDrivenDevelopment: false,
+				commands: {
+					"sp-implement": {
+						useTestDrivenDevelopment: false,
+					},
+				},
 			},
 		});
 	});
@@ -42,8 +67,13 @@ void describe("Superpowers config writer", () => {
 		);
 		assert.deepEqual(JSON.parse(updated), {
 			superagents: {
-				worktrees: { enabled: true, root: null },
+				worktrees: { enabled: false, root: null },
 				modelTiers: { cheap: { model: "a" } },
+				commands: {
+					"sp-implement": {
+						worktrees: { enabled: true },
+					},
+				},
 			},
 		});
 	});

@@ -56,28 +56,36 @@ export function updateSuperpowersConfigText(
 /**
  * Toggle one boolean Superpowers setting in a config object.
  *
+ * Settings are toggled inside the `sp-implement` command preset.
+ *
  * @param config - Mutable config object to modify in place.
  * @param key - Boolean setting key to toggle.
  * @returns The same config reference, modified.
  */
 export function toggleSuperpowersBoolean(
 	config: MutableConfig,
-	key: "useSubagents" | "useTestDrivenDevelopment",
+	key: "useSubagents" | "useTestDrivenDevelopment" | "usePlannotator",
 ): MutableConfig {
 	const settings = ensureSuperagents(config);
-	settings[key] = !(settings[key] ?? true);
+	settings.commands ??= {};
+	settings.commands["sp-implement"] ??= {};
+	settings.commands["sp-implement"][key] = !(settings.commands["sp-implement"][key] ?? true);
 	return config;
 }
 
 /**
  * Toggle Superpowers worktree isolation in a config object.
  *
+ * Settings are toggled inside the `sp-implement` command preset.
+ *
  * @param config - Mutable config object to modify in place.
  * @returns The same config reference, modified.
  */
 export function toggleSuperpowersWorktrees(config: MutableConfig): MutableConfig {
 	const settings = ensureSuperagents(config);
-	settings.worktrees ??= {};
-	settings.worktrees.enabled = !(settings.worktrees.enabled ?? false);
+	settings.commands ??= {};
+	settings.commands["sp-implement"] ??= {};
+	settings.commands["sp-implement"].worktrees ??= {};
+	settings.commands["sp-implement"].worktrees.enabled = !(settings.commands["sp-implement"].worktrees.enabled ?? false);
 	return config;
 }

@@ -44,12 +44,14 @@ void test("SuperpowersSettingsComponent renders settings in a framed panel", () 
 		createState() as never,
 		{
 			superagents: {
-				useSubagents: false,
-				useTestDrivenDevelopment: true,
 				commands: {
+					"sp-implement": {
+						useSubagents: false,
+						useTestDrivenDevelopment: true,
+						worktrees: { enabled: true, root: "/tmp/superpowers-worktrees" },
+					},
 					"sp-review": { description: "Review", useSubagents: false },
 				},
-				worktrees: { enabled: true, root: "/tmp/superpowers-worktrees" },
 				modelTiers: { cheap: { model: "test-model" } },
 			},
 		} as never,
@@ -58,23 +60,35 @@ void test("SuperpowersSettingsComponent renders settings in a framed panel", () 
 
 	const rendered = component.render(100).join("\n");
 	assert.match(rendered, /Superpowers Settings/);
-	assert.match(rendered, /useSubagents: false/);
-	assert.match(rendered, /useTestDrivenDevelopment: true/);
+	assert.match(rendered, /sp-implement/);
 	assert.match(rendered, /sp-review/);
 	assert.match(rendered, /test-model/);
 	assert.match(rendered, /┌/);
 	assert.match(rendered, /┘/);
+	// All commands show their settings
+	assert.match(rendered, /useSubagents: false/);
+	assert.match(rendered, /useTestDrivenDevelopment: true/);
 });
 
 void test("SuperpowersSettingsComponent writes setting toggles to config", () => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-settings-"));
 	const configPath = path.join(dir, "config.json");
-	fs.writeFileSync(configPath, '{\n  "superagents": { "useSubagents": true, "worktrees": { "enabled": false } }\n}\n', "utf-8");
+	fs.writeFileSync(
+		configPath,
+		'{\n  "superagents": { "commands": { "sp-implement": { "useSubagents": true, "worktrees": { "enabled": false } } } }\n}\n',
+		"utf-8",
+	);
 	const component = new SuperpowersSettingsComponent(
 		createTuiMock() as never,
 		createThemeMock() as never,
 		createState(configPath) as never,
-		{ superagents: { useSubagents: true, worktrees: { enabled: false } } } as never,
+		{
+			superagents: {
+				commands: {
+					"sp-implement": { useSubagents: true, worktrees: { enabled: false } },
+				},
+			},
+		} as never,
 		() => {},
 	);
 
@@ -83,8 +97,12 @@ void test("SuperpowersSettingsComponent writes setting toggles to config", () =>
 
 	assert.deepStrictEqual(JSON.parse(fs.readFileSync(configPath, "utf-8")), {
 		superagents: {
-			useSubagents: false,
-			worktrees: { enabled: true },
+			commands: {
+				"sp-implement": {
+					useSubagents: false,
+					worktrees: { enabled: true },
+				},
+			},
 		},
 	});
 	fs.rmSync(dir, { recursive: true, force: true });
