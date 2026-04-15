@@ -21,6 +21,20 @@
       }
     },
     "skillOverlays": {},
-    "interceptSkillCommands": []
+    "interceptSkillCommands": [],
+    "superpowersSkills": [
+      "using-superpowers",
+      "brainstorming",
+      "writing-plans",
+      "executing-plans",
+      "test-driven-development",
+      "requesting-code-review",
+      "receiving-code-review",
+      "verification-before-completion",
+      "subagent-driven-development",
+      "dispatching-parallel-agents",
+      "using-git-worktrees",
+      "finishing-a-development-branch"
+    ]
   }
 }
