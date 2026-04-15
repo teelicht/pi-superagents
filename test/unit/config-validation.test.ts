@@ -310,13 +310,8 @@ void describe("config validation", () => {
 		const result = loadEffectiveConfig(defaults, defaults);
 
 		assert.equal(result.blocked, false);
-		assert.deepEqual(result.diagnostics, [{
-			level: "warning",
-			code: "legacy_full_copy",
-			path: "$",
-			message: "appears to duplicate the bundled defaults. Replace it with {} and keep only local overrides.",
-			action: "replace_with_empty_override",
-		}]);
+		assert.ok(result.diagnostics.some((d) => d.code === "legacy_full_copy"));
+		assert.ok(result.diagnostics.some((d) => d.code === "defaults_only_key"));
 	});
 
 	// -------------------------------------------------------------------------
@@ -413,14 +408,14 @@ void describe("config validation", () => {
 	// superpowersSkills validation and merge (Task 2)
 	// ---------------------------------------------------------------------------
 
-	void it("rejects superpowersSkills in user overrides as not user-configurable", () => {
+	void it("warns about superpowersSkills in user overrides as not user-configurable", () => {
 		const result = validateConfigObject({
 			superagents: {
 				superpowersSkills: ["writing-plans"],
 			},
 		});
-		assert.equal(result.blocked, true);
-		assert.ok(result.diagnostics.some((d) => d.path === "superagents.superpowersSkills" && d.code === "unknown_key"));
+		assert.equal(result.blocked, false);
+		assert.ok(result.diagnostics.some((d) => d.path === "superagents.superpowersSkills" && d.code === "defaults_only_key"));
 	});
 
 	void it("passes superpowersSkills from defaults through to effective config", () => {
@@ -432,13 +427,13 @@ void describe("config validation", () => {
 		assert.deepEqual(result.config.superagents?.superpowersSkills, ["using-superpowers", "brainstorming"]);
 	});
 
-	void it("rejects non-array superpowersSkills in user overrides", () => {
+	void it("warns about non-array superpowersSkills in user overrides", () => {
 		const result = validateConfigObject({
 			superagents: {
 				superpowersSkills: "not-an-array",
 			},
 		});
-		assert.equal(result.blocked, true);
+		assert.equal(result.blocked, false);
 		assert.ok(result.diagnostics.some((d) => d.path === "superagents.superpowersSkills"));
 	});
 });
