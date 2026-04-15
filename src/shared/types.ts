@@ -256,6 +256,7 @@ export type SkillOverlayConfig = Record<string, string[]>;
 /** Preset for a named superpowers command. */
 export interface SuperpowersCommandPreset {
 	description?: string;
+	entrySkill?: string;
 	useBranches?: boolean;
 	useSubagents?: boolean;
 	useTestDrivenDevelopment?: boolean;
@@ -277,12 +278,7 @@ export interface SuperpowersWorktreeSettings {
 
 
 export interface SuperpowersSettings {
-	useBranches?: boolean;
-	useSubagents?: boolean;
-	useTestDrivenDevelopment?: boolean;
-	usePlannotator?: boolean;
 	commands?: Record<string, SuperpowersCommandPreset>;
-	worktrees?: SuperpowersWorktreeSettings;
 	modelTiers?: Record<string, ModelTierSetting>;
 	skillOverlays?: SkillOverlayConfig;
 	interceptSkillCommands?: string[];

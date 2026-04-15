@@ -1,24 +1,29 @@
 {
   "superagents": {
-    "useBranches": false,
-    "useSubagents": true,
-    "useTestDrivenDevelopment": true,
-    "usePlannotator": false,
-    "commands": {},
-    "worktrees": {
-      "enabled": false,
-      "root": null
+    "commands": {
+      "sp-implement": {
+        "description": "Run a Superpowers implementation workflow",
+        "entrySkill": "using-superpowers",
+        "useSubagents": true,
+        "useTestDrivenDevelopment": true,
+        "useBranches": false,
+        "worktrees": { "enabled": false, "root": null }
+      },
+      "sp-brainstorm": {
+        "description": "Run brainstorming through the Superpowers workflow profile",
+        "entrySkill": "brainstorming",
+        "usePlannotator": true
+      },
+      "sp-plan": {
+        "description": "Run planning through the Superpowers workflow profile",
+        "entrySkill": "writing-plans",
+        "usePlannotator": true
+      }
     },
     "modelTiers": {
-      "cheap": {
-        "model": "opencode-go/minimax-m2.7"
-      },
-      "balanced": {
-        "model": "opencode-go/glm-5.1"
-      },
-      "max": {
-        "model": "openai/gpt-5.4"
-      }
+      "cheap": { "model": "opencode-go/minimax-m2.7" },
+      "balanced": { "model": "opencode-go/glm-5.1" },
+      "max": { "model": "openai/gpt-5.4" }
     },
     "skillOverlays": {},
     "interceptSkillCommands": [],

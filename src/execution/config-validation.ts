@@ -34,12 +34,7 @@ export interface FormatConfigDiagnosticsOptions {
 const TOP_LEVEL_KEYS = new Set(["superagents"]);
 
 const SUPERAGENTS_KEYS = new Set([
-	"useBranches",
-	"useSubagents",
-	"useTestDrivenDevelopment",
-	"usePlannotator",
 	"commands",
-	"worktrees",
 	"modelTiers",
 	"skillOverlays",
 	"interceptSkillCommands",
@@ -47,9 +42,17 @@ const SUPERAGENTS_KEYS = new Set([
 ]);
 
 /** Skills that can be intercepted for direct command interception. */
-const SUPPORTED_INTERCEPTED_SKILLS = new Set(["brainstorming"]);
+const SUPPORTED_INTERCEPTED_SKILLS = new Set(["brainstorming", "writing-plans"]);
 
-const COMMAND_PRESET_KEYS = new Set(["description", "useBranches", "useSubagents", "useTestDrivenDevelopment", "usePlannotator", "worktrees"]);
+const COMMAND_PRESET_KEYS = new Set([
+	"description",
+	"entrySkill",
+	"useBranches",
+	"useSubagents",
+	"useTestDrivenDevelopment",
+	"usePlannotator",
+	"worktrees",
+]);
 
 const COMMAND_NAME_PATTERN = /^(?:superpowers-[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|sp-[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)$/;
 
@@ -188,6 +191,9 @@ function validateCommandPreset(diagnostics: ConfigDiagnostic[], value: unknown, 
 	if ("description" in value && typeof value.description !== "string") {
 		addError(diagnostics, `${path}.description`, "must be a string.");
 	}
+	if ("entrySkill" in value && (typeof value.entrySkill !== "string" || !value.entrySkill.trim())) {
+		addError(diagnostics, `${path}.entrySkill`, "must be a non-empty string.");
+	}
 	if ("useBranches" in value && typeof value.useBranches !== "boolean") {
 		addError(diagnostics, `${path}.useBranches`, "must be a boolean.");
 	}
@@ -273,7 +279,7 @@ function validateInterceptSkillCommands(diagnostics: ConfigDiagnostic[], value: 
 			addError(
 				diagnostics,
 				`superagents.interceptSkillCommands[${index}]`,
-				"must be one of: brainstorming.",
+				"must be one of: brainstorming, writing-plans.",
 			);
 		}
 	});
@@ -314,18 +320,7 @@ export function validateConfigObject(rawConfig: unknown): ConfigValidationResult
 					addError(diagnostics, `superagents.${key}`, "is not a supported config key.", "unknown_key");
 				}
 			}
-			if ("useBranches" in superagents && typeof superagents.useBranches !== "boolean") {
-				addError(diagnostics, "superagents.useBranches", "must be a boolean.");
-			}
-			if ("useSubagents" in superagents && typeof superagents.useSubagents !== "boolean") {
-				addError(diagnostics, "superagents.useSubagents", "must be a boolean.");
-			}
-			if ("useTestDrivenDevelopment" in superagents && typeof superagents.useTestDrivenDevelopment !== "boolean") {
-				addError(diagnostics, "superagents.useTestDrivenDevelopment", "must be a boolean.");
-			}
-			if ("usePlannotator" in superagents && typeof superagents.usePlannotator !== "boolean") {
-				addError(diagnostics, "superagents.usePlannotator", "must be a boolean.");
-			}
+
 			if ("commands" in superagents) {
 				const commands = superagents.commands;
 				if (!isRecord(commands)) {
@@ -343,30 +338,16 @@ export function validateConfigObject(rawConfig: unknown): ConfigValidationResult
 					}
 				}
 			}
-			if ("worktrees" in superagents) {
-				const worktrees = superagents.worktrees;
-				if (!isRecord(worktrees)) {
-					addError(diagnostics, "superagents.worktrees", "must be an object.");
-				} else {
-					for (const key of Object.keys(worktrees)) {
-						if (!WORKTREE_KEYS.has(key)) addError(diagnostics, `superagents.worktrees.${key}`, "is not a supported config key.", "unknown_key");
-					}
-					if ("enabled" in worktrees && typeof worktrees.enabled !== "boolean") {
-						addError(diagnostics, "superagents.worktrees.enabled", "must be a boolean.");
-					}
-					validateOptionalStringOrNull(diagnostics, worktrees, "root", "superagents.worktrees.root");
-				}
-			}
 			if ("modelTiers" in superagents) {
-				const modelTiers = superagents.modelTiers;
-				if (!isRecord(modelTiers)) {
-					addError(diagnostics, "superagents.modelTiers", "must be an object.");
-				} else {
-					for (const [tierName, tierValue] of Object.entries(modelTiers)) {
-						validateModelTier(diagnostics, tierValue, `superagents.modelTiers.${tierName}`);
-					}
+			const modelTiers = superagents.modelTiers;
+			if (!isRecord(modelTiers)) {
+				addError(diagnostics, "superagents.modelTiers", "must be an object.");
+			} else {
+				for (const [tierName, tierValue] of Object.entries(modelTiers)) {
+					validateModelTier(diagnostics, tierValue, `superagents.modelTiers.${tierName}`);
 				}
 			}
+		}
 			if ("skillOverlays" in superagents) {
 				validateSkillOverlays(diagnostics, superagents.skillOverlays);
 			}
@@ -433,13 +414,18 @@ export function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfi
 		? {
 			...(defaultSuperagents ?? {}),
 			...(overrideSuperagents ?? {}),
+			// Deep merge command presets: each preset is individually merged
 			commands: {
 				...(defaultSuperagents?.commands ?? {}),
-				...(overrideSuperagents?.commands ?? {}),
-			},
-			worktrees: {
-				...(defaultSuperagents?.worktrees ?? {}),
-				...(overrideSuperagents?.worktrees ?? {}),
+				...(Object.fromEntries(
+					Object.entries(overrideSuperagents?.commands ?? {}).map(([name, preset]) => [
+						name,
+						{
+							...(defaultSuperagents?.commands?.[name] ?? {}),
+							...preset,
+						},
+					]),
+				)),
 			},
 			modelTiers: mergeModelTiers(defaultSuperagents?.modelTiers, overrideSuperagents?.modelTiers),
 			skillOverlays: mergedSkillOverlays,

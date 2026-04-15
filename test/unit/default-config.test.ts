@@ -15,21 +15,11 @@ import { describe, it } from "node:test";
 const TOP_LEVEL_OPTION_KEYS = ["superagents"] as const;
 
 const SUPERAGENTS_OPTION_KEYS = [
-	"useBranches",
-	"useSubagents",
-	"useTestDrivenDevelopment",
 	"commands",
-	"worktrees",
 	"modelTiers",
-	"usePlannotator",
 	"skillOverlays",
 	"interceptSkillCommands",
 	"superpowersSkills",
-] as const;
-
-const WORKTREE_OPTION_KEYS = [
-	"enabled",
-	"root",
 ] as const;
 
 /**
@@ -48,26 +38,21 @@ function readConfigFile(fileName: string): Record<string, unknown> {
  *
  * @param config Parsed config object to inspect.
  * @param bundledDefaultsOnly When true, includes bundled-defaults-only keys like superpowersSkills.
+ * @param bundledDefaults Has built-in commands (true for default-config.json, false for config.example.json).
  */
-function assertPublicConfigSurface(config: Record<string, unknown>, bundledDefaultsOnly = false): void {
+function assertPublicConfigSurface(
+	config: Record<string, unknown>,
+	bundledDefaultsOnly = false,
+	bundledDefaults = true,
+): void {
 	const superagents = config.superagents as {
 		[key: string]: unknown;
 		modelTiers?: Record<string, unknown>;
-		worktrees?: Record<string, unknown>;
-		commands?: Record<string, unknown>;
-		useBranches?: unknown;
-		useSubagents?: unknown;
-		useTestDrivenDevelopment?: unknown;
+		commands?: Record<string, Record<string, unknown>>;
 		skillOverlays?: unknown;
 		interceptSkillCommands?: unknown;
 		superpowersSkills?: unknown;
 	};
-	const worktrees = superagents.worktrees as Record<string, unknown>;
-
-	const modelTiers = superagents.modelTiers as Record<string, unknown>;
-	const cheapTier = modelTiers.cheap as Record<string, unknown>;
-	const balancedTier = modelTiers.balanced as Record<string, unknown>;
-	const maxTier = modelTiers.max as Record<string, unknown>;
 	const metadataKeys = Object.keys(config).filter((key) => key.startsWith("_"));
 
 	for (const key of TOP_LEVEL_OPTION_KEYS) {
@@ -78,16 +63,37 @@ function assertPublicConfigSurface(config: Record<string, unknown>, bundledDefau
 		if (key === "superpowersSkills" && !bundledDefaultsOnly) continue;
 		assert.ok(key in superagents, `Expected superagents option '${key}' to be present`);
 	}
-	for (const key of WORKTREE_OPTION_KEYS) {
-		assert.ok(key in worktrees, `Expected superagents.worktrees option '${key}' to be present`);
+
+	// Check built-in commands for bundled defaults
+	if (bundledDefaults) {
+		const commands = superagents.commands as Record<string, Record<string, unknown>>;
+
+		const spImplement = commands["sp-implement"];
+		assert.ok(spImplement, "Expected sp-implement command");
+		assert.equal(spImplement.entrySkill, "using-superpowers");
+		assert.equal(spImplement.useSubagents, true);
+		assert.equal(spImplement.useTestDrivenDevelopment, true);
+		assert.equal(spImplement.useBranches, false);
+		const spImplementWorktrees = spImplement.worktrees as Record<string, unknown>;
+		assert.equal(spImplementWorktrees.enabled, false);
+		assert.equal(spImplementWorktrees.root, null);
+
+		const spBrainstorm = commands["sp-brainstorm"];
+		assert.ok(spBrainstorm, "Expected sp-brainstorm command");
+		assert.equal(spBrainstorm.entrySkill, "brainstorming");
+		assert.equal(spBrainstorm.usePlannotator, true);
+
+		const spPlan = commands["sp-plan"];
+		assert.ok(spPlan, "Expected sp-plan command");
+		assert.equal(spPlan.entrySkill, "writing-plans");
+		assert.equal(spPlan.usePlannotator, true);
 	}
 
-	assert.equal(superagents.useBranches, false);
-	assert.equal(superagents.useSubagents, true);
-	assert.equal(superagents.useTestDrivenDevelopment, true);
-	assert.equal(superagents.usePlannotator, false);
-	assert.equal(worktrees.enabled, false);
-	assert.equal(worktrees.root, null);
+	const modelTiers = superagents.modelTiers as Record<string, unknown>;
+	const cheapTier = modelTiers.cheap as Record<string, unknown>;
+	const balancedTier = modelTiers.balanced as Record<string, unknown>;
+	const maxTier = modelTiers.max as Record<string, unknown>;
+
 	assert.equal(typeof cheapTier.model, "string");
 	assert.equal(typeof balancedTier.model, "string");
 	assert.equal(typeof maxTier.model, "string");
@@ -99,11 +105,11 @@ function assertPublicConfigSurface(config: Record<string, unknown>, bundledDefau
 
 void describe("config templates", () => {
 	void it("ships all supported runtime defaults", () => {
-		assertPublicConfigSurface(readConfigFile("default-config.json"), true);
+		assertPublicConfigSurface(readConfigFile("default-config.json"), true, true);
 	});
 
 	void it("ships a parseable user-facing example config with the same public surface", () => {
-		assertPublicConfigSurface(readConfigFile("config.example.json"));
+		assertPublicConfigSurface(readConfigFile("config.example.json"), false, false);
 	});
 
 	void it("includes empty skill entry defaults", () => {
@@ -124,11 +130,13 @@ void describe("config templates", () => {
 		const commands = (config.superagents as Record<string, unknown>).commands as Record<string, Record<string, unknown>>;
 		assert.deepEqual(commands["sp-lean"], {
 			description: "Run Superpowers lean: no subagents, no TDD",
+			entrySkill: "using-superpowers",
 			useSubagents: false,
 			useTestDrivenDevelopment: false,
 		});
 		assert.deepEqual(commands["sp-plannotator"], {
 			description: "Run Superpowers with Plannotator review enabled",
+			entrySkill: "using-superpowers",
 			usePlannotator: true,
 		});
 	});

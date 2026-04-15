@@ -20,14 +20,25 @@ import {
 
 const defaults: ExtensionConfig = {
 	superagents: {
-		useBranches: false,
-		useSubagents: true,
-		useTestDrivenDevelopment: true,
-		commands: {},
-		usePlannotator: false,
-		worktrees: {
-			enabled: false,
-			root: null,
+		commands: {
+			"sp-implement": {
+				description: "Run a Superpowers implementation workflow",
+				entrySkill: "using-superpowers",
+				useSubagents: true,
+				useTestDrivenDevelopment: true,
+				useBranches: false,
+				worktrees: { enabled: false, root: null },
+			},
+			"sp-brainstorm": {
+				description: "Run brainstorming through the Superpowers workflow profile",
+				entrySkill: "brainstorming",
+				usePlannotator: true,
+			},
+			"sp-plan": {
+				description: "Run planning through the Superpowers workflow profile",
+				entrySkill: "writing-plans",
+				usePlannotator: true,
+			},
 		},
 		modelTiers: {
 			cheap: { model: "opencode-go/minimax-m2.7" },
@@ -47,77 +58,7 @@ void describe("config validation", () => {
 		assert.equal(loadEffectiveConfig(defaults, {}).blocked, false);
 	});
 
-	void it("deep merges user overrides over bundled defaults", () => {
-		const result = loadEffectiveConfig(defaults, {
-			superagents: {
-				useSubagents: false,
-				worktrees: { enabled: true },
-				modelTiers: {
-					max: { model: "openai/gpt-5.4", thinking: "high" },
-					free: { model: "google/gemini-flash" },
-				},
-			},
-		});
-
-		assert.equal(result.blocked, false);
-		assert.equal(result.config.superagents?.useSubagents, false);
-		assert.equal(result.config.superagents?.useTestDrivenDevelopment, true);
-		assert.equal(result.config.superagents?.worktrees?.enabled, true);
-		assert.deepEqual(result.config.superagents?.modelTiers?.cheap, defaults.superagents?.modelTiers?.cheap);
-		assert.deepEqual(result.config.superagents?.modelTiers?.max, {
-			model: "openai/gpt-5.4",
-			thinking: "high",
-		});
-		assert.deepEqual(result.config.superagents?.modelTiers?.free, {
-			model: "google/gemini-flash",
-		});
-	});
-
-	void it("accepts usePlannotator true and false", () => {
-		const enabledResult = validateConfigObject({
-			superagents: {
-				usePlannotator: true,
-			},
-		});
-		const disabledResult = validateConfigObject({
-			superagents: {
-				usePlannotator: false,
-			},
-		});
-
-		assert.equal(enabledResult.blocked, false);
-		assert.deepEqual(enabledResult.diagnostics, []);
-		assert.equal(disabledResult.blocked, false);
-		assert.deepEqual(disabledResult.diagnostics, []);
-	});
-
-	void it("rejects non-boolean usePlannotator", () => {
-		const result = validateConfigObject({
-			superagents: {
-				usePlannotator: "yes",
-			},
-		});
-
-		assert.equal(result.blocked, true);
-		assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), [
-			"superagents.usePlannotator",
-		]);
-	});
-
-	void it("merges usePlannotator defaults and user overrides while preserving useSubagents", () => {
-		const result = loadEffectiveConfig(defaults, {
-			superagents: {
-				usePlannotator: true,
-			},
-		});
-
-		assert.equal(result.blocked, false);
-		assert.equal(result.config.superagents?.useSubagents, true);
-		assert.equal(result.config.superagents?.usePlannotator, true);
-		assert.equal(result.config.superagents?.useTestDrivenDevelopment, true);
-	});
-
-	void it("merges command presets and preserves defaults", () => {
+	void it("deep merges command presets and preserves built-in commands", () => {
 		const result = loadEffectiveConfig(defaults, {
 			superagents: {
 				commands: {
@@ -128,32 +69,63 @@ void describe("config validation", () => {
 		});
 
 		assert.equal(result.blocked, false);
-		assert.deepEqual(result.config.superagents?.commands, {
-			"sp-quick": { description: "Quick run", useSubagents: false },
-			"superpowers-review": { useTestDrivenDevelopment: false },
+		assert.ok(result.config.superagents?.commands["sp-implement"]);
+		assert.equal(result.config.superagents?.commands["sp-implement"]?.entrySkill, "using-superpowers");
+		assert.ok(result.config.superagents?.commands["sp-brainstorm"]);
+		assert.ok(result.config.superagents?.commands["sp-plan"]);
+		assert.deepEqual(result.config.superagents?.commands["sp-quick"], {
+			description: "Quick run",
+			useSubagents: false,
 		});
-		// Defaults preserved
-		assert.equal(result.config.superagents?.useSubagents, true);
-		assert.equal(result.config.superagents?.useTestDrivenDevelopment, true);
+		assert.deepEqual(result.config.superagents?.commands["superpowers-review"], {
+			useTestDrivenDevelopment: false,
+		});
 	});
 
-	void it("merges worktree settings deeply", () => {
+	void it("deep merges model tiers while preserving defaults", () => {
 		const result = loadEffectiveConfig(defaults, {
 			superagents: {
-				worktrees: { enabled: true, root: "/tmp/worktrees" },
+				modelTiers: {
+					max: { model: "openai/gpt-5.4", thinking: "high" },
+					free: { model: "google/gemini-flash" },
+				},
 			},
 		});
 
-		assert.equal(result.config.superagents?.worktrees?.enabled, true);
-		assert.equal(result.config.superagents?.worktrees?.root, "/tmp/worktrees");
+		assert.equal(result.blocked, false);
+		assert.deepEqual(result.config.superagents?.modelTiers?.cheap, defaults.superagents?.modelTiers?.cheap);
+		assert.deepEqual(result.config.superagents?.modelTiers?.max, {
+			model: "openai/gpt-5.4",
+			thinking: "high",
+		});
+		assert.deepEqual(result.config.superagents?.modelTiers?.free, {
+			model: "google/gemini-flash",
+		});
+	});
+
+	void it("merges worktree settings deeply inside command presets", () => {
+		const result = loadEffectiveConfig(defaults, {
+			superagents: {
+				commands: {
+					"sp-implement": {
+						worktrees: { enabled: true, root: "/tmp/worktrees" },
+					},
+				},
+			},
+		});
+
+		assert.equal(result.config.superagents?.commands["sp-implement"]?.worktrees?.enabled, true);
+		assert.equal(result.config.superagents?.commands["sp-implement"]?.worktrees?.root, "/tmp/worktrees");
 	});
 
 	void it("blocks unknown top-level and nested keys", () => {
 		const result = validateConfigObject({
 			unknwonKey: true,
 			superagents: {
-				worktrees: {
-					setupCommand: "./setup.sh",
+				commands: {
+					"sp-test": {
+						unknownField: true,
+					},
 				},
 			},
 		});
@@ -165,17 +137,21 @@ void describe("config validation", () => {
 		]);
 		assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), [
 			"unknwonKey",
-			"superagents.worktrees.setupCommand",
+			"superagents.commands.sp-test.unknownField",
 		]);
 	});
 
-	void it("blocks wrong primitive types and invalid enum values", () => {
+	void it("blocks wrong primitive types and invalid enum values in command presets", () => {
 		const result = validateConfigObject({
 			superagents: {
-				useSubagents: "yes",
-				useTestDrivenDevelopment: 1,
-				worktrees: {
-					enabled: "yes",
+				commands: {
+					"sp-test": {
+						useSubagents: "yes",
+						useTestDrivenDevelopment: 1,
+						worktrees: {
+							enabled: "yes",
+						},
+					},
 				},
 				modelTiers: {
 					max: {
@@ -188,42 +164,23 @@ void describe("config validation", () => {
 
 		assert.equal(result.blocked, true);
 		assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), [
-			"superagents.useSubagents",
-			"superagents.useTestDrivenDevelopment",
-			"superagents.worktrees.enabled",
+			"superagents.commands.sp-test.useSubagents",
+			"superagents.commands.sp-test.useTestDrivenDevelopment",
+			"superagents.commands.sp-test.worktrees.enabled",
 			"superagents.modelTiers.max.model",
 			"superagents.modelTiers.max.thinking",
 		]);
 	});
 
-	void it("allows nullable path settings already present in default config", () => {
+	void it("accepts custom commands with entrySkill", () => {
 		const result = validateConfigObject({
 			superagents: {
-				worktrees: {
-					root: null,
-				},
-			},
-		});
-
-		assert.equal(result.blocked, false);
-		assert.deepEqual(result.diagnostics, []);
-	});
-
-	void it("accepts lean Superpowers command presets, worktrees, and model tiers", () => {
-		const result = validateConfigObject({
-			superagents: {
-				useSubagents: true,
-				useTestDrivenDevelopment: false,
 				commands: {
-					"sp-fast": { description: "Fast mode", useSubagents: false },
-					"superpowers-review": { useTestDrivenDevelopment: true },
-				},
-				worktrees: {
-					enabled: true,
-					root: "/tmp/wt",
-				},
-				modelTiers: {
-					creative: { model: "anthropic/claude-sonnet-4", thinking: "high" },
+					"sp-custom": {
+						description: "Custom command",
+						entrySkill: "brainstorming",
+						useSubagents: true,
+					},
 				},
 			},
 		});
@@ -232,28 +189,52 @@ void describe("config validation", () => {
 		assert.deepEqual(result.diagnostics, []);
 	});
 
-	void it("rejects removed generic config keys and old implementer mode", () => {
+	void it("rejects non-string entrySkill on command presets", () => {
 		const result = validateConfigObject({
-			asyncByDefault: true,
-			defaultSessionDir: "/tmp/sessions",
-			maxSubagentDepth: 5,
 			superagents: {
-				defaultImplementerMode: "tdd",
+				commands: {
+					"sp-test": {
+						entrySkill: 123,
+					},
+				},
 			},
 		});
 
 		assert.equal(result.blocked, true);
-		const paths = result.diagnostics.map((d) => d.path);
-		assert.ok(paths.includes("asyncByDefault"));
-		assert.ok(paths.includes("defaultSessionDir"));
-		assert.ok(paths.includes("maxSubagentDepth"));
-		assert.ok(paths.includes("superagents.defaultImplementerMode"));
-
-		const codes = result.diagnostics.map((d) => d.code);
-		assert.ok(codes.every((c) => c === "removed_key"));
+		assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), [
+			"superagents.commands.sp-test.entrySkill",
+		]);
 	});
 
-	void it("rejects invalid custom command names, fields, and worktree values", () => {
+	void it("accepts nullable path settings inside command presets", () => {
+		const result = validateConfigObject({
+			superagents: {
+				commands: {
+					"sp-test": {
+						worktrees: {
+							root: null,
+						},
+					},
+				},
+			},
+		});
+
+		assert.equal(result.blocked, false);
+		assert.deepEqual(result.diagnostics, []);
+	});
+
+	void it("accepts writing-plans in interceptSkillCommands", () => {
+		const result = validateConfigObject({
+			superagents: {
+				interceptSkillCommands: ["brainstorming", "writing-plans"],
+			},
+		});
+
+		assert.equal(result.blocked, false);
+		assert.deepEqual(result.diagnostics, []);
+	});
+
+	void it("rejects invalid custom command names and fields", () => {
 		const result = validateConfigObject({
 			superagents: {
 				commands: {
@@ -262,10 +243,6 @@ void describe("config validation", () => {
 					"sp-": { description: "No trailing hyphen" },
 					"sp-valid": { badField: true },
 					"sp-also-valid": { useSubagents: "yes" },
-				},
-				worktrees: {
-					enabled: "yes",
-					unknownWtKey: 42,
 				},
 			},
 		});
@@ -277,15 +254,17 @@ void describe("config validation", () => {
 		assert.ok(paths.includes("superagents.commands.sp-"));
 		assert.ok(paths.includes("superagents.commands.sp-valid.badField"));
 		assert.ok(paths.includes("superagents.commands.sp-also-valid.useSubagents"));
-		assert.ok(paths.includes("superagents.worktrees.enabled"));
-		assert.ok(paths.includes("superagents.worktrees.unknownWtKey"));
 	});
 
 	void it("formats diagnostics for Pi notifications and tool results", () => {
 		const result = validateConfigObject({
 			superagents: {
-				worktrees: {
-					root: "",
+				commands: {
+					"sp-test": {
+						worktrees: {
+							root: "",
+						},
+					},
 				},
 			},
 		});
@@ -299,7 +278,7 @@ void describe("config validation", () => {
 				"pi-superagents is disabled because config.json needs attention.",
 				"Path: ~/.pi/agent/extensions/subagent/config.json",
 				"",
-				"- superagents.worktrees.root: must be a non-empty string or null.",
+				"- superagents.commands.sp-test.worktrees.root: must be a non-empty string or null.",
 				"",
 				"See ~/.pi/agent/extensions/subagent/config.example.json for the current config shape.",
 			].join("\n"),
@@ -341,7 +320,7 @@ void describe("config validation", () => {
 					"": ["react-native-best-practices"],
 					"writing-plans": ["", 42],
 				},
-				interceptSkillCommands: ["", 7, "writing-plans"],
+				interceptSkillCommands: ["", 7, "unsupported-skill"],
 			},
 		});
 
@@ -354,27 +333,6 @@ void describe("config validation", () => {
 			"superagents.interceptSkillCommands[0]",
 			"superagents.interceptSkillCommands[1]",
 			"superagents.interceptSkillCommands[2]",
-		]);
-	});
-
-	void it("rejects discarded skillHooks and removed worktree hook config", () => {
-		const result = validateConfigObject({
-			superagents: {
-				skillHooks: {
-					brainstorming: { modelTier: "balanced" },
-				},
-				worktrees: {
-					setupHook: "./setup.sh",
-					setupHookTimeoutMs: 30000,
-				},
-			},
-		});
-
-		assert.equal(result.blocked, true);
-		assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), [
-			"superagents.skillHooks",
-			"superagents.worktrees.setupHook",
-			"superagents.worktrees.setupHookTimeoutMs",
 		]);
 	});
 
