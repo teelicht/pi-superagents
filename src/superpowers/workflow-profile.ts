@@ -4,21 +4,14 @@
  * Responsibilities:
  * - parse leading workflow tokens from slash command arguments
  * - preserve supported execution flags
- * - merge global defaults, custom command presets, inline overrides, and worktree policy
- * - carry entry skill source metadata and overlay skill names for skill-entry flows
+ * - merge command preset settings and inline overrides
+ * - carry entry skill name and overlay skill names for skill-entry flows
  *
  * Important side effects:
  * - none; this module is pure and safe to unit test
  */
 
-import type { ExtensionConfig, SuperpowersCommandPreset } from "../shared/types.ts";
-
-export type SuperpowersEntrySkillSource = "command" | "intercepted-skill" | "implicit";
-
-export interface SuperpowersEntrySkillProfile {
-	name: string;
-	source: SuperpowersEntrySkillSource;
-}
+import type { ExtensionConfig } from "../shared/types.ts";
 
 export interface SuperpowersWorkflowOverrides {
 	useSubagents?: boolean;
@@ -34,13 +27,13 @@ export interface ParsedSuperpowersWorkflowArgs {
 export interface ResolvedSuperpowersRunProfile {
 	commandName: string;
 	task: string;
-	useBranches: boolean;
-	useSubagents: boolean;
-	useTestDrivenDevelopment: boolean;
-	usePlannotatorReview: boolean;
-	worktreesEnabled: boolean;
+	entrySkill: string;
+	useBranches?: boolean;
+	useSubagents?: boolean;
+	useTestDrivenDevelopment?: boolean;
+	usePlannotatorReview?: boolean;
+	worktrees?: { enabled: boolean; root?: string | null };
 	fork: boolean;
-	entrySkill?: SuperpowersEntrySkillProfile;
 	overlaySkillNames: string[];
 }
 
@@ -127,48 +120,55 @@ export function parseSuperpowersWorkflowArgs(rawArgs: string): ParsedSuperpowers
  * @param commandName Slash command name without leading slash.
  * @returns Matching preset or an empty preset.
  */
-function resolveCommandPreset(config: ExtensionConfig, commandName: string): SuperpowersCommandPreset {
-	if (commandName === "superpowers") return {};
+function resolveCommandPreset(config: ExtensionConfig, commandName: string) {
 	return config.superagents?.commands?.[commandName] ?? {};
 }
 
 /**
- * Merge defaults, command preset, inline overrides, and skill-entry metadata into one run profile.
+ * Merge command preset, inline overrides, and entry skill into one run profile.
  *
- * @param input Effective config, command name, parsed arguments, and optional entry skill profile.
+ * @param input Effective config, command name, parsed arguments, and optional entry skill name.
  * @returns Fully resolved Superpowers run profile.
  */
 export function resolveSuperpowersRunProfile(input: {
 	config: ExtensionConfig;
 	commandName: string;
 	parsed: ParsedSuperpowersWorkflowArgs;
-	entrySkill?: SuperpowersEntrySkillProfile;
+	entrySkill?: string;
 }): ResolvedSuperpowersRunProfile {
 	const settings = input.config.superagents ?? {};
 	const preset = resolveCommandPreset(input.config, input.commandName);
+	const entrySkill = input.entrySkill ?? preset.entrySkill ?? "using-superpowers";
 	const superpowersSkills: readonly string[] = settings.superpowersSkills ?? [];
 	const invocationOverlayNames = superpowersSkills
 		.flatMap((skillName) => settings.skillOverlays?.[skillName] ?? []);
-	const entryOverlayNames = input.entrySkill
-		? settings.skillOverlays?.[input.entrySkill.name] ?? []
-		: [];
+	const entryOverlayNames = settings.skillOverlays?.[entrySkill] ?? [];
 	const overlaySkillNames = [...new Set([...entryOverlayNames, ...invocationOverlayNames])];
-	return {
+
+	const profile: ResolvedSuperpowersRunProfile = {
 		commandName: input.commandName,
 		task: input.parsed.task,
-		useBranches: preset.useBranches ?? settings.useBranches ?? false,
-		useSubagents: input.parsed.overrides.useSubagents
-			?? preset.useSubagents
-			?? settings.useSubagents
-			?? true,
-		useTestDrivenDevelopment: input.parsed.overrides.useTestDrivenDevelopment
-			?? preset.useTestDrivenDevelopment
-			?? settings.useTestDrivenDevelopment
-			?? true,
-		usePlannotatorReview: preset.usePlannotator ?? settings.usePlannotator ?? false,
-		worktreesEnabled: preset.worktrees?.enabled ?? settings.worktrees?.enabled ?? true,
+		entrySkill,
 		fork: input.parsed.fork,
-		...(input.entrySkill ? { entrySkill: input.entrySkill } : {}),
 		overlaySkillNames,
 	};
+
+	// Only include policy fields when the preset or overrides declare them
+	const useSubagents = input.parsed.overrides.useSubagents ?? preset.useSubagents;
+	if (useSubagents !== undefined) profile.useSubagents = useSubagents;
+
+	const useTestDrivenDevelopment = input.parsed.overrides.useTestDrivenDevelopment ?? preset.useTestDrivenDevelopment;
+	if (useTestDrivenDevelopment !== undefined) profile.useTestDrivenDevelopment = useTestDrivenDevelopment;
+
+	if (preset.useBranches !== undefined) profile.useBranches = preset.useBranches;
+	if (preset.usePlannotator !== undefined) profile.usePlannotatorReview = preset.usePlannotator;
+
+	if (preset.worktrees) {
+		profile.worktrees = { enabled: preset.worktrees.enabled ?? false };
+		if (preset.worktrees.root !== undefined) {
+			profile.worktrees.root = preset.worktrees.root;
+		}
+	}
+
+	return profile;
 }
