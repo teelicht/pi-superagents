@@ -43,6 +43,7 @@ const SUPERAGENTS_KEYS = new Set([
 	"modelTiers",
 	"skillOverlays",
 	"interceptSkillCommands",
+	"superpowersSkills",
 ]);
 
 /** Skills that can be intercepted for direct command interception. */
@@ -372,6 +373,14 @@ export function validateConfigObject(rawConfig: unknown): ConfigValidationResult
 			if ("interceptSkillCommands" in superagents) {
 				validateInterceptSkillCommands(diagnostics, superagents.interceptSkillCommands);
 			}
+			if ("superpowersSkills" in superagents) {
+				addError(
+					diagnostics,
+					"superagents.superpowersSkills",
+					"is not user-configurable. It is defined in the bundled defaults and cannot be overridden.",
+					"unknown_key",
+				);
+			}
 		}
 	}
 
@@ -435,6 +444,7 @@ export function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfi
 			modelTiers: mergeModelTiers(defaultSuperagents?.modelTiers, overrideSuperagents?.modelTiers),
 			skillOverlays: mergedSkillOverlays,
 			interceptSkillCommands: mergedInterceptSkillCommands,
+			superpowersSkills: defaultSuperagents?.superpowersSkills ?? [],
 		}
 		: undefined;
 

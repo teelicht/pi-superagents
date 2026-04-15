@@ -36,6 +36,7 @@ const defaults: ExtensionConfig = {
 		},
 		skillOverlays: {},
 		interceptSkillCommands: [],
+		superpowersSkills: [],
 	},
 };
 
@@ -406,5 +407,38 @@ void describe("config validation", () => {
 			"writing-plans": ["supabase-postgres-best-practices"],
 		});
 		assert.deepEqual(result.config.superagents?.interceptSkillCommands, ["brainstorming"]);
+	});
+
+	// ---------------------------------------------------------------------------
+	// superpowersSkills validation and merge (Task 2)
+	// ---------------------------------------------------------------------------
+
+	void it("rejects superpowersSkills in user overrides as not user-configurable", () => {
+		const result = validateConfigObject({
+			superagents: {
+				superpowersSkills: ["writing-plans"],
+			},
+		});
+		assert.equal(result.blocked, true);
+		assert.ok(result.diagnostics.some((d) => d.path === "superagents.superpowersSkills" && d.code === "unknown_key"));
+	});
+
+	void it("passes superpowersSkills from defaults through to effective config", () => {
+		const result = loadEffectiveConfig(
+			{ superagents: { ...defaults.superagents, superpowersSkills: ["using-superpowers", "brainstorming"] } },
+			{},
+		);
+		assert.equal(result.blocked, false);
+		assert.deepEqual(result.config.superagents?.superpowersSkills, ["using-superpowers", "brainstorming"]);
+	});
+
+	void it("rejects non-array superpowersSkills in user overrides", () => {
+		const result = validateConfigObject({
+			superagents: {
+				superpowersSkills: "not-an-array",
+			},
+		});
+		assert.equal(result.blocked, true);
+		assert.ok(result.diagnostics.some((d) => d.path === "superagents.superpowersSkills"));
 	});
 });
