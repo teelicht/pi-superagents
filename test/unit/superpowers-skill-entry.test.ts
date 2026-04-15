@@ -33,10 +33,15 @@ void describe("Superpowers skill entry helpers", () => {
 		assert.equal(parseSkillCommandInput("/skill:brainstorming"), undefined);
 	});
 
-	void it("intercepts only configured supported skills", () => {
+	void it("intercepts only configured supported skills including writing-plans", () => {
 		assert.equal(shouldInterceptSkillCommand("brainstorming", {
 			superagents: {
 				interceptSkillCommands: ["brainstorming"],
+			},
+		}), true);
+		assert.equal(shouldInterceptSkillCommand("writing-plans", {
+			superagents: {
+				interceptSkillCommands: ["writing-plans"],
 			},
 		}), true);
 		assert.equal(shouldInterceptSkillCommand("writing-plans", {
@@ -45,6 +50,11 @@ void describe("Superpowers skill entry helpers", () => {
 			},
 		}), false);
 		assert.equal(shouldInterceptSkillCommand("brainstorming", {}), false);
+		assert.equal(shouldInterceptSkillCommand("unsupported-skill", {
+			superagents: {
+				interceptSkillCommands: ["brainstorming", "writing-plans"],
+			},
+		}), false);
 	});
 
 	void it("builds prompt input with resolved entry and overlay skills", () => {
@@ -52,13 +62,13 @@ void describe("Superpowers skill entry helpers", () => {
 			profile: {
 				commandName: "sp-brainstorm",
 				task: "design onboarding",
+				entrySkill: "brainstorming",
 				useBranches: false,
 				useSubagents: true,
 				useTestDrivenDevelopment: true,
 				usePlannotatorReview: true,
-				worktreesEnabled: false,
+				worktrees: { enabled: false },
 				fork: false,
-				entrySkill: { name: "brainstorming", source: "command" },
 				overlaySkillNames: ["react-native-best-practices"],
 			},
 			usingSuperpowersSkill: {
@@ -84,20 +94,21 @@ void describe("Superpowers skill entry helpers", () => {
 		assert.equal(input.task, "design onboarding");
 		assert.equal(input.entrySkill?.name, "brainstorming");
 		assert.equal(input.overlaySkills?.[0]?.name, "react-native-best-practices");
-		assert.equal(input.entrySkillSource, "command");
+		assert.equal(input.useSubagents, true);
+		assert.equal(input.usePlannotatorReview, true);
 	});
 
 	void it("builds a prompt or reports missing overlay skills", () => {
 		const profile = {
 			commandName: "sp-brainstorm",
 			task: "design onboarding",
+			entrySkill: "brainstorming",
 			useBranches: false,
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
 			usePlannotatorReview: false,
-			worktreesEnabled: false,
+			worktrees: { enabled: false },
 			fork: false,
-			entrySkill: { name: "brainstorming", source: "command" as const },
 			overlaySkillNames: ["react-native-best-practices"],
 		};
 		const skills = new Map([
@@ -137,20 +148,20 @@ void describe("Superpowers skill entry helpers", () => {
 		// Verify basic Superpowers prompt structure is present
 		assert.match((result as { prompt: string }).prompt, /Superpowers session/);
 		assert.match((result as { prompt: string }).prompt, /design onboarding/);
-		// Note: Entry skill and overlay content in prompt are rendered by Task 4 (root-prompt.ts)
+		// Note: Entry skill and overlay content in prompt are rendered by root-prompt.ts
 	});
 
 	void it("returns error when entry skill cannot be resolved", () => {
 		const profile = {
 			commandName: "sp-brainstorm",
 			task: "design onboarding",
+			entrySkill: "brainstorming",
 			useBranches: false,
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
 			usePlannotatorReview: false,
-			worktreesEnabled: false,
+			worktrees: { enabled: false },
 			fork: false,
-			entrySkill: { name: "brainstorming", source: "command" as const },
 			overlaySkillNames: [],
 		};
 		const skills = new Map([
@@ -177,13 +188,13 @@ void describe("Superpowers skill entry helpers", () => {
 		const profile = {
 			commandName: "sp-brainstorm",
 			task: "design onboarding",
+			entrySkill: "brainstorming",
 			useBranches: false,
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
 			usePlannotatorReview: false,
-			worktreesEnabled: false,
+			worktrees: { enabled: false },
 			fork: false,
-			entrySkill: { name: "brainstorming", source: "command" as const },
 			overlaySkillNames: ["definitely-missing-skill"],
 		};
 		const skills = new Map([
@@ -213,23 +224,26 @@ void describe("Superpowers skill entry helpers", () => {
 		assert.match((result as { error: string }).error, /definitely-missing-skill/);
 	});
 
-	void it("passes entry skill source through prompt input", () => {
+	void it("passes optional booleans through prompt input", () => {
 		const input = buildSkillEntryPromptInput({
 			profile: {
 				commandName: "skill:brainstorming",
 				task: "design middleware",
+				entrySkill: "brainstorming",
 				useBranches: false,
 				useSubagents: true,
 				useTestDrivenDevelopment: true,
 				usePlannotatorReview: false,
-				worktreesEnabled: false,
+				worktrees: { enabled: false },
 				fork: false,
-				entrySkill: { name: "brainstorming", source: "intercepted-skill" },
 				overlaySkillNames: [],
 			},
 			overlaySkills: [],
 		});
 
-		assert.equal(input.entrySkillSource, "intercepted-skill");
+		assert.equal(input.useBranches, false);
+		assert.equal(input.useSubagents, true);
+		assert.equal(input.usePlannotatorReview, false);
+		assert.equal(input.worktrees?.enabled, false);
 	});
 });
