@@ -1,5 +1,5 @@
 {
-  "name": "pi-superagents",
+  "name": "@teelicht/pi-superagents",
   "version": "0.4.1",
   "description": "Pi extension for Superpowers workflows: recon, research, implementation, review, and debug",
   "author": "Thomas Lichtenecker",
@@ -55,8 +55,7 @@
   },
   "pi": {
     "extensions": [
-      "./src/extension/index.ts",
-      "./src/extension/notify.ts"
+      "./src/extension/index.ts"
     ]
   },
   "peerDependencies": {

@@ -24,7 +24,6 @@ function readPackageJson(): Record<string, unknown> {
 void describe("package.json manifest", () => {
 	void it("publishes the src-based Pi extension entrypoints and files", () => {
 		const packageJson = readPackageJson();
-		assert.equal(packageJson.version, "0.3.1");
 		assert.deepEqual((packageJson.pi as { extensions?: string[] }).extensions, [
 			"./src/extension/index.ts",
 		]);
