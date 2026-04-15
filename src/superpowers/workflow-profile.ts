@@ -146,9 +146,13 @@ export function resolveSuperpowersRunProfile(input: {
 }): ResolvedSuperpowersRunProfile {
 	const settings = input.config.superagents ?? {};
 	const preset = resolveCommandPreset(input.config, input.commandName);
-	const overlaySkillNames = input.entrySkill
+	const superpowersSkills: readonly string[] = settings.superpowersSkills ?? [];
+	const invocationOverlayNames = superpowersSkills
+		.flatMap((skillName) => settings.skillOverlays?.[skillName] ?? []);
+	const entryOverlayNames = input.entrySkill
 		? settings.skillOverlays?.[input.entrySkill.name] ?? []
 		: [];
+	const overlaySkillNames = [...new Set([...entryOverlayNames, ...invocationOverlayNames])];
 	return {
 		commandName: input.commandName,
 		task: input.parsed.task,
