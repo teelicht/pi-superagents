@@ -156,6 +156,26 @@ void describe("Superpowers workflow profile", () => {
 		assert.equal(parseSuperpowersWorkflowArgs(""), null);
 	});
 
+	void it("resolves implicit entry skill for sp-implement command", () => {
+		const parsed = parseSuperpowersWorkflowArgs("fix auth")!;
+		const profile = resolveSuperpowersRunProfile({
+			config: {
+				superagents: {
+					superpowersSkills: [],
+				},
+			},
+			commandName: "sp-implement",
+			parsed,
+			entrySkill: {
+				name: "using-superpowers",
+				source: "implicit",
+			},
+		});
+		assert.equal(profile.entrySkill?.name, "using-superpowers");
+		assert.equal(profile.entrySkill?.source, "implicit");
+		assert.deepEqual(profile.overlaySkillNames, []);
+	});
+
 	void it("resolves brainstorming entry skill metadata and overlays", () => {
 		const parsed = parseSuperpowersWorkflowArgs("design onboarding")!;
 		const profile = resolveSuperpowersRunProfile({
