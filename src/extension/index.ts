@@ -19,7 +19,6 @@ import { cleanupAllArtifactDirs, cleanupOldArtifacts, getArtifactsDir } from "..
 import { renderSubagentResult } from "../ui/render.ts";
 import { SubagentParams } from "../shared/schemas.ts";
 import { formatConfigDiagnostics, loadEffectiveConfig } from "../execution/config-validation.ts";
-import { isSuperagentPlannotatorEnabled } from "../execution/superagents-config.ts";
 import { requestPlannotatorPlanReview } from "../integrations/plannotator.ts";
 import type { ConfigDiagnostic } from "../shared/types.ts";
 import { createSubagentExecutor, type SubagentParamsLike } from "../execution/subagent-executor.ts";
@@ -271,12 +270,6 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 		params: { planContent: string; planFilePath?: string },
 		ctx: ExtensionContext,
 	): Promise<AgentToolResult<Details>> {
-		if (!isSuperagentPlannotatorEnabled(config)) {
-			return createTextToolResult(
-				"Plannotator review is disabled in config. Continue with the normal text-based Superpowers approval flow.",
-			);
-		}
-
 		try {
 			const result = await requestPlannotatorPlanReview({
 				events: pi.events,
@@ -333,12 +326,6 @@ Continue with the normal text-based Superpowers approval flow.`,
 		params: { specContent: string; specFilePath?: string },
 		ctx: ExtensionContext,
 	): Promise<AgentToolResult<Details>> {
-		if (!isSuperagentPlannotatorEnabled(config)) {
-			return createTextToolResult(
-				"Plannotator saved spec review is disabled in config. Continue with the normal text-based Superpowers review flow.",
-			);
-		}
-
 		try {
 			// Reuse the plan-review bridge internally; map specContent to planContent
 			const result = await requestPlannotatorPlanReview({
@@ -488,15 +475,12 @@ Bounded role agents are not allowed to call subagents.`,
 			return { action: "handled" as const };
 		}
 
-		// Resolve the Superpowers run profile with intercepted-skill source
+		// Resolve the Superpowers run profile with intercepted-skill entry
 		const profile = resolveSuperpowersRunProfile({
 			config,
 			commandName: `skill:${parsedSkillCommand.skillName}`,
 			parsed: parsedWorkflowArgs,
-			entrySkill: {
-				name: parsedSkillCommand.skillName,
-				source: "intercepted-skill",
-			},
+			entrySkill: parsedSkillCommand.skillName,
 		});
 
 		// Build the prompt using the shared skill-entry helper
@@ -520,7 +504,7 @@ Bounded role agents are not allowed to call subagents.`,
 				useSubagents: profile.useSubagents,
 				useTestDrivenDevelopment: profile.useTestDrivenDevelopment,
 				usePlannotatorReview: profile.usePlannotatorReview,
-				worktreesEnabled: profile.worktreesEnabled,
+				worktrees: profile.worktrees,
 				fork: profile.fork,
 			}),
 			promptResult.prompt,

@@ -11,7 +11,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
 	getSuperagentSettings,
-	isSuperagentPlannotatorEnabled,
 	resolveSuperagentWorktreeCreateOptions,
 	resolveSuperagentWorktreeEnabled,
 } from "../../src/execution/superagents-config.ts";
@@ -25,9 +24,9 @@ void describe("superagents config helpers", () => {
 	void it("returns only the configured superagents settings", () => {
 		assert.deepEqual(
 			getSuperagentSettings({
-				superagents: { useTestDrivenDevelopment: true },
+				superagents: { commands: { "sp-implement": { entrySkill: "using-superpowers" } } },
 			}),
-			{ useTestDrivenDevelopment: true },
+			{ commands: { "sp-implement": { entrySkill: "using-superpowers" } } },
 		);
 		assert.equal(getSuperagentSettings({}), undefined);
 		assert.equal(
@@ -39,21 +38,21 @@ void describe("superagents config helpers", () => {
 	});
 
 	/**
-	 * Verifies Superpowers runs default worktree isolation on unless disabled.
+	 * Verifies Superpowers runs default worktree isolation on unless disabled in sp-implement command.
 	 *
 	 * @returns Nothing; asserts the resolved effective worktree flag.
 	 */
-	void it("defaults worktree isolation on for superpowers and respects explicit overrides", () => {
+	void it("defaults worktree isolation on for superpowers and respects sp-implement config", () => {
 		assert.equal(resolveSuperagentWorktreeEnabled(undefined, "superpowers", {}), true);
 		assert.equal(
 			resolveSuperagentWorktreeEnabled(undefined, "superpowers", {
-				superagents: { worktrees: { enabled: false } },
+				superagents: { commands: { "sp-implement": { worktrees: { enabled: false } } } },
 			}),
 			false,
 		);
 		assert.equal(
 			resolveSuperagentWorktreeEnabled(true, "superpowers", {
-				superagents: { worktrees: { enabled: false } },
+				superagents: { commands: { "sp-implement": { worktrees: { enabled: false } } } },
 			}),
 			false,
 		);
@@ -66,14 +65,16 @@ void describe("superagents config helpers", () => {
 	 *
 	 * @returns Nothing; asserts resolved createWorktrees options.
 	 */
-	void it("resolves root and hook settings only for superpowers runs", () => {
+	void it("resolves root and hook settings only for superpowers runs from sp-implement command", () => {
 		assert.deepEqual(
 			resolveSuperagentWorktreeCreateOptions({
 				workflow: "superpowers",
 				config: {
 					superagents: {
-						worktrees: {
-							root: ".worktrees",
+						commands: {
+							"sp-implement": {
+								worktrees: { root: ".worktrees" },
+							},
 						},
 					},
 				},
@@ -84,27 +85,6 @@ void describe("superagents config helpers", () => {
 				rootDir: ".worktrees",
 				requireIgnoredRoot: true,
 			},
-		);
-	});
-
-	/**
-	 * Verifies the plannotator flag resolves off by default and mirrors explicit config.
-	 *
-	 * @returns Nothing; asserts resolved plannotator enabled state.
-	 */
-	void it("resolves plannotator enabled state from config with a false default", () => {
-		assert.equal(isSuperagentPlannotatorEnabled({}), false);
-		assert.equal(
-			isSuperagentPlannotatorEnabled({
-				superagents: { usePlannotator: false },
-			}),
-			false,
-		);
-		assert.equal(
-			isSuperagentPlannotatorEnabled({
-				superagents: { usePlannotator: true },
-			}),
-			true,
 		);
 	});
 

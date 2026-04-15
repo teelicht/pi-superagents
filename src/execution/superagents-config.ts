@@ -21,16 +21,6 @@ export function getSuperagentSettings(config: ExtensionConfig): ExtensionConfig[
 }
 
 /**
- * Resolve whether the plannotator bridge is enabled for Superpowers runs.
- *
- * @param config Extension config being normalized.
- * @returns True when plannotator is explicitly enabled; otherwise false.
- */
-export function isSuperagentPlannotatorEnabled(config: ExtensionConfig): boolean {
-	return getSuperagentSettings(config)?.usePlannotator ?? false;
-}
-
-/**
  * Resolve the effective default worktree flag for a run.
  *
  * Inputs/outputs:
@@ -39,7 +29,7 @@ export function isSuperagentPlannotatorEnabled(config: ExtensionConfig): boolean
  *   explicit value when present or the Superpowers default
  *
  * Invariants:
- * - `superagents.worktrees.enabled: false` is a hard off switch for Superpowers
+ * - `superagents.commands["sp-implement"].worktrees.enabled: false` is a hard off switch for Superpowers
  * - only the explicit Superpowers workflow gets a config-driven default
  * - default workflow runs preserve caller behavior when no explicit flag is set
  *
@@ -53,10 +43,13 @@ export function resolveSuperagentWorktreeEnabled(
 	workflow: WorkflowMode,
 	config: ExtensionConfig,
 ): boolean | undefined {
-	if (workflow === "superpowers" && getSuperagentSettings(config)?.worktrees?.enabled === false) return false;
+	if (workflow === "superpowers") {
+		const worktrees = config.superagents?.commands?.["sp-implement"]?.worktrees;
+		if (worktrees?.enabled === false) return false;
+	}
 	if (requested !== undefined) return requested;
 	if (workflow !== "superpowers") return undefined;
-	return getSuperagentSettings(config)?.worktrees?.enabled ?? true;
+	return config.superagents?.commands?.["sp-implement"]?.worktrees?.enabled ?? true;
 }
 
 /**
@@ -72,7 +65,7 @@ export function resolveSuperagentWorktreeRuntimeOptions(
 ): Omit<CreateWorktreesOptions, "agents"> {
 	if (workflow !== "superpowers") return {};
 
-	const worktrees = getSuperagentSettings(config)?.worktrees;
+	const worktrees = config.superagents?.commands?.["sp-implement"]?.worktrees;
 	const options: Omit<CreateWorktreesOptions, "agents"> = {};
 
 	if (worktrees?.root) {
