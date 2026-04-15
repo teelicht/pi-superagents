@@ -19,15 +19,13 @@ import { buildSuperpowersRootPrompt, type SuperpowersRootPromptInput } from "./r
  * Extended root prompt input including skill-entry metadata.
  *
  * This type extends SuperpowersRootPromptInput with fields required for
- * skill-entry flows (entry skill, overlay skills, and entry source).
+ * skill-entry flows (entry skill and overlay skills).
  */
 export interface SkillEntryPromptInput extends SuperpowersRootPromptInput {
 	/** Resolved entry skill content. */
 	entrySkill?: ResolvedSkill;
 	/** Resolved overlay skill contents. */
 	overlaySkills?: ResolvedSkill[];
-	/** Source of the entry skill (command vs intercepted-skill). */
-	entrySkillSource?: "command" | "intercepted-skill" | "implicit";
 }
 
 /**
@@ -62,7 +60,7 @@ export interface BuildResolvedSkillEntryPromptParams {
 const SKILL_COMMAND_PATTERN = /^\/skill:([^\s]+)\s+([\s\S]+)$/;
 
 /** Skills that can be intercepted for Superpowers entry. */
-const SUPPORTED_INTERCEPTED_SKILLS = new Set(["brainstorming"]);
+const SUPPORTED_INTERCEPTED_SKILLS = new Set(["brainstorming", "writing-plans"]);
 
 /**
  * Parse a direct Pi skill command from raw input text.
@@ -104,12 +102,11 @@ export function buildSkillEntryPromptInput(params: BuildSkillEntryPromptInputPar
 		useSubagents: params.profile.useSubagents,
 		useTestDrivenDevelopment: params.profile.useTestDrivenDevelopment,
 		usePlannotatorReview: params.profile.usePlannotatorReview,
-		worktreesEnabled: params.profile.worktreesEnabled,
+		worktrees: params.profile.worktrees,
 		fork: params.profile.fork,
 		usingSuperpowersSkill: params.usingSuperpowersSkill,
 		entrySkill: params.entrySkill,
 		overlaySkills: params.overlaySkills,
-		entrySkillSource: params.profile.entrySkill?.source,
 	};
 }
 
@@ -123,7 +120,7 @@ export function buildResolvedSkillEntryPrompt(
 	input: BuildResolvedSkillEntryPromptParams,
 ): { prompt: string } | { error: string } {
 	const usingSuperpowersSkill = input.resolveSkill(input.cwd, "using-superpowers");
-	const entrySkillName = input.profile.entrySkill?.name;
+	const entrySkillName = input.profile.entrySkill;
 	const entrySkill = entrySkillName ? input.resolveSkill(input.cwd, entrySkillName) : undefined;
 	const overlayResolution = input.resolveSkillNames(input.profile.overlaySkillNames, input.cwd);
 
