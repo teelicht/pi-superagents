@@ -88,9 +88,9 @@ export function detectSubagentError(messages: Message[]): ErrorInfo {
 	for (let i = messages.length - 1; i >= 0; i--) {
 		const msg = messages[i];
 		if (msg.role === "assistant") {
-			const hasText = Array.isArray(msg.content) && msg.content.some(
-				(c) => c.type === "text" && "text" in c && (c.text).trim().length > 0,
-			);
+			const hasText =
+				Array.isArray(msg.content) &&
+				msg.content.some((c) => c.type === "text" && "text" in c && c.text.trim().length > 0);
 			if (hasText) {
 				lastAssistantTextIndex = i;
 				break;
@@ -168,7 +168,7 @@ export function extractToolArgsPreview(args: Record<string, unknown>): string {
 		const toolArgs = args.args && typeof args.args === "string" ? ` ${args.args.slice(0, 40)}` : "";
 		return `${server}${args.tool}${toolArgs}`;
 	}
-	
+
 	const previewKeys = ["command", "path", "file_path", "pattern", "query", "url", "task", "describe", "search"];
 	for (const key of previewKeys) {
 		const value = args[key];
@@ -176,7 +176,7 @@ export function extractToolArgsPreview(args: Record<string, unknown>): string {
 			return value.length > 60 ? `${value.slice(0, 57)}...` : value;
 		}
 	}
-	
+
 	// Fallback: show first string value found
 	for (const [key, value] of Object.entries(args)) {
 		if (typeof value === "string" && value.length > 0) {

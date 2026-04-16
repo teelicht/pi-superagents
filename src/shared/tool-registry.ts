@@ -10,9 +10,7 @@
  */
 
 /** Tool names that enable agent delegation — stripped from bounded role tool lists. */
-export const DELEGATION_TOOLS: ReadonlySet<string> = Object.freeze(
-	new Set(["subagent", "subagent_status"]),
-);
+export const DELEGATION_TOOLS: ReadonlySet<string> = Object.freeze(new Set(["subagent", "subagent_status"]));
 
 /**
  * Safe read-only tool baseline for bounded agents that declare no tools.
@@ -21,6 +19,4 @@ export const DELEGATION_TOOLS: ReadonlySet<string> = Object.freeze(
  * frontmatter use those lists directly. This baseline only applies when
  * a bounded agent has no tool declaration at all.
  */
-export const READ_ONLY_TOOLS: ReadonlyArray<string> = Object.freeze(
-	["read", "grep", "find", "ls"],
-);
+export const READ_ONLY_TOOLS: ReadonlyArray<string> = Object.freeze(["read", "grep", "find", "ls"]);

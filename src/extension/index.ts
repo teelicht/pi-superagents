@@ -11,36 +11,28 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
-import { Type } from "@sinclair/typebox";
-import { type ExtensionAPI, type ExtensionContext, type ToolDefinition } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
+import { Type } from "@sinclair/typebox";
 import { discoverAgents } from "../agents/agents.ts";
-import { cleanupAllArtifactDirs, cleanupOldArtifacts, getArtifactsDir } from "../shared/artifacts.ts";
-import { renderSubagentResult } from "../ui/render.ts";
-import { SubagentParams } from "../shared/schemas.ts";
 import { formatConfigDiagnostics, loadEffectiveConfig } from "../execution/config-validation.ts";
-import { requestPlannotatorPlanReview } from "../integrations/plannotator.ts";
-import type { ConfigDiagnostic } from "../shared/types.ts";
 import { createSubagentExecutor, type SubagentParamsLike } from "../execution/subagent-executor.ts";
-import { registerSlashCommands } from "../slash/slash-commands.ts";
-import {
-	type Details,
-	type ExtensionConfig,
-	type SubagentState,
-	DEFAULT_ARTIFACT_CONFIG,
-} from "../shared/types.ts";
+import { requestPlannotatorPlanReview } from "../integrations/plannotator.ts";
+import { cleanupAllArtifactDirs, cleanupOldArtifacts, getArtifactsDir } from "../shared/artifacts.ts";
+import { SubagentParams } from "../shared/schemas.ts";
 import { resolveAvailableSkill, resolveSkills } from "../shared/skills.ts";
+import type { ConfigDiagnostic } from "../shared/types.ts";
+import { DEFAULT_ARTIFACT_CONFIG, type Details, type ExtensionConfig, type SubagentState } from "../shared/types.ts";
+import { registerSlashCommands } from "../slash/slash-commands.ts";
+import { createSuperpowersPromptDispatcher } from "../superpowers/prompt-dispatch.ts";
+import { buildSuperpowersVisiblePromptSummary } from "../superpowers/root-prompt.ts";
 import {
 	buildResolvedSkillEntryPrompt,
 	parseSkillCommandInput,
 	shouldInterceptSkillCommand,
 } from "../superpowers/skill-entry.ts";
-import { buildSuperpowersVisiblePromptSummary } from "../superpowers/root-prompt.ts";
-import { createSuperpowersPromptDispatcher } from "../superpowers/prompt-dispatch.ts";
-import {
-	parseSuperpowersWorkflowArgs,
-	resolveSuperpowersRunProfile,
-} from "../superpowers/workflow-profile.ts";
+import { parseSuperpowersWorkflowArgs, resolveSuperpowersRunProfile } from "../superpowers/workflow-profile.ts";
+import { renderSubagentResult } from "../ui/render.ts";
 
 /**
  * Derive subagent session base directory from parent session file.
@@ -99,12 +91,14 @@ function loadConfigState(): LoadedConfigState {
 		return { ...result, message, configPath, examplePath };
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		const diagnostics: ConfigDiagnostic[] = [{
-			level: "error",
-			code: "config_load_failed",
-			path: "config.json",
-			message,
-		}];
+		const diagnostics: ConfigDiagnostic[] = [
+			{
+				level: "error",
+				code: "config_load_failed",
+				path: "config.json",
+				message,
+			},
+		];
 		return {
 			config: {},
 			blocked: true,
@@ -134,7 +128,12 @@ function _migrateCopiedDefaultConfig(state: LoadedConfigState): AgentToolResult<
 	fs.copyFileSync(state.configPath, backupPath);
 	fs.writeFileSync(state.configPath, "{}\n", "utf-8");
 	return {
-		content: [{ type: "text", text: `Migrated config.json to an empty override. Backup: ${backupPath}\nRestart or reload Pi to use the updated config.` }],
+		content: [
+			{
+				type: "text",
+				text: `Migrated config.json to an empty override. Backup: ${backupPath}\nRestart or reload Pi to use the updated config.`,
+			},
+		],
 		details: { mode: "single", results: [] },
 	};
 }
@@ -173,7 +172,9 @@ function _ensureAccessibleDir(dirPath: string): void {
 
 const SuperpowersPlanReviewParams = Type.Object({
 	planContent: Type.String({ description: "Final Superpowers implementation plan content to review." }),
-	planFilePath: Type.Optional(Type.String({ description: "Saved plan file path for the final Superpowers plan when available." })),
+	planFilePath: Type.Optional(
+		Type.String({ description: "Saved plan file path for the final Superpowers plan when available." }),
+	),
 });
 
 /**
@@ -184,7 +185,9 @@ const SuperpowersPlanReviewParams = Type.Object({
  */
 const SuperpowersSpecReviewParams = Type.Object({
 	specContent: Type.String({ description: "Final saved Superpowers brainstorming spec content to review." }),
-	specFilePath: Type.Optional(Type.String({ description: "Saved Superpowers brainstorming spec file path when available." })),
+	specFilePath: Type.Optional(
+		Type.String({ description: "Saved Superpowers brainstorming spec file path when available." }),
+	),
 });
 
 /**
@@ -287,10 +290,7 @@ ${result.feedback}`);
 			}
 
 			if (ctx.hasUI) {
-				ctx.ui.notify(
-					`Plannotator unavailable: ${result.reason}. Falling back to text-based approval.`,
-					"warning",
-				);
+				ctx.ui.notify(`Plannotator unavailable: ${result.reason}. Falling back to text-based approval.`, "warning");
 			}
 			return createTextToolResult(
 				`Plannotator unavailable: ${result.reason}
@@ -299,10 +299,7 @@ Continue with the normal text-based Superpowers approval flow.`,
 		} catch (error) {
 			const reason = error instanceof Error ? error.message : String(error);
 			if (ctx.hasUI) {
-				ctx.ui.notify(
-					`Plannotator unavailable: ${reason}. Falling back to text-based approval.`,
-					"warning",
-				);
+				ctx.ui.notify(`Plannotator unavailable: ${reason}. Falling back to text-based approval.`, "warning");
 			}
 			return createTextToolResult(
 				`Plannotator unavailable: ${reason}
@@ -344,10 +341,7 @@ ${result.feedback}`);
 			}
 
 			if (ctx.hasUI) {
-				ctx.ui.notify(
-					`Plannotator unavailable: ${result.reason}. Falling back to text-based spec review.`,
-					"warning",
-				);
+				ctx.ui.notify(`Plannotator unavailable: ${result.reason}. Falling back to text-based spec review.`, "warning");
 			}
 			return createTextToolResult(
 				`Plannotator unavailable: ${result.reason}
@@ -356,10 +350,7 @@ Continue with the normal text-based Superpowers review flow.`,
 		} catch (error) {
 			const reason = error instanceof Error ? error.message : String(error);
 			if (ctx.hasUI) {
-				ctx.ui.notify(
-					`Plannotator unavailable: ${reason}. Falling back to text-based spec review.`,
-					"warning",
-				);
+				ctx.ui.notify(`Plannotator unavailable: ${reason}. Falling back to text-based spec review.`, "warning");
 			}
 			return createTextToolResult(
 				`Plannotator unavailable: ${reason}
@@ -371,30 +362,26 @@ Continue with the normal text-based Superpowers review flow.`,
 	const planReviewTool: ToolDefinition<typeof SuperpowersPlanReviewParams, Details> = {
 		name: "superpowers_plan_review",
 		label: "Superpowers Plan Review",
-		description: "Send the final Superpowers implementation plan through the optional Plannotator browser review bridge. Use only at the normal plan approval point.",
+		description:
+			"Send the final Superpowers implementation plan through the optional Plannotator browser review bridge. Use only at the normal plan approval point.",
 		parameters: SuperpowersPlanReviewParams,
 		execute(_id, params, _signal, _onUpdate, ctx) {
-			return executeSuperpowersPlanReview(
-				params as { planContent: string; planFilePath?: string },
-				ctx,
-			);
+			return executeSuperpowersPlanReview(params as { planContent: string; planFilePath?: string }, ctx);
 		},
 	};
 
 	const specReviewTool: ToolDefinition<typeof SuperpowersSpecReviewParams, Details> = {
 		name: "superpowers_spec_review",
 		label: "Superpowers Spec Review",
-		description: "Send the final saved Superpowers brainstorming spec through the optional Plannotator browser review bridge. Use only after the saved brainstorming spec exists.",
+		description:
+			"Send the final saved Superpowers brainstorming spec through the optional Plannotator browser review bridge. Use only after the saved brainstorming spec exists.",
 		parameters: SuperpowersSpecReviewParams,
 		execute(_id, params, _signal, _onUpdate, ctx) {
-			return executeSuperpowersSpecReview(
-				params as { specContent: string; specFilePath?: string },
-				ctx,
-			);
+			return executeSuperpowersSpecReview(params as { specContent: string; specFilePath?: string }, ctx);
 		},
 	};
 
-const tool: ToolDefinition<typeof SubagentParams, Details> = {
+	const tool: ToolDefinition<typeof SubagentParams, Details> = {
 		name: "subagent",
 		label: "Subagent",
 		description: `Delegate bounded work to Superpowers role subagents.
@@ -412,18 +399,20 @@ Bounded role agents are not allowed to call subagents.`,
 			if (state.configGate.blocked) {
 				return Promise.resolve(configBlockedResult(state.configGate.message));
 			}
-			return executor.execute(id, params as unknown as SubagentParamsLike, signal ?? new AbortController().signal, onUpdate, ctx);
+			return executor.execute(
+				id,
+				params as unknown as SubagentParamsLike,
+				signal ?? new AbortController().signal,
+				onUpdate,
+				ctx,
+			);
 		},
 
 		renderCall(args, theme) {
 			const isParallel = (args.tasks?.length ?? 0) > 0;
 			const parallelCount = effectiveParallelTaskCount(args.tasks as Array<{ count?: unknown }> | undefined);
 			if (isParallel)
-				return new Text(
-					`${theme.fg("toolTitle", theme.bold("subagent "))}parallel (${parallelCount})`,
-					0,
-					0,
-				);
+				return new Text(`${theme.fg("toolTitle", theme.bold("subagent "))}parallel (${parallelCount})`, 0, 0);
 			return new Text(
 				`${theme.fg("toolTitle", theme.bold("subagent "))}${theme.fg("accent", args.agent || "?")}`,
 				0,
@@ -434,7 +423,6 @@ Bounded role agents are not allowed to call subagents.`,
 		renderResult(result, options, theme) {
 			return renderSubagentResult(result, options, theme);
 		},
-
 	};
 
 	pi.registerTool(planReviewTool);
@@ -532,7 +520,8 @@ Bounded role agents are not allowed to call subagents.`,
 
 	const resetSessionState = (ctx: ExtensionContext) => {
 		state.baseCwd = ctx.cwd;
-		state.currentSessionId = ctx.sessionManager.getSessionFile() ?? `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+		state.currentSessionId =
+			ctx.sessionManager.getSessionFile() ?? `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 		state.lastUiContext = ctx;
 		cleanupSessionArtifacts(ctx);
 	};
@@ -541,11 +530,7 @@ Bounded role agents are not allowed to call subagents.`,
 
 	pi.on("session_start", (_event, ctx) => {
 		resetSessionState(ctx);
-		if (
-			state.configGate.message
-			&& ctx.hasUI
-			&& configDiagnosticNotifiedForSession !== state.currentSessionId
-		) {
+		if (state.configGate.message && ctx.hasUI && configDiagnosticNotifiedForSession !== state.currentSessionId) {
 			configDiagnosticNotifiedForSession = state.currentSessionId;
 			ctx.ui.notify(state.configGate.message, state.configGate.blocked ? "error" : "warning");
 		}

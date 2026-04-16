@@ -16,14 +16,17 @@ void describe("resolveSubagentContext", () => {
 void describe("createForkContextResolver", () => {
 	void it("fresh mode never calls createBranchedSession", () => {
 		let calls = 0;
-		const resolver = createForkContextResolver({
-			getSessionFile: () => "/tmp/parent.jsonl",
-			getLeafId: () => "leaf-123",
-			createBranchedSession: () => {
-				calls++;
-				return "/tmp/child.jsonl";
+		const resolver = createForkContextResolver(
+			{
+				getSessionFile: () => "/tmp/parent.jsonl",
+				getLeafId: () => "leaf-123",
+				createBranchedSession: () => {
+					calls++;
+					return "/tmp/child.jsonl";
+				},
 			},
-		}, "fresh");
+			"fresh",
+		);
 
 		assert.equal(resolver.sessionFileForIndex(0), undefined);
 		assert.equal(calls, 0);
@@ -31,36 +34,47 @@ void describe("createForkContextResolver", () => {
 
 	void it("fails fast when parent session file is missing", () => {
 		assert.throws(
-			() => createForkContextResolver({
-				getSessionFile: () => undefined,
-				getLeafId: () => "leaf-123",
-				createBranchedSession: () => "/tmp/child.jsonl",
-			}, "fork"),
+			() =>
+				createForkContextResolver(
+					{
+						getSessionFile: () => undefined,
+						getLeafId: () => "leaf-123",
+						createBranchedSession: () => "/tmp/child.jsonl",
+					},
+					"fork",
+				),
 			/Forked subagent context requires a persisted parent session\./,
 		);
 	});
 
 	void it("fails fast when leaf id is missing", () => {
 		assert.throws(
-			() => createForkContextResolver({
-				getSessionFile: () => "/tmp/parent.jsonl",
-				getLeafId: () => null,
-				createBranchedSession: () => "/tmp/child.jsonl",
-			}, "fork"),
+			() =>
+				createForkContextResolver(
+					{
+						getSessionFile: () => "/tmp/parent.jsonl",
+						getLeafId: () => null,
+						createBranchedSession: () => "/tmp/child.jsonl",
+					},
+					"fork",
+				),
 			/Forked subagent context requires a current leaf to fork from\./,
 		);
 	});
 
 	void it("uses the exact current leaf id when creating branched sessions", () => {
 		const seenLeafIds: string[] = [];
-		const resolver = createForkContextResolver({
-			getSessionFile: () => "/tmp/parent.jsonl",
-			getLeafId: () => "leaf-xyz",
-			createBranchedSession: (leafId) => {
-				seenLeafIds.push(leafId);
-				return `/tmp/child-${seenLeafIds.length}.jsonl`;
+		const resolver = createForkContextResolver(
+			{
+				getSessionFile: () => "/tmp/parent.jsonl",
+				getLeafId: () => "leaf-xyz",
+				createBranchedSession: (leafId) => {
+					seenLeafIds.push(leafId);
+					return `/tmp/child-${seenLeafIds.length}.jsonl`;
+				},
 			},
-		}, "fork");
+			"fork",
+		);
 
 		resolver.sessionFileForIndex(0);
 		resolver.sessionFileForIndex(1);
@@ -71,14 +85,17 @@ void describe("createForkContextResolver", () => {
 
 	void it("creates isolated branched sessions per index (parallel and chain compatible)", () => {
 		let count = 0;
-		const resolver = createForkContextResolver({
-			getSessionFile: () => "/tmp/parent.jsonl",
-			getLeafId: () => "leaf-abc",
-			createBranchedSession: () => {
-				count++;
-				return `/tmp/fork-${count}.jsonl`;
+		const resolver = createForkContextResolver(
+			{
+				getSessionFile: () => "/tmp/parent.jsonl",
+				getLeafId: () => "leaf-abc",
+				createBranchedSession: () => {
+					count++;
+					return `/tmp/fork-${count}.jsonl`;
+				},
 			},
-		}, "fork");
+			"fork",
+		);
 
 		const singleSession = resolver.sessionFileForIndex(0);
 		const parallelSessions = [resolver.sessionFileForIndex(1), resolver.sessionFileForIndex(2)];
@@ -92,14 +109,17 @@ void describe("createForkContextResolver", () => {
 
 	void it("memoizes per index to keep behavior deterministic", () => {
 		let count = 0;
-		const resolver = createForkContextResolver({
-			getSessionFile: () => "/tmp/parent.jsonl",
-			getLeafId: () => "leaf-abc",
-			createBranchedSession: () => {
-				count++;
-				return `/tmp/fork-${count}.jsonl`;
+		const resolver = createForkContextResolver(
+			{
+				getSessionFile: () => "/tmp/parent.jsonl",
+				getLeafId: () => "leaf-abc",
+				createBranchedSession: () => {
+					count++;
+					return `/tmp/fork-${count}.jsonl`;
+				},
 			},
-		}, "fork");
+			"fork",
+		);
 
 		const first = resolver.sessionFileForIndex(7);
 		const second = resolver.sessionFileForIndex(7);
@@ -108,11 +128,14 @@ void describe("createForkContextResolver", () => {
 	});
 
 	void it("does not silently fallback to fresh when branch extraction fails", () => {
-		const resolver = createForkContextResolver({
-			getSessionFile: () => "/tmp/parent.jsonl",
-			getLeafId: () => "leaf-abc",
-			createBranchedSession: () => undefined,
-		}, "fork");
+		const resolver = createForkContextResolver(
+			{
+				getSessionFile: () => "/tmp/parent.jsonl",
+				getLeafId: () => "leaf-abc",
+				createBranchedSession: () => undefined,
+			},
+			"fork",
+		);
 
 		assert.throws(
 			() => resolver.sessionFileForIndex(0),

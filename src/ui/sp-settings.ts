@@ -30,13 +30,7 @@ export class SuperpowersSettingsComponent implements Component {
 	private readonly config: ExtensionConfig;
 	private readonly done: () => void;
 
-	constructor(
-		tui: TUI,
-		theme: Theme,
-		state: SubagentState,
-		config: ExtensionConfig,
-		done: () => void,
-	) {
+	constructor(tui: TUI, theme: Theme, state: SubagentState, config: ExtensionConfig, done: () => void) {
 		this.tui = tui;
 		this.theme = theme;
 		this.state = state;
@@ -110,30 +104,22 @@ export class SuperpowersSettingsComponent implements Component {
 			...(commands.length
 				? commands.flatMap(([name, preset]) => {
 						const configuredSettings: string[] = [];
-						if ("usePlannotator" in preset)
-							configuredSettings.push(`    usePlannotator: ${preset.usePlannotator}`);
-						if ("useSubagents" in preset)
-							configuredSettings.push(`    useSubagents: ${preset.useSubagents}`);
+						if ("usePlannotator" in preset) configuredSettings.push(`    usePlannotator: ${preset.usePlannotator}`);
+						if ("useSubagents" in preset) configuredSettings.push(`    useSubagents: ${preset.useSubagents}`);
 						if ("useTestDrivenDevelopment" in preset)
 							configuredSettings.push(`    useTestDrivenDevelopment: ${preset.useTestDrivenDevelopment}`);
-						if ("useBranches" in preset)
-							configuredSettings.push(`    useBranches: ${preset.useBranches}`);
+						if ("useBranches" in preset) configuredSettings.push(`    useBranches: ${preset.useBranches}`);
 						if (preset.worktrees && "enabled" in preset.worktrees)
 							configuredSettings.push(`    worktrees.enabled: ${preset.worktrees.enabled}`);
 						if (preset.worktrees && "root" in preset.worktrees)
 							configuredSettings.push(`    worktrees.root: ${preset.worktrees.root ?? "default"}`);
 
-						return [
-							`  ${name}:`,
-							...(configuredSettings.length ? configuredSettings : ["    (default settings)"]),
-						];
+						return [`  ${name}:`, ...(configuredSettings.length ? configuredSettings : ["    (default settings)"])];
 					})
 				: ["  none"]),
 			"",
 			"Model tiers:",
-			...(modelTiers.length
-				? modelTiers.map(([name, value]) => `  ${name}: ${tierModel(value)}`)
-				: ["  none"]),
+			...(modelTiers.length ? modelTiers.map(([name, value]) => `  ${name}: ${tierModel(value)}`) : ["  none"]),
 		];
 
 		if (this.state.configGate.message) lines.push("", this.state.configGate.message);

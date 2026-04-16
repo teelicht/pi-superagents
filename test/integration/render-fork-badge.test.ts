@@ -33,41 +33,55 @@ const theme = {
 	bold: (text: string) => text,
 };
 
-void describe("renderSubagentResult fork indicator", { skip: !available ? "render.ts not importable" : undefined }, () => {
-	void it("shows [fork] when details are empty but context is fork", () => {
-		const widget = renderSubagentResult!({
-			content: [{ type: "text", text: "Async: reviewer [abc123]" }],
-			details: { mode: "single", context: "fork", results: [] },
-		}, { expanded: false }, theme);
+void describe(
+	"renderSubagentResult fork indicator",
+	{ skip: !available ? "render.ts not importable" : undefined },
+	() => {
+		void it("shows [fork] when details are empty but context is fork", () => {
+			const widget = renderSubagentResult!(
+				{
+					content: [{ type: "text", text: "Async: reviewer [abc123]" }],
+					details: { mode: "single", context: "fork", results: [] },
+				},
+				{ expanded: false },
+				theme,
+			);
 
-		const text = widget.render(120).join("\n");
-		assert.match(text, /\[fork\]/);
-	});
+			const text = widget.render(120).join("\n");
+			assert.match(text, /\[fork\]/);
+		});
 
-	void it("shows [fork] on single-result header", () => {
-		const widget = renderSubagentResult!({
-			content: [{ type: "text", text: "done" }],
-			details: {
-				mode: "single",
-				context: "fork",
-				results: [{
-					agent: "reviewer",
-					task: "review",
-					exitCode: 0,
-					messages: [],
-					usage: {
-						input: 0,
-						output: 0,
-						cacheRead: 0,
-						cacheWrite: 0,
-						cost: 0,
-						turns: 0,
+		void it("shows [fork] on single-result header", () => {
+			const widget = renderSubagentResult!(
+				{
+					content: [{ type: "text", text: "done" }],
+					details: {
+						mode: "single",
+						context: "fork",
+						results: [
+							{
+								agent: "reviewer",
+								task: "review",
+								exitCode: 0,
+								messages: [],
+								usage: {
+									input: 0,
+									output: 0,
+									cacheRead: 0,
+									cacheWrite: 0,
+									cost: 0,
+									turns: 0,
+								},
+							},
+						],
 					},
-				}],
-			},
-		}, { expanded: false }, theme);
+				},
+				{ expanded: false },
+				theme,
+			);
 
-		const text = widget.render(120).join("\n");
-		assert.match(text, /\[fork\]/);
-	});
-});
+			const text = widget.render(120).join("\n");
+			assert.match(text, /\[fork\]/);
+		});
+	},
+);

@@ -14,12 +14,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
 	inferExecutionRole,
+	resolveImplementerSkillSet,
 	resolveModelForAgent,
 	resolveRoleSkillSet,
-	resolveImplementerSkillSet,
 	resolveRoleTools,
 } from "../../src/execution/superpowers-policy.ts";
-import { DELEGATION_TOOLS, READ_ONLY_TOOLS } from "../../src/shared/tool-registry.ts";
+import { READ_ONLY_TOOLS } from "../../src/shared/tool-registry.ts";
 
 void describe("superpowers policy", () => {
 	void it("resolves tiers in default workflow when configured", () => {
@@ -173,11 +173,7 @@ void describe("superpowers policy", () => {
 			} as never,
 			agentSkills: ["vercel-react-native-skills"],
 			stepSkills: ["react-native-best-practices"],
-			availableSkills: new Set([
-				"ignored-config-skill",
-				"vercel-react-native-skills",
-				"react-native-best-practices",
-			]),
+			availableSkills: new Set(["ignored-config-skill", "vercel-react-native-skills", "react-native-best-practices"]),
 		});
 
 		assert.deepEqual(skills, ["vercel-react-native-skills", "react-native-best-practices"]);

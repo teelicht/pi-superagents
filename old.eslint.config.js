@@ -4,11 +4,12 @@
  * Responsibilities: Configure TS parsing, baseline lint rules, test-file globals, and Prettier integration.
  * Side effects: None.
  */
-import eslint from '@eslint/js';
+import js from '@eslint/js';
+import { defineConfig, globalIgnores } from 'eslint/config';
 import tseslint from 'typescript-eslint';
-import eslintConfigPrettier from 'eslint-config-prettier';
+import prettierRecommended from 'eslint-config-prettier/recommended';
 
-export default tseslint.config(
+export default [
   {
     ignores: [
       "**/node_modules/**",
@@ -20,10 +21,10 @@ export default tseslint.config(
       "eslint.config.js"
     ]
   },
-  eslint.configs.recommended,
-  ...tseslint.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
-  eslintConfigPrettier, // Disables ESLint rules that might conflict with prettier formatting
+  js.configs.recommended,
+  tseslint.configs.recommendedTypeChecked,
+  tseslint.configs.stylisticTypeChecked,
+  prettierRecommended, // Disables ESLint rules that might conflict with prettier formatting
   {
     languageOptions: {
       parserOptions: {
@@ -42,6 +43,7 @@ export default tseslint.config(
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
       'no-control-regex': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'error'
     },
   },
   {
@@ -69,4 +71,4 @@ export default tseslint.config(
       '@typescript-eslint/only-throw-error': 'off'
     }
   }
-);
+];

@@ -42,7 +42,8 @@ function buildMetadata(input: SuperpowersRootPromptInput): string {
 	const lines: string[] = ['workflow: "superpowers"'];
 	if (input.useBranches !== undefined) lines.push(`useBranches: ${input.useBranches}`);
 	if (input.useSubagents !== undefined) lines.push(`useSubagents: ${input.useSubagents}`);
-	if (input.useTestDrivenDevelopment !== undefined) lines.push(`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`);
+	if (input.useTestDrivenDevelopment !== undefined)
+		lines.push(`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`);
 	if (input.usePlannotatorReview !== undefined) lines.push(`usePlannotatorReview: ${input.usePlannotatorReview}`);
 	if (input.worktrees !== undefined) lines.push(`worktrees.enabled: ${input.worktrees.enabled}`);
 	if (input.fork) lines.push('context: "fork"');
@@ -288,15 +289,11 @@ export function buildSuperpowersVisiblePromptSummary(input: SuperpowersRootPromp
 	const configLines: string[] = [];
 	if (input.useBranches !== undefined) configLines.push(`useBranches: ${input.useBranches}`);
 	if (input.useSubagents !== undefined) configLines.push(`useSubagents: ${input.useSubagents}`);
-	if (input.useTestDrivenDevelopment !== undefined) configLines.push(`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`);
+	if (input.useTestDrivenDevelopment !== undefined)
+		configLines.push(`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`);
 	if (input.usePlannotatorReview !== undefined) configLines.push(`usePlannotatorReview: ${input.usePlannotatorReview}`);
 	if (input.worktrees !== undefined) configLines.push(`worktrees.enabled: ${input.worktrees.enabled}`);
 	configLines.push(`context: ${input.fork ? "fork" : "fresh"}`);
 
-	return [
-		`Superpowers ▸ ${input.task}`,
-		"",
-		"Config:",
-		configLines.join("\n"),
-	].join("\n");
+	return [`Superpowers ▸ ${input.task}`, "", "Config:", configLines.join("\n")].join("\n");
 }

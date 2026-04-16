@@ -4,9 +4,9 @@
  * Tests the active run lifecycle: startRun, updateRun, finishRun.
  */
 
-import { test } from "node:test";
 import * as assert from "node:assert";
-import { globalRunHistory, recordRun } from "../../src/execution/run-history.ts";
+import { test } from "node:test";
+import { globalRunHistory } from "../../src/execution/run-history.ts";
 
 void test("globalRunHistory tracks active and finished runs", () => {
 	globalRunHistory.activeRuns.clear();

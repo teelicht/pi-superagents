@@ -12,8 +12,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { createMockPi as _createMockPi } from "./mock-pi.ts";
 import type { MockPi } from "./mock-pi.ts";
+import { createMockPi as _createMockPi } from "./mock-pi.ts";
 
 export type { MockPi };
 
@@ -30,7 +30,9 @@ interface HarnessCompatibleSession {
 	session?: {
 		_modelRegistry?: {
 			hasConfiguredAuth?: (model: unknown) => boolean;
-			getApiKeyAndHeaders?: (model: unknown) => Promise<{ ok: boolean; apiKey?: string; headers?: Record<string, string> }>;
+			getApiKeyAndHeaders?: (
+				model: unknown,
+			) => Promise<{ ok: boolean; apiKey?: string; headers?: Record<string, string> }>;
 			getApiKeyForProvider?: (provider: string) => Promise<string | undefined>;
 			getApiKey?: (provider: string) => Promise<string | undefined>;
 		};
@@ -122,7 +124,9 @@ export function createTempDir(prefix = "pi-subagent-test-"): string {
 export function removeTempDir(dir: string): void {
 	try {
 		fs.rmSync(dir, { recursive: true, force: true });
-	} catch { /* empty */ }
+	} catch {
+		/* empty */
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -160,7 +164,12 @@ export function makeAgentConfigs(names: string[]): AgentConfig[] {
 /**
  * Create an agent config with specific settings.
  */
-export function makeAgent(name: string, overrides: Partial<AgentConfig> = { /* empty */ }): AgentConfig {
+export function makeAgent(
+	name: string,
+	overrides: Partial<AgentConfig> = {
+		/* empty */
+	},
+): AgentConfig {
 	return {
 		name,
 		description: `Test agent: ${name}`,
@@ -180,7 +189,9 @@ export function makeMinimalCtx(cwd: string): any {
 	return {
 		cwd,
 		hasUI: false,
-		ui: { /* empty */ },
+		ui: {
+			/* empty */
+		},
 		sessionManager: {
 			getSessionFile: () => null,
 		},
@@ -211,10 +222,10 @@ export async function tryImport<T>(specifier: string): Promise<T | null> {
 			const abs = path.resolve(projectRoot, specifier);
 			// Convert to file:// URL for cross-platform compatibility with dynamic import()
 			const url = pathToFileURL(abs).href;
-			return await import(url) as T;
+			return (await import(url)) as T;
 		}
 		// Bare specifier — import directly (node_modules resolution)
-		const imported = await import(specifier) as T;
+		const imported = (await import(specifier)) as T;
 		if (specifier === "@marcfargas/pi-test-harness") {
 			return patchPiTestHarnessModule(imported);
 		}
@@ -251,7 +262,12 @@ export const events = {
 	},
 
 	/** Build a tool_execution_start event */
-	toolStart(toolName: string, args: Record<string, unknown> = { /* empty */ }): object {
+	toolStart(
+		toolName: string,
+		args: Record<string, unknown> = {
+			/* empty */
+		},
+	): object {
 		return { type: "tool_execution_start", toolName, args };
 	},
 

@@ -79,9 +79,6 @@ void describe("Superpowers config writer", () => {
 	});
 
 	void it("throws a readable error for malformed JSON", () => {
-		assert.throws(
-			() => updateSuperpowersConfigText("{", (config) => config),
-			/Superpowers config is not valid JSON/,
-		);
+		assert.throws(() => updateSuperpowersConfigText("{", (config) => config), /Superpowers config is not valid JSON/);
 	});
 });

@@ -64,7 +64,9 @@ export function cleanupOldArtifacts(dir: string, maxAgeDays: number): void {
 			if (stat.mtimeMs < cutoff) {
 				fs.unlinkSync(filePath);
 			}
-		} catch { /* empty */ }
+		} catch {
+			/* empty */
+		}
 	}
 
 	fs.writeFileSync(markerPath, String(now));
@@ -87,6 +89,8 @@ export function cleanupAllArtifactDirs(maxAgeDays: number): void {
 		const artifactsDir = path.join(sessionsBase, dir, "subagent-artifacts");
 		try {
 			cleanupOldArtifacts(artifactsDir, maxAgeDays);
-		} catch { /* empty */ }
+		} catch {
+			/* empty */
+		}
 	}
 }

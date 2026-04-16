@@ -8,8 +8,8 @@
  * - verify timer cleanup is safe
  */
 
-import { test } from "node:test";
 import * as assert from "node:assert";
+import { test } from "node:test";
 import type { RunEntry } from "../../src/execution/run-history.ts";
 import { SubagentsStatusComponent } from "../../src/ui/subagents-status.ts";
 
@@ -46,7 +46,14 @@ function createRun(overrides: Partial<RunEntry> = {}): RunEntry {
 		tokens: { total: 1536 },
 		steps: [
 			{ index: 0, agent: "sp-recon", status: "complete", durationMs: 250, tokens: { total: 256 } },
-			{ index: 1, agent: "sp-implementer", status: "failed", durationMs: 1000, tokens: { total: 1280 }, error: "boom" },
+			{
+				index: 1,
+				agent: "sp-implementer",
+				status: "failed",
+				durationMs: 1000,
+				tokens: { total: 1280 },
+				error: "boom",
+			},
 		],
 		...overrides,
 	};
@@ -54,16 +61,11 @@ function createRun(overrides: Partial<RunEntry> = {}): RunEntry {
 
 void test("SubagentsStatusComponent renders a framed status panel", () => {
 	const tuiMock = createTuiMock();
-	const component = new SubagentsStatusComponent(
-		tuiMock.tui as never,
-		createThemeMock() as never,
-		() => {},
-		{
-			refreshMs: 60_000,
-			getActiveRuns: () => [createRun({ task: "Active task", duration: 0 })],
-			getRecentRuns: () => [],
-		},
-	);
+	const component = new SubagentsStatusComponent(tuiMock.tui as never, createThemeMock() as never, () => {}, {
+		refreshMs: 60_000,
+		getActiveRuns: () => [createRun({ task: "Active task", duration: 0 })],
+		getRecentRuns: () => [],
+	});
 
 	const rendered = component.render(84).join("\n");
 	assert.match(rendered, /Subagents Status/);
@@ -77,16 +79,11 @@ void test("SubagentsStatusComponent renders a framed status panel", () => {
 
 void test("SubagentsStatusComponent keeps empty-run navigation safe", () => {
 	const tuiMock = createTuiMock();
-	const component = new SubagentsStatusComponent(
-		tuiMock.tui as never,
-		createThemeMock() as never,
-		() => {},
-		{
-			refreshMs: 60_000,
-			getActiveRuns: () => [],
-			getRecentRuns: () => [],
-		},
-	);
+	const component = new SubagentsStatusComponent(tuiMock.tui as never, createThemeMock() as never, () => {}, {
+		refreshMs: 60_000,
+		getActiveRuns: () => [],
+		getRecentRuns: () => [],
+	});
 
 	component.handleInput("\u001b[B");
 	const rendered = component.render(84).join("\n");
@@ -97,16 +94,11 @@ void test("SubagentsStatusComponent keeps empty-run navigation safe", () => {
 });
 
 void test("SubagentsStatusComponent renders selected step details", () => {
-	const component = new SubagentsStatusComponent(
-		createTuiMock().tui as never,
-		createThemeMock() as never,
-		() => {},
-		{
-			refreshMs: 60_000,
-			getActiveRuns: () => [],
-			getRecentRuns: () => [createRun()],
-		},
-	);
+	const component = new SubagentsStatusComponent(createTuiMock().tui as never, createThemeMock() as never, () => {}, {
+		refreshMs: 60_000,
+		getActiveRuns: () => [],
+		getRecentRuns: () => [createRun()],
+	});
 
 	const rendered = component.render(100).join("\n");
 

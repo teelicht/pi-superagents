@@ -1,9 +1,9 @@
-import { describe, it, before, after, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { execSync } from "node:child_process";
+import { after, afterEach, before, beforeEach, describe, it } from "node:test";
+import type { ExtensionConfig } from "../../src/shared/types.ts";
 import type { MockPi } from "../support/helpers.ts";
 import { createMockPi, createTempDir, removeTempDir, tryImport } from "../support/helpers.ts";
-import type { ExtensionConfig } from "../../src/shared/types.ts";
 
 /**
  * Local view of the subagent executor module under test.
@@ -76,228 +76,242 @@ function makeState(cwd: string) {
 	};
 }
 
-void describe("fork context execution wiring", { skip: !available ? "subagent executor not importable" : undefined }, () => {
-	let tempDir: string;
-	let mockPi: MockPi;
+void describe(
+	"fork context execution wiring",
+	{ skip: !available ? "subagent executor not importable" : undefined },
+	() => {
+		let tempDir: string;
+		let mockPi: MockPi;
 
-	/** Saved env vars — restored after every test to keep runs hermetic. */
-	let savedDepth: string | undefined;
-	let savedMaxDepth: string | undefined;
+		/** Saved env vars — restored after every test to keep runs hermetic. */
+		let savedDepth: string | undefined;
+		let savedMaxDepth: string | undefined;
 
-	before(() => {
-		mockPi = createMockPi();
-		mockPi.install();
-	});
-
-	after(() => {
-		mockPi.uninstall();
-	});
-
-	beforeEach(() => {
-		// Save and clear PI_SUBAGENT_DEPTH / PI_SUBAGENT_MAX_DEPTH so tests are
-		// hermetic regardless of whether they run inside a pi session or CI
-		// environment that already has these variables set.
-		savedDepth = process.env.PI_SUBAGENT_DEPTH;
-		savedMaxDepth = process.env.PI_SUBAGENT_MAX_DEPTH;
-		delete process.env.PI_SUBAGENT_DEPTH;
-		delete process.env.PI_SUBAGENT_MAX_DEPTH;
-
-		tempDir = createTempDir("pi-subagent-fork-test-");
-		// Init git repo for worktree support
-		execSync("git init", { cwd: tempDir, stdio: "ignore" });
-		execSync("git config user.email 'test@example.com'", { cwd: tempDir, stdio: "ignore" });
-		execSync("git config user.name 'Test User'", { cwd: tempDir, stdio: "ignore" });
-		execSync("git commit --allow-empty -m 'initial commit'", { cwd: tempDir, stdio: "ignore" });
-
-		mockPi.reset();
-		mockPi.onCall({ output: "ok" });
-	});
-
-	afterEach(() => {
-		// Restore PI_SUBAGENT_DEPTH / PI_SUBAGENT_MAX_DEPTH to their pre-test values.
-		if (savedDepth !== undefined) {
-			process.env.PI_SUBAGENT_DEPTH = savedDepth;
-		} else {
-			delete process.env.PI_SUBAGENT_DEPTH;
-		}
-		if (savedMaxDepth !== undefined) {
-			process.env.PI_SUBAGENT_MAX_DEPTH = savedMaxDepth;
-		} else {
-			delete process.env.PI_SUBAGENT_MAX_DEPTH;
-		}
-
-		removeTempDir(tempDir);
-	});
-
-	function makeExecutor(config: ExtensionConfig = { superagents: { commands: { "sp-implement": { worktrees: { enabled: false } } } } }) {
-		return createSubagentExecutor!({
-			pi: { events: { emit: () => {} } },
-			state: makeState(tempDir),
-			config,
-			asyncByDefault: false,
-			tempArtifactsDir: tempDir,
-			getSubagentSessionRoot: () => tempDir,
-			expandTilde: (p: string) => p,
-			discoverAgents: () => ({
-				agents: [
-					{ name: "echo", description: "Echo test agent" },
-					{ name: "second", description: "Second test agent" },
-				],
-			}),
+		before(() => {
+			mockPi = createMockPi();
+			mockPi.install();
 		});
-	}
 
-	function makeCtx(sessionManager: SessionManagerStub) {
-		return {
-			cwd: tempDir,
-			hasUI: false,
-			ui: {},
-			modelRegistry: { getAvailable: () => [] },
-			sessionManager,
-		};
-	}
+		after(() => {
+			mockPi.uninstall();
+		});
 
-	void it("fails fast when context=fork and parent session is missing", async () => {
-		const { manager } = makeSessionManagerRecorder({ sessionFile: undefined, leafId: "leaf-current" });
-		const executor = makeExecutor();
+		beforeEach(() => {
+			// Save and clear PI_SUBAGENT_DEPTH / PI_SUBAGENT_MAX_DEPTH so tests are
+			// hermetic regardless of whether they run inside a pi session or CI
+			// environment that already has these variables set.
+			savedDepth = process.env.PI_SUBAGENT_DEPTH;
+			savedMaxDepth = process.env.PI_SUBAGENT_MAX_DEPTH;
+			delete process.env.PI_SUBAGENT_DEPTH;
+			delete process.env.PI_SUBAGENT_MAX_DEPTH;
 
-		const result = await executor.execute(
-			"id",
-			{ agent: "echo", task: "test", context: "fork" },
-			new AbortController().signal,
-			undefined,
-			makeCtx(manager),
-		);
+			tempDir = createTempDir("pi-subagent-fork-test-");
+			// Init git repo for worktree support
+			execSync("git init", { cwd: tempDir, stdio: "ignore" });
+			execSync("git config user.email 'test@example.com'", { cwd: tempDir, stdio: "ignore" });
+			execSync("git config user.name 'Test User'", { cwd: tempDir, stdio: "ignore" });
+			execSync("git commit --allow-empty -m 'initial commit'", { cwd: tempDir, stdio: "ignore" });
 
-		// No isError field — verify the error message is present and no results returned.
-		assert.match(result.content[0]?.text ?? "", /persisted parent session/);
-		assert.equal(result.details?.results?.length ?? 0, 0);
-	});
+			mockPi.reset();
+			mockPi.onCall({ output: "ok" });
+		});
 
-	void it("fails fast when context=fork and leaf is missing", async () => {
-		const { manager } = makeSessionManagerRecorder({ sessionFile: "/tmp/parent.jsonl", leafId: null });
-		const executor = makeExecutor();
+		afterEach(() => {
+			// Restore PI_SUBAGENT_DEPTH / PI_SUBAGENT_MAX_DEPTH to their pre-test values.
+			if (savedDepth !== undefined) {
+				process.env.PI_SUBAGENT_DEPTH = savedDepth;
+			} else {
+				delete process.env.PI_SUBAGENT_DEPTH;
+			}
+			if (savedMaxDepth !== undefined) {
+				process.env.PI_SUBAGENT_MAX_DEPTH = savedMaxDepth;
+			} else {
+				delete process.env.PI_SUBAGENT_MAX_DEPTH;
+			}
 
-		const result = await executor.execute(
-			"id",
-			{ agent: "echo", task: "test", context: "fork" },
-			new AbortController().signal,
-			undefined,
-			makeCtx(manager),
-		);
+			removeTempDir(tempDir);
+		});
 
-		// No isError field — verify the error message is present and no results returned.
-		assert.match(result.content[0]?.text ?? "", /current leaf/);
-		assert.equal(result.details?.results?.length ?? 0, 0);
-	});
-
-	void it("returns a tool error (instead of throwing) when branch creation fails", async () => {
-		const executor = makeExecutor();
-		const manager = {
-			getSessionFile: () => "/tmp/parent.jsonl",
-			getLeafId: () => "leaf-fail",
-			createBranchedSession: () => {
-				throw new Error("branch write failed");
-			},
-		};
-
-		const result = await executor.execute(
-			"id",
-			{ agent: "echo", task: "test", context: "fork" },
-			new AbortController().signal,
-			undefined,
-			makeCtx(manager),
-		);
-
-		// No isError field — verify the error message is present and no results returned.
-		assert.match(result.content[0]?.text ?? "", /Failed to create forked subagent session/);
-		assert.match(result.content[0]?.text ?? "", /branch write failed/);
-		assert.equal(result.details?.results?.length ?? 0, 0);
-	});
-
-	void it("creates one forked session for single mode", async () => {
-		const { manager, calls } = makeSessionManagerRecorder({ sessionFile: "/tmp/parent.jsonl", leafId: "leaf-123" });
-		const executor = makeExecutor();
-
-		const result = await executor.execute(
-			"id",
-			{ agent: "echo", task: "single task", context: "fork" },
-			new AbortController().signal,
-			undefined,
-			makeCtx(manager),
-		);
-
-		// Success path — one branched session must have been created.
-		assert.ok(result.content[0]?.text, "expected non-empty response content");
-		assert.equal(calls.length, 1);
-		assert.deepEqual(calls, ["leaf-123"]);
-	});
-
-	void it("creates isolated forked sessions per parallel task", async () => {
-		const { manager, calls } = makeSessionManagerRecorder({ sessionFile: "/tmp/parent.jsonl", leafId: "leaf-777" });
-		const executor = makeExecutor();
-
-		const result = await executor.execute(
-			"id",
-			{
-				tasks: [
-					{ agent: "echo", task: "task one" },
-					{ agent: "second", task: "task two" },
-				],
-				context: "fork",
-			},
-			new AbortController().signal,
-			undefined,
-			makeCtx(manager),
-		);
-
-		// Success path — one branched session per parallel task must have been created.
-		assert.ok(result.content[0]?.text, "expected non-empty response content");
-		assert.equal(calls.length, 2);
-		assert.deepEqual(calls, ["leaf-777", "leaf-777"]);
-	});
-
-	void it("rejects top-level parallel worktree runs with a conflicting task cwd", async () => {
-		const { manager } = makeSessionManagerRecorder({ sessionFile: "/tmp/parent.jsonl", leafId: "leaf-777" });
-		const executor = makeExecutor({ superagents: { commands: { "sp-implement": { worktrees: { enabled: true } } } } });
-
-		const result = await executor.execute(
-			"id",
-			{
-				tasks: [
-					{ agent: "echo", task: "task one" },
-					{ agent: "second", task: "task two", cwd: `${tempDir}/other` },
-				],
-				worktree: true,
-			},
-			new AbortController().signal,
-			undefined,
-			makeCtx(manager),
-		);
-
-		// No isError field — verify the error message is present and no results returned.
-		assert.match(result.content[0]?.text ?? "", /worktree isolation uses the shared cwd/i);
-		assert.match(result.content[0]?.text ?? "", /task 2 \(second\) sets cwd/i);
-		assert.equal(result.details?.results?.length ?? 0, 0);
-	});
-
-	void it("rejects parallel runs that exceed MAX_PARALLEL", async () => {
-		const executor = makeExecutor();
-		const tasks = [];
-		for (let i = 0; i < 10; i++) {
-			tasks.push({ agent: "echo", task: `task ${i}` });
+		function makeExecutor(
+			config: ExtensionConfig = { superagents: { commands: { "sp-implement": { worktrees: { enabled: false } } } } },
+		) {
+			return createSubagentExecutor!({
+				pi: { events: { emit: () => {} } },
+				state: makeState(tempDir),
+				config,
+				asyncByDefault: false,
+				tempArtifactsDir: tempDir,
+				getSubagentSessionRoot: () => tempDir,
+				expandTilde: (p: string) => p,
+				discoverAgents: () => ({
+					agents: [
+						{ name: "echo", description: "Echo test agent" },
+						{ name: "second", description: "Second test agent" },
+					],
+				}),
+			});
 		}
 
-		const result = await executor.execute(
-			"id",
-			{ tasks },
-			new AbortController().signal,
-			undefined,
-			makeCtx(makeSessionManagerRecorder().manager),
-		);
+		function makeCtx(sessionManager: SessionManagerStub) {
+			return {
+				cwd: tempDir,
+				hasUI: false,
+				ui: {},
+				modelRegistry: { getAvailable: () => [] },
+				sessionManager,
+			};
+		}
 
-		// No isError field — verify the error message is present and no results returned.
-		assert.match(result.content[0]?.text ?? "", /Max 8 tasks/);
-		assert.equal(result.details?.results?.length ?? 0, 0);
-	});
-});
+		void it("fails fast when context=fork and parent session is missing", async () => {
+			const { manager } = makeSessionManagerRecorder({ sessionFile: undefined, leafId: "leaf-current" });
+			const executor = makeExecutor();
+
+			const result = await executor.execute(
+				"id",
+				{ agent: "echo", task: "test", context: "fork" },
+				new AbortController().signal,
+				undefined,
+				makeCtx(manager),
+			);
+
+			// No isError field — verify the error message is present and no results returned.
+			assert.match(result.content[0]?.text ?? "", /persisted parent session/);
+			assert.equal(result.details?.results?.length ?? 0, 0);
+		});
+
+		void it("fails fast when context=fork and leaf is missing", async () => {
+			const { manager } = makeSessionManagerRecorder({ sessionFile: "/tmp/parent.jsonl", leafId: null });
+			const executor = makeExecutor();
+
+			const result = await executor.execute(
+				"id",
+				{ agent: "echo", task: "test", context: "fork" },
+				new AbortController().signal,
+				undefined,
+				makeCtx(manager),
+			);
+
+			// No isError field — verify the error message is present and no results returned.
+			assert.match(result.content[0]?.text ?? "", /current leaf/);
+			assert.equal(result.details?.results?.length ?? 0, 0);
+		});
+
+		void it("returns a tool error (instead of throwing) when branch creation fails", async () => {
+			const executor = makeExecutor();
+			const manager = {
+				getSessionFile: () => "/tmp/parent.jsonl",
+				getLeafId: () => "leaf-fail",
+				createBranchedSession: () => {
+					throw new Error("branch write failed");
+				},
+			};
+
+			const result = await executor.execute(
+				"id",
+				{ agent: "echo", task: "test", context: "fork" },
+				new AbortController().signal,
+				undefined,
+				makeCtx(manager),
+			);
+
+			// No isError field — verify the error message is present and no results returned.
+			assert.match(result.content[0]?.text ?? "", /Failed to create forked subagent session/);
+			assert.match(result.content[0]?.text ?? "", /branch write failed/);
+			assert.equal(result.details?.results?.length ?? 0, 0);
+		});
+
+		void it("creates one forked session for single mode", async () => {
+			const { manager, calls } = makeSessionManagerRecorder({
+				sessionFile: "/tmp/parent.jsonl",
+				leafId: "leaf-123",
+			});
+			const executor = makeExecutor();
+
+			const result = await executor.execute(
+				"id",
+				{ agent: "echo", task: "single task", context: "fork" },
+				new AbortController().signal,
+				undefined,
+				makeCtx(manager),
+			);
+
+			// Success path — one branched session must have been created.
+			assert.ok(result.content[0]?.text, "expected non-empty response content");
+			assert.equal(calls.length, 1);
+			assert.deepEqual(calls, ["leaf-123"]);
+		});
+
+		void it("creates isolated forked sessions per parallel task", async () => {
+			const { manager, calls } = makeSessionManagerRecorder({
+				sessionFile: "/tmp/parent.jsonl",
+				leafId: "leaf-777",
+			});
+			const executor = makeExecutor();
+
+			const result = await executor.execute(
+				"id",
+				{
+					tasks: [
+						{ agent: "echo", task: "task one" },
+						{ agent: "second", task: "task two" },
+					],
+					context: "fork",
+				},
+				new AbortController().signal,
+				undefined,
+				makeCtx(manager),
+			);
+
+			// Success path — one branched session per parallel task must have been created.
+			assert.ok(result.content[0]?.text, "expected non-empty response content");
+			assert.equal(calls.length, 2);
+			assert.deepEqual(calls, ["leaf-777", "leaf-777"]);
+		});
+
+		void it("rejects top-level parallel worktree runs with a conflicting task cwd", async () => {
+			const { manager } = makeSessionManagerRecorder({ sessionFile: "/tmp/parent.jsonl", leafId: "leaf-777" });
+			const executor = makeExecutor({
+				superagents: { commands: { "sp-implement": { worktrees: { enabled: true } } } },
+			});
+
+			const result = await executor.execute(
+				"id",
+				{
+					tasks: [
+						{ agent: "echo", task: "task one" },
+						{ agent: "second", task: "task two", cwd: `${tempDir}/other` },
+					],
+					worktree: true,
+				},
+				new AbortController().signal,
+				undefined,
+				makeCtx(manager),
+			);
+
+			// No isError field — verify the error message is present and no results returned.
+			assert.match(result.content[0]?.text ?? "", /worktree isolation uses the shared cwd/i);
+			assert.match(result.content[0]?.text ?? "", /task 2 \(second\) sets cwd/i);
+			assert.equal(result.details?.results?.length ?? 0, 0);
+		});
+
+		void it("rejects parallel runs that exceed MAX_PARALLEL", async () => {
+			const executor = makeExecutor();
+			const tasks = [];
+			for (let i = 0; i < 10; i++) {
+				tasks.push({ agent: "echo", task: `task ${i}` });
+			}
+
+			const result = await executor.execute(
+				"id",
+				{ tasks },
+				new AbortController().signal,
+				undefined,
+				makeCtx(makeSessionManagerRecorder().manager),
+			);
+
+			// No isError field — verify the error message is present and no results returned.
+			assert.match(result.content[0]?.text ?? "", /Max 8 tasks/);
+			assert.equal(result.details?.results?.length ?? 0, 0);
+		});
+	},
+);

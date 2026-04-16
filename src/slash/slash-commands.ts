@@ -18,18 +18,18 @@
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import type { ExtensionConfig, SubagentState, SuperpowersCommandPreset } from "../shared/types.ts";
 import { resolveAvailableSkill, resolveSkills } from "../shared/skills.ts";
-import { SubagentsStatusComponent } from "../ui/subagents-status.ts";
-import { SuperpowersSettingsComponent } from "../ui/sp-settings.ts";
-import {
-	parseSuperpowersWorkflowArgs,
-	resolveSuperpowersRunProfile,
-	type ResolvedSuperpowersRunProfile,
-} from "../superpowers/workflow-profile.ts";
+import type { ExtensionConfig, SubagentState, SuperpowersCommandPreset } from "../shared/types.ts";
+import { createSuperpowersPromptDispatcher } from "../superpowers/prompt-dispatch.ts";
 import { buildSuperpowersVisiblePromptSummary } from "../superpowers/root-prompt.ts";
 import { buildResolvedSkillEntryPrompt } from "../superpowers/skill-entry.ts";
-import { createSuperpowersPromptDispatcher } from "../superpowers/prompt-dispatch.ts";
+import {
+	parseSuperpowersWorkflowArgs,
+	type ResolvedSuperpowersRunProfile,
+	resolveSuperpowersRunProfile,
+} from "../superpowers/workflow-profile.ts";
+import { SuperpowersSettingsComponent } from "../ui/sp-settings.ts";
+import { SubagentsStatusComponent } from "../ui/subagents-status.ts";
 
 /**
  * Notify the user when config errors disable execution.
@@ -141,7 +141,10 @@ function registerSuperpowersCommand(
 			const parsed = parseSuperpowersWorkflowArgs(rawArgs);
 			if (!parsed?.task) {
 				if (ctx.hasUI) {
-					ctx.ui.notify(`Usage: /${commandName} [lean|full|tdd|direct|subagents|no-subagents] <task> [--fork]`, "error");
+					ctx.ui.notify(
+						`Usage: /${commandName} [lean|full|tdd|direct|subagents|no-subagents] <task> [--fork]`,
+						"error",
+					);
 				}
 				return Promise.resolve();
 			}
@@ -173,11 +176,7 @@ function registerSuperpowersCommand(
  * @param state Shared extension state for config gate checks.
  * @param config Effective extension config for default resolution.
  */
-export function registerSlashCommands(
-	pi: ExtensionAPI,
-	state: SubagentState,
-	config: ExtensionConfig,
-): void {
+export function registerSlashCommands(pi: ExtensionAPI, state: SubagentState, config: ExtensionConfig): void {
 	const dispatcher = createSuperpowersPromptDispatcher(pi);
 
 	// Register all commands (built-in + custom) from config

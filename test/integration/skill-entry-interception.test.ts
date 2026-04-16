@@ -13,7 +13,10 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, describe, it } from "node:test";
 
-type InputHandler = (event: { text: string; source: "interactive" | "rpc" | "extension" }, ctx: ReturnType<typeof createCtx>) => { action: "continue" | "handled" | "transform" } | undefined;
+type InputHandler = (
+	event: { text: string; source: "interactive" | "rpc" | "extension" },
+	ctx: ReturnType<typeof createCtx>,
+) => { action: "continue" | "handled" | "transform" } | undefined;
 type LifecycleHandler = (event: unknown, ctx?: unknown) => unknown;
 
 function createEventBus() {
@@ -127,7 +130,7 @@ Creative problem solving skill.`,
 		setupSkillsDir(home);
 
 		// Clear skill cache before importing the extension
-		const { clearSkillCache } = await import("../../src/shared/skills.ts") as { clearSkillCache: () => void };
+		const { clearSkillCache } = (await import("../../src/shared/skills.ts")) as { clearSkillCache: () => void };
 		clearSkillCache();
 
 		const module = await import("../../src/extension/index.ts");
@@ -161,8 +164,12 @@ Creative problem solving skill.`,
 		assert.match(mock.userMessages[0], /usePlannotatorReview:\s*true/);
 		assert.doesNotMatch(mock.userMessages[0], /Entry skill:/);
 
-		const hidden = mock.lifecycle.get("before_agent_start")
-			?.map((handler) => handler({ prompt: mock.userMessages[0] }) as { message?: { content: string; display: boolean } } | undefined)
+		const hidden = mock.lifecycle
+			.get("before_agent_start")
+			?.map(
+				(handler) =>
+					handler({ prompt: mock.userMessages[0] }) as { message?: { content: string; display: boolean } } | undefined,
+			)
 			.find((entry) => entry?.message);
 		assert.equal(hidden?.message?.display, false);
 		assert.match(hidden?.message?.content ?? "", /Entry skill:/);
@@ -180,14 +187,20 @@ Creative problem solving skill.`,
 		const inputHandler = mock.lifecycle.get("input")?.[0];
 		assert.ok(inputHandler, "expected input handler to be registered");
 
-		assert.deepEqual((inputHandler as InputHandler)(
-			{ text: "/skill:brainstorming design middleware", source: "interactive" },
-			createCtx(cwd),
-		), { action: "continue" });
-		assert.deepEqual((inputHandler as InputHandler)(
-			{ text: "/skill:brainstorming design middleware", source: "extension" },
-			createCtx(cwd),
-		), { action: "continue" });
+		assert.deepEqual(
+			(inputHandler as InputHandler)(
+				{ text: "/skill:brainstorming design middleware", source: "interactive" },
+				createCtx(cwd),
+			),
+			{ action: "continue" },
+		);
+		assert.deepEqual(
+			(inputHandler as InputHandler)(
+				{ text: "/skill:brainstorming design middleware", source: "extension" },
+				createCtx(cwd),
+			),
+			{ action: "continue" },
+		);
 		assert.equal(mock.userMessages.length, 0);
 	});
 });

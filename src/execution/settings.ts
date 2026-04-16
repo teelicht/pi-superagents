@@ -50,7 +50,7 @@ export function resolveStepBehavior(
 			? stepOverrides.output
 			: packetDefaults?.output !== undefined
 				? packetDefaults.output
-				: agentConfig.output ?? false;
+				: (agentConfig.output ?? false);
 
 	// Reads: step override > packet defaults > frontmatter defaultReads > false (no reads)
 	const reads =
@@ -58,7 +58,7 @@ export function resolveStepBehavior(
 			? stepOverrides.reads
 			: packetDefaults?.reads !== undefined
 				? packetDefaults.reads
-				: agentConfig.defaultReads ?? false;
+				: (agentConfig.defaultReads ?? false);
 
 	// Progress: step override > packet defaults > frontmatter defaultProgress > false
 	const progress =
@@ -66,7 +66,7 @@ export function resolveStepBehavior(
 			? stepOverrides.progress
 			: packetDefaults?.progress !== undefined
 				? packetDefaults.progress
-				: agentConfig.defaultProgress ?? false;
+				: (agentConfig.defaultProgress ?? false);
 
 	let skills: string[] | false;
 	if (stepOverrides.skills === false) {
@@ -80,4 +80,3 @@ export function resolveStepBehavior(
 	const model = stepOverrides.model ?? agentConfig.model;
 	return { output, reads, progress, skills, model };
 }
-

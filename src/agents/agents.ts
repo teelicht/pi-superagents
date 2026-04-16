@@ -23,7 +23,6 @@ export const KNOWN_FIELDS = new Set([
 	"maxSubagentDepth",
 ]);
 
-
 export type AgentSource = "builtin" | "user" | "project";
 export type AgentScope = "project" | "user" | "both";
 
@@ -147,9 +146,7 @@ function loadAgentsFromDir(dir: string, source: AgentSource): AgentConfig[] {
 			defaultProgress: frontmatter.defaultProgress === "true",
 			interactive: frontmatter.interactive === "true",
 			maxSubagentDepth:
-				Number.isInteger(parsedMaxSubagentDepth) && parsedMaxSubagentDepth >= 0
-					? parsedMaxSubagentDepth
-					: undefined,
+				Number.isInteger(parsedMaxSubagentDepth) && parsedMaxSubagentDepth >= 0 ? parsedMaxSubagentDepth : undefined,
 			extraFields: Object.keys(extraFields).length > 0 ? extraFields : undefined,
 		});
 	}
@@ -188,13 +185,13 @@ export function discoverAgents(cwd: string): AgentDiscoveryResult {
 	const projectAgentsDir = findNearestProjectAgentsDir(cwd);
 
 	const builtinAgents = loadAgentsFromDir(BUILTIN_AGENTS_DIR, "builtin");
-	
+
 	const userAgentsOld = loadAgentsFromDir(userDirOld, "user");
 	const userAgentsNew = loadAgentsFromDir(userDirNew, "user");
 	const userAgents = [...userAgentsOld, ...userAgentsNew];
 
 	const projectAgents = projectAgentsDir ? loadAgentsFromDir(projectAgentsDir, "project") : [];
-	
+
 	const agentMap = new Map<string, AgentConfig>();
 	for (const agent of builtinAgents) agentMap.set(agent.name, agent);
 	for (const agent of userAgents) agentMap.set(agent.name, agent);
@@ -217,10 +214,7 @@ export function discoverAgentsAll(cwd: string): {
 	const projectDir = findNearestProjectAgentsDir(cwd);
 
 	const builtin = loadAgentsFromDir(BUILTIN_AGENTS_DIR, "builtin");
-	const user = [
-		...loadAgentsFromDir(userDirOld, "user"),
-		...loadAgentsFromDir(userDirNew, "user"),
-	];
+	const user = [...loadAgentsFromDir(userDirOld, "user"), ...loadAgentsFromDir(userDirNew, "user")];
 	const project = projectDir ? loadAgentsFromDir(projectDir, "project") : [];
 
 	const userDir = fs.existsSync(userDirNew) ? userDirNew : userDirOld;

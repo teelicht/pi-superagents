@@ -74,10 +74,7 @@ export interface RequestPlannotatorPlanReviewInput {
  * @param reviewId Review identifier returned from the handled response.
  * @returns True only for matching review-result payloads with a boolean approval state.
  */
-function isMatchingReviewResult(
-	payload: unknown,
-	reviewId: string,
-): payload is PlannotatorReviewResult {
+function isMatchingReviewResult(payload: unknown, reviewId: string): payload is PlannotatorReviewResult {
 	if (!payload || typeof payload !== "object") {
 		return false;
 	}

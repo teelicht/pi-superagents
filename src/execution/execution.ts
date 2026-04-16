@@ -5,38 +5,29 @@
 import { spawn } from "node:child_process";
 import type { Message } from "@mariozechner/pi-ai";
 import type { AgentConfig } from "../agents/agents.ts";
-import {
-	ensureArtifactsDir,
-	getArtifactPaths,
-	writeArtifact,
-	writeMetadata,
-} from "../shared/artifacts.ts";
+import { ensureArtifactsDir, getArtifactPaths, writeArtifact, writeMetadata } from "../shared/artifacts.ts";
+import { buildSkillInjection, resolveExecutionSkills } from "../shared/skills.ts";
 import {
 	type AgentProgress,
 	type ArtifactPaths,
+	DEFAULT_MAX_OUTPUT,
+	getSubagentDepthEnv,
 	type RunSyncOptions,
 	type SingleResult,
-	DEFAULT_MAX_OUTPUT,
 	truncateOutput,
-	getSubagentDepthEnv,
 } from "../shared/types.ts";
 import {
-	getFinalOutput,
 	detectSubagentError,
-	extractToolArgsPreview,
 	extractTextFromContent,
+	extractToolArgsPreview,
+	getFinalOutput,
 } from "../shared/utils.ts";
-import { buildSkillInjection, resolveExecutionSkills } from "../shared/skills.ts";
-import { getPiSpawnCommand } from "./pi-spawn.ts";
 import { createJsonlWriter } from "./jsonl-writer.ts";
 import { applyThinkingSuffix, buildPiArgs, cleanupTempDir } from "./pi-args.ts";
-import { captureSingleOutputSnapshot, resolveSingleOutput } from "./single-output.ts";
-import {
-	inferExecutionRole,
-	resolveModelForAgent,
-	resolveRoleTools,
-} from "./superpowers-policy.ts";
+import { getPiSpawnCommand } from "./pi-spawn.ts";
 import { globalRunHistory } from "./run-history.ts";
+import { captureSingleOutputSnapshot, resolveSingleOutput } from "./single-output.ts";
+import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./superpowers-policy.ts";
 
 /**
  * Run a subagent synchronously (blocking until complete)
@@ -96,7 +87,11 @@ export async function runSync(
 		systemPrompt = systemPrompt ? `${systemPrompt}\n\n${skillInjection}` : skillInjection;
 	}
 
-	const { args, env: sharedEnv, tempDir } = buildPiArgs({
+	const {
+		args,
+		env: sharedEnv,
+		tempDir,
+	} = buildPiArgs({
 		baseArgs: ["--mode", "json", "-p"],
 		task,
 		sessionEnabled,

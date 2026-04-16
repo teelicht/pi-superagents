@@ -39,7 +39,8 @@ function writeExecutable(filePath: string, content: string): void {
 
 function listQueueFiles(queueDir: string, prefix: string): string[] {
 	try {
-		return fs.readdirSync(queueDir)
+		return fs
+			.readdirSync(queueDir)
 			.filter((name) => name.startsWith(prefix))
 			.sort();
 	} catch {
@@ -94,7 +95,9 @@ export function createMockPi(): MockPi {
 			}
 			try {
 				fs.rmSync(rootDir, { recursive: true, force: true });
-			} catch { /* empty */ }
+			} catch {
+				/* empty */
+			}
 		},
 		onCall(response) {
 			ensureDir(queueDir);
@@ -112,7 +115,9 @@ export function createMockPi(): MockPi {
 			for (const entry of fs.readdirSync(queueDir)) {
 				try {
 					fs.rmSync(path.join(queueDir, entry), { recursive: true, force: true });
-				} catch { /* empty */ }
+				} catch {
+					/* empty */
+				}
 			}
 		},
 		callCount() {

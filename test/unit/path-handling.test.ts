@@ -20,16 +20,28 @@ void describe("path.isAbsolute vs startsWith('/')", () => {
 		const windowsAbsoluteForward = "C:/dev/pi-superagents/output.md";
 
 		// This is what the current code does (chain-execution.ts:496):
-		assert.equal(windowsAbsolute.startsWith("/"), false,
-			"Windows backslash absolute path not detected by startsWith('/')");
-		assert.equal(windowsAbsoluteForward.startsWith("/"), false,
-			"Windows forward-slash absolute path not detected by startsWith('/')");
+		assert.equal(
+			windowsAbsolute.startsWith("/"),
+			false,
+			"Windows backslash absolute path not detected by startsWith('/')",
+		);
+		assert.equal(
+			windowsAbsoluteForward.startsWith("/"),
+			false,
+			"Windows forward-slash absolute path not detected by startsWith('/')",
+		);
 
 		// This is what the code SHOULD do:
-		assert.equal(path.isAbsolute(windowsAbsolute), process.platform === "win32",
-			"path.isAbsolute correctly identifies Windows paths on Windows");
-		assert.equal(path.isAbsolute(windowsAbsoluteForward), process.platform === "win32",
-			"path.isAbsolute correctly identifies forward-slash Windows paths on Windows");
+		assert.equal(
+			path.isAbsolute(windowsAbsolute),
+			process.platform === "win32",
+			"path.isAbsolute correctly identifies Windows paths on Windows",
+		);
+		assert.equal(
+			path.isAbsolute(windowsAbsoluteForward),
+			process.platform === "win32",
+			"path.isAbsolute correctly identifies forward-slash Windows paths on Windows",
+		);
 
 		// POSIX paths work with both approaches
 		assert.equal("/home/user/output.md".startsWith("/"), true);
@@ -66,14 +78,20 @@ void describe("path.join vs template string concatenation", () => {
 
 		// Template string: always forward slash
 		const _templateResult = `${chainDir}/${file}`;
-		assert.equal(_templateResult, "C:\\Users\\marc\\temp\\chain-abc/progress.md",
-			"template string produces mixed separators");
+		assert.equal(
+			_templateResult,
+			"C:\\Users\\marc\\temp\\chain-abc/progress.md",
+			"template string produces mixed separators",
+		);
 
 		// path.join: uses platform separator
 		const _joinResult = path.join(chainDir, file);
 		if (process.platform === "win32") {
-			assert.equal(_joinResult, "C:\\Users\\marc\\temp\\chain-abc\\progress.md",
-				"path.join uses consistent backslashes on Windows");
+			assert.equal(
+				_joinResult,
+				"C:\\Users\\marc\\temp\\chain-abc\\progress.md",
+				"path.join uses consistent backslashes on Windows",
+			);
 		}
 	});
 
@@ -99,8 +117,8 @@ void describe("path.join vs template string concatenation", () => {
 		const subdir = "parallel-0/0-_code-reviewer";
 		const output = "review.md";
 
-		const templateResult = `${subdir}/${output}`;
-		const joinResult = path.join(subdir, output);
+		const _templateResult = `${subdir}/${output}`;
+		const _joinResult = path.join(subdir, output);
 
 		// Both produce forward slashes here (subdir itself uses /).
 		// But if subdir comes from path.join on Windows, it would have backslashes.

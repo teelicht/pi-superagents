@@ -12,8 +12,8 @@
 
 import type { ResolvedSkill } from "../shared/skills.ts";
 import type { ExtensionConfig } from "../shared/types.ts";
-import type { ResolvedSuperpowersRunProfile } from "./workflow-profile.ts";
 import { buildSuperpowersRootPrompt, type SuperpowersRootPromptInput } from "./root-prompt.ts";
+import type { ResolvedSuperpowersRunProfile } from "./workflow-profile.ts";
 
 /**
  * Extended root prompt input including skill-entry metadata.
@@ -132,11 +132,13 @@ export function buildResolvedSkillEntryPrompt(
 	}
 
 	return {
-		prompt: buildSuperpowersRootPrompt(buildSkillEntryPromptInput({
-			profile: input.profile,
-			usingSuperpowersSkill,
-			entrySkill,
-			overlaySkills: overlayResolution.resolved,
-		})),
+		prompt: buildSuperpowersRootPrompt(
+			buildSkillEntryPromptInput({
+				profile: input.profile,
+				usingSuperpowersSkill,
+				entrySkill,
+				overlaySkills: overlayResolution.resolved,
+			}),
+		),
 	};
 }

@@ -8,15 +8,8 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { loadSkills } from "@mariozechner/pi-coding-agent";
 import { parseFrontmatter } from "../agents/frontmatter.ts";
-import {
-	resolveImplementerSkillSet,
-	resolveRoleSkillSet,
-} from "../execution/superpowers-policy.ts";
-import type {
-	ExecutionRole,
-	ExtensionConfig,
-	WorkflowMode,
-} from "./types.ts";
+import { resolveImplementerSkillSet, resolveRoleSkillSet } from "../execution/superpowers-policy.ts";
+import type { ExecutionRole, ExtensionConfig, WorkflowMode } from "./types.ts";
 
 export type SkillSource =
 	| "project"
@@ -100,9 +93,7 @@ function getPackageSkillPaths(packageRoot: string): string[] {
 		const pkg = JSON.parse(content) as { pi?: { skills?: unknown } };
 		const piSkills = pkg?.pi?.skills;
 		if (!Array.isArray(piSkills)) return [];
-		return piSkills
-			.filter((s: unknown) => typeof s === "string")
-			.map((s: string) => path.resolve(packageRoot, s));
+		return piSkills.filter((s: unknown) => typeof s === "string").map((s: string) => path.resolve(packageRoot, s));
 	} catch {
 		return [];
 	}
@@ -122,10 +113,7 @@ function getGlobalNpmRoot(): string | null {
 }
 
 function collectPackageSkillPaths(cwd: string): string[] {
-	const dirs = [
-		path.join(cwd, CONFIG_DIR, "npm", "node_modules"),
-		path.join(AGENT_DIR, "npm", "node_modules"),
-	];
+	const dirs = [path.join(cwd, CONFIG_DIR, "npm", "node_modules"), path.join(AGENT_DIR, "npm", "node_modules")];
 	// Add global npm root if available (where pi installs global packages)
 	const globalRoot = getGlobalNpmRoot();
 	if (globalRoot) {
@@ -194,7 +182,9 @@ function collectSettingsSkillPaths(cwd: string): string[] {
 				}
 				results.push(resolved);
 			}
-		} catch { /* empty */ }
+		} catch {
+			/* empty */
+		}
 	}
 
 	return results;
@@ -234,7 +224,10 @@ function inferSkillSource(sourceInfo: { source: string; scope: string }, filePat
 	return "unknown";
 }
 
-function chooseHigherPrioritySkill(existing: CachedSkillEntry | undefined, candidate: CachedSkillEntry): CachedSkillEntry {
+function chooseHigherPrioritySkill(
+	existing: CachedSkillEntry | undefined,
+	candidate: CachedSkillEntry,
+): CachedSkillEntry {
 	if (!existing) return candidate;
 	const existingPriority = SOURCE_PRIORITY[existing.source] ?? 0;
 	const candidatePriority = SOURCE_PRIORITY[candidate.source] ?? 0;
@@ -285,21 +278,14 @@ function getCachedSkills(cwd: string): CachedSkillEntry[] {
 	return skills;
 }
 
-export function resolveSkillPath(
-	skillName: string,
-	cwd: string,
-): { path: string; source: SkillSource } | undefined {
+export function resolveSkillPath(skillName: string, cwd: string): { path: string; source: SkillSource } | undefined {
 	const skills = getCachedSkills(cwd);
 	const skill = skills.find((s) => s.name === skillName);
 	if (!skill) return undefined;
 	return { path: skill.filePath, source: skill.source };
 }
 
-export function readSkill(
-	skillName: string,
-	skillPath: string,
-	source: SkillSource,
-): ResolvedSkill | undefined {
+export function readSkill(skillName: string, skillPath: string, source: SkillSource): ResolvedSkill | undefined {
 	try {
 		const stat = fs.statSync(skillPath);
 		const cached = skillCache.get(skillPath);
@@ -328,10 +314,7 @@ export function readSkill(
 	}
 }
 
-export function resolveSkills(
-	skillNames: string[],
-	cwd: string,
-): { resolved: ResolvedSkill[]; missing: string[] } {
+export function resolveSkills(skillNames: string[], cwd: string): { resolved: ResolvedSkill[]; missing: string[] } {
 	const resolved: ResolvedSkill[] = [];
 	const missing: string[] = [];
 
@@ -381,25 +364,34 @@ export function resolveExecutionSkills(input: {
 	const configuredSkills = input.skills === false ? [] : (input.skills ?? []);
 	const availableSkills = getAvailableSkillNames(input.cwd);
 	const rootOnlySkills = getRootOnlySkillNames(input.cwd);
-	const skillNames = input.role === "sp-implementer"
-		? resolveImplementerSkillSet({
-			workflow: input.workflow,
-			useTestDrivenDevelopment: input.useTestDrivenDevelopment ?? true,
-			config: input.config ?? { /* empty */ },
-			agentSkills: [],
-			stepSkills: configuredSkills,
-			availableSkills,
-			rootOnlySkills,
-		})
-		: resolveRoleSkillSet({
-			workflow: input.workflow,
-			role: input.role,
-			config: input.config ?? { /* empty */ },
-			agentSkills: [],
-			stepSkills: configuredSkills,
-			availableSkills,
-			rootOnlySkills,
-		});
+	const skillNames =
+		input.role === "sp-implementer"
+			? resolveImplementerSkillSet({
+					workflow: input.workflow,
+					useTestDrivenDevelopment: input.useTestDrivenDevelopment ?? true,
+					config:
+						input.config ??
+						{
+							/* empty */
+						},
+					agentSkills: [],
+					stepSkills: configuredSkills,
+					availableSkills,
+					rootOnlySkills,
+				})
+			: resolveRoleSkillSet({
+					workflow: input.workflow,
+					role: input.role,
+					config:
+						input.config ??
+						{
+							/* empty */
+						},
+					agentSkills: [],
+					stepSkills: configuredSkills,
+					availableSkills,
+					rootOnlySkills,
+				});
 	const { resolved, missing } = resolveSkills(skillNames, input.cwd);
 	return {
 		skillNames,
@@ -411,14 +403,10 @@ export function resolveExecutionSkills(input: {
 export function buildSkillInjection(skills: ResolvedSkill[]): string {
 	if (skills.length === 0) return "";
 
-	return skills
-		.map((s) => `<skill name="${s.name}">\n${s.content}\n</skill>`)
-		.join("\n\n");
+	return skills.map((s) => `<skill name="${s.name}">\n${s.content}\n</skill>`).join("\n\n");
 }
 
-export function normalizeSkillInput(
-	input: string | string[] | boolean | undefined,
-): string[] | false | undefined {
+export function normalizeSkillInput(input: string | string[] | boolean | undefined): string[] | false | undefined {
 	if (input === false) return false;
 	if (input === true || input === undefined) return undefined;
 	if (Array.isArray(input)) {
@@ -439,7 +427,14 @@ export function normalizeSkillInput(
 			// Not valid JSON – fall through to comma-split
 		}
 	}
-	return [...new Set(input.split(",").map((s) => s.trim()).filter((s) => s.length > 0))];
+	return [
+		...new Set(
+			input
+				.split(",")
+				.map((s) => s.trim())
+				.filter((s) => s.length > 0),
+		),
+	];
 }
 
 export function discoverAvailableSkills(cwd: string): Array<{
@@ -491,11 +486,7 @@ export function getAvailableSkillNames(cwd: string): Set<string> {
  */
 export function getRootOnlySkillNames(cwd: string): Set<string> {
 	const skills = getCachedSkills(cwd);
-	return new Set(
-		skills
-			.filter((s) => s.scope === "root")
-			.map((s) => s.name),
-	);
+	return new Set(skills.filter((s) => s.scope === "root").map((s) => s.name));
 }
 
 export function clearSkillCache(): void {
