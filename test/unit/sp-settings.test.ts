@@ -7,11 +7,11 @@
  * - verify unavailable config paths report a visible write message
  */
 
-import { test } from "node:test";
 import * as assert from "node:assert";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { test } from "node:test";
 import { SuperpowersSettingsComponent } from "../../src/ui/sp-settings.ts";
 
 function createThemeMock() {

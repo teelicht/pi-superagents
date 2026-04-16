@@ -9,10 +9,10 @@
  * @marcfargas/pi-test-harness handles the spawned subagent processes.
  */
 
-import { describe, it, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { afterEach, describe, it } from "node:test";
 import type { MockPi } from "../support/helpers.ts";
 import { createMockPi, tryImport } from "../support/helpers.ts";
 
@@ -80,57 +80,61 @@ void describe("subagent tool — validation", { skip: !available ? "pi-test-harn
 	});
 });
 
-void describe("subagent tool — single execution", { skip: !available ? "pi-test-harness not available" : undefined }, () => {
-	const { createTestSession, when, calls, says } = harness;
-	let t: any;
+void describe(
+	"subagent tool — single execution",
+	{ skip: !available ? "pi-test-harness not available" : undefined },
+	() => {
+		const { createTestSession, when, calls, says } = harness;
+		let t: any;
 
-	afterEach(() => {
-		t?.dispose();
-		mockPi?.reset();
-	});
-
-	void it("executes single agent and returns output", async () => {
-		mockPi?.onCall({ output: "Hello from the subagent!" });
-
-		t = await createTestSession({
-			extensions: [EXTENSION],
-			mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },
+		afterEach(() => {
+			t?.dispose();
+			mockPi?.reset();
 		});
 
-		writeTestAgents(t.cwd, [{ name: "echo" }]);
+		void it("executes single agent and returns output", async () => {
+			mockPi?.onCall({ output: "Hello from the subagent!" });
 
-		await t.run(
-			when("Run the echo agent", [
-				calls("subagent", { agent: "echo", task: "Say hello" }),
-				says("The agent responded."),
-			]),
-		);
+			t = await createTestSession({
+				extensions: [EXTENSION],
+				mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },
+			});
 
-		const results = t.events.toolResultsFor("subagent");
-		assert.equal(results.length, 1);
-		assert.ok(!results[0].isError, `should succeed: ${results[0].text.slice(0, 200)}`);
-		assert.ok(results[0].text.includes("Hello from the subagent"), `should contain output: ${results[0].text.slice(0, 200)}`);
-	});
+			writeTestAgents(t.cwd, [{ name: "echo" }]);
 
-	void it("returns error for failed agent", async () => {
-		mockPi?.onCall({ exitCode: 1, stderr: "Agent crashed hard" });
+			await t.run(
+				when("Run the echo agent", [
+					calls("subagent", { agent: "echo", task: "Say hello" }),
+					says("The agent responded."),
+				]),
+			);
 
-		t = await createTestSession({
-			extensions: [EXTENSION],
-			mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },
+			const results = t.events.toolResultsFor("subagent");
+			assert.equal(results.length, 1);
+			assert.ok(!results[0].isError, `should succeed: ${results[0].text.slice(0, 200)}`);
+			assert.ok(
+				results[0].text.includes("Hello from the subagent"),
+				`should contain output: ${results[0].text.slice(0, 200)}`,
+			);
 		});
 
-		writeTestAgents(t.cwd, [{ name: "crasher" }]);
+		void it("returns error for failed agent", async () => {
+			mockPi?.onCall({ exitCode: 1, stderr: "Agent crashed hard" });
 
-		await t.run(
-			when("Run the crasher", [
-				calls("subagent", { agent: "crasher", task: "Crash please" }),
-				says("It failed."),
-			]),
-		);
+			t = await createTestSession({
+				extensions: [EXTENSION],
+				mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },
+			});
 
-		const results = t.events.toolResultsFor("subagent");
-		assert.equal(results.length, 1);
-		assert.ok(results[0].isError, "should be an error");
-	});
-});
+			writeTestAgents(t.cwd, [{ name: "crasher" }]);
+
+			await t.run(
+				when("Run the crasher", [calls("subagent", { agent: "crasher", task: "Crash please" }), says("It failed.")]),
+			);
+
+			const results = t.events.toolResultsFor("subagent");
+			assert.equal(results.length, 1);
+			assert.ok(results[0].isError, "should be an error");
+		});
+	},
+);

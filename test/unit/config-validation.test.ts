@@ -11,12 +11,12 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { ExtensionConfig } from "../../src/shared/types.ts";
 import {
 	formatConfigDiagnostics,
 	loadEffectiveConfig,
 	validateConfigObject,
 } from "../../src/execution/config-validation.ts";
+import type { ExtensionConfig } from "../../src/shared/types.ts";
 
 const defaults: ExtensionConfig = {
 	superagents: {
@@ -131,14 +131,14 @@ void describe("config validation", () => {
 		});
 
 		assert.equal(result.blocked, true);
-		assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.code), [
-			"unknown_key",
-			"unknown_key",
-		]);
-		assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), [
-			"unknwonKey",
-			"superagents.commands.sp-test.unknownField",
-		]);
+		assert.deepEqual(
+			result.diagnostics.map((diagnostic) => diagnostic.code),
+			["unknown_key", "unknown_key"],
+		);
+		assert.deepEqual(
+			result.diagnostics.map((diagnostic) => diagnostic.path),
+			["unknwonKey", "superagents.commands.sp-test.unknownField"],
+		);
 	});
 
 	void it("blocks wrong primitive types and invalid enum values in command presets", () => {
@@ -163,13 +163,16 @@ void describe("config validation", () => {
 		});
 
 		assert.equal(result.blocked, true);
-		assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), [
-			"superagents.commands.sp-test.useSubagents",
-			"superagents.commands.sp-test.useTestDrivenDevelopment",
-			"superagents.commands.sp-test.worktrees.enabled",
-			"superagents.modelTiers.max.model",
-			"superagents.modelTiers.max.thinking",
-		]);
+		assert.deepEqual(
+			result.diagnostics.map((diagnostic) => diagnostic.path),
+			[
+				"superagents.commands.sp-test.useSubagents",
+				"superagents.commands.sp-test.useTestDrivenDevelopment",
+				"superagents.commands.sp-test.worktrees.enabled",
+				"superagents.modelTiers.max.model",
+				"superagents.modelTiers.max.thinking",
+			],
+		);
 	});
 
 	void it("accepts custom commands with entrySkill", () => {
@@ -201,9 +204,10 @@ void describe("config validation", () => {
 		});
 
 		assert.equal(result.blocked, true);
-		assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), [
-			"superagents.commands.sp-test.entrySkill",
-		]);
+		assert.deepEqual(
+			result.diagnostics.map((diagnostic) => diagnostic.path),
+			["superagents.commands.sp-test.entrySkill"],
+		);
 	});
 
 	void it("accepts nullable path settings inside command presets", () => {
@@ -325,34 +329,40 @@ void describe("config validation", () => {
 		});
 
 		assert.equal(result.blocked, true);
-		assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), [
-			"superagents.skillOverlays.brainstorming",
-			"superagents.skillOverlays.",
-			"superagents.skillOverlays.writing-plans[0]",
-			"superagents.skillOverlays.writing-plans[1]",
-			"superagents.interceptSkillCommands[0]",
-			"superagents.interceptSkillCommands[1]",
-			"superagents.interceptSkillCommands[2]",
-		]);
+		assert.deepEqual(
+			result.diagnostics.map((diagnostic) => diagnostic.path),
+			[
+				"superagents.skillOverlays.brainstorming",
+				"superagents.skillOverlays.",
+				"superagents.skillOverlays.writing-plans[0]",
+				"superagents.skillOverlays.writing-plans[1]",
+				"superagents.interceptSkillCommands[0]",
+				"superagents.interceptSkillCommands[1]",
+				"superagents.interceptSkillCommands[2]",
+			],
+		);
 	});
 
 	void it("deep merges skill overlays while replacing intercepted skill commands", () => {
-		const result = loadEffectiveConfig({
-			superagents: {
-				...defaults.superagents,
-				skillOverlays: {
-					brainstorming: ["react-native-best-practices"],
+		const result = loadEffectiveConfig(
+			{
+				superagents: {
+					...defaults.superagents,
+					skillOverlays: {
+						brainstorming: ["react-native-best-practices"],
+					},
+					interceptSkillCommands: [],
 				},
-				interceptSkillCommands: [],
 			},
-		}, {
-			superagents: {
-				skillOverlays: {
-					"writing-plans": ["supabase-postgres-best-practices"],
+			{
+				superagents: {
+					skillOverlays: {
+						"writing-plans": ["supabase-postgres-best-practices"],
+					},
+					interceptSkillCommands: ["brainstorming"],
 				},
-				interceptSkillCommands: ["brainstorming"],
 			},
-		});
+		);
 
 		assert.equal(result.blocked, false);
 		assert.deepEqual(result.config.superagents?.skillOverlays, {
@@ -373,7 +383,9 @@ void describe("config validation", () => {
 			},
 		});
 		assert.equal(result.blocked, false);
-		assert.ok(result.diagnostics.some((d) => d.path === "superagents.superpowersSkills" && d.code === "defaults_only_key"));
+		assert.ok(
+			result.diagnostics.some((d) => d.path === "superagents.superpowersSkills" && d.code === "defaults_only_key"),
+		);
 	});
 
 	void it("passes superpowersSkills from defaults through to effective config", () => {

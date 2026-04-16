@@ -25,7 +25,13 @@ try {
 
 interface RegisteredTool {
 	name: string;
-	execute(id: string, params: Record<string, unknown>, signal: AbortSignal | undefined, onUpdate: unknown, ctx: unknown): Promise<unknown>;
+	execute(
+		id: string,
+		params: Record<string, unknown>,
+		signal: AbortSignal | undefined,
+		onUpdate: unknown,
+		ctx: unknown,
+	): Promise<unknown>;
 }
 
 /**
@@ -41,7 +47,10 @@ function createEventBus() {
 			existing.push(handler);
 			handlers.set(event, existing);
 			return () => {
-				handlers.set(event, (handlers.get(event) ?? []).filter((entry) => entry !== handler));
+				handlers.set(
+					event,
+					(handlers.get(event) ?? []).filter((entry) => entry !== handler),
+				);
 			};
 		},
 		emit(event: string, data: unknown) {
@@ -143,7 +152,9 @@ void describe("extension config gating", { skip: !available ? "extension not imp
 		assert.match(notifications[0].message, /pi-superagents is disabled/);
 		assert.match(notifications[0].message, /asyncByDefalt/);
 
-		const result = await mock.tools.get("subagent")!.execute("blocked", { agent: "scout", task: "inspect" }, undefined, undefined, ctx);
+		const result = await mock.tools
+			.get("subagent")!
+			.execute("blocked", { agent: "scout", task: "inspect" }, undefined, undefined, ctx);
 		// AgentToolResult does not include isError; verify the tool responded with non-empty content.
 		const content = (result as { content?: unknown[] }).content;
 		assert.ok(Array.isArray(content) && content.length > 0, "blocked subagent must return non-empty content");

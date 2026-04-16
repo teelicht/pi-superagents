@@ -10,12 +10,7 @@
  * - none; this module is pure and safe to use from tests and extension startup
  */
 
-import type {
-	ConfigDiagnostic,
-	ExtensionConfig,
-	ModelTierSetting,
-	ThinkingLevel,
-} from "../shared/types.ts";
+import type { ConfigDiagnostic, ExtensionConfig, ModelTierSetting, ThinkingLevel } from "../shared/types.ts";
 
 export interface ConfigValidationResult {
 	blocked: boolean;
@@ -161,7 +156,8 @@ function validateModelTier(diagnostics: ConfigDiagnostic[], value: unknown, path
 		return;
 	}
 	for (const key of Object.keys(value)) {
-		if (!MODEL_TIER_KEYS.has(key)) addError(diagnostics, `${path}.${key}`, "is not a supported config key.", "unknown_key");
+		if (!MODEL_TIER_KEYS.has(key))
+			addError(diagnostics, `${path}.${key}`, "is not a supported config key.", "unknown_key");
 	}
 	if (typeof value.model !== "string" || !value.model.trim()) {
 		addError(diagnostics, `${path}.model`, "must be a non-empty string.");
@@ -339,15 +335,15 @@ export function validateConfigObject(rawConfig: unknown): ConfigValidationResult
 				}
 			}
 			if ("modelTiers" in superagents) {
-			const modelTiers = superagents.modelTiers;
-			if (!isRecord(modelTiers)) {
-				addError(diagnostics, "superagents.modelTiers", "must be an object.");
-			} else {
-				for (const [tierName, tierValue] of Object.entries(modelTiers)) {
-					validateModelTier(diagnostics, tierValue, `superagents.modelTiers.${tierName}`);
+				const modelTiers = superagents.modelTiers;
+				if (!isRecord(modelTiers)) {
+					addError(diagnostics, "superagents.modelTiers", "must be an object.");
+				} else {
+					for (const [tierName, tierValue] of Object.entries(modelTiers)) {
+						validateModelTier(diagnostics, tierValue, `superagents.modelTiers.${tierName}`);
+					}
 				}
 			}
-		}
 			if ("skillOverlays" in superagents) {
 				validateSkillOverlays(diagnostics, superagents.skillOverlays);
 			}
@@ -404,35 +400,33 @@ export function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfi
 	};
 
 	// Replace-not-merge for interceptSkillCommands
-	const mergedInterceptSkillCommands = (
-		overrideSuperagents?.interceptSkillCommands
-		?? defaultSuperagents?.interceptSkillCommands
-		?? []
-	);
+	const mergedInterceptSkillCommands =
+		overrideSuperagents?.interceptSkillCommands ?? defaultSuperagents?.interceptSkillCommands ?? [];
 
-	const mergedSuperagents = defaultSuperagents || overrideSuperagents
-		? {
-			...(defaultSuperagents ?? {}),
-			...(overrideSuperagents ?? {}),
-			// Deep merge command presets: each preset is individually merged
-			commands: {
-				...(defaultSuperagents?.commands ?? {}),
-				...(Object.fromEntries(
-					Object.entries(overrideSuperagents?.commands ?? {}).map(([name, preset]) => [
-						name,
-						{
-							...(defaultSuperagents?.commands?.[name] ?? {}),
-							...preset,
-						},
-					]),
-				)),
-			},
-			modelTiers: mergeModelTiers(defaultSuperagents?.modelTiers, overrideSuperagents?.modelTiers),
-			skillOverlays: mergedSkillOverlays,
-			interceptSkillCommands: mergedInterceptSkillCommands,
-			superpowersSkills: defaultSuperagents?.superpowersSkills ?? [],
-		}
-		: undefined;
+	const mergedSuperagents =
+		defaultSuperagents || overrideSuperagents
+			? {
+					...(defaultSuperagents ?? {}),
+					...(overrideSuperagents ?? {}),
+					// Deep merge command presets: each preset is individually merged
+					commands: {
+						...(defaultSuperagents?.commands ?? {}),
+						...Object.fromEntries(
+							Object.entries(overrideSuperagents?.commands ?? {}).map(([name, preset]) => [
+								name,
+								{
+									...(defaultSuperagents?.commands?.[name] ?? {}),
+									...preset,
+								},
+							]),
+						),
+					},
+					modelTiers: mergeModelTiers(defaultSuperagents?.modelTiers, overrideSuperagents?.modelTiers),
+					skillOverlays: mergedSkillOverlays,
+					interceptSkillCommands: mergedInterceptSkillCommands,
+					superpowersSkills: defaultSuperagents?.superpowersSkills ?? [],
+				}
+			: undefined;
 
 	return {
 		...defaults,
@@ -457,13 +451,15 @@ export function loadEffectiveConfig(defaults: ExtensionConfig, userConfig: unkno
 		return { ...validation, config: defaults };
 	}
 	const migrationDiagnostics: ConfigDiagnostic[] = jsonEqual(defaults, userConfig)
-		? [{
-			level: "warning",
-			code: "legacy_full_copy",
-			path: "$",
-			message: "appears to duplicate the bundled defaults. Replace it with {} and keep only local overrides.",
-			action: "replace_with_empty_override",
-		}]
+		? [
+				{
+					level: "warning",
+					code: "legacy_full_copy",
+					path: "$",
+					message: "appears to duplicate the bundled defaults. Replace it with {} and keep only local overrides.",
+					action: "replace_with_empty_override",
+				},
+			]
 		: [];
 	return {
 		blocked: false,

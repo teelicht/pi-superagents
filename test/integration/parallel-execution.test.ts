@@ -8,16 +8,10 @@
  * mapConcurrent tests always run. runSync tests require pi packages.
  */
 
-import { describe, it, before, after, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
+import { after, afterEach, before, beforeEach, describe, it } from "node:test";
 import type { MockPi } from "../support/helpers.ts";
-import {
-	createMockPi,
-	createTempDir,
-	removeTempDir,
-	makeAgentConfigs,
-	tryImport,
-} from "../support/helpers.ts";
+import { createMockPi, createTempDir, makeAgentConfigs, removeTempDir, tryImport } from "../support/helpers.ts";
 
 // Top-level await: try importing pi-dependent modules
 const utils = await tryImport<any>("./src/shared/utils.ts");

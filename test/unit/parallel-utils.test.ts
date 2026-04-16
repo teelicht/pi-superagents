@@ -1,14 +1,14 @@
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import {
-	isParallelGroup,
-	flattenSteps,
-	mapConcurrent,
 	aggregateParallelOutputs,
+	flattenSteps,
+	isParallelGroup,
 	MAX_PARALLEL_CONCURRENCY,
-	type RunnerSubagentStep,
+	mapConcurrent,
 	type ParallelStepGroup,
 	type RunnerStep,
+	type RunnerSubagentStep,
 } from "../../src/execution/parallel-utils.ts";
 
 void describe("isParallelGroup", () => {
@@ -69,14 +69,13 @@ void describe("flattenSteps", () => {
 	});
 
 	void it("handles empty parallel group", () => {
-		const steps: RunnerStep[] = [
-			{ agent: "before", task: "x" },
-			{ parallel: [] },
-			{ agent: "after", task: "y" },
-		];
+		const steps: RunnerStep[] = [{ agent: "before", task: "x" }, { parallel: [] }, { agent: "after", task: "y" }];
 		const flat = flattenSteps(steps);
 		assert.equal(flat.length, 2);
-		assert.deepEqual(flat.map((s) => s.agent), ["before", "after"]);
+		assert.deepEqual(
+			flat.map((s) => s.agent),
+			["before", "after"],
+		);
 	});
 });
 
@@ -92,12 +91,17 @@ void describe("mapConcurrent", () => {
 		let maxRunning = 0;
 		const items = [1, 2, 3, 4, 5, 6];
 
-		await mapConcurrent(items, 2, async () => {
-			running++;
-			maxRunning = Math.max(maxRunning, running);
-			await new Promise((r) => setTimeout(r, 10));
-			running--;
-		}, 0);
+		await mapConcurrent(
+			items,
+			2,
+			async () => {
+				running++;
+				maxRunning = Math.max(maxRunning, running);
+				await new Promise((r) => setTimeout(r, 10));
+				running--;
+			},
+			0,
+		);
 
 		assert.ok(maxRunning <= 2, `max concurrent was ${maxRunning}, expected <= 2`);
 	});
@@ -111,13 +115,18 @@ void describe("mapConcurrent", () => {
 		let running = 0;
 		let maxRunning = 0;
 		const items = [1, 2, 3];
-		await mapConcurrent(items, 0, async (item) => {
-			running++;
-			maxRunning = Math.max(maxRunning, running);
-			await new Promise((r) => setTimeout(r, 10));
-			running--;
-			return item * 10;
-		}, 0);
+		await mapConcurrent(
+			items,
+			0,
+			async (item) => {
+				running++;
+				maxRunning = Math.max(maxRunning, running);
+				await new Promise((r) => setTimeout(r, 10));
+				running--;
+				return item * 10;
+			},
+			0,
+		);
 		assert.equal(maxRunning, 1, "should run sequentially with limit=0");
 	});
 
@@ -125,13 +134,18 @@ void describe("mapConcurrent", () => {
 		let running = 0;
 		let maxRunning = 0;
 		const items = [1, 2, 3];
-		await mapConcurrent(items, -1, async (item) => {
-			running++;
-			maxRunning = Math.max(maxRunning, running);
-			await new Promise((r) => setTimeout(r, 10));
-			running--;
-			return item * 10;
-		}, 0);
+		await mapConcurrent(
+			items,
+			-1,
+			async (item) => {
+				running++;
+				maxRunning = Math.max(maxRunning, running);
+				await new Promise((r) => setTimeout(r, 10));
+				running--;
+				return item * 10;
+			},
+			0,
+		);
 		assert.equal(maxRunning, 1, "should run sequentially with limit=-1");
 	});
 
@@ -140,10 +154,15 @@ void describe("mapConcurrent", () => {
 		const items = [1, 2, 3];
 
 		// Each item takes 500ms so workers stay busy past the stagger window
-		await mapConcurrent(items, 3, async (_item, i) => {
-			workerStarts.push(Date.now());
-			await new Promise((r) => setTimeout(r, 500));
-		}, 100);
+		await mapConcurrent(
+			items,
+			3,
+			async (_item, _i) => {
+				workerStarts.push(Date.now());
+				await new Promise((r) => setTimeout(r, 500));
+			},
+			100,
+		);
 
 		// Worker 0 starts immediately, worker 1 after ~100ms, worker 2 after ~200ms
 		const d1 = workerStarts[1] - workerStarts[0];
@@ -156,10 +175,15 @@ void describe("mapConcurrent", () => {
 		const startTimes: number[] = [];
 		const items = [1, 2, 3];
 
-		await mapConcurrent(items, 3, async (_item, i) => {
-			startTimes[i] = Date.now();
-			await new Promise((r) => setTimeout(r, 10));
-		}, 0);
+		await mapConcurrent(
+			items,
+			3,
+			async (_item, i) => {
+				startTimes[i] = Date.now();
+				await new Promise((r) => setTimeout(r, 10));
+			},
+			0,
+		);
 
 		// All workers should start nearly simultaneously
 		const d1 = startTimes[1] - startTimes[0];
@@ -182,23 +206,17 @@ void describe("aggregateParallelOutputs", () => {
 	});
 
 	void it("marks failed tasks", () => {
-		const result = aggregateParallelOutputs([
-			{ agent: "agent-a", output: "partial output", exitCode: 1 },
-		]);
+		const result = aggregateParallelOutputs([{ agent: "agent-a", output: "partial output", exitCode: 1 }]);
 		assert.ok(result.includes("⚠️ FAILED (exit code 1)"));
 	});
 
 	void it("marks empty output", () => {
-		const result = aggregateParallelOutputs([
-			{ agent: "agent-a", output: "", exitCode: 0 },
-		]);
+		const result = aggregateParallelOutputs([{ agent: "agent-a", output: "", exitCode: 0 }]);
 		assert.ok(result.includes("⚠️ EMPTY OUTPUT"));
 	});
 
 	void it("treats whitespace-only output as empty", () => {
-		const result = aggregateParallelOutputs([
-			{ agent: "agent-a", output: "   \n  ", exitCode: 0 },
-		]);
+		const result = aggregateParallelOutputs([{ agent: "agent-a", output: "   \n  ", exitCode: 0 }]);
 		assert.ok(result.includes("⚠️ EMPTY OUTPUT"));
 	});
 

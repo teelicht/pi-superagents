@@ -13,8 +13,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-	buildSkillEntryPromptInput,
 	buildResolvedSkillEntryPrompt,
+	buildSkillEntryPromptInput,
 	parseSkillCommandInput,
 	shouldInterceptSkillCommand,
 } from "../../src/superpowers/skill-entry.ts";
@@ -34,27 +34,39 @@ void describe("Superpowers skill entry helpers", () => {
 	});
 
 	void it("intercepts only configured supported skills including writing-plans", () => {
-		assert.equal(shouldInterceptSkillCommand("brainstorming", {
-			superagents: {
-				interceptSkillCommands: ["brainstorming"],
-			},
-		}), true);
-		assert.equal(shouldInterceptSkillCommand("writing-plans", {
-			superagents: {
-				interceptSkillCommands: ["writing-plans"],
-			},
-		}), true);
-		assert.equal(shouldInterceptSkillCommand("writing-plans", {
-			superagents: {
-				interceptSkillCommands: ["brainstorming"],
-			},
-		}), false);
+		assert.equal(
+			shouldInterceptSkillCommand("brainstorming", {
+				superagents: {
+					interceptSkillCommands: ["brainstorming"],
+				},
+			}),
+			true,
+		);
+		assert.equal(
+			shouldInterceptSkillCommand("writing-plans", {
+				superagents: {
+					interceptSkillCommands: ["writing-plans"],
+				},
+			}),
+			true,
+		);
+		assert.equal(
+			shouldInterceptSkillCommand("writing-plans", {
+				superagents: {
+					interceptSkillCommands: ["brainstorming"],
+				},
+			}),
+			false,
+		);
 		assert.equal(shouldInterceptSkillCommand("brainstorming", {}), false);
-		assert.equal(shouldInterceptSkillCommand("unsupported-skill", {
-			superagents: {
-				interceptSkillCommands: ["brainstorming", "writing-plans"],
-			},
-		}), false);
+		assert.equal(
+			shouldInterceptSkillCommand("unsupported-skill", {
+				superagents: {
+					interceptSkillCommands: ["brainstorming", "writing-plans"],
+				},
+			}),
+			false,
+		);
 	});
 
 	void it("builds prompt input with resolved entry and overlay skills", () => {
@@ -83,12 +95,14 @@ void describe("Superpowers skill entry helpers", () => {
 				content: "BRAINSTORM BODY",
 				source: "user",
 			},
-			overlaySkills: [{
-				name: "react-native-best-practices",
-				path: "/skills/react-native-best-practices/SKILL.md",
-				content: "RN BODY",
-				source: "user",
-			}],
+			overlaySkills: [
+				{
+					name: "react-native-best-practices",
+					path: "/skills/react-native-best-practices/SKILL.md",
+					content: "RN BODY",
+					source: "user",
+				},
+			],
 		});
 
 		assert.equal(input.task, "design onboarding");
@@ -112,24 +126,33 @@ void describe("Superpowers skill entry helpers", () => {
 			overlaySkillNames: ["react-native-best-practices"],
 		};
 		const skills = new Map([
-			["using-superpowers", {
-				name: "using-superpowers",
-				path: "/skills/using-superpowers/SKILL.md",
-				content: "USING BODY",
-				source: "user" as const,
-			}],
-			["brainstorming", {
-				name: "brainstorming",
-				path: "/skills/brainstorming/SKILL.md",
-				content: "BRAINSTORM BODY",
-				source: "user" as const,
-			}],
-			["react-native-best-practices", {
-				name: "react-native-best-practices",
-				path: "/skills/react-native-best-practices/SKILL.md",
-				content: "RN BODY",
-				source: "user" as const,
-			}],
+			[
+				"using-superpowers",
+				{
+					name: "using-superpowers",
+					path: "/skills/using-superpowers/SKILL.md",
+					content: "USING BODY",
+					source: "user" as const,
+				},
+			],
+			[
+				"brainstorming",
+				{
+					name: "brainstorming",
+					path: "/skills/brainstorming/SKILL.md",
+					content: "BRAINSTORM BODY",
+					source: "user" as const,
+				},
+			],
+			[
+				"react-native-best-practices",
+				{
+					name: "react-native-best-practices",
+					path: "/skills/react-native-best-practices/SKILL.md",
+					content: "RN BODY",
+					source: "user" as const,
+				},
+			],
 		]);
 
 		const result = buildResolvedSkillEntryPrompt({
@@ -137,7 +160,9 @@ void describe("Superpowers skill entry helpers", () => {
 			profile,
 			resolveSkill: (_cwd, name) => skills.get(name),
 			resolveSkillNames: (names) => {
-				const resolved = names.map((name) => skills.get(name)).filter((skill): skill is NonNullable<typeof skill> => Boolean(skill));
+				const resolved = names
+					.map((name) => skills.get(name))
+					.filter((skill): skill is NonNullable<typeof skill> => Boolean(skill));
 				const missing = names.filter((name) => !skills.has(name));
 				return { resolved, missing };
 			},
@@ -165,12 +190,15 @@ void describe("Superpowers skill entry helpers", () => {
 			overlaySkillNames: [],
 		};
 		const skills = new Map([
-			["using-superpowers", {
-				name: "using-superpowers",
-				path: "/skills/using-superpowers/SKILL.md",
-				content: "USING BODY",
-				source: "user" as const,
-			}],
+			[
+				"using-superpowers",
+				{
+					name: "using-superpowers",
+					path: "/skills/using-superpowers/SKILL.md",
+					content: "USING BODY",
+					source: "user" as const,
+				},
+			],
 		]);
 
 		const result = buildResolvedSkillEntryPrompt({
@@ -198,18 +226,24 @@ void describe("Superpowers skill entry helpers", () => {
 			overlaySkillNames: ["definitely-missing-skill"],
 		};
 		const skills = new Map([
-			["using-superpowers", {
-				name: "using-superpowers",
-				path: "/skills/using-superpowers/SKILL.md",
-				content: "USING BODY",
-				source: "user" as const,
-			}],
-			["brainstorming", {
-				name: "brainstorming",
-				path: "/skills/brainstorming/SKILL.md",
-				content: "BRAINSTORM BODY",
-				source: "user" as const,
-			}],
+			[
+				"using-superpowers",
+				{
+					name: "using-superpowers",
+					path: "/skills/using-superpowers/SKILL.md",
+					content: "USING BODY",
+					source: "user" as const,
+				},
+			],
+			[
+				"brainstorming",
+				{
+					name: "brainstorming",
+					path: "/skills/brainstorming/SKILL.md",
+					content: "BRAINSTORM BODY",
+					source: "user" as const,
+				},
+			],
 		]);
 
 		const result = buildResolvedSkillEntryPrompt({

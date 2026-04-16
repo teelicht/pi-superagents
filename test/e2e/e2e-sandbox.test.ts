@@ -5,9 +5,9 @@
  * loads correctly and the foreground subagent tool responds to calls.
  */
 
-import { describe, it, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import * as path from "node:path";
+import { afterEach, describe, it } from "node:test";
 import { tryImport } from "../support/helpers.ts";
 
 const harness = await tryImport<any>("@marcfargas/pi-test-harness");
@@ -27,17 +27,11 @@ void describe("extension loading", { skip: !available ? "pi-test-harness not ava
 			mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },
 		});
 
-		await t.run(
-			when("Run recon", [
-				calls("subagent", { agent: "sp-recon", task: "hello" }),
-				says("Done."),
-			]),
-		);
+		await t.run(when("Run recon", [calls("subagent", { agent: "sp-recon", task: "hello" }), says("Done.")]));
 
 		const results = t.events.toolResultsFor("subagent");
 		assert.equal(results.length, 1, "subagent tool should respond");
 		// sp-recon is a builtin agent, so this should not be an agent-not-found error
 		assert.ok(!results[0].isError, `should not be an error: ${results[0].text}`);
 	});
-
 });

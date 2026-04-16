@@ -35,10 +35,7 @@ function ensureSuperagents(config: MutableConfig): NonNullable<ExtensionConfig["
  * @returns JSON string with trailing newline suitable for writing back to disk.
  * @throws Error if rawText is not valid JSON or is not a JSON object.
  */
-export function updateSuperpowersConfigText(
-	rawText: string,
-	update: (config: MutableConfig) => MutableConfig,
-): string {
+export function updateSuperpowersConfigText(rawText: string, update: (config: MutableConfig) => MutableConfig): string {
 	let parsed: unknown;
 	try {
 		parsed = rawText.trim() ? JSON.parse(rawText) : {};

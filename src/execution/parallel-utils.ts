@@ -32,7 +32,7 @@ export interface ParallelStepGroup {
 export type RunnerStep = RunnerSubagentStep | ParallelStepGroup;
 
 export function isParallelGroup(step: RunnerStep): step is ParallelStepGroup {
-	return "parallel" in step && Array.isArray((step).parallel);
+	return "parallel" in step && Array.isArray(step.parallel);
 }
 
 /** Flatten runner steps into individual SubagentSteps for status tracking */
@@ -72,9 +72,7 @@ export async function mapConcurrent<T, R>(
 		}
 	}
 
-	await Promise.all(
-		Array.from({ length: Math.min(safeLimit, items.length) }, (_, wi) => worker(wi)),
-	);
+	await Promise.all(Array.from({ length: Math.min(safeLimit, items.length) }, (_, wi) => worker(wi)));
 	return results;
 }
 
@@ -91,8 +89,7 @@ export interface ParallelTaskResult {
 /** Aggregate outputs from parallel tasks into a single string for {previous} */
 export function aggregateParallelOutputs(
 	results: ParallelTaskResult[],
-	headerFormat: (index: number, agent: string) => string = (i, agent) =>
-		`=== Parallel Task ${i + 1} (${agent}) ===`,
+	headerFormat: (index: number, agent: string) => string = (i, agent) => `=== Parallel Task ${i + 1} (${agent}) ===`,
 ): string {
 	return results
 		.map((r, i) => {
@@ -109,7 +106,7 @@ export function aggregateParallelOutputs(
 								? `⚠️ EMPTY OUTPUT (expected output file missing: ${r.outputTargetPath})`
 								: !hasOutput && !r.outputTargetPath
 									? "⚠️ EMPTY OUTPUT (no textual response returned)"
-							: "";
+									: "";
 			const body = status ? (hasOutput ? `${status}\n${r.output}` : status) : r.output;
 			return `${header}\n${body}`;
 		})

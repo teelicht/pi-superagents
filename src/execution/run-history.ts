@@ -57,15 +57,28 @@ export function loadRunsForAgent(agent: string): RunEntry[] {
 		return [];
 	}
 
-	let lines = raw.split("\n").map((line) => line.trim()).filter((line) => line.length > 0);
+	let lines = raw
+		.split("\n")
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0);
 
 	if (lines.length > ROTATE_READ_THRESHOLD) {
 		lines = lines.slice(-ROTATE_KEEP);
-		try { fs.writeFileSync(HISTORY_PATH, `${lines.join("\n")}\n`, "utf-8"); } catch { /* empty */ }
+		try {
+			fs.writeFileSync(HISTORY_PATH, `${lines.join("\n")}\n`, "utf-8");
+		} catch {
+			/* empty */
+		}
 	}
 
 	return lines
-		.map((line) => { try { return JSON.parse(line) as RunEntry; } catch { return undefined; } })
+		.map((line) => {
+			try {
+				return JSON.parse(line) as RunEntry;
+			} catch {
+				return undefined;
+			}
+		})
 		.filter((entry): entry is RunEntry => entry !== undefined && entry.agent === agent)
 		.reverse();
 }
@@ -84,7 +97,10 @@ export function loadAllRuns(): RunEntry[] {
 		return [];
 	}
 
-	const lines = raw.split("\n").map((line) => line.trim()).filter((line) => line.length > 0);
+	const lines = raw
+		.split("\n")
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0);
 
 	return lines
 		.map((line) => {
@@ -149,7 +165,7 @@ export const globalRunHistory = {
 			if (finalStatus === "error" && existing.exit === undefined) {
 				existing.exit = 1;
 			}
-			if (error && !existing.steps?.some(s => s.error !== undefined)) {
+			if (error && !existing.steps?.some((s) => s.error !== undefined)) {
 				existing.steps = existing.steps || [];
 				existing.steps.push({ index: 0, agent: existing.agent, status: "failed", error });
 			}

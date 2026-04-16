@@ -12,25 +12,36 @@ import { randomUUID } from "node:crypto";
 import * as path from "node:path";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { type AgentConfig, type AgentScope } from "../agents/agents.ts";
+import type { AgentConfig, AgentScope } from "../agents/agents.ts";
 import { getArtifactsDir } from "../shared/artifacts.ts";
-import { runSync } from "./execution.ts";
-import { aggregateParallelOutputs } from "./parallel-utils.ts";
-import {
-	buildSuperpowersPacketPlan,
-	injectSuperpowersPacketInstructions,
-} from "./superpowers-packets.ts";
-import {
-	resolveStepBehavior,
-} from "./settings.ts";
 import { normalizeSkillInput } from "../shared/skills.ts";
-import { createForkContextResolver, type ForkableSessionManager } from "./fork-context.ts";
-import { finalizeSingleOutput, injectSingleOutputInstruction, resolveSingleOutputPath } from "./single-output.ts";
 import {
-	resolveSuperagentWorktreeCreateOptions,
-	resolveSuperagentWorktreeEnabled,
-} from "./superagents-config.ts";
+	type AgentProgress,
+	type ArtifactConfig,
+	type ArtifactPaths,
+	checkSubagentDepth,
+	DEFAULT_ARTIFACT_CONFIG,
+	type Details,
+	type ExecutionRole,
+	type ExtensionConfig,
+	MAX_CONCURRENCY,
+	MAX_PARALLEL,
+	type MaxOutputConfig,
+	resolveChildMaxSubagentDepth,
+	resolveCurrentMaxSubagentDepth,
+	type SingleResult,
+	type SubagentState,
+	type WorkflowMode,
+	wrapForkTask,
+} from "../shared/types.ts";
 import { getSingleResultOutput, mapConcurrent } from "../shared/utils.ts";
+import { runSync } from "./execution.ts";
+import { createForkContextResolver, type ForkableSessionManager } from "./fork-context.ts";
+import { aggregateParallelOutputs } from "./parallel-utils.ts";
+import { resolveStepBehavior } from "./settings.ts";
+import { finalizeSingleOutput, injectSingleOutputInstruction, resolveSingleOutputPath } from "./single-output.ts";
+import { resolveSuperagentWorktreeCreateOptions, resolveSuperagentWorktreeEnabled } from "./superagents-config.ts";
+import { buildSuperpowersPacketPlan, injectSuperpowersPacketInstructions } from "./superpowers-packets.ts";
 import {
 	cleanupWorktrees,
 	createWorktrees,
@@ -40,26 +51,6 @@ import {
 	formatWorktreeTaskCwdConflict,
 	type WorktreeSetup,
 } from "./worktree.ts";
-import {
-	type AgentProgress,
-	type ArtifactConfig,
-	type ArtifactPaths,
-	type Details,
-	type ExtensionConfig,
-	type MaxOutputConfig,
-	type SingleResult,
-	type SubagentState,
-	type WorkflowMode,
-	DEFAULT_ARTIFACT_CONFIG,
-	MAX_CONCURRENCY,
-	MAX_PARALLEL,
-	checkSubagentDepth,
-	resolveChildMaxSubagentDepth,
-	resolveCurrentMaxSubagentDepth,
-	wrapForkTask,
-	type ExecutionRole,
-} from "../shared/types.ts";
-
 
 interface TaskParam {
 	agent: string;
@@ -111,11 +102,10 @@ interface ExecutionContextData {
 }
 
 function validateExecutionInput(
-	params: SubagentParamsLike,
+	_params: SubagentParamsLike,
 	agents: AgentConfig[],
 	hasTasks: boolean,
 	hasSingle: boolean,
-
 ): AgentToolResult<Details> | null {
 	if (Number(hasTasks) + Number(hasSingle) !== 1) {
 		return {
@@ -269,7 +259,11 @@ function buildParallelWorktreeSuffix(
 ): string {
 	if (!worktreeSetup) return "";
 	const diffsDir = path.join(artifactsDir, "worktree-diffs");
-	const diffs = diffWorktrees(worktreeSetup, tasks.map((task) => task.agent), diffsDir);
+	const diffs = diffWorktrees(
+		worktreeSetup,
+		tasks.map((task) => task.agent),
+		diffsDir,
+	);
 	return formatWorktreeDiffSummary(diffs);
 }
 
@@ -295,21 +289,23 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 			useTestDrivenDevelopment: input.useTestDrivenDevelopment,
 			onUpdate: input.onUpdate
 				? (progressUpdate) => {
-					const stepResults = progressUpdate.details?.results || [];
-					const stepProgress = progressUpdate.details?.progress || [];
-					if (stepResults.length > 0) input.liveResults[index] = stepResults[0];
-					if (stepProgress.length > 0) input.liveProgress[index] = stepProgress[0];
-					const mergedResults = input.liveResults.filter((result): result is SingleResult => result !== undefined);
-					const mergedProgress = input.liveProgress.filter((progress): progress is AgentProgress => progress !== undefined);
-					input.onUpdate?.({
-						content: progressUpdate.content,
-						details: {
-							mode: "parallel",
-							results: mergedResults,
-							progress: mergedProgress,
-						},
-					});
-				}
+						const stepResults = progressUpdate.details?.results || [];
+						const stepProgress = progressUpdate.details?.progress || [];
+						if (stepResults.length > 0) input.liveResults[index] = stepResults[0];
+						if (stepProgress.length > 0) input.liveProgress[index] = stepProgress[0];
+						const mergedResults = input.liveResults.filter((result): result is SingleResult => result !== undefined);
+						const mergedProgress = input.liveProgress.filter(
+							(progress): progress is AgentProgress => progress !== undefined,
+						);
+						input.onUpdate?.({
+							content: progressUpdate.content,
+							details: {
+								mode: "parallel",
+								results: mergedResults,
+								progress: mergedProgress,
+							},
+						});
+					}
 				: undefined,
 		});
 	});
@@ -364,9 +360,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 	}
 
 	const modelOverrides: (string | undefined)[] = tasks.map((t) => t.model);
-	const skillOverrides: (string[] | false | undefined)[] = tasks.map((t) =>
-		normalizeSkillInput(t.skill),
-	);
+	const skillOverrides: (string[] | false | undefined)[] = tasks.map((t) => normalizeSkillInput(t.skill));
 
 	const behaviors = agentConfigs.map((config, i) => {
 		const t = tasks[i];
@@ -386,7 +380,10 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 	});
 	const taskTexts = tasks.map((t, i) => injectSuperpowersPacketInstructions(t.task, behaviors[i]));
 	const liveResults: (SingleResult | undefined)[] = Array(tasks.length).fill(undefined) as (SingleResult | undefined)[];
-	const liveProgress: (AgentProgress | undefined)[] = Array(tasks.length).fill(undefined) as (AgentProgress | undefined)[];
+	const liveProgress: (AgentProgress | undefined)[] = Array(tasks.length).fill(undefined) as (
+		| AgentProgress
+		| undefined
+	)[];
 	const { setup: worktreeSetup, errorResult } = createParallelWorktreeSetup(
 		effectiveWorktree,
 		effectiveCwd,
@@ -492,7 +489,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	const modelOverride: string | undefined = params.model;
 	const skillOverride: string[] | false | undefined = normalizeSkillInput(params.skill);
 	const rawOutput = params.output !== undefined ? params.output : agentConfig.output;
-	const _effectiveOutput: string | false | undefined = rawOutput === true ? agentConfig.output : (rawOutput);
+	const _effectiveOutput: string | false | undefined = rawOutput === true ? agentConfig.output : rawOutput;
 	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(deps.config.maxSubagentDepth);
 	const maxSubagentDepth = resolveChildMaxSubagentDepth(currentMaxSubagentDepth, agentConfig.maxSubagentDepth);
 
@@ -500,7 +497,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	const behavior = resolveStepBehavior(
 		agentConfig,
 		{
-			output: params.output === true ? undefined : (params.output),
+			output: params.output === true ? undefined : params.output,
 			reads: undefined,
 			progress: undefined,
 			skills: skillOverride,
@@ -607,27 +604,25 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 
 		const scope: AgentScope = "both";
 		const parentSessionFile = ctx.sessionManager.getSessionFile() ?? null;
-		deps.state.currentSessionId = parentSessionFile ?? `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+		deps.state.currentSessionId =
+			parentSessionFile ?? `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 		const agents = deps.discoverAgents(ctx.cwd, scope).agents;
 		const runId = randomUUID().slice(0, 8);
 		const hasTasks = (params.tasks?.length ?? 0) > 0;
 		const hasSingle = Boolean(params.agent && params.task);
-		const validationError = validateExecutionInput(
-			params,
-			agents,
-			hasTasks,
-			hasSingle,
-		);
+		const validationError = validateExecutionInput(params, agents, hasTasks, hasSingle);
 		if (validationError) return validationError;
 
 		let sessionFileForIndex: (idx?: number) => string | undefined = () => undefined;
 		try {
-			const forkContext = createForkContextResolver(ctx.sessionManager as unknown as ForkableSessionManager, params.context);
+			const forkContext = createForkContextResolver(
+				ctx.sessionManager as unknown as ForkableSessionManager,
+				params.context,
+			);
 			sessionFileForIndex = (idx?: number) => forkContext.sessionFileForIndex(idx);
 		} catch (error) {
 			return toExecutionErrorResult(params, error);
 		}
-
 
 		const artifactConfig: ArtifactConfig = {
 			...DEFAULT_ARTIFACT_CONFIG,
@@ -651,9 +646,9 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			artifactsDir,
 			workflow: params.workflow ?? "superpowers",
 			useTestDrivenDevelopment:
-				params.useTestDrivenDevelopment
-				?? deps.config.superagents?.commands?.["sp-implement"]?.useTestDrivenDevelopment
-				?? true,
+				params.useTestDrivenDevelopment ??
+				deps.config.superagents?.commands?.["sp-implement"]?.useTestDrivenDevelopment ??
+				true,
 		};
 
 		try {
@@ -668,10 +663,13 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			return toExecutionErrorResult(params, error);
 		}
 
-		return withForkContext({
-			content: [{ type: "text", text: "Invalid params" }],
-			details: { mode: "single" as const, results: [] },
-		}, params.context);
+		return withForkContext(
+			{
+				content: [{ type: "text", text: "Invalid params" }],
+				details: { mode: "single" as const, results: [] },
+			},
+			params.context,
+		);
 	};
 
 	return { execute };

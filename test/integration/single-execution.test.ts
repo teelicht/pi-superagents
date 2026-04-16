@@ -9,18 +9,18 @@
  * gracefully.
  */
 
-import { describe, it, before, after, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { after, afterEach, before, beforeEach, describe, it } from "node:test";
 import type { MockPi } from "../support/helpers.ts";
 import {
 	createMockPi,
 	createTempDir,
-	removeTempDir,
-	makeAgentConfigs,
-	makeAgent,
 	events,
+	makeAgent,
+	makeAgentConfigs,
+	removeTempDir,
 	tryImport,
 } from "../support/helpers.ts";
 
@@ -340,7 +340,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		const start = Date.now();
 		setTimeout(() => controller.abort(), 200);
 
-		const result = await runSync(tempDir, agents, "slow", "Slow task", {
+		const _result = await runSync(tempDir, agents, "slow", "Slow task", {
 			signal: controller.signal,
 		});
 		const elapsed = Date.now() - start;

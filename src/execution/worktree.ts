@@ -153,10 +153,7 @@ export function findWorktreeTaskCwdConflict(
 	return undefined;
 }
 
-export function formatWorktreeTaskCwdConflict(
-	conflict: WorktreeTaskCwdConflict,
-	sharedCwd: string,
-): string {
+export function formatWorktreeTaskCwdConflict(conflict: WorktreeTaskCwdConflict, sharedCwd: string): string {
 	return `worktree isolation uses the shared cwd (${sharedCwd}); task ${conflict.index + 1} (${conflict.agent}) sets cwd to ${conflict.cwd}. Remove task-level cwd overrides or disable worktree.`;
 }
 
@@ -190,9 +187,7 @@ function buildWorktreePath(runId: string, index: number, rootDir?: string): stri
  */
 function resolveConfiguredWorktreeRoot(repoRoot: string, configuredRoot: string | undefined): string | undefined {
 	if (!configuredRoot) return undefined;
-	return path.isAbsolute(configuredRoot)
-		? path.resolve(configuredRoot)
-		: path.resolve(repoRoot, configuredRoot);
+	return path.isAbsolute(configuredRoot) ? path.resolve(configuredRoot) : path.resolve(repoRoot, configuredRoot);
 }
 
 /**
@@ -210,11 +205,10 @@ function resolveCanonicalPath(targetPath: string): string {
 	for (;;) {
 		try {
 			const canonicalBase = fs.realpathSync(candidate);
-			return pendingSegments.length === 0
-				? canonicalBase
-				: path.join(canonicalBase, ...pendingSegments.reverse());
+			return pendingSegments.length === 0 ? canonicalBase : path.join(canonicalBase, ...pendingSegments.reverse());
 		} catch (error) {
-			const code = error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : undefined;
+			const code =
+				error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : undefined;
 			if (code !== "ENOENT") return candidate;
 		}
 
@@ -319,10 +313,7 @@ function parseWorktreeSetupHookOutput(rawStdout: string): WorktreeSetupHookOutpu
 	return parsed as WorktreeSetupHookOutput;
 }
 
-function runWorktreeSetupHook(
-	hook: ResolvedWorktreeSetupHook,
-	input: WorktreeSetupHookInput,
-): string[] {
+function runWorktreeSetupHook(hook: ResolvedWorktreeSetupHook, input: WorktreeSetupHookInput): string[] {
 	const result = spawnSync(hook.hookPath, [], {
 		cwd: input.worktreePath,
 		encoding: "utf-8",
@@ -377,9 +368,7 @@ function assertProjectLocalRootIgnored(repoRoot: string, rootDir: string): void 
 	const canonicalRootDir = resolveCanonicalPath(rootDir);
 	const relativeRoot = path.relative(canonicalRepoRoot, canonicalRootDir);
 	const isProjectLocal =
-		relativeRoot === ""
-		|| relativeRoot === "."
-		|| (!relativeRoot.startsWith("..") && !path.isAbsolute(relativeRoot));
+		relativeRoot === "" || relativeRoot === "." || (!relativeRoot.startsWith("..") && !path.isAbsolute(relativeRoot));
 	if (!isProjectLocal) return;
 	const gitRelativeRoot = (relativeRoot || ".").split(path.sep).join("/");
 	const result = runGit(repoRoot, ["check-ignore", "-q", "--", gitRelativeRoot]);
@@ -450,8 +439,16 @@ function createSingleWorktree(
 			syntheticPaths,
 		};
 	} catch (error) {
-		try { runGitChecked(toplevel, ["worktree", "remove", "--force", worktreePath]); } catch { /* empty */ }
-		try { runGitChecked(toplevel, ["branch", "-D", branch]); } catch { /* empty */ }
+		try {
+			runGitChecked(toplevel, ["worktree", "remove", "--force", worktreePath]);
+		} catch {
+			/* empty */
+		}
+		try {
+			runGitChecked(toplevel, ["branch", "-D", branch]);
+		} catch {
+			/* empty */
+		}
 		throw error;
 	}
 }
@@ -459,7 +456,13 @@ function createSingleWorktree(
 function removeSyntheticPath(worktree: WorktreeInfo, syntheticPath: string): void {
 	const resolved = path.resolve(worktree.path, syntheticPath);
 	const relative = path.relative(worktree.path, resolved);
-	if (!relative || relative === "." || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+	if (
+		!relative ||
+		relative === "." ||
+		relative === ".." ||
+		relative.startsWith(`..${path.sep}`) ||
+		path.isAbsolute(relative)
+	) {
 		return;
 	}
 
@@ -559,12 +562,22 @@ function captureWorktreeDiff(
 function writeEmptyPatch(patchPath: string): void {
 	try {
 		fs.writeFileSync(patchPath, "", "utf-8");
-	} catch { /* empty */ }
+	} catch {
+		/* empty */
+	}
 }
 
 function cleanupSingleWorktree(repoCwd: string, worktree: WorktreeInfo): void {
-	try { runGitChecked(repoCwd, ["worktree", "remove", "--force", worktree.path]); } catch { /* empty */ }
-	try { runGitChecked(repoCwd, ["branch", "-D", worktree.branch]); } catch { /* empty */ }
+	try {
+		runGitChecked(repoCwd, ["worktree", "remove", "--force", worktree.path]);
+	} catch {
+		/* empty */
+	}
+	try {
+		runGitChecked(repoCwd, ["branch", "-D", worktree.branch]);
+	} catch {
+		/* empty */
+	}
 }
 
 function hasWorktreeChanges(diff: WorktreeDiff): boolean {
@@ -581,7 +594,12 @@ function hasWorktreeChanges(diff: WorktreeDiff): boolean {
  * @returns Worktree setup metadata for downstream execution and cleanup.
  * @throws {Error} When the repository is dirty, the root policy is invalid, or git setup fails.
  */
-export function createWorktrees(cwd: string, runId: string, count: number, options?: CreateWorktreesOptions): WorktreeSetup {
+export function createWorktrees(
+	cwd: string,
+	runId: string,
+	count: number,
+	options?: CreateWorktreesOptions,
+): WorktreeSetup {
 	const repo = resolveRepoState(cwd);
 	const rootDir = resolveConfiguredWorktreeRoot(repo.toplevel, options?.rootDir);
 	const setupHook = resolveWorktreeSetupHook(repo.toplevel, options?.setupHook);
@@ -596,16 +614,18 @@ export function createWorktrees(cwd: string, runId: string, count: number, optio
 
 	try {
 		for (let index = 0; index < count; index++) {
-			worktrees.push(createSingleWorktree(
-				repo.toplevel,
-				repo.cwdRelative,
-				runId,
-				index,
-				repo.baseCommit,
-				setupHook,
-				options?.agents?.[index],
-				rootDir,
-			));
+			worktrees.push(
+				createSingleWorktree(
+					repo.toplevel,
+					repo.cwdRelative,
+					runId,
+					index,
+					repo.baseCommit,
+					setupHook,
+					options?.agents?.[index],
+					rootDir,
+				),
+			);
 		}
 	} catch (error) {
 		cleanupWorktrees({
@@ -650,7 +670,11 @@ export function cleanupWorktrees(setup: WorktreeSetup): void {
 	for (let index = setup.worktrees.length - 1; index >= 0; index--) {
 		cleanupSingleWorktree(setup.cwd, setup.worktrees[index]);
 	}
-	try { runGitChecked(setup.cwd, ["worktree", "prune"]); } catch { /* empty */ }
+	try {
+		runGitChecked(setup.cwd, ["worktree", "prune"]);
+	} catch {
+		/* empty */
+	}
 }
 
 export function formatWorktreeDiffSummary(diffs: WorktreeDiff[]): string {

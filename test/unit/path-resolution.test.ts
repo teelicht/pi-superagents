@@ -7,11 +7,12 @@
  * - preserve existing path resolution behavior during the src-layout refactor
  */
 
-import { after, before, describe, test } from "node:test";
 import * as assert from "node:assert";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { after, before, describe, test } from "node:test";
+
 type AgentScope = "project" | "user" | "both";
 
 interface DiscoveredAgent {
@@ -27,12 +28,8 @@ interface ResolvedSkill {
 	path: string;
 }
 
-let discoverAgents:
-	| ((cwd: string, scope: AgentScope) => AgentDiscoveryResult)
-	| undefined;
-let resolveSkillPath:
-	| ((skillName: string, cwd: string) => ResolvedSkill | null | undefined)
-	| undefined;
+let discoverAgents: ((cwd: string, scope: AgentScope) => AgentDiscoveryResult) | undefined;
+let resolveSkillPath: ((skillName: string, cwd: string) => ResolvedSkill | null | undefined) | undefined;
 let clearSkillCache: (() => void) | undefined;
 let discoverAvailableSkills:
 	| ((cwd: string) => Array<{ name: string; source: string; description?: string }>)
@@ -88,7 +85,10 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 
 		const skillsDir = path.join(cwdDir, ".agents", "skills");
 		fs.mkdirSync(skillsDir, { recursive: true });
-		fs.writeFileSync(path.join(skillsDir, "test-skill-1.md"), "---\nname: test-skill-1\ndescription: test desc\n---\nSkill content");
+		fs.writeFileSync(
+			path.join(skillsDir, "test-skill-1.md"),
+			"---\nname: test-skill-1\ndescription: test desc\n---\nSkill content",
+		);
 
 		clearSkillCache!();
 		const resolved = resolveSkillPath!("test-skill-1", cwdDir);
@@ -105,7 +105,10 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 
 		const userSkillsDir = path.join(fakeUserAgentsDir, "skills");
 		fs.mkdirSync(userSkillsDir, { recursive: true });
-		fs.writeFileSync(path.join(userSkillsDir, "test-skill-2.md"), "---\nname: test-skill-2\ndescription: test desc\n---\nSkill content");
+		fs.writeFileSync(
+			path.join(userSkillsDir, "test-skill-2.md"),
+			"---\nname: test-skill-2\ndescription: test desc\n---\nSkill content",
+		);
 
 		clearSkillCache!();
 		const resolved = resolveSkillPath!("test-skill-2", cwdDir);

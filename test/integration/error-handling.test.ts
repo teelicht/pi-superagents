@@ -7,20 +7,10 @@
  * Requires pi packages for execution tests. Skips gracefully if unavailable.
  */
 
-import { describe, it, before, after, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import * as path from "node:path";
+import { after, afterEach, before, beforeEach, describe, it } from "node:test";
 import type { MockPi } from "../support/helpers.ts";
-import {
-	createMockPi,
-	createTempDir,
-	removeTempDir,
-	makeAgentConfigs,
-	makeAgent,
-	makeMinimalCtx,
-	events,
-	tryImport,
-} from "../support/helpers.ts";
+import { createMockPi, createTempDir, events, makeAgentConfigs, removeTempDir, tryImport } from "../support/helpers.ts";
 
 // Top-level await
 const utils = await tryImport<any>("./src/shared/utils.ts");
@@ -218,7 +208,7 @@ void describe("runSync error handling", { skip: !piAvailable ? "pi packages not 
 		const start = Date.now();
 		setTimeout(() => controller.abort(), 200);
 
-		const result = await runSync(tempDir, agents, "slow", "Slow task", {
+		const _result = await runSync(tempDir, agents, "slow", "Slow task", {
 			signal: controller.signal,
 		});
 		const elapsed = Date.now() - start;

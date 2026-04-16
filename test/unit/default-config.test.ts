@@ -127,7 +127,10 @@ void describe("config templates", () => {
 
 	void it("includes illustrative slash command presets in config.example.json", () => {
 		const config = readConfigFile("config.example.json");
-		const commands = (config.superagents as Record<string, unknown>).commands as Record<string, Record<string, unknown>>;
+		const commands = (config.superagents as Record<string, unknown>).commands as Record<
+			string,
+			Record<string, unknown>
+		>;
 		assert.deepEqual(commands["sp-lean"], {
 			description: "Run Superpowers lean: no subagents, no TDD",
 			entrySkill: "using-superpowers",
@@ -144,7 +147,7 @@ void describe("config templates", () => {
 	void it("includes illustrative skill overlay examples in config.example.json", () => {
 		const config = readConfigFile("config.example.json");
 		const overlays = (config.superagents as Record<string, unknown>).skillOverlays as Record<string, string[]>;
-		assert.deepEqual(overlays["brainstorming"], ["react-native-best-practices"]);
+		assert.deepEqual(overlays.brainstorming, ["react-native-best-practices"]);
 		assert.deepEqual(overlays["writing-plans"], ["supabase-postgres-best-practices"]);
 	});
 

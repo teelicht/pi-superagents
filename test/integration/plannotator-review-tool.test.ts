@@ -43,7 +43,10 @@ function createEventBus() {
 			existing.push(handler);
 			handlers.set(event, existing);
 			return () => {
-				handlers.set(event, (handlers.get(event) ?? []).filter((entry) => entry !== handler));
+				handlers.set(
+					event,
+					(handlers.get(event) ?? []).filter((entry) => entry !== handler),
+				);
 			};
 		},
 		emit(event: string, data: unknown) {
@@ -231,10 +234,7 @@ void describe("superpowers_plan_review tool", () => {
 			createCtx([]),
 		);
 
-		assert.equal(
-			result.content[0].text,
-			`Plannotator requested plan changes:\nAdd rollback steps.`,
-		);
+		assert.equal(result.content[0].text, `Plannotator requested plan changes:\nAdd rollback steps.`);
 	});
 
 	void it("fails softly when Plannotator reports unavailable and notifies once", async () => {
@@ -292,10 +292,7 @@ void describe("superpowers_plan_review tool", () => {
 		assert.equal(notifications.length, 1);
 		assert.equal(notifications[0]?.type, "warning");
 		assert.match(notifications[0]?.message ?? "", /Listener explosion/);
-		assert.match(
-			result.content[0].text,
-			/Continue with the normal text-based Superpowers approval flow/,
-		);
+		assert.match(result.content[0].text, /Continue with the normal text-based Superpowers approval flow/);
 	});
 });
 
@@ -366,7 +363,10 @@ void describe("superpowers_spec_review tool", () => {
 			createCtx([]),
 		);
 
-		assert.equal(result.content[0].text, "Plannotator approved the saved spec review. Continue the Superpowers workflow.");
+		assert.equal(
+			result.content[0].text,
+			"Plannotator approved the saved spec review. Continue the Superpowers workflow.",
+		);
 	});
 
 	void it("returns saved-spec rejection feedback for revision", async () => {
@@ -482,9 +482,6 @@ void describe("superpowers_spec_review tool", () => {
 		assert.equal(notifications.length, 1);
 		assert.equal(notifications[0]?.type, "warning");
 		assert.match(notifications[0]?.message ?? "", /Spec listener explosion/);
-		assert.match(
-			result.content[0].text,
-			/Continue with the normal text-based Superpowers review flow/,
-		);
+		assert.match(result.content[0].text, /Continue with the normal text-based Superpowers review flow/);
 	});
 });

@@ -167,7 +167,6 @@ export interface ArtifactConfig {
 	cleanupDays: number;
 }
 
-
 export interface ConfigGateState {
 	blocked: boolean;
 	diagnostics: ConfigDiagnostic[];
@@ -187,8 +186,8 @@ export interface SubagentState {
 // Display
 // ============================================================================
 
-export type DisplayItem = 
-	| { type: "text"; text: string } 
+export type DisplayItem =
+	| { type: "text"; text: string }
 	| { type: "tool"; name: string; args: Record<string, unknown> };
 
 // ============================================================================
@@ -276,7 +275,6 @@ export interface SuperpowersWorktreeSettings {
 	root?: string | null;
 }
 
-
 export interface SuperpowersSettings {
 	commands?: Record<string, SuperpowersCommandPreset>;
 	modelTiers?: Record<string, ModelTierSetting>;
@@ -336,9 +334,11 @@ export function normalizeMaxSubagentDepth(value: unknown): number | undefined {
 }
 
 export function resolveCurrentMaxSubagentDepth(configMaxDepth?: number): number {
-	return normalizeMaxSubagentDepth(process.env.PI_SUBAGENT_MAX_DEPTH)
-		?? normalizeMaxSubagentDepth(configMaxDepth)
-		?? DEFAULT_SUBAGENT_MAX_DEPTH;
+	return (
+		normalizeMaxSubagentDepth(process.env.PI_SUBAGENT_MAX_DEPTH) ??
+		normalizeMaxSubagentDepth(configMaxDepth) ??
+		DEFAULT_SUBAGENT_MAX_DEPTH
+	);
 }
 
 export function resolveChildMaxSubagentDepth(parentMaxDepth: number, agentMaxDepth?: number): number {

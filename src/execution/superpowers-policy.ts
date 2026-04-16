@@ -7,13 +7,8 @@
  * - add TDD behavior for the implementer role when requested
  */
 
-import type {
-	ExecutionRole,
-	ExtensionConfig,
-	ModelTierConfig,
-	WorkflowMode,
-} from "../shared/types.ts";
 import { DELEGATION_TOOLS, READ_ONLY_TOOLS } from "../shared/tool-registry.ts";
+import type { ExecutionRole, ExtensionConfig, ModelTierConfig, WorkflowMode } from "../shared/types.ts";
 import { getSuperagentSettings } from "./superagents-config.ts";
 
 export interface ResolvedRoleModel {

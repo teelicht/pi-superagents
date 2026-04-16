@@ -87,5 +87,4 @@ void describe("superagents config helpers", () => {
 			},
 		);
 	});
-
 });

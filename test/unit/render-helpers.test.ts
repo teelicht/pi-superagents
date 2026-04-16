@@ -7,8 +7,8 @@
  * - verify framed panel rendering uses theme border/background APIs
  */
 
-import { test } from "node:test";
 import * as assert from "node:assert/strict";
+import { test } from "node:test";
 import { formatScrollInfo, pad, renderFramedPanel } from "../../src/ui/render-helpers.ts";
 
 function createRecordingTheme() {
@@ -43,7 +43,13 @@ void test("formatScrollInfo returns correct labels", () => {
 
 void test("renderFramedPanel wraps content in a stable green frame with background", () => {
 	const { calls, theme } = createRecordingTheme();
-	const lines = renderFramedPanel("Subagents Status", ["Active", "> sp-implementer | OK"], 32, theme as never, "q close");
+	const lines = renderFramedPanel(
+		"Subagents Status",
+		["Active", "> sp-implementer | OK"],
+		32,
+		theme as never,
+		"q close",
+	);
 
 	assert.deepStrictEqual(lines, [
 		"┌──────────────────────────────┐",

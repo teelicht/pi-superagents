@@ -47,19 +47,10 @@ interface SubagentParamsSchema {
 	};
 }
 
-interface StatusParamsSchema {
-	properties?: {
-		action?: {
-			type?: string;
-			description?: string;
-		};
-	};
-}
-
 let SubagentParams: SubagentParamsSchema | undefined;
 let available = true;
 try {
-	({ SubagentParams } = await import("../../src/shared/schemas.ts") as { SubagentParams: SubagentParamsSchema });
+	({ SubagentParams } = (await import("../../src/shared/schemas.ts")) as { SubagentParams: SubagentParamsSchema });
 } catch {
 	// Skip in environments that do not install typebox.
 	available = false;
@@ -87,7 +78,10 @@ void describe("SubagentParams schema", { skip: !available ? "typebox not availab
 	void it("includes agent field with superpowers role description", () => {
 		const agentSchema = SubagentParams?.properties?.agent;
 		assert.ok(agentSchema, "agent schema should exist");
-		assert.match(String((agentSchema as { description?: string })?.description ?? ""), /sp-recon|sp-implementer|superpowers role/i);
+		assert.match(
+			String((agentSchema as { description?: string })?.description ?? ""),
+			/sp-recon|sp-implementer|superpowers role/i,
+		);
 	});
 
 	void it("includes task field", () => {
@@ -138,5 +132,4 @@ void describe("SubagentParams schema", { skip: !available ? "typebox not availab
 		const itemCount = tasksSchema?.items?.properties?.count;
 		assert.equal(itemCount, undefined, "tasks[].count should not exist");
 	});
-
 });

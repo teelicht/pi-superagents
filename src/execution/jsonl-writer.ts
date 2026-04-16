@@ -38,23 +38,34 @@ export interface JsonlWriter {
 export function createJsonlWriter(
 	filePath: string | undefined,
 	source: DrainableSource,
-	deps: JsonlWriterDeps = { /* empty */ },
+	deps: JsonlWriterDeps = {
+		/* empty */
+	},
 ): JsonlWriter {
 	if (!filePath) {
 		return {
-			writeLine() { /* empty */ },
-			async close() { /* empty */ },
+			writeLine() {
+				/* empty */
+			},
+			async close() {
+				/* empty */
+			},
 		};
 	}
 
-	const createWriteStream = deps.createWriteStream ?? ((targetPath: string) => fs.createWriteStream(targetPath, { flags: "a" }));
+	const createWriteStream =
+		deps.createWriteStream ?? ((targetPath: string) => fs.createWriteStream(targetPath, { flags: "a" }));
 	let stream: JsonlWriteStream | undefined;
 	try {
 		stream = createWriteStream(filePath);
 	} catch {
 		return {
-			writeLine() { /* empty */ },
-			async close() { /* empty */ },
+			writeLine() {
+				/* empty */
+			},
+			async close() {
+				/* empty */
+			},
 		};
 	}
 
@@ -80,7 +91,9 @@ export function createJsonlWriter(
 						if (!closed) source.resume();
 					});
 				}
-			} catch { /* empty */ }
+			} catch {
+				/* empty */
+			}
 		},
 		async close() {
 			if (!stream || closed) return;

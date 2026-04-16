@@ -40,10 +40,14 @@ export function resolvePiPackageRoot(): string | undefined {
 			try {
 				const pkg = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf-8")) as { name?: unknown };
 				if (pkg.name === "@mariozechner/pi-coding-agent") return dir;
-			} catch { /* empty */ }
+			} catch {
+				/* empty */
+			}
 			dir = path.dirname(dir);
 		}
-	} catch { /* empty */ }
+	} catch {
+		/* empty */
+	}
 	return undefined;
 }
 
@@ -128,7 +132,11 @@ function normalizePath(filePath: string): string {
  * @param deps — optional dependency injection for testing
  * @returns Absolute path to the Pi CLI script, or `undefined` if not resolvable
  */
-export function resolveWindowsPiCliScript(deps: PiSpawnDeps = { /* empty */ }): string | undefined {
+export function resolveWindowsPiCliScript(
+	deps: PiSpawnDeps = {
+		/* empty */
+	},
+): string | undefined {
 	const existsSync = deps.existsSync ?? fs.existsSync;
 	const readFileSync = deps.readFileSync ?? ((filePath, encoding) => fs.readFileSync(filePath, encoding));
 	const argv1 = deps.argv1 ?? process.argv[1];
@@ -143,19 +151,28 @@ export function resolveWindowsPiCliScript(deps: PiSpawnDeps = { /* empty */ }): 
 
 	// Strategy 2: resolve via the installed package's bin field.
 	try {
-		const resolvePackageJson = deps.resolvePackageJson ?? (() => {
-			const root = deps.piPackageRoot ?? resolvePiPackageRoot();
-			if (root) return path.join(root, "package.json");
-			return require.resolve("@mariozechner/pi-coding-agent/package.json");
-		});
+		const resolvePackageJson =
+			deps.resolvePackageJson ??
+			(() => {
+				const root = deps.piPackageRoot ?? resolvePiPackageRoot();
+				if (root) return path.join(root, "package.json");
+				return require.resolve("@mariozechner/pi-coding-agent/package.json");
+			});
 		const packageJsonPath = resolvePackageJson();
 		const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8")) as {
 			bin?: string | Record<string, string>;
 		};
 		const binField = packageJson.bin;
-		const binPath = typeof binField === "string"
-			? binField
-			: binField?.pi ?? Object.values(binField ?? { /* empty */ })[0];
+		const binPath =
+			typeof binField === "string"
+				? binField
+				: (binField?.pi ??
+					Object.values(
+						binField ??
+							{
+								/* empty */
+							},
+					)[0]);
 		if (!binPath) return undefined;
 		const candidate = normalizePath(path.resolve(path.dirname(packageJsonPath), binPath));
 		if (isRunnableNodeScript(candidate, existsSync)) {
@@ -180,7 +197,12 @@ export function resolveWindowsPiCliScript(deps: PiSpawnDeps = { /* empty */ }): 
  * @param deps  — optional dependency injection for testing
  * @returns A `{ command, args }` tuple suitable for `child_process.spawn`
  */
-export function getPiSpawnCommand(args: string[], deps: PiSpawnDeps = { /* empty */ }): PiSpawnCommand {
+export function getPiSpawnCommand(
+	args: string[],
+	deps: PiSpawnDeps = {
+		/* empty */
+	},
+): PiSpawnCommand {
 	const piCliPath = resolveWindowsPiCliScript(deps);
 	if (piCliPath) {
 		return {
