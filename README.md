@@ -31,11 +31,11 @@ pi remove npm:@teelicht/pi-superagents
 
 | Command                 | Description                                                                 |
 | ----------------------- | --------------------------------------------------------------------------- |
-| `/sp-implement <task>`  | Run an implementation task through the Superpowers flow                     |
 | `/sp-brainstorm <task>` | Brainstorm a task and save a spec, optionally review it with Plannotator UI |
-| `/sp-plan <task>`      | Plan a task with optional Plannotator plan review                          |
+| `/sp-plan <task>`       | Plan a task with optional Plannotator plan review                           |
+| `/sp-implement <task>`  | Run an implementation task through the Superpowers flow                     |
 | `/subagents-status`     | Open active and recent subagent run status                                  |
-| `/sp-settings`          | Open Superpowers and subagent workflow settings                             |
+| `/sp-settings`          | Open superagents settings                                                   |
 
 ### Custom Commands
 
@@ -46,7 +46,7 @@ Define your own slash commands with preset workflow options in `config.json`. Ex
 
 See [Configuration](docs/configuration.md#custom-commands) for the full preset schema and inheritance rules.
 
-### Superpowers Workflow
+### Agents
 
 The `/sp-implement` command activates a structured workflow for task execution with role-specific agents, model tiers, and built-in quality gates.
 
@@ -56,22 +56,7 @@ The `/sp-implement` command activates a structured workflow for task execution w
 4. **Review** (`sp-code-review`): Automated review of changes against project standards.
 5. **Debug** (`sp-debug`): Root cause analysis and fix verification for regressions.
 
-```text
-/sp-implement fix the auth regression
-/sp-implement tdd implement the cache invalidation task
-/sp-implement direct update the Expo config
-/sp-implement tdd review the release branch --fork
-```
-
-- **`tdd`** (default): Uses the `test-driven-development` skill for the implementation phase.
-- **`direct`**: Traditional implementation loop with verification and review.
-
-### Background & Forked Execution
-
-- `--bg`: Run in the background. Check status with `/subagents-status` or `Ctrl+Option+S` on macOS (`ctrl+alt+s` in Pi keybinding notation).
-- `--fork`: Run with `context: "fork"` (branched session from parent's current leaf).
-
-## Configuration
+## Configuration & Documentation
 
 On install, `pi-superagents` creates an empty user override file:
 
@@ -79,11 +64,7 @@ On install, `pi-superagents` creates an empty user override file:
 ~/.pi/agent/extensions/subagent/config.json
 ```
 
-See [Configuration](docs/configuration.md) for details on model tiers, custom tiers, and worktree settings.
-
-## Documentation
-
 - **[Configuration](docs/configuration.md)** — Workflow, settings, model tiers, custom tiers, commands, and agent overrides.
-- **[Worktree Isolation](docs/worktrees.md)** — Git worktree setup, requirements, and hooks.
+- **[Worktree Isolation](docs/worktrees.md)** — Git worktree setup.
 - **[Parameters API](docs/parameters.md)** — Full parameter reference for the `subagent` tool.
 - **[Skills Reference](docs/skills.md)** — Skill locations, injection, and frontmatter.
