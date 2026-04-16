@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.0] - 2026-04-15
+
+- **Major change of how commands are registered and executed**
+  - Commands now all in the config file
+  - Settings are now command-specific
+
 ## [0.4.1] - 2026-04-14
 
 - **Fixes:**
