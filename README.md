@@ -1,11 +1,11 @@
 # @teelicht/pi-superagents
 
-Pi extension for Superpowers workflows: structured delegation to specialized role agents for recon, research, implementation, review, and debugging. This was originally a fork of [pi-subagents](https://github.com/nicobailon/pi-subagents) but moved from a very flexible subagent implementation to an opinionated tool to integrate the superpowers skills with some of my own ideas.
+Pi extension for [superpowers](https://skills.sh/obra/superpowers) workflows using subagents. This was originally a fork of [pi-subagents](https://github.com/nicobailon/pi-subagents) but moved from a very flexible subagent implementation to an opinionated tool to integrate the superpowers skills, adding a level of configurability.
 
 ## Features
 
 - **Superpowers Workflow**: Proven pipeline for robust AI-assisted development.
-- **Role-Specific Agents**: Purpose-built agents for every phase of the development lifecycle.
+- **Role-Specific Agents**: Thin agents-layer for every phase of the development lifecycle.
 - **Model Tiers**: Abstract model selection (cheap, balanced, max) for each agent to reduce costs and to utilize AI models according to their strengths. One model can be configured per tier. Custom tiers are possible.
 - **Subagent Execution**: Automatically spawns sub-agents (setting).
 - **Worktree Isolation**: Optional git worktree creation for parallel tasks to prevent filesystem conflicts (setting).
