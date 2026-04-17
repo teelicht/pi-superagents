@@ -134,7 +134,7 @@ void describe("superpowers_plan_review tool", () => {
 		fs.mkdirSync(extensionDir, { recursive: true });
 		fs.writeFileSync(
 			path.join(extensionDir, "config.json"),
-			JSON.stringify({ superagents: { usePlannotator: true } }),
+			JSON.stringify({ superagents: { commands: { "sp-plan": { usePlannotator: true } } } }),
 			"utf-8",
 		);
 		const module = await import("../../src/extension/index.ts");
@@ -186,7 +186,11 @@ void describe("superpowers_plan_review tool", () => {
 		process.env.HOME = home;
 		const extensionDir = path.join(home, ".pi", "agent", "extensions", "subagent");
 		fs.mkdirSync(extensionDir, { recursive: true });
-		fs.writeFileSync(path.join(extensionDir, "config.json"), JSON.stringify({}), "utf-8");
+		fs.writeFileSync(
+			path.join(extensionDir, "config.json"),
+			JSON.stringify({ superagents: { commands: { "sp-plan": { usePlannotator: false } } } }),
+			"utf-8",
+		);
 		const module = await import("../../src/extension/index.ts");
 		const mock = createPiMock();
 		module.default(mock.pi as never);
@@ -320,7 +324,7 @@ void describe("superpowers_spec_review tool", () => {
 		fs.mkdirSync(extensionDir, { recursive: true });
 		fs.writeFileSync(
 			path.join(extensionDir, "config.json"),
-			JSON.stringify({ superagents: { usePlannotator: true } }),
+			JSON.stringify({ superagents: { commands: { "sp-brainstorm": { usePlannotator: true } } } }),
 			"utf-8",
 		);
 		const module = await import("../../src/extension/index.ts");
@@ -405,7 +409,11 @@ void describe("superpowers_spec_review tool", () => {
 		process.env.HOME = home;
 		const extensionDir = path.join(home, ".pi", "agent", "extensions", "subagent");
 		fs.mkdirSync(extensionDir, { recursive: true });
-		fs.writeFileSync(path.join(extensionDir, "config.json"), JSON.stringify({}), "utf-8");
+		fs.writeFileSync(
+			path.join(extensionDir, "config.json"),
+			JSON.stringify({ superagents: { commands: { "sp-brainstorm": { usePlannotator: false } } } }),
+			"utf-8",
+		);
 		const module = await import("../../src/extension/index.ts");
 		const mock = createPiMock();
 		module.default(mock.pi as never);

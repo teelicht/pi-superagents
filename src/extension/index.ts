@@ -204,6 +204,26 @@ function createTextToolResult(text: string): AgentToolResult<Details> {
 }
 
 /**
+ * Resolve the built-in command that owns a supported direct skill entry.
+ *
+ * Inputs/outputs:
+ * - accepts a Superpowers entry skill name from direct skill interception
+ * - returns the matching built-in command preset name, when one exists
+ *
+ * Invariants:
+ * - intercepted brainstorming uses the same policy as `/sp-brainstorm`
+ * - intercepted writing-plans uses the same policy as `/sp-plan`
+ *
+ * @param skillName Supported Superpowers entry skill name.
+ * @returns Matching built-in slash command name or undefined.
+ */
+function commandNameForInterceptedSkill(skillName: string): string | undefined {
+	if (skillName === "brainstorming") return "sp-brainstorm";
+	if (skillName === "writing-plans") return "sp-plan";
+	return undefined;
+}
+
+/**
  * Register the Superpowers extension surface with Pi.
  *
  * @param pi Extension API used to register tools, commands, and lifecycle hooks.
@@ -273,6 +293,12 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 		params: { planContent: string; planFilePath?: string },
 		ctx: ExtensionContext,
 	): Promise<AgentToolResult<Details>> {
+		if (config.superagents?.commands?.["sp-plan"]?.usePlannotator !== true) {
+			return createTextToolResult(
+				"Plannotator review is disabled in config. Continue with the normal text-based Superpowers approval flow.",
+			);
+		}
+
 		try {
 			const result = await requestPlannotatorPlanReview({
 				events: pi.events,
@@ -323,6 +349,12 @@ Continue with the normal text-based Superpowers approval flow.`,
 		params: { specContent: string; specFilePath?: string },
 		ctx: ExtensionContext,
 	): Promise<AgentToolResult<Details>> {
+		if (config.superagents?.commands?.["sp-brainstorm"]?.usePlannotator !== true) {
+			return createTextToolResult(
+				"Plannotator saved spec review is disabled in config. Continue with the normal text-based Superpowers review flow.",
+			);
+		}
+
 		try {
 			// Reuse the plan-review bridge internally; map specContent to planContent
 			const result = await requestPlannotatorPlanReview({
@@ -466,7 +498,8 @@ Bounded role agents are not allowed to call subagents.`,
 		// Resolve the Superpowers run profile with intercepted-skill entry
 		const profile = resolveSuperpowersRunProfile({
 			config,
-			commandName: `skill:${parsedSkillCommand.skillName}`,
+			commandName:
+				commandNameForInterceptedSkill(parsedSkillCommand.skillName) ?? `skill:${parsedSkillCommand.skillName}`,
 			parsed: parsedWorkflowArgs,
 			entrySkill: parsedSkillCommand.skillName,
 		});

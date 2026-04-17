@@ -48,4 +48,16 @@ void describe("package.json manifest", () => {
 			assert.ok(fs.existsSync(absolutePath), `${extensionPath} should exist`);
 		}
 	});
+
+	void it("points package metadata at the release repository", () => {
+		const packageJson = readPackageJson();
+		assert.deepEqual(packageJson.repository, {
+			type: "git",
+			url: "git+https://github.com/teelicht/pi-superagents.git",
+		});
+		assert.equal(packageJson.homepage, "https://github.com/teelicht/pi-superagents#readme");
+		assert.deepEqual(packageJson.bugs, {
+			url: "https://github.com/teelicht/pi-superagents/issues",
+		});
+	});
 });
