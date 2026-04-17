@@ -80,6 +80,8 @@ export async function runSync(
 		useTestDrivenDevelopment,
 		skills: configuredSkills,
 	});
+	const resolvedSkillNames = resolvedSkills.length > 0 ? resolvedSkills.map((s) => s.name) : undefined;
+	const skillsWarning = missingSkills.length > 0 ? `Skills not found: ${missingSkills.join(", ")}` : undefined;
 
 	let systemPrompt = agent.systemPrompt?.trim() || "";
 	if (resolvedSkills.length > 0) {
@@ -113,8 +115,8 @@ export async function runSync(
 		messages: [],
 		usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
 		model: modelArg,
-		skills: resolvedSkills.length > 0 ? resolvedSkills.map((s) => s.name) : undefined,
-		skillsWarning: missingSkills.length > 0 ? `Skills not found: ${missingSkills.join(", ")}` : undefined,
+		skills: resolvedSkillNames,
+		skillsWarning,
 	};
 
 	const progress: AgentProgress = {
@@ -122,7 +124,7 @@ export async function runSync(
 		agent: agentName,
 		status: "running",
 		task,
-		skills: resolvedSkills.length > 0 ? resolvedSkills.map((s) => s.name) : undefined,
+		skills: resolvedSkillNames,
 		recentTools: [],
 		recentOutput: [],
 		toolCount: 0,
@@ -132,7 +134,7 @@ export async function runSync(
 
 	const startTime = Date.now();
 	const historyId = options.runId ? `${options.runId}-${agentName}-${index ?? 0}` : `run-${Date.now()}-${agentName}`;
-	globalRunHistory.startRun(historyId, { agent: agentName, task });
+	globalRunHistory.startRun(historyId, { agent: agentName, task, skills: resolvedSkillNames, skillsWarning });
 
 	let artifactPathsResult: ArtifactPaths | undefined;
 	let jsonlPath: string | undefined;
@@ -189,6 +191,8 @@ export async function runSync(
 				globalRunHistory.updateRun(historyId, {
 					duration: progress.durationMs,
 					model: result.model,
+					skills: result.skills,
+					skillsWarning: result.skillsWarning,
 					tokens: { total: result.usage.input + result.usage.output },
 				});
 
@@ -401,6 +405,8 @@ export async function runSync(
 	globalRunHistory.updateRun(historyId, {
 		duration: progress.durationMs,
 		model: result.model,
+		skills: result.skills,
+		skillsWarning: result.skillsWarning,
 		tokens: { total: result.usage.input + result.usage.output },
 	});
 	globalRunHistory.finishRun(historyId, result.exitCode === 0 ? "ok" : "error", result.error);

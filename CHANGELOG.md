@@ -6,6 +6,10 @@
 - Added maintainer release documentation for GitHub Releases and npm Trusted Publishing.
 - Updated package and installer repository metadata to point at `teelicht/pi-superagents`.
 
+## [0.5.1] - 2026-04-17
+
+- Show resolved subagent skills and missing-skill warnings in `/subagents-status`, making `skillOverlays` easier to verify during active and recent runs.
+
 ## [0.5.0] - 2026-04-15
 
 - **Major change of how commands are registered and executed**
