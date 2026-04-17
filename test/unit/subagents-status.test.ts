@@ -112,6 +112,26 @@ void test("SubagentsStatusComponent renders selected step details", () => {
 	component.dispose();
 });
 
+void test("SubagentsStatusComponent renders selected run skill details", () => {
+	const component = new SubagentsStatusComponent(createTuiMock().tui as never, createThemeMock() as never, () => {}, {
+		refreshMs: 60_000,
+		getActiveRuns: () => [],
+		getRecentRuns: () => [
+			createRun({
+				skills: ["test-driven-development", "supabase-postgres-best-practices"],
+				skillsWarning: "Skills not found: missing-skill",
+			} as Partial<RunEntry>),
+		],
+	});
+
+	const rendered = component.render(120).join("\n");
+
+	assert.match(rendered, /Skills:/);
+	assert.match(rendered, /test-driven-development, supabase-postgres-best-practices/);
+	assert.match(rendered, /Skills not found: missing-skill/);
+	component.dispose();
+});
+
 void test("SubagentsStatusComponent closes and disposes safely", () => {
 	let closed = 0;
 	const component = new SubagentsStatusComponent(

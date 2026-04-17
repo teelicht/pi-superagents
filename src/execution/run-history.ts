@@ -19,12 +19,16 @@ export interface RunEntry {
 	duration: number;
 	exit?: number;
 	model?: string;
+	skills?: string[];
+	skillsWarning?: string;
 	tokens?: { total: number };
 	steps?: Array<{
 		index: number;
 		agent: string;
 		status: string;
 		durationMs?: number;
+		skills?: string[];
+		skillsWarning?: string;
 		tokens?: { total: number };
 		error?: string;
 	}>;

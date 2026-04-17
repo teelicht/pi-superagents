@@ -178,12 +178,24 @@ export class SubagentsStatusComponent implements Component {
 			`  Tokens: ${run.tokens ? formatTokens(run.tokens.total) : "0"}`,
 			`  Time:   ${formatDuration(run.duration)}`,
 		];
+		if (run.skills?.length) {
+			lines.push(truncateToWidth(`  Skills: ${run.skills.join(", ")}`, innerWidth));
+		}
+		if (run.skillsWarning) {
+			lines.push(truncateToWidth(`  Skills warning: ${run.skillsWarning}`, innerWidth));
+		}
 		for (const step of run.steps ?? []) {
 			const duration = step.durationMs !== undefined ? ` | ${formatDuration(step.durationMs)}` : "";
 			const tokens = step.tokens ? ` | ${formatTokens(step.tokens.total)} tok` : "";
 			lines.push(
 				truncateToWidth(`  ${step.index + 1}. ${step.agent} | ${step.status}${duration}${tokens}`, innerWidth),
 			);
+			if (step.skills?.length) {
+				lines.push(truncateToWidth(`     skills: ${step.skills.join(", ")}`, innerWidth));
+			}
+			if (step.skillsWarning) {
+				lines.push(truncateToWidth(`     skills warning: ${step.skillsWarning}`, innerWidth));
+			}
 			if (step.error) lines.push(truncateToWidth(`     ${step.error}`, innerWidth));
 		}
 		if (!run.steps || run.steps.length === 0) lines.push(this.theme.fg("dim", "  No step details available."));
