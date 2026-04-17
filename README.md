@@ -10,6 +10,7 @@
 - **Subagent Execution**: Automatically spawns sub-agents (setting).
 - **Worktree Isolation**: Optional git worktree creation for parallel tasks to prevent filesystem conflicts (setting).
 - **Skill Overlays**: Configure additional skills to load alongside entry skills or Superpowers process skills. Entry overlays resolve for the active entry skill; invocation overlays resolve for all Superpowers process skills at session start. See [Configuration](docs/configuration.md#skill-overlays).
+- **Skill Visibility**: `/subagents-status` shows the resolved skills and missing-skill warnings for each subagent run, which helps verify `skillOverlays`.
 - **Plannotator Integration**: Optional event bridge to [Plannotator](https://plannotator.ai/) for browser-based spec/plan review and approval (setting).
 
 ## Installation
@@ -34,7 +35,7 @@ pi remove npm:@teelicht/pi-superagents
 | `/sp-brainstorm <task>` | Brainstorm a task and save a spec, optionally review it with Plannotator UI |
 | `/sp-plan <task>`       | Plan a task with optional Plannotator plan review                           |
 | `/sp-implement <task>`  | Run an implementation task through the Superpowers flow                     |
-| `/subagents-status`     | Open active and recent subagent run status                                  |
+| `/subagents-status`     | Open active and recent subagent run status, including resolved skills       |
 | `/sp-settings`          | Open superagents settings                                                   |
 
 ### Custom Commands
@@ -68,3 +69,4 @@ On install, `pi-superagents` creates an empty user override file:
 - **[Worktree Isolation](docs/worktrees.md)** — Git worktree setup.
 - **[Parameters API](docs/parameters.md)** — Full parameter reference for the `subagent` tool.
 - **[Skills Reference](docs/skills.md)** — Skill locations, injection, and frontmatter.
+- **[Release Process](docs/releases.md)** — Maintainer steps for GitHub Releases and npm Trusted Publishing.

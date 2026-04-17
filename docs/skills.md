@@ -62,3 +62,11 @@ Skills with `scope: root` are orchestration-level skills that should never be de
 ## Missing Skills
 
 For delegated subagent runs, missing skills are reported in the result summary and execution continues with the skills that were found. For root Superpowers entry-skill flows, missing required entry or overlay skills block prompt dispatch so the user can fix the configuration.
+
+## Status Visibility
+
+Open `/subagents-status` and select an active or recent subagent run to see the resolved skill names injected for that run. This includes default agent skills, runtime `skill` overrides, and `skillOverlays`; missing skills are shown as warnings in the selected run details.
+
+## Release Notes
+
+Skill discovery and injection behavior are part of the public extension contract. Before publishing changes to skill paths, frontmatter handling, scope enforcement, or missing-skill behavior, update this reference, `README.md`, and `CHANGELOG.md`, then follow the [Release Process](releases.md).

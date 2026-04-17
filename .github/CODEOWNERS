@@ -1,0 +1,7 @@
+# Default code owners for pi-superagents.
+#
+# Responsibilities:
+# - request maintainer review for all repository changes
+# - keep release, workflow, and package metadata edits visible to the owner
+
+* @teelicht

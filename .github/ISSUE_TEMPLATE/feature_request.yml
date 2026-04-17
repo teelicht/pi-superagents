@@ -1,0 +1,71 @@
+# Feature request issue form for pi-superagents.
+#
+# Responsibilities:
+# - collect clear problem statements and proposed workflow improvements
+# - capture examples for Superpowers, skill, and subagent behavior changes
+# - keep new capability requests scoped to the extension's goals
+
+name: Feature Request
+description: Suggest an improvement or new capability for pi-superagents
+title: "feat: <short description>"
+labels:
+  - enhancement
+  - type:feature
+  - status:needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing an idea. Clear problem statements help keep the extension focused.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem are you trying to solve?
+      placeholder: Describe current pain and why existing behavior is insufficient.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: What would you like pi-superagents to do?
+      placeholder: Describe the behavior, command, configuration, or workflow you propose.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      placeholder: Other approaches you considered and why they fall short.
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example Workflow
+      description: Show a concrete before/after flow if possible.
+      placeholder: |
+        Before:
+        - `/sp-implement ...`
+
+        After:
+        - `/sp-implement ...` with the new behavior
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Who benefits and how often will this be used?
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and discussions
+          required: false
+        - label: This request is scoped to Superpowers workflows, Pi extension behavior, or project documentation
+          required: false
