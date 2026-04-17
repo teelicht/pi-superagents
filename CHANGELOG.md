@@ -9,6 +9,9 @@
 ## [0.5.1] - 2026-04-17
 
 - Show resolved subagent skills and missing-skill warnings in `/subagents-status`, making `skillOverlays` easier to verify during active and recent runs.
+- Fixed direct `/skill:brainstorming` and `/skill:writing-plans` interception so those paths inherit the matching command presets from `/sp-brainstorm` and `/sp-plan`.
+- Fixed Plannotator review tools so per-command `usePlannotator: false` disables the bridge and returns the normal text-review guidance.
+- Updated release-readiness tests for the current command config shape, current subagent tool result contract, and isolated npm sandbox installs.
 
 ## [0.5.0] - 2026-04-15
 

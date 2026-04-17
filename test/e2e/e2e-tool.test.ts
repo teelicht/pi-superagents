@@ -29,6 +29,14 @@ if (available) {
 
 const EXTENSION = path.resolve("src/extension/index.ts");
 
+interface SubagentToolDetails {
+	mode?: string;
+	results?: Array<{
+		exitCode?: number;
+		error?: string;
+	}>;
+}
+
 /**
  * Write test agent definitions as .md files with YAML frontmatter.
  * Agent discovery only reads .md files, not .yaml.
@@ -75,8 +83,10 @@ void describe("subagent tool — validation", { skip: !available ? "pi-test-harn
 
 		const results = t.events.toolResultsFor("subagent");
 		assert.equal(results.length, 1);
-		assert.ok(results[0].isError, "should be an error");
-		assert.ok(results[0].text.includes("Unknown") || results[0].text.includes("nonexistent"));
+		assert.match(results[0].text, /Unknown agent: nonexistent_agent_xyz/);
+		const details = results[0].details as SubagentToolDetails;
+		assert.equal(details.mode, "single");
+		assert.deepEqual(details.results, []);
 	});
 });
 
@@ -134,7 +144,12 @@ void describe(
 
 			const results = t.events.toolResultsFor("subagent");
 			assert.equal(results.length, 1);
-			assert.ok(results[0].isError, "should be an error");
+			assert.match(results[0].text, /Agent crashed hard/);
+			const details = results[0].details as SubagentToolDetails;
+			assert.equal(details.mode, "single");
+			assert.equal(details.results?.length, 1);
+			assert.equal(details.results?.[0]?.exitCode, 1);
+			assert.match(details.results?.[0]?.error ?? "", /Agent crashed hard/);
 		});
 	},
 );

@@ -11,7 +11,11 @@
  */
 
 import assert from "node:assert/strict";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { describe, it } from "node:test";
+import { loadEffectiveConfig } from "../../src/execution/config-validation.ts";
+import type { ExtensionConfig } from "../../src/shared/types.ts";
 
 type EventBus = {
 	on(event: string, handler: (data: unknown) => void): () => void;
@@ -59,25 +63,7 @@ interface RegisterSlashCommandsModule {
 				examplePath?: string;
 			};
 		},
-		config: {
-			superagents?: {
-				useBranches?: boolean;
-				useSubagents?: boolean;
-				useTestDrivenDevelopment?: boolean;
-				usePlannotator?: boolean;
-				commands?: Record<
-					string,
-					{
-						description?: string;
-						useBranches?: boolean;
-						useSubagents?: boolean;
-						useTestDrivenDevelopment?: boolean;
-					}
-				>;
-				worktrees?: { enabled?: boolean };
-				skillOverlays?: Record<string, string[]>;
-			};
-		},
+		config: ExtensionConfig,
 	) => void;
 }
 
@@ -158,6 +144,19 @@ function createPiHarness() {
 	return { commands, shortcuts, userMessages, pi };
 }
 
+/**
+ * Merge a test override with bundled defaults, matching extension startup.
+ *
+ * @param override User-style config override for the test.
+ * @returns Effective extension config.
+ */
+function createEffectiveConfig(override: ExtensionConfig = {}): ExtensionConfig {
+	const defaultConfig = JSON.parse(fs.readFileSync(path.resolve("default-config.json"), "utf-8")) as ExtensionConfig;
+	const result = loadEffectiveConfig(defaultConfig, override);
+	assert.equal(result.blocked, false, result.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
+	return result.config;
+}
+
 function createCommandContext(
 	overrides: Partial<{ hasUI: boolean; custom: (...args: unknown[]) => Promise<unknown>; idle: boolean }> = {},
 ) {
@@ -181,19 +180,19 @@ void describe(
 	() => {
 		void it("registers only Superpowers commands and configured custom commands", () => {
 			const { commands, shortcuts, pi } = createPiHarness();
-			const config = {
+			const config = createEffectiveConfig({
 				superagents: {
 					commands: {
-						review: { description: "Run code review", useSubagents: false },
+						"sp-review": { description: "Run code review", useSubagents: false },
 					},
 				},
-			};
+			});
 			registerSlashCommands!(pi, createState(process.cwd()), config);
 			assert.ok(commands.has("sp-implement"), "expected /sp-implement to be registered");
 			assert.ok(commands.has("sp-brainstorm"), "expected /sp-brainstorm to be registered");
 			assert.ok(commands.has("subagents-status"), "expected /subagents-status to be registered");
 			assert.ok(commands.has("sp-settings"), "expected /sp-settings to be registered");
-			assert.ok(commands.has("review"), "expected /review preset to be registered");
+			assert.ok(commands.has("sp-review"), "expected /sp-review preset to be registered");
 			assert.ok(shortcuts.has("ctrl+alt+s"), "expected ctrl+alt+s shortcut to be registered");
 			assert.ok(!commands.has("superpowers"), "expected /superpowers to NOT be registered");
 			assert.ok(!commands.has("superpowers-status"), "expected /superpowers-status to NOT be registered");
@@ -201,7 +200,7 @@ void describe(
 			assert.ok(!commands.has("chain"), "expected /chain to NOT be registered");
 			assert.ok(!commands.has("parallel"), "expected /parallel to NOT be registered");
 			assert.ok(!commands.has("agents"), "expected /agents to NOT be registered");
-			assert.equal(commands.get("review")!.description, "Run code review");
+			assert.equal(commands.get("sp-review")!.description, "Run code review");
 			assert.match(shortcuts.get("ctrl+alt+s")!.description ?? "", /subagents status/i);
 		});
 
@@ -220,11 +219,19 @@ void describe(
 				},
 			};
 
-			registerSlashCommands!(pi, createState(process.cwd()), {
-				superagents: {
-					usePlannotator: true,
-				},
-			});
+			registerSlashCommands!(
+				pi,
+				createState(process.cwd()),
+				createEffectiveConfig({
+					superagents: {
+						commands: {
+							"sp-implement": {
+								usePlannotator: true,
+							},
+						},
+					},
+				}),
+			);
 			await commands.get("sp-implement")!.handler("tdd implement auth fix", createCommandContext());
 
 			assert.equal(userMessages.length, 1);
@@ -248,7 +255,7 @@ void describe(
 				},
 			};
 
-			registerSlashCommands!(pi, createState(process.cwd()), {});
+			registerSlashCommands!(pi, createState(process.cwd()), createEffectiveConfig());
 			await commands.get("sp-implement")!.handler("tdd implement auth fix", createCommandContext());
 
 			assert.equal(userMessages.length, 1);
@@ -256,7 +263,7 @@ void describe(
 			assert.match(prompt, /workflow:\s*"superpowers"/);
 			assert.match(prompt, /useSubagents:\s*true/);
 			assert.match(prompt, /useTestDrivenDevelopment:\s*true/);
-			assert.match(prompt, /worktrees\.enabled:\s*true/);
+			assert.match(prompt, /worktrees\.enabled:\s*false/);
 			assert.match(prompt, /implement auth fix/);
 			assert.match(prompt, /Required bootstrap skill/);
 			// No options means it was sent directly (isIdle === true)
@@ -287,15 +294,23 @@ void describe(
 				},
 			};
 
-			registerSlashCommands!(pi as never, createState(process.cwd()), {
-				superagents: {
-					useBranches: true,
-					useSubagents: false,
-					useTestDrivenDevelopment: true,
-					usePlannotator: false,
-					worktrees: { enabled: false },
-				},
-			});
+			registerSlashCommands!(
+				pi as never,
+				createState(process.cwd()),
+				createEffectiveConfig({
+					superagents: {
+						commands: {
+							"sp-implement": {
+								useBranches: true,
+								useSubagents: false,
+								useTestDrivenDevelopment: true,
+								usePlannotator: false,
+								worktrees: { enabled: false },
+							},
+						},
+					},
+				}),
+			);
 			await commands.get("sp-implement")!.handler("implement auth fix", createCommandContext());
 
 			assert.equal(userMessages.length, 1);
@@ -330,21 +345,23 @@ void describe(
 				},
 			};
 
-			const config = {
+			const config = createEffectiveConfig({
 				superagents: {
-					useSubagents: false,
-					useTestDrivenDevelopment: true,
-					worktrees: { enabled: false },
 					commands: {
-						review: { description: "Run code review", useSubagents: false, useTestDrivenDevelopment: false },
+						"sp-review": {
+							description: "Run code review",
+							useSubagents: false,
+							useTestDrivenDevelopment: false,
+							worktrees: { enabled: false },
+						},
 					},
 				},
-			};
+			});
 
 			registerSlashCommands!(pi, createState(process.cwd()), config);
 
-			// /review inherits the preset so useSubagents: false, useTestDrivenDevelopment: false
-			await commands.get("review")!.handler("check auth module for bugs", createCommandContext());
+			// /sp-review inherits the preset so useSubagents: false, useTestDrivenDevelopment: false
+			await commands.get("sp-review")!.handler("check auth module for bugs", createCommandContext());
 			assert.equal(userMessages.length, 1);
 			const prompt = String(userMessages[0].content);
 			assert.match(prompt, /useSubagents:\s*false/);
@@ -352,9 +369,9 @@ void describe(
 			assert.match(prompt, /worktrees\.enabled:\s*false/);
 			assert.match(prompt, /Do not use the `using-git-worktrees` skill/);
 
-			// Inline override: /review subagents check auth module → useSubagents: true
+			// Inline override: /sp-review subagents check auth module -> useSubagents: true
 			userMessages.length = 0;
-			await commands.get("review")!.handler("subagents check auth module", createCommandContext());
+			await commands.get("sp-review")!.handler("subagents check auth module", createCommandContext());
 			assert.equal(userMessages.length, 1);
 			const overridePrompt = String(userMessages[0].content);
 			assert.match(overridePrompt, /useSubagents:\s*true/);
@@ -363,7 +380,7 @@ void describe(
 		void it("/subagents-status opens the run status overlay", async () => {
 			const { commands, pi } = createPiHarness();
 			let customCalls = 0;
-			registerSlashCommands!(pi, createState(process.cwd()), {});
+			registerSlashCommands!(pi, createState(process.cwd()), createEffectiveConfig());
 			await commands.get("subagents-status")!.handler(
 				"",
 				createCommandContext({
@@ -380,7 +397,7 @@ void describe(
 		void it("ctrl+alt+s opens the run status overlay", async () => {
 			const { shortcuts, pi } = createPiHarness();
 			let customCalls = 0;
-			registerSlashCommands!(pi, createState(process.cwd()), {});
+			registerSlashCommands!(pi, createState(process.cwd()), createEffectiveConfig());
 			await shortcuts.get("ctrl+alt+s")!.handler(
 				createCommandContext({
 					hasUI: true,
@@ -396,7 +413,7 @@ void describe(
 		void it("/sp-settings opens the settings overlay", async () => {
 			const { commands, pi } = createPiHarness();
 			let customCalls = 0;
-			registerSlashCommands!(pi, createState(process.cwd()), {});
+			registerSlashCommands!(pi, createState(process.cwd()), createEffectiveConfig());
 			await commands.get("sp-settings")!.handler(
 				"",
 				createCommandContext({
@@ -412,7 +429,7 @@ void describe(
 
 		void it("/subagents-status returns cleanly when UI is unavailable", async () => {
 			const { commands, pi } = createPiHarness();
-			registerSlashCommands!(pi, createState(process.cwd()), {});
+			registerSlashCommands!(pi, createState(process.cwd()), createEffectiveConfig());
 
 			await assert.doesNotReject(async () => {
 				await commands.get("subagents-status")!.handler("", {
@@ -426,7 +443,7 @@ void describe(
 
 		void it("/sp-settings returns cleanly when UI is unavailable", async () => {
 			const { commands, pi } = createPiHarness();
-			registerSlashCommands!(pi, createState(process.cwd()), {});
+			registerSlashCommands!(pi, createState(process.cwd()), createEffectiveConfig());
 
 			await assert.doesNotReject(async () => {
 				await commands.get("sp-settings")!.handler("", {
@@ -463,7 +480,7 @@ void describe(
 				notifications.push({ message, type });
 			};
 
-			registerSlashCommands!(pi, state, {});
+			registerSlashCommands!(pi, state, createEffectiveConfig());
 			await commands.get("sp-implement")!.handler("tdd fix bug", ctx);
 
 			assert.equal(notifications.length, 1);
@@ -486,7 +503,7 @@ void describe(
 				},
 			};
 
-			registerSlashCommands!(pi, createState(process.cwd()), {});
+			registerSlashCommands!(pi, createState(process.cwd()), createEffectiveConfig());
 
 			// isIdle() returns false → should use followUp delivery
 			await commands.get("sp-implement")!.handler("direct update config", createCommandContext({ idle: false }));
@@ -509,7 +526,7 @@ void describe(
 				sendUserMessage() {},
 			};
 
-			registerSlashCommands!(pi, createState(process.cwd()), {});
+			registerSlashCommands!(pi, createState(process.cwd()), createEffectiveConfig());
 			const ctx = createCommandContext({ hasUI: true });
 			(ctx as { ui: { notify(message: string, type?: string): void } }).ui.notify = (message, type) => {
 				notifications.push({ message, type });
@@ -539,7 +556,7 @@ void describe(
 				sendUserMessage() {},
 			};
 
-			registerSlashCommands!(pi, createState(process.cwd()), {});
+			registerSlashCommands!(pi, createState(process.cwd()), createEffectiveConfig());
 
 			await assert.doesNotReject(async () => {
 				await commands.get("sp-implement")!.handler("", {
@@ -596,7 +613,7 @@ void describe(
 			const configPath = path.join(dir, "config.json");
 			fs.writeFileSync(
 				configPath,
-				'{\n  "superagents": { "useSubagents": true, "worktrees": { "enabled": false } }\n}\n',
+				'{\n  "superagents": { "commands": { "sp-implement": { "useSubagents": true, "worktrees": { "enabled": false } } } }\n}\n',
 				"utf-8",
 			);
 			const state = createState(process.cwd());
@@ -605,15 +622,19 @@ void describe(
 				{ requestRender: () => {} },
 				{ fg: (_color: string, text: string) => text, bg: (_color: string, text: string) => text },
 				state,
-				{ superagents: { useSubagents: true, worktrees: { enabled: false } } },
+				{ superagents: { commands: { "sp-implement": { useSubagents: true, worktrees: { enabled: false } } } } },
 				() => {},
 			);
 			component.toggleUseSubagents();
 			component.toggleWorktrees();
 			assert.deepEqual(JSON.parse(fs.readFileSync(configPath, "utf-8")), {
 				superagents: {
-					useSubagents: false,
-					worktrees: { enabled: true },
+					commands: {
+						"sp-implement": {
+							useSubagents: false,
+							worktrees: { enabled: true },
+						},
+					},
 				},
 			});
 			fs.rmSync(dir, { recursive: true, force: true });
@@ -638,14 +659,22 @@ void describe(
 				},
 			};
 
-			registerSlashCommands!(pi, createState(process.cwd()), {
-				superagents: {
-					usePlannotator: true,
-					skillOverlays: {
-						brainstorming: ["react-native-best-practices"],
-					},
-				} as never,
-			});
+			registerSlashCommands!(
+				pi,
+				createState(process.cwd()),
+				createEffectiveConfig({
+					superagents: {
+						commands: {
+							"sp-brainstorm": {
+								usePlannotator: true,
+							},
+						},
+						skillOverlays: {
+							brainstorming: ["react-native-best-practices"],
+						},
+					} as never,
+				}),
+			);
 
 			assert.ok(commands.has("sp-brainstorm"), "expected /sp-brainstorm to be registered");
 			await commands.get("sp-brainstorm")!.handler("design onboarding", createCommandContext());
@@ -673,7 +702,7 @@ void describe(
 				},
 			};
 
-			registerSlashCommands!(pi, createState(process.cwd()), {});
+			registerSlashCommands!(pi, createState(process.cwd()), createEffectiveConfig());
 			await commands.get("sp-brainstorm")!.handler("", {
 				...createCommandContext({ hasUI: true }),
 				ui: {
@@ -683,7 +712,9 @@ void describe(
 				},
 			});
 
-			assert.deepEqual(notifications, ["Usage: /sp-brainstorm <task>"]);
+			assert.deepEqual(notifications, [
+				"Usage: /sp-brainstorm [lean|full|tdd|direct|subagents|no-subagents] <task> [--fork]",
+			]);
 		});
 
 		void it("/sp-brainstorm applies global Superpowers policy", async () => {
@@ -701,13 +732,21 @@ void describe(
 				},
 			};
 
-			registerSlashCommands!(pi, createState(process.cwd()), {
-				superagents: {
-					useSubagents: false,
-					useTestDrivenDevelopment: false,
-					worktrees: { enabled: false },
-				},
-			});
+			registerSlashCommands!(
+				pi,
+				createState(process.cwd()),
+				createEffectiveConfig({
+					superagents: {
+						commands: {
+							"sp-brainstorm": {
+								useSubagents: false,
+								useTestDrivenDevelopment: false,
+								worktrees: { enabled: false },
+							},
+						},
+					},
+				}),
+			);
 
 			await commands.get("sp-brainstorm")!.handler("design auth", createCommandContext());
 
@@ -733,13 +772,17 @@ void describe(
 				},
 			};
 
-			registerSlashCommands!(pi, createState(process.cwd()), {
-				superagents: {
-					skillOverlays: {
-						brainstorming: ["definitely-missing-skill"],
-					},
-				} as never,
-			});
+			registerSlashCommands!(
+				pi,
+				createState(process.cwd()),
+				createEffectiveConfig({
+					superagents: {
+						skillOverlays: {
+							brainstorming: ["definitely-missing-skill"],
+						},
+					} as never,
+				}),
+			);
 
 			await commands.get("sp-brainstorm")!.handler("design onboarding", {
 				...createCommandContext({ hasUI: true }),

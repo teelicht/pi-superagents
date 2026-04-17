@@ -143,7 +143,11 @@ Creative problem solving skill.`,
 		const { mock, cwd } = await loadExtension({
 			superagents: {
 				interceptSkillCommands: ["brainstorming"],
-				usePlannotator: true,
+				commands: {
+					"sp-brainstorm": {
+						usePlannotator: true,
+					},
+				},
 			},
 		});
 		const inputHandler = mock.lifecycle.get("input")?.[0];
@@ -160,7 +164,6 @@ Creative problem solving skill.`,
 		assert.equal(mock.userMessages.length, 1);
 		assert.match(mock.userMessages[0], /Superpowers ▸ design middleware/);
 		assert.match(mock.userMessages[0], /Config:/);
-		assert.match(mock.userMessages[0], /useBranches:\s*false/);
 		assert.match(mock.userMessages[0], /usePlannotatorReview:\s*true/);
 		assert.doesNotMatch(mock.userMessages[0], /Entry skill:/);
 
