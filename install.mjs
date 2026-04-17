@@ -17,7 +17,7 @@ const EXTENSION_DIR = path.join(os.homedir(), ".pi", "agent", "extensions", "sub
 const USER_CONFIG_PATH = path.join(EXTENSION_DIR, "config.json");
 const DEFAULT_CONFIG_PATH = path.join(EXTENSION_DIR, "default-config.json");
 const EXAMPLE_CONFIG_PATH = path.join(EXTENSION_DIR, "config.example.json");
-const REPO_URL = "https://github.com/nicobailon/pi-superagents.git";
+const REPO_URL = "https://github.com/teelicht/pi-superagents.git";
 
 const args = process.argv.slice(2);
 const isRemove = args.includes("--remove") || args.includes("-r");

@@ -1,0 +1,25 @@
+# Dependabot configuration for pi-superagents.
+#
+# Responsibilities:
+# - keep GitHub Actions and npm dependencies current
+# - group routine maintenance under dependency labels
+# - avoid touching generated package outputs
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "chore"
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "chore"
+    open-pull-requests-limit: 10

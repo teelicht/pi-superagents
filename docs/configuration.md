@@ -187,6 +187,8 @@ Skill overlays load additional skills alongside the entry skill:
 
 Overlay resolution happens at session start for skills in `superpowersSkills` (invocation overlays) and for the entry skill (entry overlays).
 
+Open `/subagents-status` and select a run to verify which overlay skills were resolved for each delegated subagent. Missing overlay skills appear as warning text in the same details pane.
+
 ## Direct Skill Interception
 
 Route skill commands through Superpowers:
@@ -217,6 +219,12 @@ pi install npm:@plannotator/pi-extension
 ```
 
 If Plannotator is unavailable, Superpowers falls back to in-chat approval.
+
+## Release Configuration
+
+Maintainer release automation lives in `.github/workflows/release.yml` and uses npm Trusted Publishing. It does not require local configuration keys or npm tokens in `config.json`.
+
+Before changing package metadata, install behavior, or default configuration files, check the [Release Process](releases.md). Release candidates must keep `package.json`, `package-lock.json`, `CHANGELOG.md`, and the npm package contents aligned.
 
 ## Superpowers Skills
 

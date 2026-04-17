@@ -20,6 +20,8 @@ When resolved worktree config is `enabled: false`, Superpowers treats that as a 
 
 After parallel completion, per-agent diff stats are appended to the output. Full patch files are written to the artifacts directory.
 
+While parallel worktree runs are active, `/subagents-status` shows each delegated subagent separately, including its resolved skills and any missing-skill warnings.
+
 ## Requirements
 
 - Must be inside a git repository.
@@ -41,3 +43,7 @@ After parallel completion, per-agent diff stats are appended to the output. Full
 ## Configuration
 
 See [Configuration Reference](configuration.md) for `superagents.worktrees.*` config keys.
+
+## Release Notes
+
+Worktree behavior affects parallel execution safety, so user-facing changes to this subsystem should be called out in `CHANGELOG.md` before publishing. Follow the [Release Process](releases.md) when preparing a version that changes worktree defaults, cleanup, branch behavior, or artifact output.

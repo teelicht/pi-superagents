@@ -1,0 +1,35 @@
+# GitHub generated release notes configuration for pi-superagents.
+#
+# Responsibilities:
+# - group merged pull requests into maintainer-friendly release note sections
+# - exclude routine dependency chores from the prominent changelog
+# - support GitHub's automatic release-note generator
+
+changelog:
+  exclude:
+    labels:
+      - dependencies
+      - chore
+    authors:
+      - dependabot
+      - dependabot[bot]
+  categories:
+    - title: Breaking Changes
+      labels:
+        - breaking-change
+        - type:breaking
+    - title: Features
+      labels:
+        - enhancement
+        - type:feature
+    - title: Fixes
+      labels:
+        - bug
+        - type:bug
+    - title: Documentation
+      labels:
+        - documentation
+        - type:docs
+    - title: Maintenance
+      labels:
+        - "*"

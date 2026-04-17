@@ -18,6 +18,8 @@ These are the parameters the **LLM agent** passes when it calls the `subagent` t
 | `artifacts`       | boolean                                 | `true`                    | Whether to write debug artifacts (input/output logs). |
 | `includeProgress` | boolean                                 | `false`                   | Whether to include full internal progress metadata in the result. |
 
+Resolved skills, including per-call `skill` overrides and configured overlays, are shown in `/subagents-status` for active and recent subagent runs. Missing skills are shown as warnings there.
+
 ### TaskItem (for parallel tasks)
 
 | Field   | Type    | Description |
@@ -49,3 +51,7 @@ These tools are registered for root Superpowers workflows and are used by the pr
 | ----- | ---- | ----------- |
 | `specContent` | string | Final saved Superpowers brainstorming spec content to review. |
 | `specFilePath` | string, optional | Saved spec file path. |
+
+## Release Notes
+
+Tool parameter changes can affect prompts, docs, and downstream workflows. Before publishing a version that adds, removes, or changes a parameter, update this reference, `README.md`, and `CHANGELOG.md`, then follow the [Release Process](releases.md).
