@@ -16,6 +16,13 @@ import { tryImport } from "../support/helpers.ts";
 const harness = await tryImport<any>("@marcfargas/pi-test-harness");
 const available = !!harness;
 const PACKAGE_DIR = path.resolve(".");
+const EXPECTED_TOOLS = ["subagent", "superpowers_plan_review", "superpowers_spec_review"];
+
+interface PackageManifest {
+	pi?: {
+		extensions?: unknown;
+	};
+}
 
 /**
  * Identify npm failures caused by registry/network availability.
@@ -31,8 +38,23 @@ function isNpmRegistryUnavailable(error: unknown): boolean {
 	return /\b(ENOTFOUND|EAI_AGAIN|ECONNRESET|ETIMEDOUT|ENETUNREACH)\b/.test(text);
 }
 
+/**
+ * Read the number of Pi extension entrypoints advertised by the package manifest.
+ *
+ * @param packageDir Repository/package directory containing `package.json`.
+ * @returns Count of manifest-declared Pi extension entrypoints.
+ * @throws SyntaxError when `package.json` is not valid JSON.
+ */
+function readManifestExtensionCount(packageDir: string): number {
+	const packageJsonPath = path.join(packageDir, "package.json");
+	const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8")) as PackageManifest;
+	const extensions = packageJson.pi?.extensions;
+	return Array.isArray(extensions) ? extensions.length : 0;
+}
+
 void describe("sandbox install", { skip: !available ? "pi-test-harness not available" : undefined }, () => {
 	const { verifySandboxInstall } = harness;
+	const expectedExtensions = readManifestExtensionCount(PACKAGE_DIR);
 
 	void it(
 		"loads extension after npm pack+install with expected tools",
@@ -57,8 +79,8 @@ void describe("sandbox install", { skip: !available ? "pi-test-harness not avail
 				result = await verifySandboxInstall({
 					packageDir: PACKAGE_DIR,
 					expect: {
-						extensions: 2,
-						tools: ["subagent", "subagent_status"],
+						extensions: expectedExtensions,
+						tools: EXPECTED_TOOLS,
 					},
 				});
 			} catch (error) {
@@ -88,9 +110,10 @@ void describe("sandbox install", { skip: !available ? "pi-test-harness not avail
 
 			assert.ok(result);
 			assert.deepEqual(result.loaded.extensionErrors, []);
-			assert.equal(result.loaded.extensions, 2);
-			assert.ok(result.loaded.tools.includes("subagent"));
-			assert.ok(result.loaded.tools.includes("subagent_status"));
+			assert.equal(result.loaded.extensions, expectedExtensions);
+			for (const toolName of EXPECTED_TOOLS) {
+				assert.ok(result.loaded.tools.includes(toolName), `expected ${toolName} to be installed`);
+			}
 
 			const installDir =
 				(result as { installDir?: string; packageDir?: string }).installDir ??
