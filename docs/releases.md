@@ -25,7 +25,7 @@ The workflow relies on GitHub OIDC through `id-token: write`; no long-lived `NPM
 
 1. Start from an up-to-date `main` branch.
 2. Choose the next semantic version.
-3. Update `package.json` and `package-lock.json` to the same version.
+3. Update `package.json` to the same version.
 4. Add a matching entry to `CHANGELOG.md`.
 5. Run the local release checks:
 
@@ -62,6 +62,8 @@ When the GitHub Release is published, `.github/workflows/release.yml` runs these
 ## Recovery Notes
 
 If the workflow fails before the `Publish to npm` step, fix the issue and rerun the workflow from GitHub Actions.
+
+If the `Publish to npm` step fails with npm `E404`, the GitHub workflow has reached npm but the trusted publisher is not authorized for the package. Recheck the npm Trusted Publisher settings for `@teelicht/pi-superagents`; npm expects GitHub organization/user `teelicht`, repository `pi-superagents`, and workflow filename `release.yml` without the `.github/workflows/` path.
 
 If npm publish succeeds but the GitHub Release notes need editing, update the GitHub Release in place. Do not move the tag for an already published npm version.
 
