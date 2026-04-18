@@ -17,7 +17,7 @@
  */
 
 import assert from "node:assert/strict";
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -32,6 +32,20 @@ import { createMockPi, createTempDir, removeTempDir, tryImport } from "../suppor
 
 const executorMod = await tryImport<any>("./src/execution/subagent-executor.ts");
 const createSubagentExecutor = executorMod?.createSubagentExecutor;
+
+/**
+ * Run a git command without shell quoting so fixtures work on Windows and POSIX.
+ *
+ * @param cwd Git repository or working directory.
+ * @param args Git CLI arguments.
+ */
+function git(cwd: string, args: string[]): void {
+	const result = spawnSync("git", args, { cwd, encoding: "utf-8" });
+	if (result.status !== 0) {
+		const details = result.stderr.trim() || result.stdout.trim() || `git ${args.join(" ")} failed`;
+		throw new Error(details);
+	}
+}
 
 void describe("superpowers packets", () => {
 	/**
@@ -166,10 +180,10 @@ void describe(
 
 			tempDir = createTempDir("pi-superpowers-packets-");
 			// Init git repo for worktree support
-			execSync("git init", { cwd: tempDir, stdio: "ignore" });
-			execSync("git config user.email 'test@example.com'", { cwd: tempDir, stdio: "ignore" });
-			execSync("git config user.name 'Test User'", { cwd: tempDir, stdio: "ignore" });
-			execSync("git commit --allow-empty -m 'initial commit'", { cwd: tempDir, stdio: "ignore" });
+			git(tempDir, ["init"]);
+			git(tempDir, ["config", "user.email", "test@example.com"]);
+			git(tempDir, ["config", "user.name", "Test User"]);
+			git(tempDir, ["commit", "--allow-empty", "-m", "initial commit"]);
 
 			_artifactsDir = path.join(tempDir, "artifacts");
 			mockPi.reset();
@@ -366,10 +380,8 @@ void describe(
 			fs.writeFileSync(hookPath, "#!/usr/bin/env node\nprocess.stdout.write(JSON.stringify({}));\n");
 			fs.chmodSync(hookPath, 0o755);
 			fs.writeFileSync(path.join(tempDir, ".gitignore"), ".worktrees\n");
-			execSync("git add scripts/setup-worktree.mjs .gitignore && git commit -m 'add hook and ignore'", {
-				cwd: tempDir,
-				stdio: "ignore",
-			});
+			git(tempDir, ["add", "scripts/setup-worktree.mjs", ".gitignore"]);
+			git(tempDir, ["commit", "-m", "add hook and ignore"]);
 
 			const executor = makeExecutor(agents, {
 				superagents: {

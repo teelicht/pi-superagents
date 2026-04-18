@@ -76,13 +76,26 @@ function createCtx(cwd: string, notifications: string[] = []) {
 
 void describe("skill entry interception", () => {
 	const originalHome = process.env.HOME;
+	const originalUserProfile = process.env.USERPROFILE;
 	const tempDirs: string[] = [];
 
 	afterEach(() => {
 		if (originalHome === undefined) delete process.env.HOME;
 		else process.env.HOME = originalHome;
+		if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+		else process.env.USERPROFILE = originalUserProfile;
 		for (const dir of tempDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 	});
+
+	/**
+	 * Point every Node home-directory source at a temporary test home.
+	 *
+	 * @param home Temporary home directory for config and skill lookup.
+	 */
+	function setTestHome(home: string): void {
+		process.env.HOME = home;
+		process.env.USERPROFILE = home;
+	}
 
 	/**
 	 * Set up minimal skills directories with proper skill file format.
@@ -121,7 +134,7 @@ Creative problem solving skill.`,
 	async function loadExtension(config: unknown) {
 		const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-skill-entry-home-"));
 		tempDirs.push(home);
-		process.env.HOME = home;
+		setTestHome(home);
 		const extensionDir = path.join(home, ".pi", "agent", "extensions", "subagent");
 		fs.mkdirSync(extensionDir, { recursive: true });
 		fs.writeFileSync(path.join(extensionDir, "config.json"), JSON.stringify(config), "utf-8");
