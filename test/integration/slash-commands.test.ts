@@ -12,9 +12,11 @@
 
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
-import { describe, it } from "node:test";
+import { afterEach, describe, it } from "node:test";
 import { loadEffectiveConfig } from "../../src/execution/config-validation.ts";
+import { clearSkillCache } from "../../src/shared/skills.ts";
 import type { ExtensionConfig } from "../../src/shared/types.ts";
 
 type EventBus = {
@@ -76,6 +78,28 @@ try {
 } catch {
 	available = false;
 }
+
+const tempDirs: string[] = [];
+const fixtureSkillNames = [
+	"using-superpowers",
+	"brainstorming",
+	"writing-plans",
+	"executing-plans",
+	"test-driven-development",
+	"requesting-code-review",
+	"receiving-code-review",
+	"verification-before-completion",
+	"subagent-driven-development",
+	"dispatching-parallel-agents",
+	"using-git-worktrees",
+	"finishing-a-development-branch",
+	"react-native-best-practices",
+];
+
+afterEach(() => {
+	for (const dir of tempDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+	clearSkillCache();
+});
 
 function createEventBus(): EventBus {
 	const handlers = new Map<string, Array<(data: unknown) => void>>();
@@ -157,11 +181,45 @@ function createEffectiveConfig(override: ExtensionConfig = {}): ExtensionConfig 
 	return result.config;
 }
 
+/**
+ * Create a temporary workspace with the Superpowers skills needed by slash-command tests.
+ *
+ * @returns Temporary cwd that can resolve built-in Superpowers entry and overlay skills.
+ */
+function createSkillFixtureCwd(): string {
+	const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "pi-slash-skills-"));
+	tempDirs.push(cwd);
+	const skillsDir = path.join(cwd, ".agents", "skills");
+	for (const skillName of fixtureSkillNames) {
+		const skillDir = path.join(skillsDir, skillName);
+		fs.mkdirSync(skillDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(skillDir, "SKILL.md"),
+			`---
+name: ${skillName}
+description: Fixture ${skillName} skill
+---
+# ${skillName}
+
+Fixture skill content for slash-command integration tests.
+`,
+			"utf-8",
+		);
+	}
+	clearSkillCache();
+	return cwd;
+}
+
 function createCommandContext(
-	overrides: Partial<{ hasUI: boolean; custom: (...args: unknown[]) => Promise<unknown>; idle: boolean }> = {},
+	overrides: Partial<{
+		hasUI: boolean;
+		custom: (...args: unknown[]) => Promise<unknown>;
+		idle: boolean;
+		cwd: string;
+	}> = {},
 ) {
 	return {
-		cwd: process.cwd(),
+		cwd: overrides.cwd ?? process.cwd(),
 		isIdle: () => overrides.idle ?? true,
 		hasUI: overrides.hasUI ?? false,
 		ui: {
@@ -205,6 +263,7 @@ void describe(
 		});
 
 		void it("/sp-implement includes the plannotator review contract when enabled", async () => {
+			const cwd = createSkillFixtureCwd();
 			const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
 			const commands = new Map<string, CommandSpec>();
 			const pi = {
@@ -221,7 +280,7 @@ void describe(
 
 			registerSlashCommands!(
 				pi,
-				createState(process.cwd()),
+				createState(cwd),
 				createEffectiveConfig({
 					superagents: {
 						commands: {
@@ -232,7 +291,7 @@ void describe(
 					},
 				}),
 			);
-			await commands.get("sp-implement")!.handler("tdd implement auth fix", createCommandContext());
+			await commands.get("sp-implement")!.handler("tdd implement auth fix", createCommandContext({ cwd }));
 
 			assert.equal(userMessages.length, 1);
 			const prompt = String(userMessages[0].content);
@@ -241,6 +300,7 @@ void describe(
 		});
 
 		void it("/sp-implement sends a root-session prompt with resolved defaults", async () => {
+			const cwd = createSkillFixtureCwd();
 			const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
 			const commands = new Map<string, CommandSpec>();
 			const pi = {
@@ -255,8 +315,8 @@ void describe(
 				},
 			};
 
-			registerSlashCommands!(pi, createState(process.cwd()), createEffectiveConfig());
-			await commands.get("sp-implement")!.handler("tdd implement auth fix", createCommandContext());
+			registerSlashCommands!(pi, createState(cwd), createEffectiveConfig());
+			await commands.get("sp-implement")!.handler("tdd implement auth fix", createCommandContext({ cwd }));
 
 			assert.equal(userMessages.length, 1);
 			const prompt = String(userMessages[0].content);
@@ -271,6 +331,7 @@ void describe(
 		});
 
 		void it("sp-implement shows the user task and config flags, injecting the strict contract as hidden context", async () => {
+			const cwd = createSkillFixtureCwd();
 			type BeforeAgentStartHandler = (event: { prompt: string }) =>
 				| {
 						message?: { customType: string; content: string; display: boolean };
@@ -296,7 +357,7 @@ void describe(
 
 			registerSlashCommands!(
 				pi as never,
-				createState(process.cwd()),
+				createState(cwd),
 				createEffectiveConfig({
 					superagents: {
 						commands: {
@@ -311,7 +372,7 @@ void describe(
 					},
 				}),
 			);
-			await commands.get("sp-implement")!.handler("implement auth fix", createCommandContext());
+			await commands.get("sp-implement")!.handler("implement auth fix", createCommandContext({ cwd }));
 
 			assert.equal(userMessages.length, 1);
 			const visiblePrompt = String(userMessages[0].content);
@@ -331,6 +392,7 @@ void describe(
 		});
 
 		void it("custom commands apply presets and inline tokens override them", async () => {
+			const cwd = createSkillFixtureCwd();
 			const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
 			const commands = new Map<string, CommandSpec>();
 			const pi = {
@@ -358,10 +420,10 @@ void describe(
 				},
 			});
 
-			registerSlashCommands!(pi, createState(process.cwd()), config);
+			registerSlashCommands!(pi, createState(cwd), config);
 
 			// /sp-review inherits the preset so useSubagents: false, useTestDrivenDevelopment: false
-			await commands.get("sp-review")!.handler("check auth module for bugs", createCommandContext());
+			await commands.get("sp-review")!.handler("check auth module for bugs", createCommandContext({ cwd }));
 			assert.equal(userMessages.length, 1);
 			const prompt = String(userMessages[0].content);
 			assert.match(prompt, /useSubagents:\s*false/);
@@ -371,7 +433,7 @@ void describe(
 
 			// Inline override: /sp-review subagents check auth module -> useSubagents: true
 			userMessages.length = 0;
-			await commands.get("sp-review")!.handler("subagents check auth module", createCommandContext());
+			await commands.get("sp-review")!.handler("subagents check auth module", createCommandContext({ cwd }));
 			assert.equal(userMessages.length, 1);
 			const overridePrompt = String(userMessages[0].content);
 			assert.match(overridePrompt, /useSubagents:\s*true/);
@@ -489,6 +551,7 @@ void describe(
 		});
 
 		void it("/sp-implement queues a follow-up when the agent is busy", async () => {
+			const cwd = createSkillFixtureCwd();
 			const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
 			const commands = new Map<string, CommandSpec>();
 			const pi = {
@@ -503,10 +566,10 @@ void describe(
 				},
 			};
 
-			registerSlashCommands!(pi, createState(process.cwd()), createEffectiveConfig());
+			registerSlashCommands!(pi, createState(cwd), createEffectiveConfig());
 
 			// isIdle() returns false → should use followUp delivery
-			await commands.get("sp-implement")!.handler("direct update config", createCommandContext({ idle: false }));
+			await commands.get("sp-implement")!.handler("direct update config", createCommandContext({ cwd, idle: false }));
 
 			assert.equal(userMessages.length, 1);
 			assert.equal(userMessages[0].options?.deliverAs, "followUp");
@@ -645,6 +708,7 @@ void describe(
 		// ─────────────────────────────────────────────────────────────────────────────
 
 		void it("registers /sp-brainstorm and sends a brainstorming entry prompt", async () => {
+			const cwd = createSkillFixtureCwd();
 			const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
 			const commands = new Map<string, CommandSpec>();
 			const pi = {
@@ -661,7 +725,7 @@ void describe(
 
 			registerSlashCommands!(
 				pi,
-				createState(process.cwd()),
+				createState(cwd),
 				createEffectiveConfig({
 					superagents: {
 						commands: {
@@ -677,7 +741,7 @@ void describe(
 			);
 
 			assert.ok(commands.has("sp-brainstorm"), "expected /sp-brainstorm to be registered");
-			await commands.get("sp-brainstorm")!.handler("design onboarding", createCommandContext());
+			await commands.get("sp-brainstorm")!.handler("design onboarding", createCommandContext({ cwd }));
 
 			assert.equal(userMessages.length, 1);
 			const prompt = String(userMessages[0].content);
@@ -718,6 +782,7 @@ void describe(
 		});
 
 		void it("/sp-brainstorm applies global Superpowers policy", async () => {
+			const cwd = createSkillFixtureCwd();
 			const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
 			const commands = new Map<string, CommandSpec>();
 			const pi = {
@@ -734,7 +799,7 @@ void describe(
 
 			registerSlashCommands!(
 				pi,
-				createState(process.cwd()),
+				createState(cwd),
 				createEffectiveConfig({
 					superagents: {
 						commands: {
@@ -748,7 +813,7 @@ void describe(
 				}),
 			);
 
-			await commands.get("sp-brainstorm")!.handler("design auth", createCommandContext());
+			await commands.get("sp-brainstorm")!.handler("design auth", createCommandContext({ cwd }));
 
 			const prompt = String(userMessages[0].content);
 			assert.match(prompt, /useSubagents:\s*false/);
@@ -757,6 +822,7 @@ void describe(
 		});
 
 		void it("/sp-brainstorm reports unresolved overlay skills without sending a prompt", async () => {
+			const cwd = createSkillFixtureCwd();
 			const notifications: string[] = [];
 			const userMessages: string[] = [];
 			const commands = new Map<string, CommandSpec>();
@@ -774,7 +840,7 @@ void describe(
 
 			registerSlashCommands!(
 				pi,
-				createState(process.cwd()),
+				createState(cwd),
 				createEffectiveConfig({
 					superagents: {
 						skillOverlays: {
@@ -785,7 +851,7 @@ void describe(
 			);
 
 			await commands.get("sp-brainstorm")!.handler("design onboarding", {
-				...createCommandContext({ hasUI: true }),
+				...createCommandContext({ cwd, hasUI: true }),
 				ui: {
 					notify(message: string) {
 						notifications.push(message);
