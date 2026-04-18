@@ -110,6 +110,18 @@ function runGitChecked(cwd: string, args: string[]): string {
 	return result.stdout;
 }
 
+/**
+ * Convert Git's slash-delimited cwd prefix into a platform-native relative path.
+ *
+ * @param prefix Output from `git rev-parse --show-prefix`.
+ * @returns Empty string at the repo root, otherwise a normalized relative path.
+ */
+function normalizeGitPrefix(prefix: string): string {
+	const trimmed = prefix.trim().replace(/\/+$/, "");
+	if (!trimmed) return "";
+	return path.normalize(trimmed.split("/").join(path.sep));
+}
+
 function resolveRepoState(cwd: string): RepoState {
 	const repoCheck = runGit(cwd, ["rev-parse", "--is-inside-work-tree"]);
 	if (repoCheck.status !== 0 || repoCheck.stdout.trim() !== "true") {
@@ -117,9 +129,7 @@ function resolveRepoState(cwd: string): RepoState {
 	}
 
 	const toplevel = runGitChecked(cwd, ["rev-parse", "--show-toplevel"]).trim();
-	const realCwd = fs.realpathSync(cwd);
-	const realToplevel = fs.realpathSync(toplevel);
-	const cwdRelative = path.relative(realToplevel, realCwd);
+	const cwdRelative = normalizeGitPrefix(runGitChecked(cwd, ["rev-parse", "--show-prefix"]));
 
 	const status = runGitChecked(toplevel, ["status", "--porcelain"]);
 	if (status.trim().length > 0) {
@@ -204,7 +214,7 @@ function resolveCanonicalPath(targetPath: string): string {
 
 	for (;;) {
 		try {
-			const canonicalBase = fs.realpathSync(candidate);
+			const canonicalBase = fs.realpathSync.native(candidate);
 			return pendingSegments.length === 0 ? canonicalBase : path.join(canonicalBase, ...pendingSegments.reverse());
 		} catch (error) {
 			const code =
@@ -219,6 +229,17 @@ function resolveCanonicalPath(targetPath: string): string {
 		pendingSegments.push(path.basename(candidate));
 		candidate = parent;
 	}
+}
+
+/**
+ * Normalize canonical paths for containment comparisons.
+ *
+ * @param targetPath Path returned by canonical resolution.
+ * @returns Comparable path with Windows case differences removed.
+ */
+function normalizePathForComparison(targetPath: string): string {
+	const normalized = path.normalize(targetPath);
+	return process.platform === "win32" ? normalized.toLowerCase() : normalized;
 }
 
 function linkNodeModulesIfPresent(toplevel: string, worktreePath: string): boolean {
@@ -364,8 +385,8 @@ function runWorktreeSetupHook(hook: ResolvedWorktreeSetupHook, input: WorktreeSe
  * @throws {Error} When the configured root is inside the repository and not ignored.
  */
 function assertProjectLocalRootIgnored(repoRoot: string, rootDir: string): void {
-	const canonicalRepoRoot = resolveCanonicalPath(repoRoot);
-	const canonicalRootDir = resolveCanonicalPath(rootDir);
+	const canonicalRepoRoot = normalizePathForComparison(resolveCanonicalPath(repoRoot));
+	const canonicalRootDir = normalizePathForComparison(resolveCanonicalPath(rootDir));
 	const relativeRoot = path.relative(canonicalRepoRoot, canonicalRootDir);
 	const isProjectLocal =
 		relativeRoot === "" || relativeRoot === "." || (!relativeRoot.startsWith("..") && !path.isAbsolute(relativeRoot));

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed Windows CI worktree validation by normalizing repository-relative cwd handling and line endings across checkout platforms.
+
 ## [0.5.2] - 2026-04-18
 
 - Established GitHub Releases as the canonical release path for npm publishing after the one-time `0.5.1` npm bootstrap publish.
