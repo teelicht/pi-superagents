@@ -112,13 +112,26 @@ function createCtx(notifications: Array<{ message: string; type?: string }>) {
 
 void describe("superpowers_plan_review tool", () => {
 	const originalHome = process.env.HOME;
+	const originalUserProfile = process.env.USERPROFILE;
 	const tempDirs: string[] = [];
 
 	afterEach(() => {
 		if (originalHome === undefined) delete process.env.HOME;
 		else process.env.HOME = originalHome;
+		if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+		else process.env.USERPROFILE = originalUserProfile;
 		for (const dir of tempDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 	});
+
+	/**
+	 * Point every Node home-directory source at a temporary test home.
+	 *
+	 * @param home Temporary home directory for config lookup.
+	 */
+	function setTestHome(home: string): void {
+		process.env.HOME = home;
+		process.env.USERPROFILE = home;
+	}
 
 	/**
 	 * Load the extension with Plannotator review enabled.
@@ -129,7 +142,7 @@ void describe("superpowers_plan_review tool", () => {
 	async function loadExtensionWithPlannotatorEnabled(customEvents?: ReturnType<typeof createEventBus>) {
 		const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-plannotator-home-"));
 		tempDirs.push(home);
-		process.env.HOME = home;
+		setTestHome(home);
 		const extensionDir = path.join(home, ".pi", "agent", "extensions", "subagent");
 		fs.mkdirSync(extensionDir, { recursive: true });
 		fs.writeFileSync(
@@ -183,7 +196,7 @@ void describe("superpowers_plan_review tool", () => {
 	void it("returns the disabled guidance when plannotator is not enabled", async () => {
 		const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-plannotator-disabled-home-"));
 		tempDirs.push(home);
-		process.env.HOME = home;
+		setTestHome(home);
 		const extensionDir = path.join(home, ".pi", "agent", "extensions", "subagent");
 		fs.mkdirSync(extensionDir, { recursive: true });
 		fs.writeFileSync(
@@ -302,13 +315,26 @@ void describe("superpowers_plan_review tool", () => {
 
 void describe("superpowers_spec_review tool", () => {
 	const originalHome = process.env.HOME;
+	const originalUserProfile = process.env.USERPROFILE;
 	const tempDirs: string[] = [];
 
 	afterEach(() => {
 		if (originalHome === undefined) delete process.env.HOME;
 		else process.env.HOME = originalHome;
+		if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+		else process.env.USERPROFILE = originalUserProfile;
 		for (const dir of tempDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 	});
+
+	/**
+	 * Point every Node home-directory source at a temporary test home.
+	 *
+	 * @param home Temporary home directory for config lookup.
+	 */
+	function setTestHome(home: string): void {
+		process.env.HOME = home;
+		process.env.USERPROFILE = home;
+	}
 
 	/**
 	 * Load the extension with Plannotator review enabled.
@@ -319,7 +345,7 @@ void describe("superpowers_spec_review tool", () => {
 	async function loadExtensionWithPlannotatorEnabled(customEvents?: ReturnType<typeof createEventBus>) {
 		const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-spec-plannotator-home-"));
 		tempDirs.push(home);
-		process.env.HOME = home;
+		setTestHome(home);
 		const extensionDir = path.join(home, ".pi", "agent", "extensions", "subagent");
 		fs.mkdirSync(extensionDir, { recursive: true });
 		fs.writeFileSync(
@@ -406,7 +432,7 @@ void describe("superpowers_spec_review tool", () => {
 	void it("returns the disabled guidance when plannotator is not enabled", async () => {
 		const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-spec-plannotator-disabled-home-"));
 		tempDirs.push(home);
-		process.env.HOME = home;
+		setTestHome(home);
 		const extensionDir = path.join(home, ".pi", "agent", "extensions", "subagent");
 		fs.mkdirSync(extensionDir, { recursive: true });
 		fs.writeFileSync(
