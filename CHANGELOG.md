@@ -2,8 +2,12 @@
 
 ## Unreleased
 
+## [0.5.2] - 2026-04-18
+
+- Established GitHub Releases as the canonical release path for npm publishing after the one-time `0.5.1` npm bootstrap publish.
 - Added GitHub community health files, issue forms, pull request template, Dependabot configuration, generated release-note categories, and CI/release workflows.
 - Added maintainer release documentation for GitHub Releases and npm Trusted Publishing.
+- Aligned GitHub workflows with the repository's no-lockfile package install model.
 - Updated package and installer repository metadata to point at `teelicht/pi-superagents`.
 
 ## [0.5.1] - 2026-04-17

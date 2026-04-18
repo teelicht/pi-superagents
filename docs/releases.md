@@ -30,7 +30,7 @@ The workflow relies on GitHub OIDC through `id-token: write`; no long-lived `NPM
 5. Run the local release checks:
 
 ```bash
-npm ci
+npm install
 npm run typecheck
 npx biome check .
 npm run test:all
@@ -53,7 +53,7 @@ Then draft a GitHub Release for the same tag. Use the `CHANGELOG.md` entry as th
 
 When the GitHub Release is published, `.github/workflows/release.yml` runs these gates before npm publish:
 
-- install dependencies with `npm ci`
+- install dependencies with `npm install`
 - verify the tag matches `package.json`
 - run typecheck, lint, all tests, and package-content verification
 - publish normal releases to npm with the `latest` dist-tag
