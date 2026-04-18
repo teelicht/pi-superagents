@@ -124,18 +124,31 @@ function createCtx(notifications: Array<{ message: string; type?: string }>, ses
 
 void describe("extension config gating", { skip: !available ? "extension not importable" : undefined }, () => {
 	const originalHome = process.env.HOME;
+	const originalUserProfile = process.env.USERPROFILE;
 	const tempDirs: string[] = [];
 
 	afterEach(() => {
 		if (originalHome === undefined) delete process.env.HOME;
 		else process.env.HOME = originalHome;
+		if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+		else process.env.USERPROFILE = originalUserProfile;
 		for (const dir of tempDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 	});
+
+	/**
+	 * Point every Node home-directory source at a temporary test home.
+	 *
+	 * @param home Temporary home directory for config lookup.
+	 */
+	function setTestHome(home: string): void {
+		process.env.HOME = home;
+		process.env.USERPROFILE = home;
+	}
 
 	void it("notifies on session start and blocks subagent execution when config is invalid", async () => {
 		const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-config-gate-home-"));
 		tempDirs.push(home);
-		process.env.HOME = home;
+		setTestHome(home);
 		const extensionDir = path.join(home, ".pi", "agent", "extensions", "subagent");
 		fs.mkdirSync(extensionDir, { recursive: true });
 		fs.writeFileSync(path.join(extensionDir, "config.json"), JSON.stringify({ asyncByDefalt: true }), "utf-8");
@@ -167,7 +180,7 @@ void describe("extension config gating", { skip: !available ? "extension not imp
 		// Verify the notification exposes the offending field name so users can act on it.
 		const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-config-fieldname-home-"));
 		tempDirs.push(home);
-		process.env.HOME = home;
+		setTestHome(home);
 		const extensionDir = path.join(home, ".pi", "agent", "extensions", "subagent");
 		fs.mkdirSync(extensionDir, { recursive: true });
 		fs.writeFileSync(path.join(extensionDir, "config.json"), JSON.stringify({ maxSubagentDepth: -1 }), "utf-8");
@@ -191,7 +204,7 @@ void describe("extension config gating", { skip: !available ? "extension not imp
 		// Deduplication is keyed on the session file path — same path → notify at most once.
 		const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-config-dedup-home-"));
 		tempDirs.push(home);
-		process.env.HOME = home;
+		setTestHome(home);
 		const extensionDir = path.join(home, ".pi", "agent", "extensions", "subagent");
 		fs.mkdirSync(extensionDir, { recursive: true });
 		fs.writeFileSync(path.join(extensionDir, "config.json"), JSON.stringify({ asyncByDefalt: true }), "utf-8");

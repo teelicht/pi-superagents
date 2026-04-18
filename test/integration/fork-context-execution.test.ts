@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
 import type { ExtensionConfig } from "../../src/shared/types.ts";
 import type { MockPi } from "../support/helpers.ts";
@@ -26,6 +26,20 @@ interface ExecutorModule {
 const executorMod = await tryImport<ExecutorModule>("./src/execution/subagent-executor.ts");
 const available = !!executorMod;
 const createSubagentExecutor = executorMod?.createSubagentExecutor;
+
+/**
+ * Run a git command without shell quoting so fixtures work on Windows and POSIX.
+ *
+ * @param cwd Git repository or working directory.
+ * @param args Git CLI arguments.
+ */
+function git(cwd: string, args: string[]): void {
+	const result = spawnSync("git", args, { cwd, encoding: "utf-8" });
+	if (result.status !== 0) {
+		const details = result.stderr.trim() || result.stdout.trim() || `git ${args.join(" ")} failed`;
+		throw new Error(details);
+	}
+}
 
 interface SessionStubOptions {
 	sessionFile?: string;
@@ -107,10 +121,10 @@ void describe(
 
 			tempDir = createTempDir("pi-subagent-fork-test-");
 			// Init git repo for worktree support
-			execSync("git init", { cwd: tempDir, stdio: "ignore" });
-			execSync("git config user.email 'test@example.com'", { cwd: tempDir, stdio: "ignore" });
-			execSync("git config user.name 'Test User'", { cwd: tempDir, stdio: "ignore" });
-			execSync("git commit --allow-empty -m 'initial commit'", { cwd: tempDir, stdio: "ignore" });
+			git(tempDir, ["init"]);
+			git(tempDir, ["config", "user.email", "test@example.com"]);
+			git(tempDir, ["config", "user.name", "Test User"]);
+			git(tempDir, ["commit", "--allow-empty", "-m", "initial commit"]);
 
 			mockPi.reset();
 			mockPi.onCall({ output: "ok" });
