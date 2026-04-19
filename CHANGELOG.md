@@ -1,6 +1,6 @@
 # Changelog
 
-## [6.0.0] - 2026-04-19
+## [0.6.0] - 2026-04-19
 
 - **Live Model Tier Config Editing**
   - Added live model tier config editing — `/sp-settings` now includes a model picker that reads PI's authenticated model registry, writes tier overrides to `config.json`, and reloads config without restarting PI. Future subagents in the session use the updated tier values; already-running subagents keep the model they launched with.
