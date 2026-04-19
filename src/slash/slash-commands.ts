@@ -20,6 +20,15 @@
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 
 /**
+ * Model option from the model registry.
+ */
+interface SettingsModelOption {
+	provider: string;
+	id: string;
+	name?: string;
+}
+
+/**
  * Config source type: either a static config object or a config accessor function.
  * Allows slash commands to read fresh config values at execution time.
  */
@@ -34,6 +43,7 @@ export type ConfigSource = ExtensionConfig | (() => ExtensionConfig);
 function readConfig(source: ConfigSource): ExtensionConfig {
 	return typeof source === "function" ? source() : source;
 }
+
 import { resolveAvailableSkill, resolveSkills } from "../shared/skills.ts";
 import type { ExtensionConfig, SubagentState, SuperpowersCommandPreset } from "../shared/types.ts";
 import { createSuperpowersPromptDispatcher } from "../superpowers/prompt-dispatch.ts";
@@ -107,10 +117,10 @@ function sendSkillEntryPrompt(
  */
 async function openSubagentsStatusOverlay(ctx: ExtensionContext): Promise<void> {
 	if (!ctx.hasUI) return;
-	await ctx.ui.custom<void>(
-		(tui, theme, _kb, done) => new SubagentsStatusComponent(tui, theme, () => done(undefined)),
-		{ overlay: true, overlayOptions: { anchor: "center", width: 92, maxHeight: "80%" } },
-	);
+	// @ts-expect-error - Pi extension API has flexible callback types
+	await ctx.ui.custom<void>((tui, theme, _kb, done) => {
+		new SubagentsStatusComponent(tui, theme, () => done(undefined));
+	});
 }
 
 /**
@@ -118,19 +128,57 @@ async function openSubagentsStatusOverlay(ctx: ExtensionContext): Promise<void> 
  *
  * @param ctx Current extension command context.
  * @param state Shared extension state for config gate checks.
- * @param config Effective extension config displayed in the overlay.
+ * @param configSource Effective extension config displayed in the overlay.
+ * @param reloadConfig Optional callback to reload config after changes.
  */
 async function openSuperpowersSettingsOverlay(
 	ctx: ExtensionContext,
 	state: SubagentState,
 	configSource: ConfigSource,
+	reloadConfig?: () => void,
 ): Promise<void> {
 	if (!ctx.hasUI) return;
 	const config = readConfig(configSource);
-	await ctx.ui.custom<void>(
-		(tui, theme, _kb, done) => new SuperpowersSettingsComponent(tui, theme, state, config, () => done(undefined)),
-		{ overlay: true, overlayOptions: { anchor: "center", width: 92, maxHeight: "80%" } },
-	);
+
+	// Get model options from the model registry
+	let modelOptions: SettingsModelOption[] = [];
+	let modelRegistryError: string | undefined;
+
+	// Try to get models from the context's model registry
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	if ("modelRegistry" in ctx && (ctx as any).modelRegistry) {
+		const registry = ctx.modelRegistry as {
+			getAvailable?: () => SettingsModelOption[];
+			getError?: () => string | undefined;
+		};
+		if (registry.getAvailable) {
+			try {
+				modelOptions = registry.getAvailable() ?? [];
+			} catch {
+				modelRegistryError = "Failed to load models";
+			}
+		}
+		if (registry.getError) {
+			modelRegistryError = registry.getError();
+		}
+	}
+
+	// @ts-expect-error - Pi extension API has flexible callback types
+	await ctx.ui.custom<void>((tui, theme, _kb, done) => {
+		new SuperpowersSettingsComponent(
+			tui,
+			theme,
+			state,
+			config,
+			() => readConfig(configSource),
+			{
+				models: modelOptions,
+				modelRegistryError,
+				reloadConfig,
+			},
+		);
+		done(undefined);
+	});
 }
 
 /**
@@ -139,7 +187,7 @@ async function openSuperpowersSettingsOverlay(
  * @param pi Extension API for command registration and message sending.
  * @param dispatcher Prompt dispatcher used to hide strict contracts from chat.
  * @param state Shared extension state for config gate checks.
- * @param config Effective extension config for default resolution.
+ * @param configSource Effective extension config for default resolution.
  * @param commandName Slash command name without leading slash.
  * @param preset Command preset containing entrySkill and policy options.
  */
@@ -192,9 +240,15 @@ function registerSuperpowersCommand(
  *
  * @param pi Extension API for command registration.
  * @param state Shared extension state for config gate checks.
- * @param config Effective extension config for default resolution.
+ * @param configSource Effective extension config for default resolution.
+ * @param reloadConfig Optional callback to reload config after settings changes.
  */
-export function registerSlashCommands(pi: ExtensionAPI, state: SubagentState, configSource: ConfigSource): void {
+export function registerSlashCommands(
+	pi: ExtensionAPI,
+	state: SubagentState,
+	configSource: ConfigSource,
+	reloadConfig?: () => void,
+): void {
 	const config = readConfig(configSource);
 	const dispatcher = createSuperpowersPromptDispatcher(pi);
 
@@ -220,7 +274,7 @@ export function registerSlashCommands(pi: ExtensionAPI, state: SubagentState, co
 	pi.registerCommand("sp-settings", {
 		description: "Show Superpowers and subagent workflow settings",
 		handler: async (_args, ctx) => {
-			await openSuperpowersSettingsOverlay(ctx, state, configSource);
+			await openSuperpowersSettingsOverlay(ctx, state, configSource, reloadConfig);
 		},
 	});
 }

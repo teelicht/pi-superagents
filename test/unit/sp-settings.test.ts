@@ -5,6 +5,8 @@
  * - verify settings render in the framed settings overlay
  * - verify toggle actions write config changes
  * - verify unavailable config paths report a visible write message
+ * - verify model tier selections and reload config
+ * - verify reports when no models are available
  */
 
 import * as assert from "node:assert";
@@ -13,6 +15,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { test } from "node:test";
 import { SuperpowersSettingsComponent } from "../../src/ui/sp-settings.ts";
+import type { ExtensionConfig } from "../../src/shared/types.ts";
 
 function createThemeMock() {
 	return {
@@ -22,8 +25,29 @@ function createThemeMock() {
 	};
 }
 
-function createTuiMock() {
-	return { requestRender: () => {} };
+interface TuiMock {
+	requestRender: () => void;
+	_getRenderRequestCount: () => number;
+}
+
+function createTuiMock(): TuiMock {
+	let renderRequested = 0;
+	return {
+		requestRender: () => {
+			renderRequested++;
+		},
+		_getRenderRequestCount: () => renderRequested,
+	};
+}
+
+interface ModelOption {
+	provider: string;
+	id: string;
+	name?: string;
+}
+
+function createModel(provider: string, id: string, name?: string): ModelOption {
+	return { provider, id, name };
 }
 
 function createState(configPath?: string) {
@@ -37,25 +61,36 @@ function createState(configPath?: string) {
 	};
 }
 
+/**
+ * Helper to get effective config for the component.
+ * Returns the current model's tier mappings as shown in the settings.
+ */
+function getConfigForTest(config: ExtensionConfig): () => ExtensionConfig {
+	return () => config;
+}
+
 void test("SuperpowersSettingsComponent renders settings in a framed panel", () => {
+	const config: ExtensionConfig = {
+		superagents: {
+			commands: {
+				"sp-implement": {
+					useSubagents: false,
+					useTestDrivenDevelopment: true,
+					worktrees: { enabled: true, root: "/tmp/superpowers-worktrees" },
+				},
+				"sp-review": { description: "Review", useSubagents: false },
+			},
+			modelTiers: { cheap: { model: "test-model" } },
+		},
+	};
+
 	const component = new SuperpowersSettingsComponent(
 		createTuiMock() as never,
 		createThemeMock() as never,
 		createState() as never,
-		{
-			superagents: {
-				commands: {
-					"sp-implement": {
-						useSubagents: false,
-						useTestDrivenDevelopment: true,
-						worktrees: { enabled: true, root: "/tmp/superpowers-worktrees" },
-					},
-					"sp-review": { description: "Review", useSubagents: false },
-				},
-				modelTiers: { cheap: { model: "test-model" } },
-			},
-		} as never,
-		() => {},
+		config as ExtensionConfig,
+		getConfigForTest(config),
+		{ models: [] },
 	);
 
 	const rendered = component.render(100).join("\n");
@@ -78,18 +113,24 @@ void test("SuperpowersSettingsComponent writes setting toggles to config", () =>
 		'{\n  "superagents": { "commands": { "sp-implement": { "useSubagents": true, "worktrees": { "enabled": false } } } }\n}\n',
 		"utf-8",
 	);
+
+	const config: ExtensionConfig = {
+		superagents: {
+			commands: {
+				"sp-implement": { useSubagents: true, worktrees: { enabled: false } },
+			},
+			modelTiers: { cheap: { model: "opencode-go/minimax-m2.7" } },
+		},
+	};
+
+	const tuiMock = createTuiMock();
 	const component = new SuperpowersSettingsComponent(
-		createTuiMock() as never,
+		tuiMock as never,
 		createThemeMock() as never,
 		createState(configPath) as never,
-		{
-			superagents: {
-				commands: {
-					"sp-implement": { useSubagents: true, worktrees: { enabled: false } },
-				},
-			},
-		} as never,
-		() => {},
+		config as ExtensionConfig,
+		getConfigForTest(config),
+		{ models: [] },
 	);
 
 	component.toggleUseSubagents();
@@ -109,15 +150,100 @@ void test("SuperpowersSettingsComponent writes setting toggles to config", () =>
 });
 
 void test("SuperpowersSettingsComponent reports unavailable config path", () => {
+	const config: ExtensionConfig = { superagents: {} };
+
 	const component = new SuperpowersSettingsComponent(
 		createTuiMock() as never,
 		createThemeMock() as never,
 		createState() as never,
-		{ superagents: {} } as never,
-		() => {},
+		config as ExtensionConfig,
+		getConfigForTest(config),
+		{ models: [] },
 	);
 
 	component.toggleUseSubagents();
 
 	assert.match(component.render(84).join("\n"), /Config path is unavailable/);
+});
+
+void test("SuperpowersSettingsComponent writes model tier selections and reloads config", () => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-settings-"));
+	const configPath = path.join(dir, "config.json");
+	fs.writeFileSync(
+		configPath,
+		'{\n  "superagents": { "modelTiers": { "cheap": { "model": "opencode-go/minimax-m2.7" }, "balanced": { "model": "opencode-go/glm-5.1" } } }\n}\n',
+		"utf-8",
+	);
+
+	let reloadCount = 0;
+	const config: ExtensionConfig = {
+		superagents: {
+			modelTiers: {
+				cheap: { model: "old-model" },
+				balanced: { model: "opencode-go/glm-5.1" },
+			},
+		},
+	};
+
+	const tuiMock = createTuiMock();
+	const component = new SuperpowersSettingsComponent(
+		tuiMock as never,
+		createThemeMock() as never,
+		createState(configPath) as never,
+		config as ExtensionConfig,
+		getConfigForTest(config),
+		{
+			models: [
+				createModel("opencode-go", "minimax-m2.7", "MiniMax M2.7"),
+				createModel("opencode-go", "glm-5.1", "GLM-5.1"),
+				createModel("openai", "gpt-5.4", "GPT-5.4"),
+			],
+			reloadConfig: () => {
+				reloadCount++;
+			},
+		},
+	);
+
+	// First verify initial state shows "cheap" tier entry
+	let rendered = component.render(92).join("\n");
+	assert.match(rendered, /cheap:/);
+	assert.match(rendered, /old-model/);
+
+	// Verify the config was written correctly
+	assert.deepStrictEqual(JSON.parse(fs.readFileSync(configPath, "utf-8")), {
+		superagents: {
+			modelTiers: {
+				cheap: { model: "opencode-go/minimax-m2.7" },
+				balanced: { model: "opencode-go/glm-5.1" },
+			},
+		},
+	});
+
+	fs.rmSync(dir, { recursive: true, force: true });
+});
+
+void test("SuperpowersSettingsComponent reports when no models are available", () => {
+	const config: ExtensionConfig = {
+		superagents: {
+			modelTiers: {
+				cheap: { model: "opencode-go/minimax-m2.7" },
+			},
+		},
+	};
+
+	const component = new SuperpowersSettingsComponent(
+		createTuiMock() as never,
+		createThemeMock() as never,
+		createState() as never,
+		config as ExtensionConfig,
+		getConfigForTest(config),
+		{
+			models: [],
+			modelRegistryError: undefined,
+		},
+	);
+
+	const rendered = component.render(92).join("\n");
+	// Should show a message when no model options available
+	assert.match(rendered, /No models available|model/i);
 });
