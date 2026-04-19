@@ -17,6 +17,7 @@ import { Type } from "@sinclair/typebox";
 import { discoverAgents } from "../agents/agents.ts";
 import { formatConfigDiagnostics, loadEffectiveConfig } from "../execution/config-validation.ts";
 import { createRuntimeConfigStore } from "./config-store.ts";
+import type { LoadedConfigState } from "./config-store.ts";
 import { createSubagentExecutor, type SubagentParamsLike } from "../execution/subagent-executor.ts";
 import { requestPlannotatorPlanReview } from "../integrations/plannotator.ts";
 import { cleanupAllArtifactDirs, cleanupOldArtifacts, getArtifactsDir } from "../shared/artifacts.ts";
@@ -62,82 +63,7 @@ function readJsonConfig(filePath: string): unknown {
 	return JSON.parse(fs.readFileSync(filePath, "utf-8"));
 }
 
-interface LoadedConfigState {
-	config: ExtensionConfig;
-	blocked: boolean;
-	diagnostics: ConfigDiagnostic[];
-	message: string;
-	configPath: string;
-	examplePath: string;
-}
 
-/**
- * Load and validate extension config, preserving diagnostics for user display.
- *
- * @returns Validated config state for runtime registration.
- */
-function loadConfigState(): LoadedConfigState {
-	const extensionDir = path.dirname(fileURLToPath(import.meta.url));
-	const packageRoot = path.resolve(extensionDir, "..", "..");
-	const bundledDefaultConfigPath = path.join(packageRoot, "default-config.json");
-	const configPath = path.join(os.homedir(), ".pi", "agent", "extensions", "subagent", "config.json");
-	const examplePath = path.join(os.homedir(), ".pi", "agent", "extensions", "subagent", "config.example.json");
-	try {
-		const bundledDefaults = (readJsonConfig(bundledDefaultConfigPath) ?? {}) as ExtensionConfig;
-		const userConfig = readJsonConfig(configPath);
-		const result = loadEffectiveConfig(bundledDefaults, userConfig);
-		const message = result.diagnostics.length
-			? formatConfigDiagnostics(result.diagnostics, { configPath, examplePath })
-			: "";
-		return { ...result, message, configPath, examplePath };
-	} catch (error) {
-		const message = error instanceof Error ? error.message : String(error);
-		const diagnostics: ConfigDiagnostic[] = [
-			{
-				level: "error",
-				code: "config_load_failed",
-				path: "config.json",
-				message,
-			},
-		];
-		return {
-			config: {},
-			blocked: true,
-			diagnostics,
-			message: formatConfigDiagnostics(diagnostics, { configPath, examplePath }),
-			configPath,
-			examplePath,
-		};
-	}
-}
-
-/**
- * Apply the safe empty-override migration for a copied default config.
- *
- * @param state Current loaded config state.
- * @returns Tool result describing the migration outcome.
- */
-function _migrateCopiedDefaultConfig(state: LoadedConfigState): AgentToolResult<Details> {
-	const canMigrate = state.diagnostics.some((diagnostic) => diagnostic.action === "replace_with_empty_override");
-	if (!canMigrate) {
-		return {
-			content: [{ type: "text", text: "No safe config migration is available for the current config.json." }],
-			details: { mode: "single", results: [] },
-		};
-	}
-	const backupPath = `${state.configPath}.bak-${Date.now()}`;
-	fs.copyFileSync(state.configPath, backupPath);
-	fs.writeFileSync(state.configPath, "{}\n", "utf-8");
-	return {
-		content: [
-			{
-				type: "text",
-				text: `Migrated config.json to an empty override. Backup: ${backupPath}\nRestart or reload Pi to use the updated config.`,
-			},
-		],
-		details: { mode: "single", results: [] },
-	};
-}
 
 /**
  * Expand a leading tilde in a filesystem path.
@@ -232,9 +158,9 @@ function commandNameForInterceptedSkill(skillName: string): string | undefined {
  */
 export default function registerSubagentExtension(pi: ExtensionAPI): void {
 	// Create runtime config store for live config at execution time
-	const configStore = createRuntimeConfigStore();
-	const configState = configStore.loadState();
-	const config = configState.config;
+	const extensionDir = path.dirname(fileURLToPath(import.meta.url));
+	const configStore = createRuntimeConfigStore(extensionDir);
+	const config = configStore.getConfig();
 	const tempArtifactsDir = getArtifactsDir(null);
 	cleanupAllArtifactDirs(DEFAULT_ARTIFACT_CONFIG.cleanupDays);
 
