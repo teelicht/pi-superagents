@@ -50,7 +50,7 @@
 - Create: `src/extension/config-store.ts`
 - Test: `test/unit/config-store.test.ts`
 
-- [ ] **Step 1: Write failing config store tests**
+- [x] **Step 1: Write failing config store tests**
 
 Create `test/unit/config-store.test.ts` with this content:
 
@@ -186,7 +186,7 @@ void describe("runtime config store", () => {
 });
 ```
 
-- [ ] **Step 2: Run the failing test**
+- [x] **Step 2: Run the failing test**
 
 Run:
 
@@ -196,7 +196,7 @@ npm run test:unit -- test/unit/config-store.test.ts
 
 Expected: fail because `../../src/extension/config-store.ts` does not exist.
 
-- [ ] **Step 3: Implement `src/extension/config-store.ts`**
+- [x] **Step 3: Implement `src/extension/config-store.ts`**
 
 Create `src/extension/config-store.ts` with this content:
 
@@ -359,7 +359,7 @@ export function createRuntimeConfigStore(paths: RuntimeConfigPaths = resolveRunt
 }
 ```
 
-- [ ] **Step 4: Run the config store test**
+- [x] **Step 4: Run the config store test**
 
 Run:
 
@@ -369,7 +369,7 @@ npm run test:unit -- test/unit/config-store.test.ts
 
 Expected: pass all tests in `config-store.test.ts`.
 
-- [ ] **Step 5: Commit Task 1**
+- [x] **Step 5: Commit Task 1**
 
 Run:
 
@@ -388,7 +388,7 @@ Expected: commit succeeds.
 - Modify: `src/slash/slash-commands.ts`
 - Test: `test/integration/slash-commands.test.ts`
 
-- [ ] **Step 1: Write failing slash-command live-config test**
+- [x] **Step 1: Write failing slash-command live-config test**
 
 In `test/integration/slash-commands.test.ts`, update `RegisterSlashCommandsModule.registerSlashCommands` so the third parameter can be either an `ExtensionConfig` or a config accessor:
 
@@ -471,7 +471,7 @@ void it("resolves command profiles from the latest config accessor value", async
 });
 ```
 
-- [ ] **Step 2: Run the failing slash-command test**
+- [x] **Step 2: Run the failing slash-command test**
 
 Run:
 
@@ -481,7 +481,7 @@ npm run test:integration -- test/integration/slash-commands.test.ts
 
 Expected: fail because `registerSlashCommands()` still expects a config object and resolves the original snapshot.
 
-- [ ] **Step 3: Update `src/slash/slash-commands.ts` to accept live config**
+- [x] **Step 3: Update `src/slash/slash-commands.ts` to accept live config**
 
 Add this type and helper after imports:
 
@@ -579,7 +579,7 @@ pi.registerCommand("sp-settings", {
 });
 ```
 
-- [ ] **Step 4: Update `src/execution/subagent-executor.ts` to use `getConfig()`**
+- [x] **Step 4: Update `src/execution/subagent-executor.ts` to use `getConfig()`**
 
 Change `ExecutorDeps`:
 
@@ -639,7 +639,7 @@ config
 
 when passing `config` to `createParallelWorktreeSetup()`, `runForegroundParallelTasks()`, and `runSync()`.
 
-- [ ] **Step 5: Update `src/extension/index.ts` to create and pass the store**
+- [x] **Step 5: Update `src/extension/index.ts` to create and pass the store**
 
 Remove the local `readJsonConfig()`, `LoadedConfigState`, and `loadConfigState()` definitions from `src/extension/index.ts`.
 
@@ -712,7 +712,7 @@ if (!shouldInterceptSkillCommand(parsedSkillCommand.skillName, config)) {
 }
 ```
 
-- [ ] **Step 6: Run focused tests**
+- [x] **Step 6: Run focused tests**
 
 Run:
 
@@ -723,7 +723,7 @@ npm run test:integration -- test/integration/slash-commands.test.ts
 
 Expected: both commands pass.
 
-- [ ] **Step 7: Commit Task 2**
+- [x] **Step 7: Commit Task 2**
 
 Run:
 
@@ -740,7 +740,7 @@ Expected: commit succeeds.
 - Modify: `src/superpowers/config-writer.ts`
 - Test: `test/unit/superpowers-config-writer.test.ts`
 
-- [ ] **Step 1: Write failing config writer tests**
+- [x] **Step 1: Write failing config writer tests**
 
 Update the import in `test/unit/superpowers-config-writer.test.ts`:
 
@@ -798,7 +798,7 @@ void it("creates missing model tier containers", () => {
 });
 ```
 
-- [ ] **Step 2: Run the failing config writer tests**
+- [x] **Step 2: Run the failing config writer tests**
 
 Run:
 
@@ -808,7 +808,7 @@ npm run test:unit -- test/unit/superpowers-config-writer.test.ts
 
 Expected: fail because `setSuperpowersModelTierModel` is not exported.
 
-- [ ] **Step 3: Implement `setSuperpowersModelTierModel()`**
+- [x] **Step 3: Implement `setSuperpowersModelTierModel()`**
 
 In `src/superpowers/config-writer.ts`, add `ModelTierSetting` to the import:
 
@@ -870,7 +870,7 @@ export function setSuperpowersModelTierModel(
 }
 ```
 
-- [ ] **Step 4: Run config writer tests**
+- [x] **Step 4: Run config writer tests**
 
 Run:
 
@@ -880,7 +880,7 @@ npm run test:unit -- test/unit/superpowers-config-writer.test.ts
 
 Expected: pass.
 
-- [ ] **Step 5: Commit Task 3**
+- [x] **Step 5: Commit Task 3**
 
 Run:
 

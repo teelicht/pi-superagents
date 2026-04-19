@@ -70,6 +70,7 @@ export function modelToValue(model: SettingsModelOption): string {
 export class SuperpowersSettingsComponent implements Component {
 	private lastWriteMessage = "";
 	private selectedTier: string | undefined;
+	private selectedModelIndex = 0;
 	private mode: SettingsMode = "settings";
 	private readonly tui: TUI;
 	private readonly theme: Theme;
@@ -193,6 +194,7 @@ export class SuperpowersSettingsComponent implements Component {
 		if (matchesKey(data, "escape") || matchesKey(data, "q")) {
 			this.mode = "settings";
 			this.selectedTier = undefined;
+			this.selectedModelIndex = 0;
 			this.tui.requestRender();
 			return;
 		}
@@ -200,37 +202,53 @@ export class SuperpowersSettingsComponent implements Component {
 		const tiers = this.modelTierEntries();
 		if (tiers.length === 0) return;
 
-		// Navigation in tier picker or model picker
-		const currentIndex = this.selectedTier ? tiers.indexOf(this.selectedTier) : -1;
+		// Handle navigation based on current picker mode
+		if (this.mode === "tier-picker") {
+			// Tier picker navigation
+			const currentIndex = this.selectedTier ? tiers.indexOf(this.selectedTier) : -1;
 
-		// Use up/down arrow key characters for navigation
-		if (data === "[A" || matchesKey(data, "k")) {
-			const newIndex = currentIndex <= 0 ? tiers.length - 1 : currentIndex - 1;
-			this.selectedTier = tiers[newIndex];
-			this.tui.requestRender();
-			return;
-		}
-
-		if (data === "[B" || matchesKey(data, "j")) {
-			const newIndex = currentIndex >= tiers.length - 1 ? 0 : currentIndex + 1;
-			this.selectedTier = tiers[newIndex];
-			this.tui.requestRender();
-			return;
-		}
-
-		if (matchesKey(data, "enter")) {
-			if (this.mode === "tier-picker" && this.selectedTier) {
-				this.mode = "model-picker";
+			if (data === "[A" || matchesKey(data, "k")) {
+				const newIndex = currentIndex <= 0 ? tiers.length - 1 : currentIndex - 1;
+				this.selectedTier = tiers[newIndex];
 				this.tui.requestRender();
-			} else if (this.mode === "model-picker" && this.selectedTier) {
-				// First available model is the default selection
-				if (this.modelOptions.length > 0) {
-					const selectedModel = this.modelOptions[0];
-					this.writeModelTier(this.selectedTier, modelToValue(selectedModel));
-					this.mode = "tier-picker";
-					this.selectedTier = undefined;
-					this.tui.requestRender();
-				}
+				return;
+			}
+
+			if (data === "[B" || matchesKey(data, "j")) {
+				const newIndex = currentIndex >= tiers.length - 1 ? 0 : currentIndex + 1;
+				this.selectedTier = tiers[newIndex];
+				this.tui.requestRender();
+				return;
+			}
+
+			if (matchesKey(data, "enter") && this.selectedTier) {
+				this.mode = "model-picker";
+				this.selectedModelIndex = 0;
+				this.tui.requestRender();
+			}
+		} else if (this.mode === "model-picker") {
+			// Model picker navigation
+			if (this.modelOptions.length === 0) return;
+
+			if (data === "[A" || matchesKey(data, "k")) {
+				this.selectedModelIndex = this.selectedModelIndex <= 0 ? this.modelOptions.length - 1 : this.selectedModelIndex - 1;
+				this.tui.requestRender();
+				return;
+			}
+
+			if (data === "[B" || matchesKey(data, "j")) {
+				this.selectedModelIndex = this.selectedModelIndex >= this.modelOptions.length - 1 ? 0 : this.selectedModelIndex + 1;
+				this.tui.requestRender();
+				return;
+			}
+
+			if (matchesKey(data, "enter") && this.selectedTier && this.modelOptions.length > 0) {
+				const selectedModel = this.modelOptions[this.selectedModelIndex];
+				this.writeModelTier(this.selectedTier, modelToValue(selectedModel));
+				this.mode = "tier-picker";
+				this.selectedTier = undefined;
+				this.selectedModelIndex = 0;
+				this.tui.requestRender();
 			}
 		}
 	}
@@ -358,15 +376,18 @@ export class SuperpowersSettingsComponent implements Component {
 			"Available models:",
 		];
 
-		for (const model of this.modelOptions) {
+		for (let i = 0; i < this.modelOptions.length; i++) {
+			const model = this.modelOptions[i];
 			const modelValue = modelToValue(model);
 			const label = model.name ?? modelValue;
-			lines.push(`  ${modelValue} (${label})`);
+			const isSelected = i === this.selectedModelIndex;
+			const marker = isSelected ? "▸ " : "  ";
+			lines.push(`${marker}${modelValue} (${label})`);
 		}
 
 		lines.push("");
-		lines.push("Press Enter to select first model");
-		lines.push("Press q to go back");
+		lines.push("↑↓ navigate | Enter to select");
+		lines.push("q to go back");
 		return lines;
 	}
 
