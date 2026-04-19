@@ -899,7 +899,7 @@ Expected: commit succeeds.
 - Test: `test/unit/sp-settings.test.ts`
 - Test: `test/integration/slash-commands.test.ts`
 
-- [ ] **Step 1: Write failing settings overlay tests**
+- [x] **Step 1: Write failing settings overlay tests**
 
 In `test/unit/sp-settings.test.ts`, replace `createTuiMock()` with:
 
@@ -1013,7 +1013,7 @@ Update existing constructor calls in this file from passing a config object to p
 
 Use the same pattern for the other existing settings tests.
 
-- [ ] **Step 2: Run the failing settings tests**
+- [x] **Step 2: Run the failing settings tests**
 
 Run:
 
@@ -1023,7 +1023,7 @@ npm run test:unit -- test/unit/sp-settings.test.ts
 
 Expected: fail because the settings component does not accept a config accessor, model options, or test selection helpers.
 
-- [ ] **Step 3: Update `SuperpowersSettingsComponent` constructor and imports**
+- [x] **Step 3: Update `SuperpowersSettingsComponent` constructor and imports**
 
 In `src/ui/sp-settings.ts`, add imports:
 
@@ -1091,7 +1091,7 @@ constructor(
 }
 ```
 
-- [ ] **Step 4: Add tier/model mode rendering helpers**
+- [x] **Step 4: Add tier/model mode rendering helpers**
 
 In `src/ui/sp-settings.ts`, change `render()` to choose a title/footer:
 
@@ -1226,7 +1226,7 @@ private selectTheme() {
 }
 ```
 
-- [ ] **Step 5: Update settings body and write path**
+- [x] **Step 5: Update settings body and write path**
 
 Replace `const settings = this.config.superagents ?? {};` in `renderBody()` with:
 
@@ -1364,7 +1364,7 @@ function modelToValue(model: SettingsModelOption): string {
 }
 ```
 
-- [ ] **Step 6: Pass model options from slash command overlay**
+- [x] **Step 6: Pass model options from slash command overlay**
 
 In `src/slash/slash-commands.ts`, update `openSuperpowersSettingsOverlay()`:
 
@@ -1420,7 +1420,7 @@ registerSlashCommands(pi, state, () => configStore.getConfig(), () => {
 });
 ```
 
-- [ ] **Step 7: Update integration test overlay constructor expectations**
+- [x] **Step 7: Update integration test overlay constructor expectations**
 
 In `test/integration/slash-commands.test.ts`, update the mock constructor for `SuperpowersSettingsComponent` near the `/sp-settings` test to accept the new argument shape. The test should assert the fourth constructor argument is a function:
 
@@ -1442,7 +1442,7 @@ constructor(...args: unknown[]) {
 }
 ```
 
-- [ ] **Step 8: Run focused settings tests**
+- [x] **Step 8: Run focused settings tests**
 
 Run:
 
@@ -1453,7 +1453,7 @@ npm run test:integration -- test/integration/slash-commands.test.ts
 
 Expected: both pass.
 
-- [ ] **Step 9: Commit Task 4**
+- [x] **Step 9: Commit Task 4**
 
 Run:
 
@@ -1470,7 +1470,7 @@ Expected: commit succeeds.
 - Modify: `test/unit/superpowers-policy.test.ts`
 - Modify: `test/integration/single-execution.test.ts`
 
-- [ ] **Step 1: Add policy regression for changed config object**
+- [x] **Step 1: Add policy regression for changed config object**
 
 In `test/unit/superpowers-policy.test.ts`, add:
 
@@ -1502,7 +1502,7 @@ void it("resolves later model tier values from a changed runtime config", () => 
 });
 ```
 
-- [ ] **Step 2: Add integration regression for subagent execution config**
+- [x] **Step 2: Add integration regression for subagent execution config**
 
 In `test/integration/single-execution.test.ts`, add this new test immediately after the existing `"applies superpowers tier thinking when the tier config provides it"` test:
 
@@ -1541,7 +1541,7 @@ void it("uses changed model tier config for later single executions", async () =
 });
 ```
 
-- [ ] **Step 3: Run the regression tests**
+- [x] **Step 3: Run the regression tests**
 
 Run:
 
@@ -1552,7 +1552,7 @@ npm run test:integration -- test/integration/single-execution.test.ts
 
 Expected: both pass.
 
-- [ ] **Step 4: Commit Task 5**
+- [x] **Step 4: Commit Task 5**
 
 Run:
 
@@ -1572,7 +1572,7 @@ Expected: commit succeeds.
 - Modify: `docs/skills.md`
 - Modify: `docs/worktrees.md`
 
-- [ ] **Step 1: Update README configuration summary**
+- [x] **Step 1: Update README configuration summary**
 
 In `README.md`, add this sentence to the configuration/settings section that mentions model tiers:
 
@@ -1580,7 +1580,7 @@ In `README.md`, add this sentence to the configuration/settings section that men
 Open `/sp-settings` to inspect model tiers and change a tier to one of PI's authenticated models without restarting the current PI session.
 ```
 
-- [ ] **Step 2: Update model tiers documentation**
+- [x] **Step 2: Update model tiers documentation**
 
 In `docs/configuration.md`, after the Model Tiers JSON example, add:
 
@@ -1590,7 +1590,7 @@ You can edit model tier mappings during an active PI session with `/sp-settings`
 Command registration still happens when the extension loads. If you add or rename slash commands in `config.json`, reload PI before using those new command names.
 ```
 
-- [ ] **Step 3: Update parameters reference**
+- [x] **Step 3: Update parameters reference**
 
 In `docs/parameters.md`, add this section before `## Release Notes`:
 
@@ -1600,7 +1600,7 @@ In `docs/parameters.md`, add this section before `## Release Notes`:
 `/sp-settings` opens the Superpowers settings overlay. Use it to toggle supported workflow options and edit model tiers from PI's authenticated model list. Model tier edits are persisted to `config.json` and apply to future subagents in the current session.
 ```
 
-- [ ] **Step 4: Update skills documentation**
+- [x] **Step 4: Update skills documentation**
 
 In `docs/skills.md`, add this paragraph near the Superpowers role-agent discussion:
 
@@ -1608,7 +1608,7 @@ In `docs/skills.md`, add this paragraph near the Superpowers role-agent discussi
 Role agents use abstract tier names such as `cheap`, `balanced`, and `max`. You can change which concrete PI model a tier points to from `/sp-settings`; the change is saved to `config.json` and affects future delegated role agents without restarting PI.
 ```
 
-- [ ] **Step 5: Update worktrees cross-reference**
+- [x] **Step 5: Update worktrees cross-reference**
 
 In `docs/worktrees.md`, add this sentence near the configuration reference:
 
@@ -1616,17 +1616,17 @@ In `docs/worktrees.md`, add this sentence near the configuration reference:
 The `/sp-settings` overlay also shows Superpowers model tiers; tier edits apply immediately to future subagents, while worktree command registration changes may still require a PI reload.
 ```
 
-- [ ] **Step 6: Run docs diff check**
+- [x] **Step 6: Run docs diff check**
 
 Run:
 
 ```bash
-git diff -- README.md docs/configuration.md docs/parameters.md docs/skills.md docs/worktrees.md
+git diff -- README.md docs/configuration.md docs/parameters.md docs/parameters.md docs/skills.md docs/worktrees.md
 ```
 
 Expected: diff only documents live model tier editing and the command-registration reload distinction.
 
-- [ ] **Step 7: Commit Task 6**
+- [x] **Step 7: Commit Task 6**
 
 Run:
 
@@ -1642,7 +1642,7 @@ Expected: commit succeeds.
 **Files:**
 - Verify only; no planned source edits.
 
-- [ ] **Step 1: Run typecheck**
+- [x] **Step 1: Run typecheck**
 
 Run:
 
@@ -1652,7 +1652,7 @@ npm run typecheck
 
 Expected: `tsc --noEmit` completes with exit code 0.
 
-- [ ] **Step 2: Run unit tests**
+- [x] **Step 2: Run unit tests**
 
 Run:
 
@@ -1662,7 +1662,7 @@ npm run test:unit
 
 Expected: all unit tests pass.
 
-- [ ] **Step 3: Run integration tests**
+- [x] **Step 3: Run integration tests**
 
 Run:
 
@@ -1672,7 +1672,7 @@ npm run test:integration
 
 Expected: all integration tests pass.
 
-- [ ] **Step 4: Run e2e tests if local environment supports them**
+- [x] **Step 4: Run e2e tests if local environment supports them**
 
 Run:
 
@@ -1682,7 +1682,7 @@ npm run test:e2e
 
 Expected: e2e tests pass. If the command fails because the local environment lacks a PI sandbox prerequisite, record the exact failure in the final implementation summary and keep unit plus integration evidence.
 
-- [ ] **Step 5: Inspect git status**
+- [x] **Step 5: Inspect git status**
 
 Run:
 
