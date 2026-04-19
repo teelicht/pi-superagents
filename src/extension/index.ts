@@ -16,6 +16,7 @@ import { Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import { discoverAgents } from "../agents/agents.ts";
 import { formatConfigDiagnostics, loadEffectiveConfig } from "../execution/config-validation.ts";
+import { createRuntimeConfigStore } from "./config-store.ts";
 import { createSubagentExecutor, type SubagentParamsLike } from "../execution/subagent-executor.ts";
 import { requestPlannotatorPlanReview } from "../integrations/plannotator.ts";
 import { cleanupAllArtifactDirs, cleanupOldArtifacts, getArtifactsDir } from "../shared/artifacts.ts";
@@ -230,7 +231,9 @@ function commandNameForInterceptedSkill(skillName: string): string | undefined {
  * @returns Nothing. Registration mutates Pi's runtime extension registry.
  */
 export default function registerSubagentExtension(pi: ExtensionAPI): void {
-	const configState = loadConfigState();
+	// Create runtime config store for live config at execution time
+	const configStore = createRuntimeConfigStore();
+	const configState = configStore.loadState();
 	const config = configState.config;
 	const tempArtifactsDir = getArtifactsDir(null);
 	cleanupAllArtifactDirs(DEFAULT_ARTIFACT_CONFIG.cleanupDays);
@@ -239,19 +242,13 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 		baseCwd: process.cwd(),
 		currentSessionId: null,
 		lastUiContext: null,
-		configGate: {
-			blocked: configState.blocked,
-			diagnostics: configState.diagnostics,
-			message: configState.message,
-			configPath: configState.configPath,
-			examplePath: configState.examplePath,
-		},
+		configGate: configStore.getGateState(),
 	};
 
 	const executor = createSubagentExecutor({
 		pi,
 		state,
-		config,
+		getConfig: () => configStore.getConfig(),
 		tempArtifactsDir,
 		getSubagentSessionRoot,
 		expandTilde,
@@ -460,7 +457,7 @@ Bounded role agents are not allowed to call subagents.`,
 	pi.registerTool(planReviewTool);
 	pi.registerTool(specReviewTool);
 	pi.registerTool(tool);
-	registerSlashCommands(pi, state, config);
+	registerSlashCommands(pi, state, () => configStore.getConfig());
 	const skillCommandPromptDispatcher = createSuperpowersPromptDispatcher(pi);
 
 	/**

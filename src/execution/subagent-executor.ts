@@ -39,7 +39,6 @@ import { runSync } from "./execution.ts";
 import { createForkContextResolver, type ForkableSessionManager } from "./fork-context.ts";
 import { aggregateParallelOutputs } from "./parallel-utils.ts";
 import { resolveStepBehavior } from "./settings.ts";
-import { finalizeSingleOutput, injectSingleOutputInstruction, resolveSingleOutputPath } from "./single-output.ts";
 import { resolveSuperagentWorktreeCreateOptions, resolveSuperagentWorktreeEnabled } from "./superagents-config.ts";
 import { buildSuperpowersPacketPlan, injectSuperpowersPacketInstructions } from "./superpowers-packets.ts";
 import {
@@ -74,13 +73,14 @@ export interface SubagentParamsLike {
 	includeProgress?: boolean;
 	model?: string;
 	skill?: string | string[] | boolean;
-	output?: string | boolean;
 }
 
 interface ExecutorDeps {
 	pi: ExtensionAPI;
 	state: SubagentState;
-	config: ExtensionConfig;
+	/** Config accessor - supports both legacy config object and new getConfig() getter */
+	config?: ExtensionConfig;
+	getConfig?: () => ExtensionConfig;
 	tempArtifactsDir: string;
 	getSubagentSessionRoot: (parentSessionFile: string | null) => string;
 	expandTilde: (p: string) => string;
@@ -347,11 +347,11 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		agentConfigs.push(config);
 	}
 
-	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(deps.config.maxSubagentDepth);
+	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(config.maxSubagentDepth);
 	const maxSubagentDepths = agentConfigs.map((config) =>
 		resolveChildMaxSubagentDepth(currentMaxSubagentDepth, config.maxSubagentDepth),
 	);
-	const effectiveWorktree = resolveSuperagentWorktreeEnabled(params.worktree, workflow, deps.config);
+	const effectiveWorktree = resolveSuperagentWorktreeEnabled(params.worktree, workflow, config);
 
 	const effectiveCwd = params.cwd ?? ctx.cwd;
 	if (effectiveWorktree) {
@@ -369,7 +369,6 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		return resolveStepBehavior(
 			config,
 			{
-				output: undefined,
 				reads: undefined,
 				progress: undefined,
 				skills: skillOverride,
@@ -421,7 +420,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 			liveProgress,
 			onUpdate,
 			worktreeSetup,
-			config: deps.config,
+			config: config,
 			workflow,
 			useTestDrivenDevelopment,
 		});
@@ -488,16 +487,13 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	let task = params.task!;
 	const modelOverride: string | undefined = params.model;
 	const skillOverride: string[] | false | undefined = normalizeSkillInput(params.skill);
-	const rawOutput = params.output !== undefined ? params.output : agentConfig.output;
-	const _effectiveOutput: string | false | undefined = rawOutput === true ? agentConfig.output : rawOutput;
-	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(deps.config.maxSubagentDepth);
+	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(config.maxSubagentDepth);
 	const maxSubagentDepth = resolveChildMaxSubagentDepth(currentMaxSubagentDepth, agentConfig.maxSubagentDepth);
 
 	const packetDefaults = buildSuperpowersPacketPlan(agentConfig.name as ExecutionRole);
 	const behavior = resolveStepBehavior(
 		agentConfig,
 		{
-			output: params.output === true ? undefined : params.output,
 			reads: undefined,
 			progress: undefined,
 			skills: skillOverride,
@@ -511,8 +507,6 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		task = wrapForkTask(task);
 	}
 	const _cleanTask = task;
-	const outputPath = resolveSingleOutputPath(behavior.output || undefined, ctx.cwd, params.cwd);
-	task = injectSingleOutputInstruction(task, outputPath);
 
 	const effectiveSkills = skillOverride;
 
@@ -524,12 +518,11 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
 		artifactConfig,
 		maxOutput: params.maxOutput,
-		outputPath,
 		maxSubagentDepth,
 		onUpdate,
 		modelOverride,
 		skills: effectiveSkills,
-		config: deps.config,
+		config: config,
 		workflow,
 		useTestDrivenDevelopment,
 	});
@@ -537,14 +530,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	if (r.artifactPaths) allArtifactPaths.push(r.artifactPaths);
 
 	const fullOutput = getSingleResultOutput(r);
-	const finalizedOutput = finalizeSingleOutput({
-		fullOutput,
-		truncatedOutput: r.truncation?.text,
-		outputPath,
-		exitCode: r.exitCode,
-		savedPath: r.savedOutputPath,
-		saveError: r.outputSaveError,
-	});
+	const displayOutput = r.truncation?.text || fullOutput;
 
 	if (r.exitCode !== 0)
 		return {
@@ -558,7 +544,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 			},
 		};
 	return {
-		content: [{ type: "text", text: finalizedOutput.displayOutput || "(no output)" }],
+		content: [{ type: "text", text: displayOutput || "(no output)" }],
 		details: {
 			mode: "single",
 			results: [r],
@@ -586,7 +572,9 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 		ctx: ExtensionContext,
 	): Promise<AgentToolResult<Details>> => {
 		deps.state.baseCwd = ctx.cwd;
-		const { blocked, depth, maxDepth } = checkSubagentDepth(deps.config.maxSubagentDepth);
+		// Support both legacy `config` and new `getConfig()` accessor
+		const config = deps.getConfig?.() ?? deps.config!;
+		const { blocked, depth, maxDepth } = checkSubagentDepth(config.maxSubagentDepth);
 		if (blocked) {
 			return {
 				content: [
@@ -647,7 +635,7 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			workflow: params.workflow ?? "superpowers",
 			useTestDrivenDevelopment:
 				params.useTestDrivenDevelopment ??
-				deps.config.superagents?.commands?.["sp-implement"]?.useTestDrivenDevelopment ??
+				config.superagents?.commands?.["sp-implement"]?.useTestDrivenDevelopment ??
 				true,
 		};
 
