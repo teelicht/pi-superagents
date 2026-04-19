@@ -727,8 +727,9 @@ void describe(
 				{ requestRender: () => {} },
 				{ fg: (_color: string, text: string) => text, bg: (_color: string, text: string) => text },
 				state,
-				{ superagents: { commands: { "sp-implement": { useSubagents: true, worktrees: { enabled: false } } } } },
-				() => {},
+				() => ({
+					superagents: { commands: { "sp-implement": { useSubagents: true, worktrees: { enabled: false } } } },
+				}),
 			);
 			component.toggleUseSubagents();
 			component.toggleWorktrees();

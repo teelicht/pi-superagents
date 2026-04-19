@@ -88,7 +88,6 @@ void test("SuperpowersSettingsComponent renders settings in a framed panel", () 
 		createTuiMock() as never,
 		createThemeMock() as never,
 		createState() as never,
-		config as ExtensionConfig,
 		getConfigForTest(config),
 		{ models: [] },
 	);
@@ -128,7 +127,6 @@ void test("SuperpowersSettingsComponent writes setting toggles to config", () =>
 		tuiMock as never,
 		createThemeMock() as never,
 		createState(configPath) as never,
-		config as ExtensionConfig,
 		getConfigForTest(config),
 		{ models: [] },
 	);
@@ -156,7 +154,6 @@ void test("SuperpowersSettingsComponent reports unavailable config path", () => 
 		createTuiMock() as never,
 		createThemeMock() as never,
 		createState() as never,
-		config as ExtensionConfig,
 		getConfigForTest(config),
 		{ models: [] },
 	);
@@ -190,7 +187,6 @@ void test("SuperpowersSettingsComponent writes model tier selections and reloads
 		tuiMock as never,
 		createThemeMock() as never,
 		createState(configPath) as never,
-		config as ExtensionConfig,
 		getConfigForTest(config),
 		{
 			models: [
@@ -237,7 +233,6 @@ void test("SuperpowersSettingsComponent selects and navigates model tiers", () =
 		tuiMock as never,
 		createThemeMock() as never,
 		createState() as never,
-		config,
 		getConfigForTest(config),
 		{
 			models: [
@@ -276,7 +271,6 @@ void test("SuperpowersSettingsComponent reports when no models are available", (
 		createTuiMock() as never,
 		createThemeMock() as never,
 		createState() as never,
-		config as ExtensionConfig,
 		getConfigForTest(config),
 		{
 			models: [],
