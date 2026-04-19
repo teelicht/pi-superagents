@@ -137,8 +137,6 @@ async function openSuperpowersSettingsOverlay(
 	reloadConfig?: () => void,
 ): Promise<void> {
 	if (!ctx.hasUI) return;
-	const config = readConfig(configSource);
-
 	// Get model options from the model registry
 	let modelOptions: SettingsModelOption[] = [];
 	let modelRegistryError: string | undefined;
@@ -163,7 +161,7 @@ async function openSuperpowersSettingsOverlay(
 	}
 
 	await ctx.ui.custom<void>((tui, theme, _kb, done) => {
-		return new SuperpowersSettingsComponent(tui, theme, state, config, () => readConfig(configSource), {
+		return new SuperpowersSettingsComponent(tui, theme, state, () => readConfig(configSource), {
 			models: modelOptions,
 			modelRegistryError,
 			reloadConfig,

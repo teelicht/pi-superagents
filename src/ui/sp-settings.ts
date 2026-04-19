@@ -88,7 +88,6 @@ export class SuperpowersSettingsComponent implements Component {
 	 * @param tui TUI instance for requesting renders.
 	 * @param theme Theme for panel styling.
 	 * @param state Subagent state for config gate.
-	 * @param config Extension config to display.
 	 * @param getConfig Config accessor for fresh reads during render.
 	 * @param options Model picker options including available models, reload callback, and close callback.
 	 */
@@ -96,14 +95,12 @@ export class SuperpowersSettingsComponent implements Component {
 		tui: TUI,
 		theme: Theme,
 		state: SubagentState,
-		config: ExtensionConfig,
 		getConfig: ConfigAccessor,
 		options: SuperpowersSettingsModelPickerOptions = {},
 	) {
 		this.tui = tui;
 		this.theme = theme;
 		this.state = state;
-		this.config = config;
 		this.getConfig = getConfig;
 		this.modelOptions = options.models ?? [];
 		this.modelRegistryError = options.modelRegistryError;
