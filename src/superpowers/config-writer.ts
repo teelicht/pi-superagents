@@ -112,11 +112,7 @@ function ensureModelTiers(config: MutableConfig): Record<string, ModelTierSettin
  * @returns The same config reference, modified.
  * @throws Error if tierName or model is empty.
  */
-export function setSuperpowersModelTierModel(
-	config: MutableConfig,
-	tierName: string,
-	model: string,
-): MutableConfig {
+export function setSuperpowersModelTierModel(config: MutableConfig, tierName: string, model: string): MutableConfig {
 	const normalizedTierName = tierName.trim();
 	const normalizedModel = model.trim();
 	if (!normalizedTierName) throw new Error("Model tier name must be non-empty.");

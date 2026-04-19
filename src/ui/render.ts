@@ -201,10 +201,7 @@ export function renderSubagentResult(
 		(r) => r.progress?.status === "completed" || (r.exitCode === 0 && r.progress?.status !== "running"),
 	).length;
 	const hasEmptyWithoutTarget = d.results.some(
-		(r) =>
-			r.exitCode === 0 &&
-			r.progress?.status !== "running" &&
-			hasEmptyOutput(getSingleResultOutput(r)),
+		(r) => r.exitCode === 0 && r.progress?.status !== "running" && hasEmptyOutput(getSingleResultOutput(r)),
 	);
 	const icon = hasRunning
 		? theme.fg("warning", "...")

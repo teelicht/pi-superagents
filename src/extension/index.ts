@@ -15,16 +15,12 @@ import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@mariozechn
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import { discoverAgents } from "../agents/agents.ts";
-import { formatConfigDiagnostics, loadEffectiveConfig } from "../execution/config-validation.ts";
-import { createRuntimeConfigStore } from "./config-store.ts";
-import type { LoadedConfigState } from "./config-store.ts";
 import { createSubagentExecutor, type SubagentParamsLike } from "../execution/subagent-executor.ts";
 import { requestPlannotatorPlanReview } from "../integrations/plannotator.ts";
 import { cleanupAllArtifactDirs, cleanupOldArtifacts, getArtifactsDir } from "../shared/artifacts.ts";
 import { SubagentParams } from "../shared/schemas.ts";
 import { resolveAvailableSkill, resolveSkills } from "../shared/skills.ts";
-import type { ConfigDiagnostic } from "../shared/types.ts";
-import { DEFAULT_ARTIFACT_CONFIG, type Details, type ExtensionConfig, type SubagentState } from "../shared/types.ts";
+import { DEFAULT_ARTIFACT_CONFIG, type Details, type SubagentState } from "../shared/types.ts";
 import { registerSlashCommands } from "../slash/slash-commands.ts";
 import { createSuperpowersPromptDispatcher } from "../superpowers/prompt-dispatch.ts";
 import { buildSuperpowersVisiblePromptSummary } from "../superpowers/root-prompt.ts";
@@ -35,6 +31,7 @@ import {
 } from "../superpowers/skill-entry.ts";
 import { parseSuperpowersWorkflowArgs, resolveSuperpowersRunProfile } from "../superpowers/workflow-profile.ts";
 import { renderSubagentResult } from "../ui/render.ts";
+import { createRuntimeConfigStore } from "./config-store.ts";
 
 /**
  * Derive subagent session base directory from parent session file.
@@ -58,12 +55,10 @@ function getSubagentSessionRoot(parentSessionFile: string | null): string {
  * @param filePath Absolute path to the JSON file.
  * @returns Parsed JSON value or `undefined` when the file is absent.
  */
-function readJsonConfig(filePath: string): unknown {
+function _readJsonConfig(filePath: string): unknown {
 	if (!fs.existsSync(filePath)) return undefined;
 	return JSON.parse(fs.readFileSync(filePath, "utf-8"));
 }
-
-
 
 /**
  * Expand a leading tilde in a filesystem path.
@@ -423,7 +418,12 @@ Bounded role agents are not allowed to call subagents.`,
 	pi.registerTool(planReviewTool);
 	pi.registerTool(specReviewTool);
 	pi.registerTool(tool);
-	registerSlashCommands(pi, state, () => configStore.getConfig(), () => configStore.reloadConfig());
+	registerSlashCommands(
+		pi,
+		state,
+		() => configStore.getConfig(),
+		() => configStore.reloadConfig(),
+	);
 	const skillCommandPromptDispatcher = createSuperpowersPromptDispatcher(pi);
 
 	/**

@@ -186,7 +186,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 			config: {
 				superagents: {
 					modelTiers: {
-					balanced: { model: "anthropic/claude-opus-4.6" },
+						balanced: { model: "anthropic/claude-opus-4.6" },
 					},
 				},
 			},

@@ -311,13 +311,11 @@ void describe("superpowers policy", () => {
 			},
 		};
 
-		assert.deepEqual(
-			resolveModelForAgent({ workflow: "superpowers", agentModel: "balanced", config: firstConfig }),
-			{ model: "openai/gpt-5.4" },
-		);
-		assert.deepEqual(
-			resolveModelForAgent({ workflow: "superpowers", agentModel: "balanced", config: secondConfig }),
-			{ model: "anthropic/claude-opus-4.6" },
-		);
+		assert.deepEqual(resolveModelForAgent({ workflow: "superpowers", agentModel: "balanced", config: firstConfig }), {
+			model: "openai/gpt-5.4",
+		});
+		assert.deepEqual(resolveModelForAgent({ workflow: "superpowers", agentModel: "balanced", config: secondConfig }), {
+			model: "anthropic/claude-opus-4.6",
+		});
 	});
 });

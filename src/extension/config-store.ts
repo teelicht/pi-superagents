@@ -14,7 +14,6 @@
  */
 
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import { formatConfigDiagnostics, loadEffectiveConfig } from "../execution/config-validation.ts";
 import type { ConfigDiagnostic, ConfigGateState, ExtensionConfig } from "../shared/types.ts";
@@ -74,7 +73,10 @@ export interface LoadedConfigState {
  * @param userConfigDir Absolute path to the user config directory. Defaults to `packageConfigDir`.
  * @returns Object with bundled default and user config paths.
  */
-export function resolveRuntimeConfigPaths(packageConfigDir: string, userConfigDir = packageConfigDir): {
+export function resolveRuntimeConfigPaths(
+	packageConfigDir: string,
+	userConfigDir = packageConfigDir,
+): {
 	bundledDefaultConfigPath: string;
 	userConfigPath: string;
 	exampleConfigPath: string;
@@ -202,7 +204,10 @@ export function assignGate(state: LoadedConfigState, target?: ConfigGateState): 
  * @param userConfigDir Absolute path to the user config directory. Defaults to `packageConfigDir`.
  * @returns Runtime config store with getConfig, getGateState, and reloadConfig.
  */
-export function createRuntimeConfigStore(packageConfigDir: string, userConfigDir = packageConfigDir): RuntimeConfigStore {
+export function createRuntimeConfigStore(
+	packageConfigDir: string,
+	userConfigDir = packageConfigDir,
+): RuntimeConfigStore {
 	let currentState = loadRuntimeConfigState(packageConfigDir, userConfigDir);
 	// Store a single gate object that gets mutated on reload
 	const gate = assignGate(currentState);
