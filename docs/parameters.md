@@ -20,6 +20,8 @@ These are the parameters the **LLM agent** passes when it calls the `subagent` t
 
 Resolved skills, including per-call `skill` overrides and configured overlays, are shown in `/subagents-status` for active and recent subagent runs. Missing skills are shown as warnings there.
 
+Subagent output is inline: the child Pi process streams assistant text back through the `subagent` tool result. The tool does not accept an output-file parameter and does not instruct Superpowers roles to write repo-root report files.
+
 ### TaskItem (for parallel tasks)
 
 | Field   | Type    | Description |
@@ -33,6 +35,10 @@ Resolved skills, including per-call `skill` overrides and configured overlays, a
 ## Context: Fork
 
 `context: "fork"` branches the session from the current parent state. This allows the subagent to "see" the prior conversation history as read-only context while working in its own isolated branch. This is highly recommended for complex tasks where the subagent needs the full background of the current session.
+
+## Artifacts
+
+When `artifacts` is enabled, Pi Superagents stores debugging input, output, JSONL, and metadata files in the session artifact directory. These artifacts are separate from the repository working tree and replace the older file-handoff pattern that wrote `implementer-report.md`, `spec-review.md`, or `code-review.md` into the project root.
 
 ## Review Bridge Tools
 

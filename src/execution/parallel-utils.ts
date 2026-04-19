@@ -16,7 +16,6 @@ export interface RunnerSubagentStep {
 	mcpDirectTools?: string[];
 	systemPrompt?: string | null;
 	skills?: string[];
-	outputPath?: string;
 	sessionFile?: string;
 	maxSubagentDepth?: number;
 }
@@ -82,8 +81,6 @@ export interface ParallelTaskResult {
 	output: string;
 	exitCode: number | null;
 	error?: string;
-	outputTargetPath?: string;
-	outputTargetExists?: boolean;
 }
 
 /** Aggregate outputs from parallel tasks into a single string for {previous} */
@@ -102,11 +99,9 @@ export function aggregateParallelOutputs(
 						? `⚠️ FAILED (exit code ${r.exitCode})${r.error ? `: ${r.error}` : ""}`
 						: r.error
 							? `⚠️ WARNING: ${r.error}`
-							: !hasOutput && r.outputTargetPath && r.outputTargetExists === false
-								? `⚠️ EMPTY OUTPUT (expected output file missing: ${r.outputTargetPath})`
-								: !hasOutput && !r.outputTargetPath
-									? "⚠️ EMPTY OUTPUT (no textual response returned)"
-									: "";
+							: !hasOutput
+								? "⚠️ EMPTY OUTPUT (no textual response returned)"
+								: "";
 			const body = status ? (hasOutput ? `${status}\n${r.output}` : status) : r.output;
 			return `${header}\n${body}`;
 		})

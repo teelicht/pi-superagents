@@ -2,7 +2,7 @@
  * Integration coverage for Superpowers packet defaults.
  *
  * Responsibilities:
- * - verify the command-scoped packet names used by Superpowers roles
+ * - verify the command-scoped packet reads used by Superpowers roles
  * - guard against fallback to legacy context/plan/progress conventions
  * - verify packet instruction injection in sync executor foreground/parallel paths
  *
@@ -49,12 +49,12 @@ function git(cwd: string, args: string[]): void {
 
 void describe("superpowers packets", () => {
 	/**
-	 * Verifies the implementer role uses Superpowers packet names instead of legacy defaults.
+	 * Verifies the implementer role reads Superpowers packet names without writing reports.
 	 */
 	void it("uses task and review packet names instead of context.md/plan.md/progress.md", () => {
 		const packets = buildSuperpowersPacketPlan("sp-implementer");
 		assert.deepEqual(packets.reads, ["task-brief.md"]);
-		assert.equal(packets.output, "implementer-report.md");
+		assert.equal(packets.output, false);
 		assert.equal(packets.progress, false);
 	});
 
@@ -64,17 +64,17 @@ void describe("superpowers packets", () => {
 	void it("maps review, debug, and default roles to the expected packet defaults", () => {
 		assert.deepEqual(buildSuperpowersPacketPlan("sp-spec-review"), {
 			reads: ["task-brief.md", "implementer-report.md"],
-			output: "spec-review.md",
+			output: false,
 			progress: false,
 		});
 		assert.deepEqual(buildSuperpowersPacketPlan("sp-code-review"), {
 			reads: ["task-brief.md", "spec-review.md"],
-			output: "code-review.md",
+			output: false,
 			progress: false,
 		});
 		assert.deepEqual(buildSuperpowersPacketPlan("sp-debug"), {
 			reads: ["debug-brief.md"],
-			output: "debug-brief.md",
+			output: false,
 			progress: false,
 		});
 		assert.deepEqual(buildSuperpowersPacketPlan("sp-recon"), {
@@ -85,9 +85,9 @@ void describe("superpowers packets", () => {
 	});
 
 	/**
-	 * Verifies packet defaults sit between explicit step overrides and agent frontmatter defaults.
+	 * Verifies packet defaults sit between explicit step overrides and inert defaults.
 	 */
-	void it("prefers explicit step overrides, then packet defaults, then agent defaults", () => {
+	void it("prefers explicit step overrides, then packet defaults, then disabled defaults", () => {
 		const behavior = resolveStepBehavior(
 			{
 				name: "sp-implementer",
@@ -95,27 +95,22 @@ void describe("superpowers packets", () => {
 				systemPrompt: "Implement one task.",
 				source: "builtin",
 				filePath: "/tmp/sp-implementer.md",
-				output: "legacy-report.md",
-				defaultReads: ["context.md"],
-				defaultProgress: true,
 			},
 			{
-				output: "step-output.md",
+				reads: ["custom-task.md"],
 			},
 			{
 				reads: ["task-brief.md"],
-				output: "implementer-report.md",
 				progress: false,
 			},
 		);
 
-		assert.equal(behavior.output, "step-output.md");
-		assert.deepEqual(behavior.reads, ["task-brief.md"]);
+		assert.deepEqual(behavior.reads, ["custom-task.md"]);
 		assert.equal(behavior.progress, false);
 	});
 
 	/**
-	 * Verifies injectSuperpowersPacketInstructions adds packet filenames to task text.
+	 * Verifies injectSuperpowersPacketInstructions adds read packet filenames without write targets.
 	 */
 	void it("injects packet filenames into task text for implementer role", () => {
 		const packets = buildSuperpowersPacketPlan("sp-implementer");
@@ -126,7 +121,8 @@ void describe("superpowers packets", () => {
 		);
 		const task = injectSuperpowersPacketInstructions("Implement the selected task.", behavior);
 		assert.ok(task.includes("task-brief.md"), "should reference task-brief.md");
-		assert.ok(task.includes("implementer-report.md"), "should reference implementer-report.md");
+		assert.ok(!task.includes("[Write to:"), "should not inject [Write to:] instruction");
+		assert.ok(!task.includes("implementer-report.md"), "should not reference implementer-report.md");
 		assert.ok(!task.includes("plan.md"), "should not reference legacy plan.md");
 		assert.ok(!task.includes("progress.md"), "should not reference legacy progress.md");
 	});
@@ -252,9 +248,6 @@ void describe(
 					systemPrompt: "Implement the task.",
 					source: "builtin",
 					filePath: "/tmp/sp-implementer.md",
-					output: "context.md",
-					defaultReads: ["plan.md"],
-					defaultProgress: true,
 				},
 			];
 			const executor = makeExecutor(agents);
@@ -276,9 +269,11 @@ void describe(
 			assert.ok(result.details.results.length > 0, "should have results");
 			const taskText = result.details.results[0].task;
 			assert.ok(taskText.includes("task-brief.md"), `task should reference task-brief.md: ${taskText}`);
-			assert.ok(taskText.includes("implementer-report.md"), `task should reference implementer-report.md: ${taskText}`);
+			assert.ok(!taskText.includes("[Write to:"), `should not inject [Write to:] instruction: ${taskText}`);
+			assert.ok(!taskText.includes("implementer-report.md"), `task should not reference output file: ${taskText}`);
 			assert.ok(!taskText.includes("plan.md"), `task should not reference legacy plan.md: ${taskText}`);
 			assert.ok(!taskText.includes("progress.md"), `task should not reference legacy progress.md: ${taskText}`);
+			assert.equal(fs.existsSync(path.join(tempDir, "implementer-report.md")), false);
 		});
 
 		void it("injects superpowers packet instructions into foreground parallel tasks", async () => {
@@ -290,9 +285,6 @@ void describe(
 					systemPrompt: "Implement the task.",
 					source: "builtin",
 					filePath: "/tmp/sp-implementer.md",
-					output: "context.md",
-					defaultReads: ["plan.md"],
-					defaultProgress: true,
 				},
 			];
 			const executor = makeExecutor(agents);
@@ -314,7 +306,8 @@ void describe(
 			// Packet instructions are injected into each parallel task's text
 			const taskText = result.details.results[0].task;
 			assert.ok(taskText.includes("task-brief.md"), `task should reference task-brief.md: ${taskText}`);
-			assert.ok(taskText.includes("implementer-report.md"), `task should reference implementer-report.md: ${taskText}`);
+			assert.ok(!taskText.includes("[Write to:"), `should not inject [Write to:] instruction: ${taskText}`);
+			assert.ok(!taskText.includes("implementer-report.md"), `task should not reference output file: ${taskText}`);
 			assert.ok(!taskText.includes("plan.md"), `task should not reference legacy plan.md: ${taskText}`);
 		});
 
@@ -327,9 +320,6 @@ void describe(
 					systemPrompt: "Implement the task.",
 					source: "builtin",
 					filePath: "/tmp/sp-implementer.md",
-					output: "context.md",
-					defaultReads: ["plan.md"],
-					defaultProgress: false,
 				},
 			];
 			const executor = makeExecutor(agents);
@@ -348,13 +338,11 @@ void describe(
 			assert.ok(!result.isError, JSON.stringify(result.content));
 			assert.equal(result.details.mode, "parallel");
 			assert.ok(result.details.results.length > 0, "should have results");
-			// Agent frontmatter defaults (plan.md, progress=false) are overridden by packet defaults
+			// Packet defaults inject only read guidance and never output targets.
 			const taskText = result.details.results[0].task;
 			assert.ok(taskText.includes("task-brief.md"), `packet reads should override agent defaults: ${taskText}`);
-			assert.ok(
-				taskText.includes("implementer-report.md"),
-				`packet output should override agent defaults: ${taskText}`,
-			);
+			assert.ok(!taskText.includes("[Write to:"), `packet output should stay inline: ${taskText}`);
+			assert.ok(!taskText.includes("implementer-report.md"), `packet output should not write files: ${taskText}`);
 		});
 
 		void it("defaults worktree isolation on for parallel superpowers tasks when config enables it", async () => {
@@ -365,9 +353,6 @@ void describe(
 					systemPrompt: "Implement the task.",
 					source: "builtin",
 					filePath: "/tmp/sp-implementer.md",
-					output: "context.md",
-					defaultReads: ["plan.md"],
-					defaultProgress: false,
 				},
 			];
 			// Mock pi returns success so the worktree setup + run can complete

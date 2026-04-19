@@ -73,6 +73,12 @@ Each command preset supports these keys:
 | `worktrees.enabled` | Use git worktree isolation for parallel tasks. |
 | `worktrees.root` | Directory for worktrees (default: system temp). |
 
+## Inline Role Output
+
+Superpowers role agents return their findings through Pi tool results. The runtime no longer configures packet output files, so `sp-implementer`, `sp-spec-review`, `sp-code-review`, and `sp-debug` do not create repo-root handoff files during normal subagent-driven development.
+
+Execution artifacts are still available when `artifacts` is enabled. Those files are written to the session artifact directory for debugging and truncation recovery, not to the repository root.
+
 ## Common Override Examples
 
 Create a custom command with lean settings:

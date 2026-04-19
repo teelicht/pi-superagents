@@ -8,6 +8,7 @@
 - **Role-Specific Agents**: Thin agents-layer for every phase of the development lifecycle.
 - **Model Tiers**: Abstract model selection (cheap, balanced, max) for each agent to reduce costs and to utilize AI models according to their strengths. One model can be configured per tier. Custom tiers are possible.
 - **Subagent Execution**: Automatically spawns sub-agents (setting).
+- **Inline Agent Handoffs**: Role outputs are returned through Pi tool results and session artifacts, not `implementer-report.md`, `spec-review.md`, or `code-review.md` files in the repo root.
 - **Worktree Isolation**: Optional git worktree creation for parallel tasks to prevent filesystem conflicts (setting).
 - **Skill Overlays**: Configure additional skills to load alongside entry skills or Superpowers process skills. Entry overlays resolve for the active entry skill; invocation overlays resolve for all Superpowers process skills at session start. See [Configuration](docs/configuration.md#skill-overlays).
 - **Skill Visibility**: `/subagents-status` shows the resolved skills and missing-skill warnings for each subagent run, which helps verify `skillOverlays`.
@@ -56,6 +57,8 @@ The `/sp-implement` command activates a structured workflow for task execution w
 3. **Implementation** (`sp-implementer`): Code changes guided by test-driven development (optional).
 4. **Review** (`sp-code-review`): Automated review of changes against project standards.
 5. **Debug** (`sp-debug`): Root cause analysis and fix verification for regressions.
+
+Subagent-driven development keeps implementer and reviewer reports inline in the Pi conversation. It does not create repo-root packet files such as `implementer-report.md`, `spec-review.md`, `code-review.md`, `debug-brief.md`, or `task-brief.md`; those names are ignored if an older prompt or manual run creates them.
 
 ## Configuration & Documentation
 

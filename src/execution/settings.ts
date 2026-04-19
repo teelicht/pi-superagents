@@ -10,7 +10,6 @@ import type { AgentConfig } from "../agents/agents.ts";
 // =============================================================================
 
 export interface ResolvedStepBehavior {
-	output: string | false;
 	reads: string[] | false;
 	progress: boolean;
 	skills: string[] | false;
@@ -18,7 +17,6 @@ export interface ResolvedStepBehavior {
 }
 
 export interface StepOverrides {
-	output?: string | false;
 	reads?: string[] | false;
 	progress?: boolean;
 	skills?: string[] | false;
@@ -27,7 +25,6 @@ export interface StepOverrides {
 
 export interface PacketDefaults {
 	reads?: string[];
-	output?: string | false;
 	progress?: boolean;
 }
 
@@ -37,36 +34,30 @@ export interface PacketDefaults {
 
 /**
  * Resolve effective chain behavior per step.
- * Priority: step override > packet defaults > agent frontmatter > false (disabled)
+ *
+ * @param agentConfig Agent frontmatter-derived configuration.
+ * @param stepOverrides Runtime overrides for a specific delegated step.
+ * @param packetDefaults Superpowers role packet defaults.
+ * @returns Effective read/progress/skill/model behavior for the step.
  */
 export function resolveStepBehavior(
 	agentConfig: AgentConfig,
 	stepOverrides: StepOverrides,
 	packetDefaults?: PacketDefaults,
 ): ResolvedStepBehavior {
-	// Output: step override > packet defaults > frontmatter > false (no output)
-	const output =
-		stepOverrides.output !== undefined
-			? stepOverrides.output
-			: packetDefaults?.output !== undefined
-				? packetDefaults.output
-				: (agentConfig.output ?? false);
-
-	// Reads: step override > packet defaults > frontmatter defaultReads > false (no reads)
 	const reads =
 		stepOverrides.reads !== undefined
 			? stepOverrides.reads
 			: packetDefaults?.reads !== undefined
 				? packetDefaults.reads
-				: (agentConfig.defaultReads ?? false);
+				: false;
 
-	// Progress: step override > packet defaults > frontmatter defaultProgress > false
 	const progress =
 		stepOverrides.progress !== undefined
 			? stepOverrides.progress
 			: packetDefaults?.progress !== undefined
 				? packetDefaults.progress
-				: (agentConfig.defaultProgress ?? false);
+				: false;
 
 	let skills: string[] | false;
 	if (stepOverrides.skills === false) {
@@ -78,5 +69,5 @@ export function resolveStepBehavior(
 	}
 
 	const model = stepOverrides.model ?? agentConfig.model;
-	return { output, reads, progress, skills, model };
+	return { reads, progress, skills, model };
 }

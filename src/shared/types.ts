@@ -125,8 +125,6 @@ export interface SingleResult {
 	artifactPaths?: ArtifactPaths;
 	truncation?: TruncationResult;
 	finalOutput?: string;
-	savedOutputPath?: string;
-	outputSaveError?: string;
 }
 
 export interface Details {
@@ -215,7 +213,6 @@ export interface RunSyncOptions {
 	runId: string;
 	index?: number;
 	sessionFile?: string;
-	outputPath?: string;
 	maxSubagentDepth?: number;
 	/** Override the agent's default model (format: "provider/id" or just "id") */
 	modelOverride?: string;

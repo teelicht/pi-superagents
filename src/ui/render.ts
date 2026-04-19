@@ -79,19 +79,14 @@ function truncLine(text: string, maxWidth: number): string {
 	return `${result + activeStyles.join("")}…`;
 }
 
-function extractOutputTarget(task: string): string | undefined {
-	const writeToMatch = task.match(/\[Write to:\s*([^\]\n]+)\]/i);
-	if (writeToMatch?.[1]?.trim()) return writeToMatch[1].trim();
-	const findingsMatch = task.match(/Write your findings to:\s*(\S+)/i);
-	if (findingsMatch?.[1]?.trim()) return findingsMatch[1].trim();
-	const outputMatch = task.match(/[Oo]utput(?:\s+to)?\s*:\s*(\S+)/i);
-	if (outputMatch?.[1]?.trim()) return outputMatch[1].trim();
-	return undefined;
-}
-
-function hasEmptyTextOutputWithoutOutputTarget(task: string, output: string): boolean {
-	if (output.trim()) return false;
-	return !extractOutputTarget(task);
+/**
+ * Detect whether a completed subagent produced no visible inline output.
+ *
+ * @param output Final output extracted from the child PI JSONL stream.
+ * @returns True when the rendered output is empty after trimming whitespace.
+ */
+function hasEmptyOutput(output: string): boolean {
+	return !output.trim();
 }
 
 /**
@@ -209,7 +204,7 @@ export function renderSubagentResult(
 		(r) =>
 			r.exitCode === 0 &&
 			r.progress?.status !== "running" &&
-			hasEmptyTextOutputWithoutOutputTarget(r.task, getSingleResultOutput(r)),
+			hasEmptyOutput(getSingleResultOutput(r)),
 	);
 	const icon = hasRunning
 		? theme.fg("warning", "...")
@@ -280,7 +275,7 @@ export function renderSubagentResult(
 			? theme.fg("warning", "●")
 			: r.exitCode !== 0
 				? theme.fg("error", "✗")
-				: hasEmptyTextOutputWithoutOutputTarget(r.task, resultOutput)
+				: hasEmptyOutput(resultOutput)
 					? theme.fg("warning", "⚠")
 					: theme.fg("success", "✓");
 		const stats = rProg ? ` | ${rProg.toolCount} tools, ${formatDuration(rProg.durationMs)}` : "";
@@ -293,11 +288,6 @@ export function renderSubagentResult(
 		const taskMaxLen = Math.max(20, w - 12);
 		const taskPreview = r.task.length > taskMaxLen ? `${r.task.slice(0, taskMaxLen)}...` : r.task;
 		c.addChild(new Text(truncLine(theme.fg("dim", `    task: ${taskPreview}`), w), 0, 0));
-
-		const outputTarget = extractOutputTarget(r.task);
-		if (outputTarget) {
-			c.addChild(new Text(truncLine(theme.fg("dim", `    output: ${outputTarget}`), w), 0, 0));
-		}
 
 		if (r.skills?.length) {
 			c.addChild(new Text(truncLine(theme.fg("dim", `    skills: ${r.skills.join(", ")}`), w), 0, 0));

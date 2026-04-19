@@ -16,9 +16,6 @@ export const KNOWN_FIELDS = new Set([
 	"thinking",
 	"skills",
 	"extensions",
-	"output",
-	"defaultReads",
-	"defaultProgress",
 	"interactive",
 	"maxSubagentDepth",
 ]);
@@ -38,10 +35,6 @@ export interface AgentConfig {
 	filePath: string;
 	skills?: string[];
 	extensions?: string[];
-	// Execution behavior fields
-	output?: string;
-	defaultReads?: string[];
-	defaultProgress?: boolean;
 	interactive?: boolean;
 	maxSubagentDepth?: number;
 	extraFields?: Record<string, string>;
@@ -101,12 +94,6 @@ function loadAgentsFromDir(dir: string, source: AgentSource): AgentConfig[] {
 			}
 		}
 
-		// Parse defaultReads as comma-separated list (like tools)
-		const defaultReads = frontmatter.defaultReads
-			?.split(",")
-			.map((f) => f.trim())
-			.filter(Boolean);
-
 		const skillStr = frontmatter.skills;
 		const skills = skillStr
 			?.split(",")
@@ -140,10 +127,6 @@ function loadAgentsFromDir(dir: string, source: AgentSource): AgentConfig[] {
 			filePath,
 			skills: skills && skills.length > 0 ? skills : undefined,
 			extensions,
-			// Execution behavior fields
-			output: frontmatter.output,
-			defaultReads: defaultReads && defaultReads.length > 0 ? defaultReads : undefined,
-			defaultProgress: frontmatter.defaultProgress === "true",
 			interactive: frontmatter.interactive === "true",
 			maxSubagentDepth:
 				Number.isInteger(parsedMaxSubagentDepth) && parsedMaxSubagentDepth >= 0 ? parsedMaxSubagentDepth : undefined,
