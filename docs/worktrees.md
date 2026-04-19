@@ -46,6 +46,8 @@ Agent reports themselves are returned inline through Pi tool results. Worktree i
 
 See [Configuration Reference](configuration.md) for `superagents.worktrees.*` config keys.
 
+The `/sp-settings` overlay also shows Superpowers model tiers; tier edits apply immediately to future subagents, while worktree command registration changes may still require a PI reload.
+
 ## Release Notes
 
 Worktree behavior affects parallel execution safety, so user-facing changes to this subsystem should be called out in `CHANGELOG.md` before publishing. Follow the [Release Process](releases.md) when preparing a version that changes worktree defaults, cleanup, branch behavior, or artifact output.
