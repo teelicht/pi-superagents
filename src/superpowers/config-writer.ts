@@ -10,7 +10,7 @@
  * - none; callers perform filesystem writes
  */
 
-import type { ExtensionConfig } from "../shared/types.ts";
+import type { ExtensionConfig, ModelTierSetting } from "../shared/types.ts";
 
 type MutableConfig = ExtensionConfig & {
 	superagents?: NonNullable<ExtensionConfig["superagents"]>;
@@ -84,5 +84,51 @@ export function toggleSuperpowersWorktrees(config: MutableConfig): MutableConfig
 	settings.commands["sp-implement"] ??= {};
 	settings.commands["sp-implement"].worktrees ??= {};
 	settings.commands["sp-implement"].worktrees.enabled = !(settings.commands["sp-implement"].worktrees.enabled ?? false);
+	return config;
+}
+
+/**
+ * Ensure a mutable modelTiers object exists.
+ *
+ * @param config - Mutable config object to ensure modelTiers on.
+ * @returns The modelTiers object (new or existing).
+ */
+function ensureModelTiers(config: MutableConfig): Record<string, ModelTierSetting> {
+	const settings = ensureSuperagents(config);
+	settings.modelTiers ??= {};
+	return settings.modelTiers;
+}
+
+/**
+ * Set the model for a model tier in a config object.
+ *
+ * This function updates the model for a named tier while preserving any existing
+ * thinking level setting. If the tier does not exist, it is created. If the tier
+ * exists as a string (legacy shorthand), it is converted to object form.
+ *
+ * @param config - Mutable config object to modify in place.
+ * @param tierName - Name of the model tier (e.g., "fast", "balanced").
+ * @param model - Model identifier to set for this tier.
+ * @returns The same config reference, modified.
+ * @throws Error if tierName or model is empty.
+ */
+export function setSuperpowersModelTierModel(
+	config: MutableConfig,
+	tierName: string,
+	model: string,
+): MutableConfig {
+	const normalizedTierName = tierName.trim();
+	const normalizedModel = model.trim();
+	if (!normalizedTierName) throw new Error("Model tier name must be non-empty.");
+	if (!normalizedModel) throw new Error("Model tier model must be non-empty.");
+
+	const modelTiers = ensureModelTiers(config);
+	const existing = modelTiers[normalizedTierName];
+	if (existing && typeof existing === "object" && !Array.isArray(existing)) {
+		modelTiers[normalizedTierName] = { ...existing, model: normalizedModel };
+		return config;
+	}
+
+	modelTiers[normalizedTierName] = { model: normalizedModel };
 	return config;
 }
