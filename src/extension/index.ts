@@ -383,7 +383,7 @@ Bounded role agents are not allowed to call subagents.`,
 	pi.registerTool(planReviewTool);
 	pi.registerTool(specReviewTool);
 	pi.registerTool(tool);
-	registerSlashCommands(pi, state, () => configStore.getConfig());
+	registerSlashCommands(pi, state, () => configStore.getConfig(), () => configStore.reloadConfig());
 	const skillCommandPromptDispatcher = createSuperpowersPromptDispatcher(pi);
 
 	/**
