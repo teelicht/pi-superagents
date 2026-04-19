@@ -161,7 +161,10 @@ void describe("loadRuntimeConfigState", () => {
 
 		const state = loadRuntimeConfigState(configDir);
 		assert.equal(state.blocked, true, "Expected config to be blocked due to invalid key");
-		assert.ok(state.diagnostics.some((d) => d.code === "unknown_key"), "Expected unknown_key diagnostic");
+		assert.ok(
+			state.diagnostics.some((d) => d.code === "unknown_key"),
+			"Expected unknown_key diagnostic",
+		);
 	});
 
 	it("returns a valid state when user config is absent", () => {
@@ -222,7 +225,7 @@ void describe("loadRuntimeConfigState", () => {
 		assert.equal(state.blocked, true, "Expected config to be blocked due to invalid tier");
 		// Check for diagnostic with the specific path
 		const tierDiagnostic = state.diagnostics.find(
-			(d) => d.path === "superagents.modelTiers.balanced" || d.path === "superagents.modelTiers.balanced.model"
+			(d) => d.path === "superagents.modelTiers.balanced" || d.path === "superagents.modelTiers.balanced.model",
 		);
 		assert.ok(tierDiagnostic, "Expected diagnostic for invalid model tier");
 	});

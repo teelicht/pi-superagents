@@ -353,7 +353,7 @@ export async function runSync(
 		durationMs: progress.durationMs,
 	};
 
-	let fullOutput = getFinalOutput(result.messages);
+	const fullOutput = getFinalOutput(result.messages);
 	result.finalOutput = fullOutput;
 
 	if (artifactPathsResult && artifactConfig?.enabled !== false) {

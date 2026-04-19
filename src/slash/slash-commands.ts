@@ -163,19 +163,12 @@ async function openSuperpowersSettingsOverlay(
 	}
 
 	await ctx.ui.custom<void>((tui, theme, _kb, done) => {
-		return new SuperpowersSettingsComponent(
-			tui,
-			theme,
-			state,
-			config,
-			() => readConfig(configSource),
-			{
-				models: modelOptions,
-				modelRegistryError,
-				reloadConfig,
-				onClose: () => done(undefined),
-			},
-		);
+		return new SuperpowersSettingsComponent(tui, theme, state, config, () => readConfig(configSource), {
+			models: modelOptions,
+			modelRegistryError,
+			reloadConfig,
+			onClose: () => done(undefined),
+		});
 	});
 }
 

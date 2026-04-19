@@ -14,8 +14,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { test } from "node:test";
-import { SuperpowersSettingsComponent } from "../../src/ui/sp-settings.ts";
 import type { ExtensionConfig } from "../../src/shared/types.ts";
+import { SuperpowersSettingsComponent } from "../../src/ui/sp-settings.ts";
 
 function createThemeMock() {
 	return {
@@ -175,7 +175,7 @@ void test("SuperpowersSettingsComponent writes model tier selections and reloads
 		"utf-8",
 	);
 
-	let reloadCount = 0;
+	let _reloadCount = 0;
 	const config: ExtensionConfig = {
 		superagents: {
 			modelTiers: {
@@ -199,13 +199,13 @@ void test("SuperpowersSettingsComponent writes model tier selections and reloads
 				createModel("openai", "gpt-5.4", "GPT-5.4"),
 			],
 			reloadConfig: () => {
-				reloadCount++;
+				_reloadCount++;
 			},
 		},
 	);
 
 	// First verify initial state shows "cheap" tier entry
-	let rendered = component.render(92).join("\n");
+	const rendered = component.render(92).join("\n");
 	assert.match(rendered, /cheap:/);
 	assert.match(rendered, /old-model/);
 

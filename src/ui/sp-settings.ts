@@ -15,7 +15,7 @@ import * as fs from "node:fs";
 import type { Theme } from "@mariozechner/pi-coding-agent";
 import type { Component, TUI } from "@mariozechner/pi-tui";
 import { matchesKey } from "@mariozechner/pi-tui";
-import type { ExtensionConfig, ModelTierSetting, SubagentState } from "../shared/types.ts";
+import type { ExtensionConfig, SubagentState } from "../shared/types.ts";
 import {
 	setSuperpowersModelTierModel,
 	toggleSuperpowersBoolean,
@@ -76,7 +76,6 @@ export class SuperpowersSettingsComponent implements Component {
 	private readonly tui: TUI;
 	private readonly theme: Theme;
 	private readonly state: SubagentState;
-	private readonly config: ExtensionConfig;
 	private readonly done: () => void;
 	private readonly getConfig: ConfigAccessor;
 	private readonly modelOptions: SettingsModelOption[];
@@ -114,7 +113,8 @@ export class SuperpowersSettingsComponent implements Component {
 
 	render(width: number): string[] {
 		const mode = this.mode;
-		const title = mode === "settings" ? "Superpowers Settings" : mode === "tier-picker" ? "Select Model Tier" : "Select Model";
+		const title =
+			mode === "settings" ? "Superpowers Settings" : mode === "tier-picker" ? "Select Model Tier" : "Select Model";
 		const footer =
 			mode === "settings"
 				? "p plannotator | s subagents | t tdd | m model tiers | w worktrees | q close"
@@ -122,13 +122,7 @@ export class SuperpowersSettingsComponent implements Component {
 					? "↑↓ navigate | enter select | q back"
 					: "↑↓ navigate | enter confirm | q back";
 
-		return renderFramedPanel(
-			title,
-			this.renderBody(),
-			Math.min(width, 92),
-			this.theme,
-			footer,
-		);
+		return renderFramedPanel(title, this.renderBody(), Math.min(width, 92), this.theme, footer);
 	}
 
 	handleInput(data: string): void {
@@ -232,13 +226,15 @@ export class SuperpowersSettingsComponent implements Component {
 			if (this.modelOptions.length === 0) return;
 
 			if (matchesKey(data, "up") || matchesKey(data, "k")) {
-				this.selectedModelIndex = this.selectedModelIndex <= 0 ? this.modelOptions.length - 1 : this.selectedModelIndex - 1;
+				this.selectedModelIndex =
+					this.selectedModelIndex <= 0 ? this.modelOptions.length - 1 : this.selectedModelIndex - 1;
 				this.tui.requestRender();
 				return;
 			}
 
 			if (matchesKey(data, "down") || matchesKey(data, "j")) {
-				this.selectedModelIndex = this.selectedModelIndex >= this.modelOptions.length - 1 ? 0 : this.selectedModelIndex + 1;
+				this.selectedModelIndex =
+					this.selectedModelIndex >= this.modelOptions.length - 1 ? 0 : this.selectedModelIndex + 1;
 				this.tui.requestRender();
 				return;
 			}
