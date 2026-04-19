@@ -294,4 +294,30 @@ void describe("superpowers policy", () => {
 			["read", "grep", "find", "ls", "bash", "write"],
 		);
 	});
+
+	void it("resolves later model tier values from a changed runtime config", () => {
+		const firstConfig = {
+			superagents: {
+				modelTiers: {
+					balanced: { model: "openai/gpt-5.4" },
+				},
+			},
+		};
+		const secondConfig = {
+			superagents: {
+				modelTiers: {
+					balanced: { model: "anthropic/claude-opus-4.6" },
+				},
+			},
+		};
+
+		assert.deepEqual(
+			resolveModelForAgent({ workflow: "superpowers", agentModel: "balanced", config: firstConfig }),
+			{ model: "openai/gpt-5.4" },
+		);
+		assert.deepEqual(
+			resolveModelForAgent({ workflow: "superpowers", agentModel: "balanced", config: secondConfig }),
+			{ model: "anthropic/claude-opus-4.6" },
+		);
+	});
 });
