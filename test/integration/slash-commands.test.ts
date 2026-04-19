@@ -442,18 +442,26 @@ void describe(
 		void it("/subagents-status opens the run status overlay", async () => {
 			const { commands, pi } = createPiHarness();
 			let customCalls = 0;
+			let customComponent: unknown;
 			registerSlashCommands!(pi, createState(process.cwd()), createEffectiveConfig());
 			await commands.get("subagents-status")!.handler(
 				"",
 				createCommandContext({
 					hasUI: true,
-					custom: async () => {
+					custom: async (callback) => {
 						customCalls++;
-						return undefined;
+						customComponent = (callback as (...args: unknown[]) => unknown)(
+							{ requestRender: () => {} },
+							{ fg: (_color: string, text: string) => text, bg: (_color: string, text: string) => text },
+							undefined,
+							() => {},
+						);
+						return customComponent;
 					},
 				}),
 			);
 			assert.equal(customCalls, 1);
+			assert.equal(typeof (customComponent as { render?: unknown }).render, "function");
 		});
 
 		void it("ctrl+alt+s opens the run status overlay", async () => {
@@ -475,18 +483,52 @@ void describe(
 		void it("/sp-settings opens the settings overlay", async () => {
 			const { commands, pi } = createPiHarness();
 			let customCalls = 0;
+			let customComponent: unknown;
 			registerSlashCommands!(pi, createState(process.cwd()), createEffectiveConfig());
 			await commands.get("sp-settings")!.handler(
 				"",
 				createCommandContext({
 					hasUI: true,
-					custom: async () => {
+					custom: async (callback) => {
 						customCalls++;
-						return undefined;
+						customComponent = (callback as (...args: unknown[]) => unknown)(
+							{ requestRender: () => {} },
+							{ fg: (_color: string, text: string) => text, bg: (_color: string, text: string) => text },
+							undefined,
+							() => {},
+						);
+						return customComponent;
 					},
 				}),
 			);
 			assert.equal(customCalls, 1);
+			assert.equal(typeof (customComponent as { render?: unknown }).render, "function");
+		});
+
+		void it("/sp-settings keeps the settings overlay open until the component closes it", async () => {
+			const { commands, pi } = createPiHarness();
+			let doneCalls = 0;
+			registerSlashCommands!(pi, createState(process.cwd()), createEffectiveConfig());
+
+			await commands.get("sp-settings")!.handler(
+				"",
+				createCommandContext({
+					hasUI: true,
+					custom: async (callback) => {
+						const component = (callback as (...args: unknown[]) => unknown)(
+							{ requestRender: () => {} },
+							{ fg: (_color: string, text: string) => text, bg: (_color: string, text: string) => text },
+							undefined,
+							() => {
+								doneCalls++;
+							},
+						);
+						assert.equal(typeof (component as { render?: unknown }).render, "function");
+					},
+				}),
+			);
+
+			assert.equal(doneCalls, 0);
 		});
 
 		void it("/subagents-status returns cleanly when UI is unavailable", async () => {

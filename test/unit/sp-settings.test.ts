@@ -222,6 +222,47 @@ void test("SuperpowersSettingsComponent writes model tier selections and reloads
 	fs.rmSync(dir, { recursive: true, force: true });
 });
 
+void test("SuperpowersSettingsComponent selects and navigates model tiers", () => {
+	const config: ExtensionConfig = {
+		superagents: {
+			modelTiers: {
+				cheap: { model: "opencode/minimax-m2.5-free" },
+				balanced: { model: "opencode-go/minimax-m2.7" },
+				max: { model: "opencode-go/minimax-m2.7" },
+			},
+		},
+	};
+	const tuiMock = createTuiMock();
+	const component = new SuperpowersSettingsComponent(
+		tuiMock as never,
+		createThemeMock() as never,
+		createState() as never,
+		config,
+		getConfigForTest(config),
+		{
+			models: [
+				createModel("opencode", "minimax-m2.5-free", "MiniMax free"),
+				createModel("opencode-go", "minimax-m2.7", "MiniMax M2.7"),
+			],
+		},
+	);
+
+	component.handleInput("m");
+	let rendered = component.render(92).join("\n");
+	assert.match(rendered, /Select Model Tier/);
+	assert.match(rendered, /▸ cheap:/);
+
+	component.handleInput("\x1b[B");
+	rendered = component.render(92).join("\n");
+	assert.match(rendered, /▸ balanced:/);
+
+	component.handleInput("\r");
+	rendered = component.render(92).join("\n");
+	assert.match(rendered, /Select Model/);
+	assert.match(rendered, /Editing tier: balanced/);
+	assert.equal(tuiMock._getRenderRequestCount(), 3);
+});
+
 void test("SuperpowersSettingsComponent reports when no models are available", () => {
 	const config: ExtensionConfig = {
 		superagents: {

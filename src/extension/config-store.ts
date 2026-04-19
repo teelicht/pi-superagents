@@ -64,22 +64,24 @@ export interface LoadedConfigState {
 /**
  * Build default config paths for the installed extension.
  *
- * Resolves paths relative to the provided extension install directory:
+ * Resolves bundled defaults relative to the package directory and user-owned
+ * config relative to the config directory:
  * - default-config.json: bundled package defaults
  * - config.json: user-overridden config
  * - config.example.json: user config reference
  *
- * @param extensionDir Absolute path to the extension install directory.
+ * @param packageConfigDir Absolute path to the package directory containing bundled defaults.
+ * @param userConfigDir Absolute path to the user config directory. Defaults to `packageConfigDir`.
  * @returns Object with bundled default and user config paths.
  */
-export function resolveRuntimeConfigPaths(extensionDir: string): {
+export function resolveRuntimeConfigPaths(packageConfigDir: string, userConfigDir = packageConfigDir): {
 	bundledDefaultConfigPath: string;
 	userConfigPath: string;
 	exampleConfigPath: string;
 } {
-	const bundledDefaultConfigPath = path.join(extensionDir, "default-config.json");
-	const userConfigPath = path.join(extensionDir, "config.json");
-	const exampleConfigPath = path.join(extensionDir, "config.example.json");
+	const bundledDefaultConfigPath = path.join(packageConfigDir, "default-config.json");
+	const userConfigPath = path.join(userConfigDir, "config.json");
+	const exampleConfigPath = path.join(userConfigDir, "config.example.json");
 	return { bundledDefaultConfigPath, userConfigPath, exampleConfigPath };
 }
 
@@ -97,11 +99,15 @@ export function readJsonConfig(filePath: string): unknown {
 /**
  * Load and validate extension config, preserving diagnostics for user display.
  *
- * @param extensionDir Absolute path to the extension install directory.
+ * @param packageConfigDir Absolute path to the package directory containing bundled defaults.
+ * @param userConfigDir Absolute path to the user config directory. Defaults to `packageConfigDir`.
  * @returns Validated config state for runtime registration.
  */
-export function loadRuntimeConfigState(extensionDir: string): LoadedConfigState {
-	const { bundledDefaultConfigPath, userConfigPath, exampleConfigPath } = resolveRuntimeConfigPaths(extensionDir);
+export function loadRuntimeConfigState(packageConfigDir: string, userConfigDir = packageConfigDir): LoadedConfigState {
+	const { bundledDefaultConfigPath, userConfigPath, exampleConfigPath } = resolveRuntimeConfigPaths(
+		packageConfigDir,
+		userConfigDir,
+	);
 
 	try {
 		const bundledDefaults = (readJsonConfig(bundledDefaultConfigPath) ?? {}) as ExtensionConfig;
@@ -192,11 +198,12 @@ export function assignGate(state: LoadedConfigState, target?: ConfigGateState): 
  * once and mutated in place on reload, ensuring consumers holding
  * a reference always see current state.
  *
- * @param extensionDir Absolute path to the extension install directory.
+ * @param packageConfigDir Absolute path to the package directory containing bundled defaults.
+ * @param userConfigDir Absolute path to the user config directory. Defaults to `packageConfigDir`.
  * @returns Runtime config store with getConfig, getGateState, and reloadConfig.
  */
-export function createRuntimeConfigStore(extensionDir: string): RuntimeConfigStore {
-	let currentState = loadRuntimeConfigState(extensionDir);
+export function createRuntimeConfigStore(packageConfigDir: string, userConfigDir = packageConfigDir): RuntimeConfigStore {
+	let currentState = loadRuntimeConfigState(packageConfigDir, userConfigDir);
 	// Store a single gate object that gets mutated on reload
 	const gate = assignGate(currentState);
 
@@ -208,7 +215,7 @@ export function createRuntimeConfigStore(extensionDir: string): RuntimeConfigSto
 			return gate;
 		},
 		reloadConfig(): void {
-			currentState = loadRuntimeConfigState(extensionDir);
+			currentState = loadRuntimeConfigState(packageConfigDir, userConfigDir);
 			assignGate(currentState, gate);
 		},
 	};
