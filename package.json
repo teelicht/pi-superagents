@@ -43,6 +43,7 @@
   "scripts": {
     "prepublishOnly": "npm test",
     "debug:pi-local": "node --experimental-transform-types ./scripts/local-extension-install.ts",
+    "qa": "biome check --write && tsc -noEmit && npm run test:all",
     "lint": "biome check --write",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:unit",
