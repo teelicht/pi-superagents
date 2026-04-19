@@ -18,6 +18,22 @@
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+
+/**
+ * Config source type: either a static config object or a config accessor function.
+ * Allows slash commands to read fresh config values at execution time.
+ */
+export type ConfigSource = ExtensionConfig | (() => ExtensionConfig);
+
+/**
+ * Read config from a config source.
+ *
+ * @param source Either a static config object or a config accessor function.
+ * @returns The effective config.
+ */
+function readConfig(source: ConfigSource): ExtensionConfig {
+	return typeof source === "function" ? source() : source;
+}
 import { resolveAvailableSkill, resolveSkills } from "../shared/skills.ts";
 import type { ExtensionConfig, SubagentState, SuperpowersCommandPreset } from "../shared/types.ts";
 import { createSuperpowersPromptDispatcher } from "../superpowers/prompt-dispatch.ts";
@@ -107,9 +123,10 @@ async function openSubagentsStatusOverlay(ctx: ExtensionContext): Promise<void> 
 async function openSuperpowersSettingsOverlay(
 	ctx: ExtensionContext,
 	state: SubagentState,
-	config: ExtensionConfig,
+	configSource: ConfigSource,
 ): Promise<void> {
 	if (!ctx.hasUI) return;
+	const config = readConfig(configSource);
 	await ctx.ui.custom<void>(
 		(tui, theme, _kb, done) => new SuperpowersSettingsComponent(tui, theme, state, config, () => done(undefined)),
 		{ overlay: true, overlayOptions: { anchor: "center", width: 92, maxHeight: "80%" } },
@@ -130,7 +147,7 @@ function registerSuperpowersCommand(
 	pi: ExtensionAPI,
 	dispatcher: ReturnType<typeof createSuperpowersPromptDispatcher>,
 	state: SubagentState,
-	config: ExtensionConfig,
+	configSource: ConfigSource,
 	commandName: string,
 	preset: SuperpowersCommandPreset,
 ): void {
@@ -138,6 +155,7 @@ function registerSuperpowersCommand(
 		description: preset.description ?? `Run Superpowers using the ${commandName} preset`,
 		handler: (rawArgs, ctx) => {
 			if (notifyIfConfigBlocked(state, ctx)) return Promise.resolve();
+			const config = readConfig(configSource);
 			const parsed = parseSuperpowersWorkflowArgs(rawArgs);
 			if (!parsed?.task) {
 				if (ctx.hasUI) {
@@ -176,12 +194,13 @@ function registerSuperpowersCommand(
  * @param state Shared extension state for config gate checks.
  * @param config Effective extension config for default resolution.
  */
-export function registerSlashCommands(pi: ExtensionAPI, state: SubagentState, config: ExtensionConfig): void {
+export function registerSlashCommands(pi: ExtensionAPI, state: SubagentState, configSource: ConfigSource): void {
+	const config = readConfig(configSource);
 	const dispatcher = createSuperpowersPromptDispatcher(pi);
 
-	// Register all commands (built-in + custom) from config
+	// Register all commands (built-in + custom) from current config
 	for (const [commandName, preset] of Object.entries(config.superagents?.commands ?? {})) {
-		registerSuperpowersCommand(pi, dispatcher, state, config, commandName, preset);
+		registerSuperpowersCommand(pi, dispatcher, state, configSource, commandName, preset);
 	}
 
 	pi.registerCommand("subagents-status", {
@@ -201,7 +220,7 @@ export function registerSlashCommands(pi: ExtensionAPI, state: SubagentState, co
 	pi.registerCommand("sp-settings", {
 		description: "Show Superpowers and subagent workflow settings",
 		handler: async (_args, ctx) => {
-			await openSuperpowersSettingsOverlay(ctx, state, config);
+			await openSuperpowersSettingsOverlay(ctx, state, configSource);
 		},
 	});
 }
