@@ -26,7 +26,6 @@ import { createJsonlWriter } from "./jsonl-writer.ts";
 import { applyThinkingSuffix, buildPiArgs, cleanupTempDir } from "./pi-args.ts";
 import { getPiSpawnCommand } from "./pi-spawn.ts";
 import { globalRunHistory } from "./run-history.ts";
-import { captureSingleOutputSnapshot, resolveSingleOutput } from "./single-output.ts";
 import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./superpowers-policy.ts";
 
 /**
@@ -65,7 +64,6 @@ export async function runSync(
 	const effectiveModel = modelOverride ?? tierModel?.model ?? agent.model;
 	const effectiveThinking = agent.thinking ?? (modelOverride ? undefined : tierModel?.thinking);
 	const modelArg = applyThinkingSuffix(effectiveModel, effectiveThinking);
-	const outputSnapshot = captureSingleOutputSnapshot(options.outputPath);
 	const effectiveTools = resolveRoleTools({
 		workflow,
 		role,
@@ -356,12 +354,6 @@ export async function runSync(
 	};
 
 	let fullOutput = getFinalOutput(result.messages);
-	if (options.outputPath && result.exitCode === 0) {
-		const resolvedOutput = resolveSingleOutput(options.outputPath, fullOutput, outputSnapshot);
-		fullOutput = resolvedOutput.fullOutput;
-		result.savedOutputPath = resolvedOutput.savedPath;
-		result.outputSaveError = resolvedOutput.saveError;
-	}
 	result.finalOutput = fullOutput;
 
 	if (artifactPathsResult && artifactConfig?.enabled !== false) {

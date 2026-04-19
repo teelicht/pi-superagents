@@ -22,6 +22,8 @@ After parallel completion, per-agent diff stats are appended to the output. Full
 
 While parallel worktree runs are active, `/subagents-status` shows each delegated subagent separately, including its resolved skills and any missing-skill warnings.
 
+Agent reports themselves are returned inline through Pi tool results. Worktree isolation does not require `implementer-report.md`, `spec-review.md`, or `code-review.md` files in the worktree.
+
 ## Requirements
 
 - Must be inside a git repository.

@@ -4,6 +4,12 @@
 
 - Fixed Windows CI worktree validation by normalizing repository-relative cwd handling and line endings across checkout platforms.
 
+## [6.0.0] - 2026-04-19
+
+- Replaced Superpowers role handoff files with inline Pi tool-result output so subagents no longer write `implementer-report.md`, `spec-review.md`, or `code-review.md` into the repository root.
+- Removed the single-output file round trip and now use the child Pi JSONL assistant output as the authoritative subagent response.
+- Removed write access from read-only review/debug roles and documented that optional execution artifacts live in the session artifact directory instead of the project working tree.
+
 ## [0.5.2] - 2026-04-18
 
 - Established GitHub Releases as the canonical release path for npm publishing after the one-time `0.5.1` npm bootstrap publish.

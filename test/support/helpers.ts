@@ -143,7 +143,6 @@ interface AgentConfig {
 	skills?: string[];
 	thinking?: string;
 	scope?: string;
-	output?: string | false;
 	reads?: string[] | false;
 	progress?: boolean;
 	mcpDirectTools?: string[];
