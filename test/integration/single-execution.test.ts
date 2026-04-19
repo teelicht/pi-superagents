@@ -163,6 +163,39 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		assert.equal(result.model, "openai/gpt-5.4:medium");
 	});
 
+	void it("uses changed model tier config for later single executions", async () => {
+		const agents = [makeAgent("sp-code-review", { model: "balanced" })];
+
+		mockPi.onCall({ output: "Done" });
+		const first = await runSync(tempDir, agents, "sp-code-review", "first", {
+			workflow: "superpowers",
+			runId: "first",
+			config: {
+				superagents: {
+					modelTiers: {
+						balanced: { model: "openai/gpt-5.4" },
+					},
+				},
+			},
+		});
+
+		mockPi.onCall({ output: "Done" });
+		const second = await runSync(tempDir, agents, "sp-code-review", "second", {
+			workflow: "superpowers",
+			runId: "second",
+			config: {
+				superagents: {
+					modelTiers: {
+					balanced: { model: "anthropic/claude-opus-4.6" },
+					},
+				},
+			},
+		});
+
+		assert.equal(first.model, "openai/gpt-5.4");
+		assert.equal(second.model, "anthropic/claude-opus-4.6");
+	});
+
 	void it("tracks usage from message events", async () => {
 		mockPi.onCall({ output: "Done" });
 		const agents = makeAgentConfigs(["echo"]);
