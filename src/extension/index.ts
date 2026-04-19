@@ -76,6 +76,46 @@ function expandTilde(p: string): string {
 }
 
 /**
+ * Locate the package root from the extension entry directory.
+ *
+ * Inputs/outputs:
+ * - walks upward from `entryDir`
+ * - returns the first ancestor containing `default-config.json`
+ *
+ * Invariants/failures:
+ * - falls back to `entryDir` when no package root marker is found
+ * - performs only synchronous filesystem metadata checks during extension startup
+ *
+ * @param entryDir Directory containing the loaded extension entry module.
+ * @returns Package root directory for bundled extension assets.
+ */
+function resolvePackageRoot(entryDir: string): string {
+	let current = entryDir;
+	while (true) {
+		if (fs.existsSync(path.join(current, "default-config.json"))) return current;
+		const parent = path.dirname(current);
+		if (parent === current) return entryDir;
+		current = parent;
+	}
+}
+
+/**
+ * Resolve the user-owned extension config directory.
+ *
+ * Inputs/outputs:
+ * - reads the current OS home directory
+ * - returns the documented Pi extension config directory
+ *
+ * Invariants:
+ * - this path is user-owned; package defaults remain loaded from the package root
+ *
+ * @returns Absolute path to the user config directory.
+ */
+function resolveUserConfigDir(): string {
+	return path.join(os.homedir(), ".pi", "agent", "extensions", "subagent");
+}
+
+/**
  * Create a directory and verify it is actually accessible.
  * On Windows with Azure AD/Entra ID, directories created shortly after
  * wake-from-sleep can end up with broken NTFS ACLs (null DACL) when the
@@ -158,8 +198,8 @@ function commandNameForInterceptedSkill(skillName: string): string | undefined {
  */
 export default function registerSubagentExtension(pi: ExtensionAPI): void {
 	// Create runtime config store for live config at execution time
-	const extensionDir = path.dirname(fileURLToPath(import.meta.url));
-	const configStore = createRuntimeConfigStore(extensionDir);
+	const extensionEntryDir = path.dirname(fileURLToPath(import.meta.url));
+	const configStore = createRuntimeConfigStore(resolvePackageRoot(extensionEntryDir), resolveUserConfigDir());
 	const config = configStore.getConfig();
 	const tempArtifactsDir = getArtifactsDir(null);
 	cleanupAllArtifactDirs(DEFAULT_ARTIFACT_CONFIG.cleanupDays);

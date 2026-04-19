@@ -1,14 +1,14 @@
 # Changelog
 
-## Unreleased
-
-- Fixed Windows CI worktree validation by normalizing repository-relative cwd handling and line endings across checkout platforms.
-
 ## [6.0.0] - 2026-04-19
 
-- Replaced Superpowers role handoff files with inline Pi tool-result output so subagents no longer write `implementer-report.md`, `spec-review.md`, or `code-review.md` into the repository root.
-- Removed the single-output file round trip and now use the child Pi JSONL assistant output as the authoritative subagent response.
-- Removed write access from read-only review/debug roles and documented that optional execution artifacts live in the session artifact directory instead of the project working tree.
+- **Live Model Tier Config Editing**
+  - Added live model tier config editing — `/sp-settings` now includes a model picker that reads PI's authenticated model registry, writes tier overrides to `config.json`, and reloads config without restarting PI. Future subagents in the session use the updated tier values; already-running subagents keep the model they launched with.
+- **Online Agent Handoffs**
+  - Replaced Superpowers role handoff files with inline Pi tool-result output so subagents no longer write `implementer-report.md`, `spec-review.md`, or `code-review.md` into the repository root.
+  - Removed the single-output file round trip and now use the child Pi JSONL assistant output as the authoritative subagent response.
+  - Removed write access from read-only review/debug roles and documented that optional execution artifacts live in the session artifact directory instead of the project working tree.
+- **Fixed Windows CI worktree validation** - by normalizing repository-relative cwd handling and line endings across checkout platforms.
 
 ## [0.5.2] - 2026-04-18
 

@@ -120,6 +120,39 @@ void describe("loadRuntimeConfigState", () => {
 		assert.ok(Array.isArray(state.diagnostics));
 	});
 
+	it("loads bundled defaults and user overrides from separate directories", () => {
+		const defaultConfigDir = createTempConfigDir({
+			"default-config.json": JSON.stringify({
+				superagents: {
+					commands: {
+						"sp-plan": {
+							entrySkill: "writing-plans",
+							usePlannotator: false,
+						},
+					},
+				},
+			}),
+		});
+		const userConfigDir = createTempConfigDir({
+			"config.json": JSON.stringify({
+				superagents: {
+					commands: {
+						"sp-plan": {
+							usePlannotator: true,
+						},
+					},
+				},
+			}),
+		});
+
+		const state = loadRuntimeConfigState(defaultConfigDir, userConfigDir);
+
+		assert.equal(state.config.superagents?.commands?.["sp-plan"]?.entrySkill, "writing-plans");
+		assert.equal(state.config.superagents?.commands?.["sp-plan"]?.usePlannotator, true);
+		assert.equal(state.configPath, path.join(userConfigDir, "config.json"));
+		assert.equal(state.examplePath, path.join(userConfigDir, "config.example.json"));
+	});
+
 	it("produces diagnostics for invalid config", () => {
 		const configDir = createTempConfigDir({
 			"default-config.json": JSON.stringify({ superagents: {} }),

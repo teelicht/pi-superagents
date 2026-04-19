@@ -117,9 +117,8 @@ function sendSkillEntryPrompt(
  */
 async function openSubagentsStatusOverlay(ctx: ExtensionContext): Promise<void> {
 	if (!ctx.hasUI) return;
-	// @ts-expect-error - Pi extension API has flexible callback types
 	await ctx.ui.custom<void>((tui, theme, _kb, done) => {
-		new SubagentsStatusComponent(tui, theme, () => done(undefined));
+		return new SubagentsStatusComponent(tui, theme, () => done(undefined));
 	});
 }
 
@@ -163,9 +162,8 @@ async function openSuperpowersSettingsOverlay(
 		}
 	}
 
-	// @ts-expect-error - Pi extension API has flexible callback types
 	await ctx.ui.custom<void>((tui, theme, _kb, done) => {
-		new SuperpowersSettingsComponent(
+		return new SuperpowersSettingsComponent(
 			tui,
 			theme,
 			state,
@@ -175,9 +173,9 @@ async function openSuperpowersSettingsOverlay(
 				models: modelOptions,
 				modelRegistryError,
 				reloadConfig,
+				onClose: () => done(undefined),
 			},
 		);
-		done(undefined);
 	});
 }
 

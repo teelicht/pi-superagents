@@ -45,6 +45,7 @@ export interface SuperpowersSettingsModelPickerOptions {
 	models?: SettingsModelOption[];
 	modelRegistryError?: string;
 	reloadConfig?: () => void;
+	onClose?: () => void;
 }
 
 /**
@@ -90,7 +91,7 @@ export class SuperpowersSettingsComponent implements Component {
 	 * @param state Subagent state for config gate.
 	 * @param config Extension config to display.
 	 * @param getConfig Config accessor for fresh reads during render.
-	 * @param options Model picker options including available models and reload callback.
+	 * @param options Model picker options including available models, reload callback, and close callback.
 	 */
 	constructor(
 		tui: TUI,
@@ -107,7 +108,7 @@ export class SuperpowersSettingsComponent implements Component {
 		this.getConfig = getConfig;
 		this.modelOptions = options.models ?? [];
 		this.modelRegistryError = options.modelRegistryError;
-		this.done = () => {};
+		this.done = options.onClose ?? (() => {});
 		this.reloadConfig = options.reloadConfig ?? (() => {});
 	}
 
@@ -159,7 +160,7 @@ export class SuperpowersSettingsComponent implements Component {
 		}
 		if (matchesKey(data, "m")) {
 			this.mode = "tier-picker";
-			this.selectedTier = undefined;
+			this.selectedTier = this.firstModelTier();
 			this.tui.requestRender();
 			return;
 		}
@@ -207,14 +208,14 @@ export class SuperpowersSettingsComponent implements Component {
 			// Tier picker navigation
 			const currentIndex = this.selectedTier ? tiers.indexOf(this.selectedTier) : -1;
 
-			if (data === "[A" || matchesKey(data, "k")) {
+			if (matchesKey(data, "up") || matchesKey(data, "k")) {
 				const newIndex = currentIndex <= 0 ? tiers.length - 1 : currentIndex - 1;
 				this.selectedTier = tiers[newIndex];
 				this.tui.requestRender();
 				return;
 			}
 
-			if (data === "[B" || matchesKey(data, "j")) {
+			if (matchesKey(data, "down") || matchesKey(data, "j")) {
 				const newIndex = currentIndex >= tiers.length - 1 ? 0 : currentIndex + 1;
 				this.selectedTier = tiers[newIndex];
 				this.tui.requestRender();
@@ -230,23 +231,24 @@ export class SuperpowersSettingsComponent implements Component {
 			// Model picker navigation
 			if (this.modelOptions.length === 0) return;
 
-			if (data === "[A" || matchesKey(data, "k")) {
+			if (matchesKey(data, "up") || matchesKey(data, "k")) {
 				this.selectedModelIndex = this.selectedModelIndex <= 0 ? this.modelOptions.length - 1 : this.selectedModelIndex - 1;
 				this.tui.requestRender();
 				return;
 			}
 
-			if (data === "[B" || matchesKey(data, "j")) {
+			if (matchesKey(data, "down") || matchesKey(data, "j")) {
 				this.selectedModelIndex = this.selectedModelIndex >= this.modelOptions.length - 1 ? 0 : this.selectedModelIndex + 1;
 				this.tui.requestRender();
 				return;
 			}
 
 			if (matchesKey(data, "enter") && this.selectedTier && this.modelOptions.length > 0) {
+				const editedTier = this.selectedTier;
 				const selectedModel = this.modelOptions[this.selectedModelIndex];
-				this.writeModelTier(this.selectedTier, modelToValue(selectedModel));
+				this.writeModelTier(editedTier, modelToValue(selectedModel));
 				this.mode = "tier-picker";
-				this.selectedTier = undefined;
+				this.selectedTier = this.modelTierEntries().includes(editedTier) ? editedTier : this.firstModelTier();
 				this.selectedModelIndex = 0;
 				this.tui.requestRender();
 			}
@@ -263,6 +265,15 @@ export class SuperpowersSettingsComponent implements Component {
 			return Object.keys(configuredTiers);
 		}
 		return DEFAULT_MODEL_TIERS;
+	}
+
+	/**
+	 * Resolve the first selectable model tier.
+	 *
+	 * @returns First tier name or undefined when no tiers are available.
+	 */
+	private firstModelTier(): string | undefined {
+		return this.modelTierEntries()[0];
 	}
 
 	/**
