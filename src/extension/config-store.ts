@@ -159,16 +159,28 @@ export function loadRuntimeConfigState(extensionDir: string): LoadedConfigState 
 }
 
 /**
- * Copy loaded config state into a stable ConfigGateState object.
+ * Copy loaded config state into a ConfigGateState object.
  *
- * Creates a fresh object with the state data copied in, ensuring the
- * returned object identity is independent of the source state.
+ * Creates a fresh object with the state data copied in.
  *
  * @param state The loaded config state to convert.
+ * @param target Optional target object to copy data into (mutated in place).
  * @returns ConfigGateState with copied data.
  */
-export function assignGate(state: LoadedConfigState): ConfigGateState {
-	return state.asGateState();
+export function assignGate(state: LoadedConfigState, target?: ConfigGateState): ConfigGateState {
+	const gate = target ?? {
+		blocked: false,
+		diagnostics: [],
+		message: "",
+		configPath: undefined,
+		examplePath: undefined,
+	};
+	gate.blocked = state.blocked;
+	gate.diagnostics = state.diagnostics;
+	gate.message = state.message;
+	gate.configPath = state.configPath;
+	gate.examplePath = state.examplePath;
+	return gate;
 }
 
 /**
@@ -176,23 +188,28 @@ export function assignGate(state: LoadedConfigState): ConfigGateState {
  *
  * Provides hot-reloadable access to the effective merged config
  * and gate diagnostics. The store initially loads config from the
- * specified extension directory.
+ * specified extension directory. The gate state object is created
+ * once and mutated in place on reload, ensuring consumers holding
+ * a reference always see current state.
  *
  * @param extensionDir Absolute path to the extension install directory.
  * @returns Runtime config store with getConfig, getGateState, and reloadConfig.
  */
 export function createRuntimeConfigStore(extensionDir: string): RuntimeConfigStore {
 	let currentState = loadRuntimeConfigState(extensionDir);
+	// Store a single gate object that gets mutated on reload
+	const gate = assignGate(currentState);
 
 	return {
 		getConfig(): ExtensionConfig {
 			return currentState.config;
 		},
 		getGateState(): ConfigGateState {
-			return assignGate(currentState);
+			return gate;
 		},
 		reloadConfig(): void {
 			currentState = loadRuntimeConfigState(extensionDir);
+			assignGate(currentState, gate);
 		},
 	};
 }
