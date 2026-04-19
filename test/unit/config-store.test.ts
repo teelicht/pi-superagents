@@ -141,7 +141,7 @@ void describe("loadRuntimeConfigState", () => {
 		assert.deepEqual(state.config, { superagents: {} });
 	});
 
-	it("returns stable ConfigGateState object identity", () => {
+	it("produces fresh ConfigGateState object from LoadedConfigState", () => {
 		const configDir = createMinimalConfigDir();
 		const state = loadRuntimeConfigState(configDir);
 
@@ -149,8 +149,49 @@ void describe("loadRuntimeConfigState", () => {
 		const gateState = state.asGateState();
 		assert.ok(gateState);
 		assert.equal(gateState.configPath, state.configPath);
-		assert.equal(gateState.diagnostics, state.diagnostics);
+		assert.deepEqual(gateState.diagnostics, state.diagnostics);
 		assert.equal(gateState.blocked, state.blocked);
+	});
+
+	it("returns SAME gate object reference across reloads", () => {
+		const testConfig = { superagents: { modelTiers: { cheap: { model: "initial" } } } };
+		const configDir = createTempConfigDir({
+			"default-config.json": JSON.stringify({ superagents: {} }),
+			"config.json": JSON.stringify(testConfig),
+		});
+
+		const store = createRuntimeConfigStore(configDir);
+		const gate1 = store.getGateState();
+		assert.equal(gate1.blocked, false);
+
+		// Update config to be invalid
+		const userConfigPath = path.join(configDir, "config.json");
+		fs.writeFileSync(userConfigPath, JSON.stringify({ invalidKey: "value" }), "utf-8");
+
+		store.reloadConfig();
+		const gate2 = store.getGateState();
+
+		// Same object reference
+		assert.equal(gate1, gate2, "Expected the SAME gate object reference after reload");
+		// But with updated data
+		assert.equal(gate2.blocked, true, "Expected gate to be blocked after invalid config");
+	});
+
+	it("produces diagnostics for invalid model tier values", () => {
+		const testConfig = { superagents: { modelTiers: { balanced: { invalidField: "value" } } } };
+		const configDir = createTempConfigDir({
+			"default-config.json": JSON.stringify({ superagents: {} }),
+			// Invalid: missing required 'model' field in tier config
+			"config.json": JSON.stringify(testConfig),
+		});
+
+		const state = loadRuntimeConfigState(configDir);
+		assert.equal(state.blocked, true, "Expected config to be blocked due to invalid tier");
+		// Check for diagnostic with the specific path
+		const tierDiagnostic = state.diagnostics.find(
+			(d) => d.path === "superagents.modelTiers.balanced" || d.path === "superagents.modelTiers.balanced.model"
+		);
+		assert.ok(tierDiagnostic, "Expected diagnostic for invalid model tier");
 	});
 });
 
