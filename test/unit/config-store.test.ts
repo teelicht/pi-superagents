@@ -92,7 +92,10 @@ void describe("RuntimeConfigStore", () => {
 
 		const store = createRuntimeConfigStore(configDir);
 		const initialConfig = store.getConfig();
-		assert.equal(initialConfig?.superagents?.modelTiers?.cheap?.model, "initial");
+		// ModelTierSetting can be string | ModelTierConfig - check both possibilities
+		const initialTier = initialConfig?.superagents?.modelTiers?.cheap;
+		const initialModel = typeof initialTier === "object" ? initialTier?.model : initialTier;
+		assert.equal(initialModel, "initial");
 
 		// Write a new config file
 		const userConfigPath = path.join(configDir, "config.json");
@@ -101,7 +104,10 @@ void describe("RuntimeConfigStore", () => {
 
 		store.reloadConfig();
 		const reloadedConfig = store.getConfig();
-		assert.equal(reloadedConfig?.superagents?.modelTiers?.cheap?.model, "updated");
+		// ModelTierSetting can be string | ModelTierConfig - check both possibilities
+		const updatedTier = reloadedConfig?.superagents?.modelTiers?.cheap;
+		const updatedModel = typeof updatedTier === "object" ? updatedTier?.model : updatedTier;
+		assert.equal(updatedModel, "updated");
 	});
 });
 
