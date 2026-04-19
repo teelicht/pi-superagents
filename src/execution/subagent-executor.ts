@@ -325,6 +325,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		workflow,
 		useTestDrivenDevelopment,
 	} = data;
+	const config = deps.getConfig?.() ?? deps.config!;
 	const allProgress: AgentProgress[] = [];
 	const allArtifactPaths: ArtifactPaths[] = [];
 	const tasks = params.tasks!;
@@ -389,7 +390,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		runId,
 		tasks,
 		workflow,
-		deps.config,
+		config,
 	);
 	if (errorResult) return errorResult;
 
@@ -474,6 +475,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		workflow,
 		useTestDrivenDevelopment,
 	} = data;
+	const config = deps.getConfig?.() ?? deps.config!;
 	const allProgress: AgentProgress[] = [];
 	const allArtifactPaths: ArtifactPaths[] = [];
 	const agentConfig = agents.find((a) => a.name === params.agent);
