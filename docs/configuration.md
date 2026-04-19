@@ -176,6 +176,10 @@ Superpowers agents use abstract model tiers. Define tiers in your configuration:
 
 **Supported thinking levels:** `off`, `minimal`, `low`, `medium`, `high`, `xhigh`.
 
+You can edit model tier mappings during an active PI session with `/sp-settings`. The model picker reads PI's authenticated model registry and writes the selected `provider/model` value back to `config.json`. Successful tier edits apply to future Superpowers subagents immediately; already-running subagents keep the model they were launched with.
+
+Command registration still happens when the extension loads. If you add or rename slash commands in `config.json`, reload PI before using those new command names.
+
 ## Skill Overlays
 
 Skill overlays load additional skills alongside the entry skill:

@@ -7,6 +7,7 @@
 - **Superpowers Workflow**: Proven pipeline for robust AI-assisted development.
 - **Role-Specific Agents**: Thin agents-layer for every phase of the development lifecycle.
 - **Model Tiers**: Abstract model selection (cheap, balanced, max) for each agent to reduce costs and to utilize AI models according to their strengths. One model can be configured per tier. Custom tiers are possible.
+  - Open `/sp-settings` to inspect model tiers and change a tier to one of PI's authenticated models without restarting the current PI session.
 - **Subagent Execution**: Automatically spawns sub-agents (setting).
 - **Inline Agent Handoffs**: Role outputs are returned through Pi tool results and session artifacts, not `implementer-report.md`, `spec-review.md`, or `code-review.md` files in the repo root.
 - **Worktree Isolation**: Optional git worktree creation for parallel tasks to prevent filesystem conflicts (setting).

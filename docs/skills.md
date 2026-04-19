@@ -59,6 +59,10 @@ scope: root   # optional
 
 Skills with `scope: root` are orchestration-level skills that should never be delegated to bounded role agents (e.g., `sp-recon`, `sp-implementer`). The runtime enforces this restriction automatically.
 
+## Role Agents and Model Tiers
+
+Role agents use abstract tier names such as `cheap`, `balanced`, and `max`. You can change which concrete PI model a tier points to from `/sp-settings`; the change is saved to `config.json` and affects future delegated role agents without restarting PI.
+
 ## Missing Skills
 
 For delegated subagent runs, missing skills are reported in the result summary and execution continues with the skills that were found. For root Superpowers entry-skill flows, missing required entry or overlay skills block prompt dispatch so the user can fix the configuration.

@@ -58,6 +58,10 @@ These tools are registered for root Superpowers workflows and are used by the pr
 | `specContent` | string | Final saved Superpowers brainstorming spec content to review. |
 | `specFilePath` | string, optional | Saved spec file path. |
 
+## Settings Overlay
+
+`/sp-settings` opens the Superpowers settings overlay. Use it to toggle supported workflow options and edit model tiers from PI's authenticated model list. Model tier edits are persisted to `config.json` and apply to future subagents in the current session.
+
 ## Release Notes
 
 Tool parameter changes can affect prompts, docs, and downstream workflows. Before publishing a version that adds, removes, or changes a parameter, update this reference, `README.md`, and `CHANGELOG.md`, then follow the [Release Process](releases.md).
