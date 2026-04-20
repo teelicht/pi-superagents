@@ -1,6 +1,6 @@
 # @teelicht/pi-superagents
 
-[Pi agent-harness](https://pi.dev) extension to support [superpowers](https://skills.sh/obra/superpowers) workflows using subagents. This was originally a fork of [pi-subagents](https://github.com/nicobailon/pi-subagents), but moved from a very flexible subagent implementation to an opinionated tool to integrate the superpowers skills, adding a level of configurability.
+[Pi agent-harness](https://pi.dev) extension to support [superpowers](https://skills.sh/obra/superpowers) workflows using subagents. This was originally a fork of [pi-subagents](https://github.com/nicobailon/pi-subagents), but moved from a very flexible subagent implementation to an opinionated tool to integrate the superpowers skills without much need for configuration.
 
 ## Features
 
