@@ -8,7 +8,7 @@
 - **Role-Specific Agents**: Thin agents-layer for every phase of the development lifecycle.
 - **Model Tiers**: Abstract model selection (cheap, balanced, max) for each agent. One model can be configured per tier. Custom tiers are possible. Models can be changed through the `/sp-settings` TUI.
 - **Subagent Execution**: Automatically spawns sub-agents (setting).
-- **Inline Agent Handoffs**: Role outputs are returned through Pi tool results and session artifacts.
+- **Inline Agent Handoffs**: Role outputs are returned through Pi tool results and session artefacts.
 - **Worktree Isolation**: Optional git worktree creation for parallel tasks to prevent filesystem conflicts (setting).
 - **Skill Overlays**: Configure additional skills to load alongside superpowers process skills. Entry overlays resolve for the active entry skill; see [Configuration](docs/configuration.md#skill-overlays).
 - **Plannotator Integration**: Optional event bridge to [Plannotator](https://plannotator.ai/) for browser-based spec/plan review and approval (setting).
