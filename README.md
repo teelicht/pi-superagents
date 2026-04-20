@@ -6,13 +6,11 @@
 
 - **Superpowers Workflow**: Proven pipeline for robust AI-assisted development.
 - **Role-Specific Agents**: Thin agents-layer for every phase of the development lifecycle.
-- **Model Tiers**: Abstract model selection (cheap, balanced, max) for each agent to reduce costs and to utilize AI models according to their strengths. One model can be configured per tier. Custom tiers are possible.
-  - Open `/sp-settings` to inspect model tiers and change a tier to one of PI's authenticated models without restarting the current PI session.
+- **Model Tiers**: Abstract model selection (cheap, balanced, max) for each agent. One model can be configured per tier. Custom tiers are possible. Models can be changed through the `/sp-settings` TUI.
 - **Subagent Execution**: Automatically spawns sub-agents (setting).
-- **Inline Agent Handoffs**: Role outputs are returned through Pi tool results and session artifacts, not `implementer-report.md`, `spec-review.md`, or `code-review.md` files in the repo root.
+- **Inline Agent Handoffs**: Role outputs are returned through Pi tool results and session artifacts.
 - **Worktree Isolation**: Optional git worktree creation for parallel tasks to prevent filesystem conflicts (setting).
-- **Skill Overlays**: Configure additional skills to load alongside entry skills or Superpowers process skills. Entry overlays resolve for the active entry skill; invocation overlays resolve for all Superpowers process skills at session start. See [Configuration](docs/configuration.md#skill-overlays).
-- **Skill Visibility**: `/subagents-status` shows the resolved skills and missing-skill warnings for each subagent run, which helps verify `skillOverlays`.
+- **Skill Overlays**: Configure additional skills to load alongside superpowers process skills. Entry overlays resolve for the active entry skill; see [Configuration](docs/configuration.md#skill-overlays).
 - **Plannotator Integration**: Optional event bridge to [Plannotator](https://plannotator.ai/) for browser-based spec/plan review and approval (setting).
 
 ## Installation
