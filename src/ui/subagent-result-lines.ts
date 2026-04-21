@@ -12,7 +12,7 @@
  */
 
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
-import { formatDuration } from "../shared/formatters.ts";
+import { formatDuration, shortenPath } from "../shared/formatters.ts";
 import type { AgentProgress, Details, ProgressSummary, SingleResult } from "../shared/types.ts";
 import { getSingleResultOutput } from "../shared/utils.ts";
 
@@ -193,8 +193,7 @@ function renderCollapsedLines(summary: SubagentDisplaySummary, rows: SubagentDis
 }
 
 /**
- * Renders the expanded state. The first task only needs collapsed parity in
- * Task 1; later tasks fill this with richer detail assertions.
+ * Renders the expanded state with concise details for each subagent row.
  *
  * @param summary Header summary data.
  * @param rows Normalized display rows.
@@ -202,7 +201,73 @@ function renderCollapsedLines(summary: SubagentDisplaySummary, rows: SubagentDis
  * @returns Expanded display lines.
  */
 function renderExpandedLines(summary: SubagentDisplaySummary, rows: SubagentDisplayRow[], width: number): string[] {
-	return renderCollapsedLines(summary, rows, width);
+	const lines = [truncateLine(formatHeader(summary), width)];
+	for (const row of rows) {
+		lines.push(truncateLine(formatExpandedRow(row), width));
+		for (const detail of formatExpandedDetails(row)) {
+			lines.push(truncateLine(`  ${detail}`, width));
+		}
+	}
+	return lines;
+}
+
+/**
+ * Formats the expanded row headline.
+ *
+ * @param row Normalized display row.
+ * @returns Expanded row headline.
+ */
+function formatExpandedRow(row: SubagentDisplayRow): string {
+	const summary = row.summary;
+	const stats = summary && summary.toolCount > 0 ? `  ${summary.toolCount} tools  ${formatDuration(summary.durationMs)}` : "";
+	return `- ${row.status}  ${row.agent}  ${row.task}${stats}`;
+}
+
+/**
+ * Formats expanded detail lines for a subagent row.
+ *
+ * @param row Normalized display row.
+ * @returns Detail lines without indentation.
+ */
+function formatExpandedDetails(row: SubagentDisplayRow): string[] {
+	const lines: string[] = [];
+	const result = row.result;
+	const progress = row.progress;
+
+	if (result?.model) lines.push(`model: ${result.model}`);
+	const current = formatCurrentActivity(progress);
+	if (current) lines.push(`current: ${current}`);
+
+	const recentTools = (progress?.recentTools ?? []).slice(-3).map((tool) => `${tool.tool} ${tool.args}`);
+	if (recentTools.length > 0) lines.push(`recent: ${recentTools.join(", ")}`);
+
+	const recentOutput = (progress?.recentOutput ?? []).map((line) => line.trim()).filter(Boolean).slice(-5);
+	for (const line of recentOutput) lines.push(`output: ${line}`);
+
+	if (result?.skills?.length) lines.push(`skills: ${result.skills.join(", ")}`);
+	if (progress?.skills?.length && !result?.skills?.length) lines.push(`skills: ${progress.skills.join(", ")}`);
+	if (result?.skillsWarning) lines.push(`warning: ${result.skillsWarning}`);
+
+	const output = formatFinalOutput(result);
+	if (output) lines.push(`output: ${output}`);
+	if (result?.error) lines.push(`error: ${result.error}`);
+	if (result?.sessionFile) lines.push(`session: ${shortenPath(result.sessionFile)}`);
+	if (result?.artifactPaths?.outputPath) lines.push(`artifact: ${shortenPath(result.artifactPaths.outputPath)}`);
+
+	return lines;
+}
+
+/**
+ * Extracts the first non-empty final output line for expanded completed rows.
+ *
+ * @param result Optional completed result.
+ * @returns One-line output preview.
+ */
+function formatFinalOutput(result: SingleResult | undefined): string {
+	if (!result || result.progress?.status === "running") return "";
+	const output = result.truncation?.text || result.finalOutput || getSingleResultOutput(result);
+	const firstLine = output.split(/\r?\n/).map((line) => line.trim()).find(Boolean);
+	return firstLine ?? "";
 }
 
 /**
