@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.6.1] - 2026-04-21
+
+- Fixed compatibility with Pi `0.68.0` by passing an explicit Pi agent directory to the skill loader while preserving support for older Pi runtimes.
+- Updated development PI package dependencies to `0.68.0`.
+
 ## [0.6.0] - 2026-04-19
 
 - **Live Model Tier Config Editing**

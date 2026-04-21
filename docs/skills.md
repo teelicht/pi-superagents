@@ -78,3 +78,5 @@ Skills and role prompts should return findings in the assistant response. Pi Sup
 ## Release Notes
 
 Skill discovery and injection behavior are part of the public extension contract. Before publishing changes to skill paths, frontmatter handling, scope enforcement, or missing-skill behavior, update this reference, `README.md`, and `CHANGELOG.md`, then follow the [Release Process](releases.md).
+
+The extension passes explicit project and Pi agent directories to Pi's skill loader so discovery remains stable across Pi 0.67 and 0.68 runtimes.

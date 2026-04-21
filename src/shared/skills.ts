@@ -50,6 +50,13 @@ interface CachedSkillEntry {
 	scope?: "root" | "agent";
 }
 
+interface PiLoadSkillsCompatOptions {
+	cwd: string;
+	agentDir: string;
+	skillPaths: string[];
+	includeDefaults: boolean;
+}
+
 const skillCache = new Map<string, SkillCacheEntry>();
 const MAX_CACHE_SIZE = 50;
 
@@ -58,6 +65,25 @@ const LOAD_SKILLS_CACHE_TTL_MS = 5000;
 
 const CONFIG_DIR = ".pi";
 const AGENT_DIR = path.join(os.homedir(), ".pi", "agent");
+
+/**
+ * Build PI skill-loader options with explicit cwd and agent-dir values.
+ *
+ * @param input Project cwd, optional Pi agent directory, and resolved skill paths.
+ * @returns Options accepted by PI 0.68 while remaining safe to pass to older runtimes.
+ */
+export function buildLoadSkillsOptionsForPi(input: {
+	cwd: string;
+	agentDir?: string;
+	skillPaths: string[];
+}): PiLoadSkillsCompatOptions {
+	return {
+		cwd: input.cwd,
+		agentDir: input.agentDir ?? AGENT_DIR,
+		skillPaths: input.skillPaths,
+		includeDefaults: false,
+	};
+}
 
 const SOURCE_PRIORITY: Record<SkillSource, number> = {
 	project: 700,
@@ -243,7 +269,8 @@ function getCachedSkills(cwd: string): CachedSkillEntry[] {
 	}
 
 	const skillPaths = buildSkillPaths(cwd);
-	const loaded = loadSkills({ cwd, skillPaths, includeDefaults: false });
+	const loadSkillsCompat = loadSkills as (options: PiLoadSkillsCompatOptions) => ReturnType<typeof loadSkills>;
+	const loaded = loadSkillsCompat(buildLoadSkillsOptionsForPi({ cwd, skillPaths }));
 	const dedupedByName = new Map<string, CachedSkillEntry>();
 
 	for (let i = 0; i < loaded.skills.length; i++) {
