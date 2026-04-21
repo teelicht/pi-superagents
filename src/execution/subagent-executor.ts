@@ -430,6 +430,23 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 			if (result.artifactPaths) allArtifactPaths.push(result.artifactPaths);
 		}
 
+		// Ensure every task has a progress entry so the renderer can show pending rows
+		for (let i = 0; i < tasks.length; i++) {
+			if (!allProgress.some((p) => p.index === i)) {
+				allProgress.push({
+					index: i,
+					agent: tasks[i].agent,
+					status: "pending",
+					task: tasks[i].task,
+					recentTools: [],
+					recentOutput: [],
+					toolCount: 0,
+					durationMs: 0,
+				});
+			}
+		}
+		allProgress.sort((a, b) => a.index - b.index);
+
 		const worktreeSuffix = buildParallelWorktreeSuffix(worktreeSetup, artifactsDir, tasks);
 		const ok = results.filter((result) => result.exitCode === 0).length;
 		const aggregatedOutput = aggregateParallelOutputs(
@@ -452,7 +469,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 			details: {
 				mode: "parallel",
 				results,
-				progress: params.includeProgress ? allProgress : undefined,
+				progress: allProgress,
 				artifacts: allArtifactPaths.length ? { dir: artifactsDir, files: allArtifactPaths } : undefined,
 			},
 		};
