@@ -3,11 +3,10 @@
  */
 
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
-import { type ExtensionContext, getMarkdownTheme } from "@mariozechner/pi-coding-agent";
-import { type Component, Container, Markdown, Spacer, Text, visibleWidth } from "@mariozechner/pi-tui";
-import { formatDuration, formatToolCall, formatUsage, shortenPath } from "../shared/formatters.ts";
-import type { AgentProgress, Details, ProgressSummary } from "../shared/types.ts";
-import { getDisplayItems, getSingleResultOutput } from "../shared/utils.ts";
+import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import { type Component, Text } from "@mariozechner/pi-tui";
+import type { Details } from "../shared/types.ts";
+import { renderSubagentResultLines } from "./subagent-result-lines.ts";
 
 type Theme = ExtensionContext["ui"]["theme"];
 
@@ -80,255 +79,19 @@ function truncLine(text: string, maxWidth: number): string {
 }
 
 /**
- * Detect whether a completed subagent produced no visible inline output.
+ * Render a subagent tool result using compact collapsed lines or expanded
+ * inline detail lines, based on Pi's current tool-result expansion state.
  *
- * @param output Final output extracted from the child PI JSONL stream.
- * @returns True when the rendered output is empty after trimming whitespace.
- */
-function hasEmptyOutput(output: string): boolean {
-	return !output.trim();
-}
-
-/**
- * Render a subagent result
+ * @param result Subagent tool result from the extension runtime.
+ * @param options Pi render options, including expansion state.
+ * @param theme Current UI theme; accepted for the Pi renderer contract.
+ * @returns TUI component for the subagent result.
  */
 export function renderSubagentResult(
 	result: AgentToolResult<Details>,
-	_options: { expanded: boolean },
-	theme: Theme,
+	options: { expanded: boolean },
+	_theme: Theme,
 ): Component {
-	const d = result.details;
-	if (!d || !d.results.length) {
-		const t = result.content[0];
-		const text = t?.type === "text" ? t.text : "(no output)";
-		const contextPrefix = d?.context === "fork" ? `${theme.fg("warning", "[fork]")} ` : "";
-		return new Text(truncLine(`${contextPrefix}${text}`, getTermWidth() - 4), 0, 0);
-	}
-
-	const mdTheme = getMarkdownTheme();
-
-	if (d.mode === "single" && d.results.length === 1) {
-		const r = d.results[0];
-		const isRunning = r.progress?.status === "running";
-		const icon = isRunning
-			? theme.fg("warning", "...")
-			: r.exitCode === 0
-				? theme.fg("success", "ok")
-				: theme.fg("error", "X");
-		const contextBadge = d.context === "fork" ? theme.fg("warning", " [fork]") : "";
-		const output = r.truncation?.text || getSingleResultOutput(r);
-
-		const progressInfo =
-			isRunning && r.progress
-				? ` | ${r.progress.toolCount} tools, ${formatDuration(r.progress.durationMs)}`
-				: r.progressSummary
-					? ` | ${r.progressSummary.toolCount} tools, ${formatDuration(r.progressSummary.durationMs)}`
-					: "";
-
-		const w = getTermWidth() - 4;
-		const c = new Container();
-		c.addChild(
-			new Text(
-				truncLine(`${icon} ${theme.fg("toolTitle", theme.bold(r.agent))}${contextBadge}${progressInfo}`, w),
-				0,
-				0,
-			),
-		);
-		c.addChild(new Spacer(1));
-		const taskMaxLen = Math.max(20, w - 8);
-		const taskPreview = r.task.length > taskMaxLen ? `${r.task.slice(0, taskMaxLen)}...` : r.task;
-		c.addChild(new Text(truncLine(theme.fg("dim", `Task: ${taskPreview}`), w), 0, 0));
-		c.addChild(new Spacer(1));
-
-		if (isRunning && r.progress) {
-			if (r.progress.currentTool) {
-				const maxToolArgsLen = Math.max(50, w - 20);
-				const toolArgsPreview = r.progress.currentToolArgs
-					? r.progress.currentToolArgs.length > maxToolArgsLen
-						? `${r.progress.currentToolArgs.slice(0, maxToolArgsLen)}...`
-						: r.progress.currentToolArgs
-					: "";
-				const toolLine = toolArgsPreview ? `${r.progress.currentTool}: ${toolArgsPreview}` : r.progress.currentTool;
-				c.addChild(new Text(truncLine(theme.fg("warning", `> ${toolLine}`), w), 0, 0));
-			}
-			if (r.progress.recentTools?.length) {
-				for (const t of r.progress.recentTools.slice(-3)) {
-					const maxArgsLen = Math.max(40, w - 24);
-					const argsPreview = t.args.length > maxArgsLen ? `${t.args.slice(0, maxArgsLen)}...` : t.args;
-					c.addChild(new Text(truncLine(theme.fg("dim", `${t.tool}: ${argsPreview}`), w), 0, 0));
-				}
-			}
-			for (const line of (r.progress.recentOutput ?? []).slice(-5)) {
-				c.addChild(new Text(truncLine(theme.fg("dim", `  ${line}`), w), 0, 0));
-			}
-			if (r.progress.currentTool || r.progress.recentTools?.length || r.progress.recentOutput?.length) {
-				c.addChild(new Spacer(1));
-			}
-		}
-
-		const items = getDisplayItems(r.messages);
-		for (const item of items) {
-			if (item.type === "tool")
-				c.addChild(new Text(truncLine(theme.fg("muted", formatToolCall(item.name, item.args)), w), 0, 0));
-		}
-		if (items.length) c.addChild(new Spacer(1));
-
-		if (output) c.addChild(new Markdown(output, 0, 0, mdTheme));
-		c.addChild(new Spacer(1));
-		if (r.skills?.length) {
-			c.addChild(new Text(truncLine(theme.fg("dim", `Skills: ${r.skills.join(", ")}`), w), 0, 0));
-		}
-		if (r.skillsWarning) {
-			c.addChild(new Text(truncLine(theme.fg("warning", `⚠️ ${r.skillsWarning}`), w), 0, 0));
-		}
-		c.addChild(new Text(truncLine(theme.fg("dim", formatUsage(r.usage, r.model)), w), 0, 0));
-		if (r.sessionFile) {
-			c.addChild(new Text(truncLine(theme.fg("dim", `Session: ${shortenPath(r.sessionFile)}`), w), 0, 0));
-		}
-
-		if (r.artifactPaths) {
-			c.addChild(new Spacer(1));
-			c.addChild(
-				new Text(truncLine(theme.fg("dim", `Artifacts: ${shortenPath(r.artifactPaths.outputPath)}`), w), 0, 0),
-			);
-		}
-		return c;
-	}
-
-	const hasRunning =
-		d.progress?.some((p) => p.status === "running") || d.results.some((r) => r.progress?.status === "running");
-	const ok = d.results.filter(
-		(r) => r.progress?.status === "completed" || (r.exitCode === 0 && r.progress?.status !== "running"),
-	).length;
-	const hasEmptyWithoutTarget = d.results.some(
-		(r) => r.exitCode === 0 && r.progress?.status !== "running" && hasEmptyOutput(getSingleResultOutput(r)),
-	);
-	const icon = hasRunning
-		? theme.fg("warning", "...")
-		: hasEmptyWithoutTarget
-			? theme.fg("warning", "⚠")
-			: ok === d.results.length
-				? theme.fg("success", "ok")
-				: theme.fg("error", "X");
-
-	const totalSummary =
-		d.progressSummary ||
-		d.results.reduce(
-			(acc, r) => {
-				const prog = r.progress || r.progressSummary;
-				if (prog) {
-					acc.toolCount += prog.toolCount;
-					acc.durationMs = Math.max(acc.durationMs, prog.durationMs);
-				}
-				return acc;
-			},
-			{ toolCount: 0, durationMs: 0 },
-		);
-
-	const summaryStr = totalSummary.toolCount
-		? ` | ${totalSummary.toolCount} tools, ${formatDuration(totalSummary.durationMs)}`
-		: "";
-
-	const modeLabel = d.mode;
-	const contextBadge = d.context === "fork" ? theme.fg("warning", " [fork]") : "";
-	const totalCount = d.results.length;
-	const stepInfo = hasRunning ? ` ${ok + 1}/${totalCount}` : ` ${ok}/${totalCount}`;
-
-	const w = getTermWidth() - 4;
-	const c = new Container();
-	c.addChild(
-		new Text(
-			truncLine(`${icon} ${theme.fg("toolTitle", theme.bold(modeLabel))}${contextBadge}${stepInfo}${summaryStr}`, w),
-			0,
-			0,
-		),
-	);
-
-	// === STATIC TASK LAYOUT (like clarification UI) ===
-	// Each task gets a fixed section with task/output/status
-	c.addChild(new Spacer(1));
-
-	for (let i = 0; i < d.results.length; i++) {
-		const r = d.results[i];
-		const agentName = r?.agent || `task-${i + 1}`;
-
-		if (!r) {
-			// Pending task
-			c.addChild(new Text(truncLine(theme.fg("dim", `  Task ${i + 1}: ${agentName}`), w), 0, 0));
-			c.addChild(new Text(theme.fg("dim", `    status: ○ pending`), 0, 0));
-			c.addChild(new Spacer(1));
-			continue;
-		}
-
-		const progressFromArray =
-			d.progress?.find((p) => p.index === i) || d.progress?.find((p) => p.agent === r.agent && p.status === "running");
-		const rProg = (r.progress || progressFromArray || r.progressSummary) as
-			| (Partial<AgentProgress> & ProgressSummary)
-			| undefined;
-		const rRunning = rProg?.status === "running";
-
-		const resultOutput = getSingleResultOutput(r);
-		const statusIcon = rRunning
-			? theme.fg("warning", "●")
-			: r.exitCode !== 0
-				? theme.fg("error", "✗")
-				: hasEmptyOutput(resultOutput)
-					? theme.fg("warning", "⚠")
-					: theme.fg("success", "✓");
-		const stats = rProg ? ` | ${rProg.toolCount} tools, ${formatDuration(rProg.durationMs)}` : "";
-		const modelDisplay = r.model ? theme.fg("dim", ` (${r.model})`) : "";
-		const taskHeader = rRunning
-			? `${statusIcon} Task ${i + 1}: ${theme.bold(theme.fg("warning", r.agent))}${modelDisplay}${stats}`
-			: `${statusIcon} Task ${i + 1}: ${theme.bold(r.agent)}${modelDisplay}${stats}`;
-		c.addChild(new Text(truncLine(taskHeader, w), 0, 0));
-
-		const taskMaxLen = Math.max(20, w - 12);
-		const taskPreview = r.task.length > taskMaxLen ? `${r.task.slice(0, taskMaxLen)}...` : r.task;
-		c.addChild(new Text(truncLine(theme.fg("dim", `    task: ${taskPreview}`), w), 0, 0));
-
-		if (r.skills?.length) {
-			c.addChild(new Text(truncLine(theme.fg("dim", `    skills: ${r.skills.join(", ")}`), w), 0, 0));
-		}
-		if (r.skillsWarning) {
-			c.addChild(new Text(truncLine(theme.fg("warning", `    ⚠️ ${r.skillsWarning}`), w), 0, 0));
-		}
-
-		if (rRunning && rProg) {
-			if (rProg.skills?.length) {
-				c.addChild(new Text(truncLine(theme.fg("accent", `    skills: ${rProg.skills.join(", ")}`), w), 0, 0));
-			}
-			// Current tool for running step
-			if (rProg.currentTool) {
-				const maxToolArgsLen = Math.max(50, w - 20);
-				const toolArgsPreview = rProg.currentToolArgs
-					? rProg.currentToolArgs.length > maxToolArgsLen
-						? `${rProg.currentToolArgs.slice(0, maxToolArgsLen)}...`
-						: rProg.currentToolArgs
-					: "";
-				const toolLine = toolArgsPreview ? `${rProg.currentTool}: ${toolArgsPreview}` : rProg.currentTool;
-				c.addChild(new Text(truncLine(theme.fg("warning", `    > ${toolLine}`), w), 0, 0));
-			}
-			// Recent tools
-			if (rProg.recentTools?.length) {
-				for (const t of rProg.recentTools.slice(-3)) {
-					const maxArgsLen = Math.max(40, w - 30);
-					const argsPreview = t.args.length > maxArgsLen ? `${t.args.slice(0, maxArgsLen)}...` : t.args;
-					c.addChild(new Text(truncLine(theme.fg("dim", `      ${t.tool}: ${argsPreview}`), w), 0, 0));
-				}
-			}
-			// Recent output - let truncLine handle truncation entirely
-			const recentLines = (rProg.recentOutput ?? []).slice(-5);
-			for (const line of recentLines) {
-				c.addChild(new Text(truncLine(theme.fg("dim", `      ${line}`), w), 0, 0));
-			}
-		}
-
-		c.addChild(new Spacer(1));
-	}
-
-	if (d.artifacts) {
-		c.addChild(new Spacer(1));
-		c.addChild(new Text(truncLine(theme.fg("dim", `Artifacts dir: ${shortenPath(d.artifacts.dir)}`), w), 0, 0));
-	}
-	return c;
+	const width = Math.max(20, getTermWidth() - 4);
+	return new Text(renderSubagentResultLines(result, { expanded: options.expanded, width }).join("\n"), 0, 0);
 }
