@@ -162,3 +162,125 @@ void describe("renderSubagentResultLines expanded single runs", () => {
 		assert.match(text, /artifact: .*output\.md/);
 	});
 });
+
+void describe("renderSubagentResultLines parallel runs", () => {
+	void it("renders running parallel progress with pending rows while collapsed", () => {
+		const lines = renderSubagentResultLines(toolResult({
+			mode: "parallel",
+			results: [
+				singleResult({
+					progress: {
+						index: 0,
+						agent: "sp-recon",
+						status: "running",
+						task: "Inspect auth flow",
+						currentTool: "read",
+						currentToolArgs: "src/auth/session.ts",
+						recentTools: [],
+						recentOutput: [],
+						toolCount: 3,
+						durationMs: 12_300,
+					},
+				}),
+			],
+			progress: [
+				{
+					index: 0,
+					agent: "sp-recon",
+					status: "running",
+					task: "Inspect auth flow",
+					currentTool: "read",
+					currentToolArgs: "src/auth/session.ts",
+					recentTools: [],
+					recentOutput: [],
+					toolCount: 3,
+					durationMs: 12_300,
+				},
+				{
+					index: 1,
+					agent: "sp-code-review",
+					status: "pending",
+					task: "Review auth changes",
+					recentTools: [],
+					recentOutput: [],
+					toolCount: 0,
+					durationMs: 0,
+				},
+			],
+		}), { expanded: false, width: 120 });
+
+		const text = lines.join("\n");
+		assert.match(text, /^Subagents\s+0\/2 complete/m);
+		assert.match(text, /- running\s+sp-recon\s+Inspect auth flow\s+3 tools\s+12\.3s/);
+		assert.match(text, /-> read src\/auth\/session\.ts/);
+		assert.match(text, /- pending\s+sp-code-review\s+Review auth changes/);
+		assert.doesNotMatch(text, /recent:/);
+	});
+
+	void it("renders a compact completed parallel success summary", () => {
+		const lines = renderSubagentResultLines(toolResult({
+			mode: "parallel",
+			results: [
+				singleResult({
+					progressSummary: { toolCount: 7, durationMs: 20_000 },
+					finalOutput: "Recon complete",
+				}),
+				singleResult({
+					agent: "sp-code-review",
+					task: "Review auth changes",
+					progressSummary: { toolCount: 10, durationMs: 41_200 },
+					finalOutput: "Review complete",
+				}),
+			],
+		}), { expanded: false, width: 120 });
+
+		assert.deepStrictEqual(lines, ["Subagents  2/2 complete ok  17 tools  41.2s"]);
+	});
+
+	void it("renders a compact completed parallel failure summary", () => {
+		const lines = renderSubagentResultLines(toolResult({
+			mode: "parallel",
+			results: [
+				singleResult({
+					progressSummary: { toolCount: 7, durationMs: 20_000 },
+					finalOutput: "Recon complete",
+				}),
+				singleResult({
+					agent: "sp-code-review",
+					task: "Review auth changes",
+					exitCode: 1,
+					error: "Review failed",
+					progressSummary: { toolCount: 5, durationMs: 28_400 },
+				}),
+			],
+		}), { expanded: false, width: 120 });
+
+		assert.deepStrictEqual(lines, ["Subagents  1/2 complete error  12 tools  28.4s"]);
+	});
+
+	void it("truncates long task, tool, and output previews to the supplied width", () => {
+		const lines = renderSubagentResultLines(toolResult({
+			mode: "single",
+			results: [
+				singleResult({
+					task: "Inspect an intentionally long authentication and authorization flow description",
+					progress: {
+						index: 0,
+						agent: "sp-recon",
+						status: "running",
+						task: "Inspect an intentionally long authentication and authorization flow description",
+						currentTool: "read",
+						currentToolArgs: "src/auth/session-with-a-very-long-file-name.ts",
+						recentTools: [],
+						recentOutput: ["A long output line that should not leak in collapsed mode"],
+						toolCount: 1,
+						durationMs: 1_000,
+					},
+				}),
+			],
+		}), { expanded: false, width: 48 });
+
+		assert.ok(lines.every((line) => line.length <= 48), `expected every line to fit: ${JSON.stringify(lines)}`);
+		assert.ok(lines.some((line) => line.endsWith("…")), "expected at least one truncated line");
+	});
+});
