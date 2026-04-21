@@ -83,5 +83,53 @@ void describe(
 			const text = widget.render(120).join("\n");
 			assert.match(text, /\[fork\]/);
 		});
+
+		void it("renders collapsed single results through the compact line formatter", () => {
+			const widget = renderSubagentResult!(
+				{
+					content: [{ type: "text", text: "done" }],
+					details: {
+						mode: "single",
+						results: [
+							{
+								agent: "sp-recon",
+								task: "Inspect auth flow",
+								exitCode: 0,
+								messages: [],
+								usage: {
+									input: 0,
+									output: 0,
+									cacheRead: 0,
+									cacheWrite: 0,
+									cost: 0,
+									turns: 0,
+								},
+								progress: {
+									index: 0,
+									agent: "sp-recon",
+									status: "running",
+									task: "Inspect auth flow",
+									currentTool: "read",
+									currentToolArgs: "src/auth/session.ts",
+									recentTools: [],
+									recentOutput: ["verbose output hidden while collapsed"],
+									toolCount: 3,
+									durationMs: 12_300,
+								},
+							},
+						],
+					},
+				},
+				{ expanded: false },
+				theme,
+			);
+
+			const text = widget.render(120).join("\n");
+			assert.match(text, /^Subagent\s+running/m);
+			assert.match(text, /-> read src\/auth\/session\.ts/);
+			assert.doesNotMatch(text, /verbose output hidden while collapsed/);
+			assert.doesNotMatch(text, /Task:/);
+			assert.doesNotMatch(text, /Session:/);
+		});
 	},
 );
