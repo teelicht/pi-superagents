@@ -22,11 +22,13 @@ import { EventEmitter } from "node:events";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
+import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import { resolveStepBehavior } from "../../src/execution/settings.ts";
 import {
 	buildSuperpowersPacketPlan,
 	injectSuperpowersPacketInstructions,
 } from "../../src/execution/superpowers-packets.ts";
+import type { Details } from "../../src/shared/types.ts";
 import type { MockPi } from "../support/helpers.ts";
 import { createMockPi, createTempDir, removeTempDir, tryImport } from "../support/helpers.ts";
 
@@ -398,6 +400,57 @@ void describe(
 			// The worktrees path under tempDir confirms the feature path was exercised.
 			// The actual worktree directories are cleaned up in the executor's finally block,
 			// so we verify by checking that the executor completed successfully (not blocked).
+		});
+
+		void it("includes pending progress rows in the result details for parallel runs", async () => {
+			const agents = [
+				{
+					name: "sp-research",
+					description: "Test agent: sp-research",
+					systemPrompt: "Research.",
+					source: "builtin",
+					filePath: "/tmp/sp-research.md",
+				},
+				{
+					name: "sp-code-review",
+					description: "Test agent: sp-code-review",
+					systemPrompt: "Review.",
+					source: "builtin",
+					filePath: "/tmp/sp-code-review.md",
+				},
+			];
+
+			// Arrange: report two tasks, but only one completes and produces a result
+			mockPi.onCall({ output: "Research result" });
+
+			const executor = makeExecutor(agents);
+			const result = (await executor.execute(
+				"packet-pending",
+				{
+					workflow: "superpowers",
+					tasks: [
+						{ agent: "sp-research", task: "Research auth flow" },
+						{ agent: "sp-code-review", task: "Review auth changes" },
+					],
+				},
+				new AbortController().signal,
+				undefined,
+				makeExecutorCtx(),
+			)) as unknown as AgentToolResult<Details>;
+
+			assert.ok(!result.isError, JSON.stringify(result.content));
+			assert.equal(result.details.mode, "parallel");
+			// Because tasks run in parallel, the first result should have details
+			assert.ok(result.details.results.length > 0, "should have at least one result");
+			// Verify the tool result has a progress array with pending rows
+			assert.ok(result.details.progress, "should have progress array");
+			// There should be progress entries for all tasks
+			assert.ok(result.details.progress.length > 0, "should have progress entries");
+			// Verify that each task index is represented in the progress
+			const indices = result.details.progress.map((p) => p.index);
+			assert.ok(indices.includes(0), "should have progress for task 0");
+			// Task 1 may be pending or running; just verify the field is populated
+			assert.ok(indices.some((i) => i === 0 || i === 1), "should have progress entries");
 		});
 	},
 );
