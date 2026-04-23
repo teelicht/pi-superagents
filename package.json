@@ -1,6 +1,6 @@
 {
   "name": "@teelicht/pi-superagents",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Pi extension for Superpowers workflows: recon, research, implementation, review, and debug",
   "author": "Thomas Lichtenecker",
   "license": "MIT",
@@ -62,16 +62,16 @@
     "@mariozechner/pi-ai": "*",
     "@mariozechner/pi-coding-agent": "*",
     "@mariozechner/pi-tui": "*",
-    "@sinclair/typebox": "*"
+    "typebox": "*"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.5",
     "@marcfargas/pi-test-harness": "^0.5.0",
-    "@mariozechner/pi-agent-core": "^0.68.0",
-    "@mariozechner/pi-ai": "^0.68.0",
-    "@mariozechner/pi-coding-agent": "^0.68.0",
-    "@mariozechner/pi-tui": "^0.68.0",
-    "@sinclair/typebox": "^0.34.49",
+    "@mariozechner/pi-agent-core": "^0.69.0",
+    "@mariozechner/pi-ai": "^0.69.0",
+    "@mariozechner/pi-coding-agent": "^0.69.0",
+    "@mariozechner/pi-tui": "^0.69.0",
+    "typebox": "^1.1.24",
     "@types/node": "^25.6.0",
     "@vitest/coverage-v8": "^4.1.4",
     "typescript": "^6.0.3",

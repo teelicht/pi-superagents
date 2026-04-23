@@ -7,7 +7,7 @@
  * - expose command-scoped Superpowers metadata without changing default semantics
  */
 
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 
 // Note: Using Type.Any() for Google API compatibility (doesn't support anyOf)
 const SkillOverride = Type.Any({

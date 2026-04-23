@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.6.3] - 2026-04-23
+
+- **Compatibility**
+  - Migrated from `@sinclair/typebox` to `typebox` `1.x` to maintain compatibility with `pi-coding-agent` v0.69.0 breaking changes.
+
 ## [0.6.2] - 2026-04-23
 
 - Added compact inline subagent result rendering with collapsed status summaries and expanded in-place details.
