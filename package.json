@@ -67,7 +67,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.3.5",
     "@marcfargas/pi-test-harness": "^0.5.0",
-    "@mariozechner/pi-agent-core": "^0.68.0",
+    "@mariozechner/pi-agent-core": "^0.69.0",
     "@mariozechner/pi-ai": "^0.68.0",
     "@mariozechner/pi-coding-agent": "^0.68.0",
     "@mariozechner/pi-tui": "^0.68.0",
