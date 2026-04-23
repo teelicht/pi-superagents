@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 import type { Message } from "@mariozechner/pi-ai";
 import type { AgentConfig } from "../agents/agents.ts";
 import { ensureArtifactsDir, getArtifactPaths, writeArtifact, writeMetadata } from "../shared/artifacts.ts";
-import { buildSkillInjection, resolveExecutionSkills } from "../shared/skills.ts";
+import { buildSkillInjection, getPublishedExecutionSkills, resolveExecutionSkills } from "../shared/skills.ts";
 import {
 	type AgentProgress,
 	type ArtifactPaths,
@@ -78,7 +78,7 @@ export async function runSync(
 		useTestDrivenDevelopment,
 		skills: configuredSkills,
 	});
-	const resolvedSkillNames = resolvedSkills.length > 0 ? resolvedSkills.map((s) => s.name) : undefined;
+	const resolvedSkillNames = getPublishedExecutionSkills(resolvedSkills);
 	const skillsWarning = missingSkills.length > 0 ? `Skills not found: ${missingSkills.join(", ")}` : undefined;
 
 	let systemPrompt = agent.systemPrompt?.trim() || "";

@@ -28,6 +28,7 @@ import {
 	buildSuperpowersPacketPlan,
 	injectSuperpowersPacketInstructions,
 } from "../../src/execution/superpowers-packets.ts";
+import { getAvailableSkillNames } from "../../src/shared/skills.ts";
 import type { Details } from "../../src/shared/types.ts";
 import type { MockPi } from "../support/helpers.ts";
 import { createMockPi, createTempDir, removeTempDir, tryImport } from "../support/helpers.ts";
@@ -278,6 +279,58 @@ void describe(
 			assert.equal(fs.existsSync(path.join(tempDir, "implementer-report.md")), false);
 		});
 
+		void it("resolves single-task skills from the effective child cwd", async () => {
+			mockPi.onCall({ output: "Implemented with child cwd skill" });
+			const childCwd = path.join(tempDir, "packages", "single-implementer");
+			const childSkillDir = path.join(childCwd, ".agents", "skills", "child-only-skill");
+			fs.mkdirSync(childSkillDir, { recursive: true });
+			fs.writeFileSync(
+				path.join(childSkillDir, "SKILL.md"),
+				`---
+name: child-only-skill
+description: Single-task child cwd skill
+---
+# Child Only Skill
+
+This skill should resolve from params.cwd.`,
+				"utf-8",
+			);
+			assert.ok(getAvailableSkillNames(childCwd).has("child-only-skill"), "should discover the child cwd skill");
+
+			const agents = [
+				{
+					name: "sp-implementer",
+					description: "Test agent: sp-implementer",
+					systemPrompt: "Implement the task.",
+					source: "builtin",
+					filePath: "/tmp/sp-implementer.md",
+				},
+			];
+			const executor = makeExecutor(agents);
+
+			const result = await executor.execute(
+				"packet-single-child-cwd-skills",
+				{
+					agent: "sp-implementer",
+					task: "Implement the selected task.",
+					workflow: "superpowers",
+					cwd: childCwd,
+					skill: ["child-only-skill"],
+				},
+				new AbortController().signal,
+				undefined,
+				makeExecutorCtx(),
+			);
+
+			assert.ok(!result.isError, JSON.stringify(result.content));
+			assert.equal(result.details.mode, "single");
+			assert.ok(result.details.results.length > 0, "should have results");
+			assert.ok(
+				result.details.results[0].skills?.includes("child-only-skill"),
+				"single-task result should publish skills resolved from params.cwd",
+			);
+		});
+
 		void it("injects superpowers packet instructions into foreground parallel tasks", async () => {
 			mockPi.onCall({ output: "Async implemented task" });
 			const agents = [
@@ -402,55 +455,152 @@ void describe(
 			// so we verify by checking that the executor completed successfully (not blocked).
 		});
 
-		void it("includes pending progress rows in the result details for parallel runs", async () => {
+		void it("includes pending progress rows in live parallel updates before sibling tasks start", async () => {
 			const agents = [
 				{
-					name: "sp-research",
-					description: "Test agent: sp-research",
-					systemPrompt: "Research.",
+					name: "sp-recon",
+					description: "Test agent: sp-recon",
+					systemPrompt: "Recon.",
 					source: "builtin",
-					filePath: "/tmp/sp-research.md",
+					filePath: "/tmp/sp-recon.md",
 				},
 				{
-					name: "sp-code-review",
-					description: "Test agent: sp-code-review",
-					systemPrompt: "Review.",
+					name: "sp-implementer",
+					description: "Test agent: sp-implementer",
+					systemPrompt: "Implement.",
 					source: "builtin",
-					filePath: "/tmp/sp-code-review.md",
+					filePath: "/tmp/sp-implementer.md",
 				},
 			];
 
-			// Arrange: report two tasks, but only one completes and produces a result
-			mockPi.onCall({ output: "Research result" });
+			const updates: AgentToolResult<Details>[] = [];
+			mockPi.onCall({
+				jsonl: [
+					{
+						type: "tool_execution_start",
+						toolName: "Read",
+						args: { filePath: "auth.ts" },
+					},
+					{
+						type: "message_end",
+						message: {
+							role: "assistant",
+							content: [{ type: "text", text: "Inspected auth flow" }],
+							model: "mock/test-model",
+							usage: {
+								input: 100,
+								output: 50,
+								cacheRead: 0,
+								cacheWrite: 0,
+								cost: { total: 0.001 },
+							},
+						},
+					},
+				],
+			});
+			mockPi.onCall({
+				delay: 100,
+				output: "Reviewed auth changes",
+			});
+
+			const implementerTaskCwd = path.join(tempDir, "packages", "implementer");
+			const vanishingSkillDir = path.join(implementerTaskCwd, ".agents", "skills", "vanishing-skill");
+			fs.mkdirSync(vanishingSkillDir, { recursive: true });
+			fs.writeFileSync(
+				path.join(vanishingSkillDir, "SKILL.md"),
+				`---
+name: vanishing-skill
+description: Temporary test skill
+---
+# Vanishing Skill
+
+This skill disappears after discovery.`,
+				"utf-8",
+			);
+			const childOnlySkillDir = path.join(implementerTaskCwd, ".agents", "skills", "child-only-skill");
+			fs.mkdirSync(childOnlySkillDir, { recursive: true });
+			fs.writeFileSync(
+				path.join(childOnlySkillDir, "SKILL.md"),
+				`---
+name: child-only-skill
+description: Task cwd scoped test skill
+---
+# Child Only Skill
+
+This skill should only resolve from the child task cwd.`,
+				"utf-8",
+			);
+			assert.ok(
+				getAvailableSkillNames(implementerTaskCwd).has("vanishing-skill"),
+				"should discover the temporary skill",
+			);
+			assert.ok(
+				getAvailableSkillNames(implementerTaskCwd).has("child-only-skill"),
+				"should discover the child cwd skill",
+			);
+			fs.rmSync(path.join(vanishingSkillDir, "SKILL.md"));
 
 			const executor = makeExecutor(agents);
-			const result = (await executor.execute(
+			const result = await executor.execute(
 				"packet-pending",
 				{
+					worktree: false,
 					workflow: "superpowers",
 					tasks: [
-						{ agent: "sp-research", task: "Research auth flow" },
-						{ agent: "sp-code-review", task: "Review auth changes" },
+						{ agent: "sp-recon", task: "Inspect auth flow", cwd: implementerTaskCwd },
+						{
+							agent: "sp-implementer",
+							task: "Implement auth changes",
+							cwd: implementerTaskCwd,
+							skill: ["vanishing-skill", "child-only-skill"],
+						},
 					],
 				},
 				new AbortController().signal,
-				undefined,
+				(update: AgentToolResult<Details>) => updates.push(structuredClone(update)),
 				makeExecutorCtx(),
-			)) as unknown as AgentToolResult<Details>;
+			);
 
 			assert.ok(!result.isError, JSON.stringify(result.content));
 			assert.equal(result.details.mode, "parallel");
-			// Because tasks run in parallel, the first result should have details
-			assert.ok(result.details.results.length > 0, "should have at least one result");
-			// Verify the tool result has a progress array with pending rows
-			assert.ok(result.details.progress, "should have progress array");
-			// There should be progress entries for all tasks
-			assert.ok(result.details.progress.length > 0, "should have progress entries");
-			// Verify that each task index is represented in the progress
-			const indices = result.details.progress.map((p) => p.index);
-			assert.ok(indices.includes(0), "should have progress for task 0");
-			// Task 1 may be pending or running; just verify the field is populated
-			assert.ok(indices.some((i) => i === 0 || i === 1), "should have progress entries");
+			const firstTwoRowUpdate = updates.find((update) => update.details.progress?.length === 2);
+			assert.ok(firstTwoRowUpdate, "should emit a live update with both rows populated");
+			const completedImplementerResult = result.details.results.find(
+				(childResult: { agent: string; skills?: string[] }) => childResult.agent === "sp-implementer",
+			);
+			assert.ok(completedImplementerResult, "should include the implementer child result");
+			assert.ok(
+				!completedImplementerResult.skills?.includes("vanishing-skill"),
+				"child-facing published skills should omit unresolved skills",
+			);
+			assert.ok(
+				completedImplementerResult.skills?.includes("child-only-skill"),
+				"child-facing published skills should include task-cwd skills",
+			);
+			const pendingImplementerRow = firstTwoRowUpdate.details.progress!.find(
+				(progress) => progress.agent === "sp-implementer",
+			);
+			assert.ok(pendingImplementerRow, "should include the pending implementer row");
+			assert.deepEqual(pendingImplementerRow.skills, completedImplementerResult.skills);
+			assert.deepEqual(
+				firstTwoRowUpdate.details.progress!.map(({ index, agent, status, task, skills }) => ({
+					index,
+					agent,
+					status,
+					task,
+					skills,
+				})),
+				[
+					{ index: 0, agent: "sp-recon", status: "running", task: "Inspect auth flow", skills: undefined },
+					{
+						index: 1,
+						agent: "sp-implementer",
+						status: "pending",
+						task: "Implement auth changes\n\n[Read from: task-brief.md]",
+						skills: completedImplementerResult.skills,
+					},
+				],
+			);
 		});
 	},
 );
