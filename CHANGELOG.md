@@ -1,11 +1,9 @@
 # Changelog
 
-## [0.6.2] - Unreleased
+## [0.6.2] - 2026-04-23
 
 - Added compact inline subagent result rendering with collapsed status summaries and expanded in-place details.
-- Simplified subagent result rendering: the renderer now delegates to a pure line formatter (`src/ui/subagent-result-lines.ts`) while keeping `/subagents-status` available for active/recent run inspection and future async orchestration work.
 - Parallel subagent executor now includes pending progress rows in result details so the UI can display incomplete parallel tasks.
-- Updated user-facing documentation (README, configuration, parameters, skills) to describe the new compact rendering behavior.
 
 ## [0.6.1] - 2026-04-21
 
