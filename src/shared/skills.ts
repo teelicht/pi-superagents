@@ -35,6 +35,16 @@ export interface ExecutionSkillResolution {
 	missingSkills: string[];
 }
 
+/**
+ * Convert resolved execution skills into the child-facing published skill list.
+ *
+ * @param resolvedSkills Skills whose contents were successfully loaded and injected.
+ * @returns Skill names shown in `result.skills` / `progress.skills`, or `undefined` when none resolved.
+ */
+export function getPublishedExecutionSkills(resolvedSkills: ResolvedSkill[]): string[] | undefined {
+	return resolvedSkills.length > 0 ? resolvedSkills.map((skill) => skill.name) : undefined;
+}
+
 interface SkillCacheEntry {
 	mtime: number;
 	skill: ResolvedSkill;

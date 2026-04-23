@@ -133,7 +133,9 @@ function summarizeDetails(details: Details, rows: SubagentDisplayRow[]): Subagen
 	const totalCount = Math.max(rows.length, details.results.length);
 	const okCount = rows.filter((row) => row.status === "completed" && row.result?.exitCode !== 1).length;
 	const hasRunning = rows.some((row) => row.status === "running" || row.status === "pending");
-	const hasFailure = rows.some((row) => row.status === "failed" || (row.result !== undefined && row.result.exitCode !== 0));
+	const hasFailure = rows.some(
+		(row) => row.status === "failed" || (row.result !== undefined && row.result.exitCode !== 0),
+	);
 	const hasEmptyOutput = rows.some((row) => row.result?.exitCode === 0 && !getSingleResultOutput(row.result).trim());
 	const fallbackSummary = rows.reduce(
 		(acc, row) => {
@@ -219,7 +221,8 @@ function renderExpandedLines(summary: SubagentDisplaySummary, rows: SubagentDisp
  */
 function formatExpandedRow(row: SubagentDisplayRow): string {
 	const summary = row.summary;
-	const stats = summary && summary.toolCount > 0 ? `  ${summary.toolCount} tools  ${formatDuration(summary.durationMs)}` : "";
+	const stats =
+		summary && summary.toolCount > 0 ? `  ${summary.toolCount} tools  ${formatDuration(summary.durationMs)}` : "";
 	return `- ${row.status}  ${row.agent}  ${row.task}${stats}`;
 }
 
@@ -241,7 +244,10 @@ function formatExpandedDetails(row: SubagentDisplayRow): string[] {
 	const recentTools = (progress?.recentTools ?? []).slice(-3).map((tool) => `${tool.tool} ${tool.args}`);
 	if (recentTools.length > 0) lines.push(`recent: ${recentTools.join(", ")}`);
 
-	const recentOutput = (progress?.recentOutput ?? []).map((line) => line.trim()).filter(Boolean).slice(-5);
+	const recentOutput = (progress?.recentOutput ?? [])
+		.map((line) => line.trim())
+		.filter(Boolean)
+		.slice(-5);
 	for (const line of recentOutput) lines.push(`output: ${line}`);
 
 	if (result?.skills?.length) lines.push(`skills: ${result.skills.join(", ")}`);
@@ -266,7 +272,10 @@ function formatExpandedDetails(row: SubagentDisplayRow): string[] {
 function formatFinalOutput(result: SingleResult | undefined): string {
 	if (!result || result.progress?.status === "running") return "";
 	const output = result.truncation?.text || result.finalOutput || getSingleResultOutput(result);
-	const firstLine = output.split(/\r?\n/).map((line) => line.trim()).find(Boolean);
+	const firstLine = output
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.find(Boolean);
 	return firstLine ?? "";
 }
 
@@ -290,7 +299,8 @@ function formatHeader(summary: SubagentDisplaySummary): string {
  */
 function formatCollapsedRow(row: SubagentDisplayRow, includeStatus: boolean): string {
 	const summary = row.summary;
-	const stats = summary && summary.toolCount > 0 ? `  ${summary.toolCount} tools  ${formatDuration(summary.durationMs)}` : "";
+	const stats =
+		summary && summary.toolCount > 0 ? `  ${summary.toolCount} tools  ${formatDuration(summary.durationMs)}` : "";
 	const status = includeStatus ? `${row.status}  ` : "";
 	return `- ${status}${row.agent}  ${row.task}${stats}`;
 }

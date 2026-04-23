@@ -14,7 +14,7 @@ import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import type { AgentConfig, AgentScope } from "../agents/agents.ts";
 import { getArtifactsDir } from "../shared/artifacts.ts";
-import { normalizeSkillInput } from "../shared/skills.ts";
+import { getPublishedExecutionSkills, normalizeSkillInput, resolveExecutionSkills } from "../shared/skills.ts";
 import {
 	type AgentProgress,
 	type ArtifactConfig,
@@ -252,6 +252,26 @@ function resolveParallelTaskCwd(
 	return task.cwd ?? paramsCwd;
 }
 
+/**
+ * Resolve the cwd used for child-scoped runtime concerns such as skill lookup.
+ *
+ * @param task Parallel task configuration.
+ * @param paramsCwd Shared cwd override supplied to the parallel run.
+ * @param worktreeSetup Optional worktree mapping for isolated parallel runs.
+ * @param index Parallel task index.
+ * @param fallbackCwd Parent execution cwd when the child does not override it.
+ * @returns Effective runtime cwd for the child task.
+ */
+function resolveParallelTaskRuntimeCwd(
+	task: TaskParam,
+	paramsCwd: string | undefined,
+	worktreeSetup: WorktreeSetup | undefined,
+	index: number,
+	fallbackCwd: string,
+): string {
+	return resolveParallelTaskCwd(task, paramsCwd, worktreeSetup, index) ?? fallbackCwd;
+}
+
 function buildParallelWorktreeSuffix(
 	worktreeSetup: WorktreeSetup | undefined,
 	artifactsDir: string,
@@ -272,7 +292,14 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 		const overrideSkills = input.skillOverrides[index];
 		const effectiveSkills = overrideSkills === undefined ? input.behaviors[index]?.skills : overrideSkills;
 		const taskCwd = resolveParallelTaskCwd(task, input.paramsCwd, input.worktreeSetup, index);
-		return runSync(input.ctx.cwd, input.agents, task.agent, input.taskTexts[index], {
+		const taskRuntimeCwd = resolveParallelTaskRuntimeCwd(
+			task,
+			input.paramsCwd,
+			input.worktreeSetup,
+			index,
+			input.ctx.cwd,
+		);
+		return runSync(taskRuntimeCwd, input.agents, task.agent, input.taskTexts[index], {
 			cwd: taskCwd,
 			signal: input.signal,
 			runId: input.runId,
@@ -380,10 +407,6 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 	});
 	const taskTexts = tasks.map((t, i) => injectSuperpowersPacketInstructions(t.task, behaviors[i]));
 	const liveResults: (SingleResult | undefined)[] = Array(tasks.length).fill(undefined) as (SingleResult | undefined)[];
-	const liveProgress: (AgentProgress | undefined)[] = Array(tasks.length).fill(undefined) as (
-		| AgentProgress
-		| undefined
-	)[];
 	const { setup: worktreeSetup, errorResult } = createParallelWorktreeSetup(
 		effectiveWorktree,
 		effectiveCwd,
@@ -400,6 +423,30 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 				taskTexts[i] = wrapForkTask(taskTexts[i]);
 			}
 		}
+		const pendingProgress = tasks.map((task, index): AgentProgress => {
+			const configuredSkills = skillOverrides[index] === undefined ? behaviors[index]?.skills : skillOverrides[index];
+			const taskRuntimeCwd = resolveParallelTaskRuntimeCwd(task, params.cwd, worktreeSetup, index, ctx.cwd);
+			const effectiveSkills = resolveExecutionSkills({
+				cwd: taskRuntimeCwd,
+				workflow,
+				role: agentConfigs[index].name as ExecutionRole,
+				config,
+				useTestDrivenDevelopment,
+				skills: configuredSkills,
+			});
+			return {
+				index,
+				agent: task.agent,
+				status: "pending",
+				task: taskTexts[index],
+				skills: getPublishedExecutionSkills(effectiveSkills.resolvedSkills),
+				recentTools: [],
+				recentOutput: [],
+				toolCount: 0,
+				durationMs: 0,
+			};
+		});
+		const liveProgress: (AgentProgress | undefined)[] = pendingProgress.map((progress) => ({ ...progress }));
 
 		const results = await runForegroundParallelTasks({
 			tasks,
@@ -433,16 +480,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		// Ensure every task has a progress entry so the renderer can show pending rows
 		for (let i = 0; i < tasks.length; i++) {
 			if (!allProgress.some((p) => p.index === i)) {
-				allProgress.push({
-					index: i,
-					agent: tasks[i].agent,
-					status: "pending",
-					task: tasks[i].task,
-					recentTools: [],
-					recentOutput: [],
-					toolCount: 0,
-					durationMs: 0,
-				});
+				allProgress.push({ ...pendingProgress[i] });
 			}
 		}
 		allProgress.sort((a, b) => a.index - b.index);
@@ -528,8 +566,9 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	const _cleanTask = task;
 
 	const effectiveSkills = skillOverride;
+	const runtimeCwd = params.cwd ?? ctx.cwd;
 
-	const r = await runSync(ctx.cwd, agents, params.agent!, task, {
+	const r = await runSync(runtimeCwd, agents, params.agent!, task, {
 		cwd: params.cwd,
 		signal,
 		runId,
