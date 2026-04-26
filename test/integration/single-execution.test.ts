@@ -116,6 +116,18 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		assert.equal(output, "Got it");
 	});
 
+	void it("disables extension discovery for agents without explicit extensions", async () => {
+		mockPi.onCall({ echoArgs: true });
+		const agents = makeAgentConfigs(["echo"]);
+
+		const result = await runSync(tempDir, agents, "echo", "Task", {});
+
+		assert.equal(result.exitCode, 0);
+		const output = getFinalOutput(result.messages);
+		const args = JSON.parse(output) as string[];
+		assert.ok(args.includes("--no-extensions"), `expected --no-extensions in ${output}`);
+	});
+
 	void it("uses agent model config", async () => {
 		mockPi.onCall({ output: "Done" });
 		const agents = [makeAgent("echo", { model: "anthropic/claude-sonnet-4" })];
