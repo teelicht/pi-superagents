@@ -46,7 +46,7 @@ function buildMetadata(input: SuperpowersRootPromptInput): string {
 		lines.push(`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`);
 	if (input.usePlannotatorReview !== undefined) lines.push(`usePlannotatorReview: ${input.usePlannotatorReview}`);
 	if (input.worktrees !== undefined) lines.push(`worktrees.enabled: ${input.worktrees.enabled}`);
-	if (input.fork) lines.push('context: "fork"');
+	lines.push(`sessionMode: ${input.fork ? "fork" : "lineage-only"}`);
 	return lines.join("\n");
 }
 
@@ -293,7 +293,7 @@ export function buildSuperpowersVisiblePromptSummary(input: SuperpowersRootPromp
 		configLines.push(`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`);
 	if (input.usePlannotatorReview !== undefined) configLines.push(`usePlannotatorReview: ${input.usePlannotatorReview}`);
 	if (input.worktrees !== undefined) configLines.push(`worktrees.enabled: ${input.worktrees.enabled}`);
-	configLines.push(`context: ${input.fork ? "fork" : "fresh"}`);
+	configLines.push(`sessionMode: ${input.fork ? "fork" : "lineage-only"}`);
 
 	return [`Superpowers ▸ ${input.task}`, "", "Config:", configLines.join("\n")].join("\n");
 }

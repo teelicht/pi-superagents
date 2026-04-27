@@ -96,7 +96,7 @@ void describe("renderSubagentResultLines expanded single runs", () => {
 		const lines = renderSubagentResultLines(
 			toolResult({
 				mode: "single",
-				context: "fork",
+				sessionMode: "fork",
 				results: [
 					singleResult({
 						model: "openai/gpt-5.4-mini",

@@ -164,6 +164,8 @@ Define preset slash commands in your `config.json`:
 
 Command names must match `superpowers-<name>` or `sp-<name>` (lowercase alphanumeric and hyphens).
 
+Agent frontmatter may declare `session-mode: standalone | lineage-only | fork`. Built-in bounded roles ship with `lineage-only`.
+
 ## Model Tiers
 
 Superpowers agents use abstract model tiers. Define tiers in your configuration:
