@@ -7,7 +7,7 @@
  * - avoid fallback to legacy context/plan/progress conventions in the command path
  */
 
-import type { ExecutionRole } from "../shared/types.ts";
+import type { ExecutionRole, SessionMode } from "../shared/types.ts";
 import type { ResolvedStepBehavior } from "./settings.ts";
 
 export interface SuperpowersPacketPlan {
@@ -78,4 +78,27 @@ export function buildSuperpowersPacketPlan(role: ExecutionRole): SuperpowersPack
 				progress: false,
 			};
 	}
+}
+
+export function buildSuperpowersPacketContent(input: {
+	agent: string;
+	sessionMode: SessionMode;
+	task: string;
+	useTestDrivenDevelopment: boolean;
+}): string {
+	const modeLine =
+		input.agent === "sp-implementer" ? `Implementer Mode: ${input.useTestDrivenDevelopment ? "tdd" : "direct"}` : null;
+
+	return [
+		"# Superpowers Work Packet",
+		"",
+		`Agent: ${input.agent}`,
+		`Session Mode: ${input.sessionMode}`,
+		"Use only the information in this packet. Do not rely on parent-session history that is not included here.",
+		modeLine,
+		"",
+		input.task.trim(),
+	]
+		.filter((line): line is string => Boolean(line))
+		.join("\n");
 }

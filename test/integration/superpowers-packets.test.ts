@@ -27,7 +27,9 @@ import { resolveStepBehavior } from "../../src/execution/settings.ts";
 import {
 	buildSuperpowersPacketPlan,
 	injectSuperpowersPacketInstructions,
+	buildSuperpowersPacketContent,
 } from "../../src/execution/superpowers-packets.ts";
+import { getPacketPath, cleanupOldArtifacts } from "../../src/shared/artifacts.ts";
 import { getAvailableSkillNames } from "../../src/shared/skills.ts";
 import type { Details } from "../../src/shared/types.ts";
 import type { MockPi } from "../support/helpers.ts";
@@ -145,6 +147,49 @@ void describe("superpowers packets", () => {
 		const injected = injectSuperpowersPacketInstructions(task, behavior);
 		// sp-recon output is false, so no output file instruction should be injected
 		assert.ok(!injected.includes("debug-brief.md"), "should not force debug-brief.md output");
+	});
+
+	void it("generates expected packet paths for subagents", () => {
+		assert.equal(
+			getPacketPath("/tmp/subagent-artifacts", "a1b2c3d4", "sp-implementer", 0),
+			"/tmp/subagent-artifacts/packets/a1b2c3d4_0_sp-implementer_packet.md",
+		);
+		assert.equal(
+			getPacketPath("/tmp/subagent-artifacts", "a1b2c3d4", "sp-code/review", 2),
+			"/tmp/subagent-artifacts/packets/a1b2c3d4_2_sp-code_review_packet.md",
+		);
+	});
+
+	void it("cleans up nested files during stale artifact cleanup", () => {
+		const artifactsDir = createTempDir("stale-cleanup-");
+		try {
+			const packetsDir = path.join(artifactsDir, "packets");
+			fs.mkdirSync(packetsDir, { recursive: true });
+			const packetFile = path.join(packetsDir, "run_0_agent_packet.md");
+			fs.writeFileSync(packetFile, "content");
+			
+			// Set time to be explicitly older than cutoff
+			const past = Date.now() - 3 * 24 * 60 * 60 * 1000;
+			fs.utimesSync(packetFile, past / 1000, past / 1000);
+			
+			cleanupOldArtifacts(artifactsDir, 1);
+			assert.equal(fs.existsSync(packetFile), false, "nested packet file should be cleaned up");
+		} finally {
+			removeTempDir(artifactsDir);
+		}
+	});
+
+	void it("builds superpower packet content", () => {
+		const content = buildSuperpowersPacketContent({
+			agent: "sp-implementer",
+			sessionMode: "lineage-only",
+			task: "Fix the bug",
+			useTestDrivenDevelopment: true,
+		});
+		assert.ok(content.includes("Agent: sp-implementer"));
+		assert.ok(content.includes("Session Mode: lineage-only"));
+		assert.ok(content.includes("Implementer Mode: tdd"));
+		assert.ok(content.includes("Fix the bug"));
 	});
 });
 
