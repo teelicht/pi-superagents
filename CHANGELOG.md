@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [7.0.0] - 2026-04-27
 
 - **Lineage-Only Packets**
   - Bounded Superpowers roles now default to `session-mode: lineage-only`. Child sessions stay linked to the parent for `/tree`, but they do not inherit parent conversation turns.
