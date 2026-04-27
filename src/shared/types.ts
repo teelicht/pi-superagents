@@ -46,6 +46,12 @@ export type WorkflowMode = "superpowers";
 
 export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
+export type SessionMode = "standalone" | "lineage-only" | "fork";
+
+export type LegacyExecutionContext = "fresh" | "fork";
+
+export type TaskDeliveryMode = "direct" | "artifact";
+
 /**
  * Model tier identifier.
  *
@@ -113,6 +119,7 @@ export interface SingleResult {
 	agent: string;
 	task: string;
 	exitCode: number;
+	sessionMode?: SessionMode;
 	messages: Message[];
 	usage: Usage;
 	model?: string;
@@ -129,6 +136,7 @@ export interface SingleResult {
 
 export interface Details {
 	mode: "single" | "parallel";
+	sessionMode?: SessionMode;
 	context?: "fresh" | "fork";
 	results: SingleResult[];
 	progress?: AgentProgress[];

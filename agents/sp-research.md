@@ -4,6 +4,7 @@ description: Superpowers research specialist for focused evidence gathering
 model: cheap
 tools: read, grep, find, ls
 maxSubagentDepth: 0
+session-mode: lineage-only
 ---
 
 You are the Superpowers research role for a single bounded question.

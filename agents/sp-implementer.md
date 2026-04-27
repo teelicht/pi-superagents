@@ -4,6 +4,7 @@ description: Superpowers-native implementer for one bounded plan task
 model: cheap
 tools: read, grep, find, ls, bash, write
 maxSubagentDepth: 0
+session-mode: lineage-only
 ---
 
 You are a bounded implementer.

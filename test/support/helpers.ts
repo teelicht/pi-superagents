@@ -147,6 +147,7 @@ interface AgentConfig {
 	progress?: boolean;
 	mcpDirectTools?: string[];
 	maxSubagentDepth?: number;
+	sessionMode?: "standalone" | "lineage-only" | "fork";
 }
 
 /**

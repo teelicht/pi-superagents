@@ -13,22 +13,28 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { after, before, describe, test } from "node:test";
 
-type AgentScope = "project" | "user" | "both";
-
 interface DiscoveredAgent {
 	name: string;
 	filePath?: string;
+	sessionMode?: string;
 }
 
 interface AgentDiscoveryResult {
 	agents: DiscoveredAgent[];
 }
 
+interface AgentDiscoveryAllResult {
+	builtin: DiscoveredAgent[];
+	user: DiscoveredAgent[];
+	project: DiscoveredAgent[];
+}
+
 interface ResolvedSkill {
 	path: string;
 }
 
-let discoverAgents: ((cwd: string, scope: AgentScope) => AgentDiscoveryResult) | undefined;
+let discoverAgents: ((cwd: string) => AgentDiscoveryResult) | undefined;
+let discoverAgentsAll: ((cwd: string) => AgentDiscoveryAllResult) | undefined;
 let resolveSkillPath: ((skillName: string, cwd: string) => ResolvedSkill | null | undefined) | undefined;
 let clearSkillCache: (() => void) | undefined;
 let discoverAvailableSkills:
@@ -50,7 +56,7 @@ const fakeUserAgentsDir = path.join(fakeHomeDir, ".agents");
  */
 function assertModulesLoaded(): void {
 	if (moduleLoadError) throw moduleLoadError;
-	if (!discoverAgents || !resolveSkillPath || !clearSkillCache || !discoverAvailableSkills) {
+	if (!discoverAgents || !discoverAgentsAll || !resolveSkillPath || !clearSkillCache || !discoverAvailableSkills) {
 		throw new Error("Path resolution test modules were not initialized.");
 	}
 }
@@ -62,7 +68,7 @@ before(async () => {
 	process.env.USERPROFILE = fakeHomeDir;
 
 	try {
-		({ discoverAgents } = await import("../../src/agents/agents.ts"));
+		({ discoverAgents, discoverAgentsAll } = await import("../../src/agents/agents.ts"));
 		({ resolveSkillPath, clearSkillCache, discoverAvailableSkills } = await import("../../src/shared/skills.ts"));
 	} catch (error) {
 		moduleLoadError = error;
@@ -130,8 +136,8 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 			"---\nname: test-agent-1\ndescription: Test agent\n---\nAgent content",
 		);
 
-		const result = discoverAgents!(cwdDir, "project");
-		const agent = result.agents.find((candidate) => candidate.name === "test-agent-1");
+		const result = discoverAgentsAll!(cwdDir);
+		const agent = result.project.find((candidate) => candidate.name === "test-agent-1");
 		assert.ok(agent);
 		assert.strictEqual(agent?.filePath, path.join(agentsDir, "test-agent-1.md"));
 	});
@@ -146,9 +152,45 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 			"---\nname: test-agent-2\ndescription: Test agent\n---\nAgent content",
 		);
 
-		const result = discoverAgents!(cwdDir, "user");
-		const agent = result.agents.find((candidate) => candidate.name === "test-agent-2");
+		const result = discoverAgentsAll!(cwdDir);
+		const agent = result.user.find((candidate) => candidate.name === "test-agent-2");
 		assert.ok(agent);
 		assert.strictEqual(agent?.filePath, path.join(userAgentsDir, "test-agent-2.md"));
+	});
+
+	void test("should parse session-mode from project agent frontmatter", () => {
+		assertModulesLoaded();
+
+		const agentsDir = path.join(cwdDir, ".agents");
+		fs.mkdirSync(agentsDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(agentsDir, "test-agent-session-mode.md"),
+			"---\nname: test-agent-session-mode\ndescription: Test agent\nsession-mode: lineage-only\n---\nAgent content",
+		);
+
+		const result = discoverAgentsAll!(cwdDir);
+		const agent = result.project.find((candidate) => candidate.name === "test-agent-session-mode");
+		assert.ok(agent);
+		assert.strictEqual(agent?.sessionMode, "lineage-only");
+	});
+
+	void test("should resolve built-in bounded agents with lineage-only session-mode", () => {
+		assertModulesLoaded();
+
+		const boundedAgentNames = [
+			"sp-recon",
+			"sp-research",
+			"sp-implementer",
+			"sp-spec-review",
+			"sp-code-review",
+			"sp-debug",
+		];
+
+		const result = discoverAgents!(cwdDir);
+		for (const agentName of boundedAgentNames) {
+			const agent = result.agents.find((candidate) => candidate.name === agentName);
+			assert.ok(agent, `expected built-in agent ${agentName}`);
+			assert.strictEqual(agent?.sessionMode, "lineage-only");
+		}
 	});
 });
