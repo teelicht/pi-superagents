@@ -31,13 +31,18 @@ import {
 	resolveCurrentMaxSubagentDepth,
 	type SingleResult,
 	type SubagentState,
+	type SessionMode,
 	type WorkflowMode,
 	wrapForkTask,
 } from "../shared/types.ts";
 import { getSingleResultOutput, mapConcurrent } from "../shared/utils.ts";
 import { runSync } from "./execution.ts";
-import { createForkContextResolver, type ForkableSessionManager } from "./fork-context.ts";
 import { aggregateParallelOutputs } from "./parallel-utils.ts";
+import {
+	createSessionLaunchResolver,
+	resolveRequestedSessionMode,
+	type SessionLaunchManager,
+} from "./session-mode.ts";
 import { resolveStepBehavior } from "./settings.ts";
 import { resolveSuperagentWorktreeCreateOptions, resolveSuperagentWorktreeEnabled } from "./superagents-config.ts";
 import { buildSuperpowersPacketPlan, injectSuperpowersPacketInstructions } from "./superpowers-packets.ts";
@@ -66,6 +71,7 @@ export interface SubagentParamsLike {
 	workflow?: WorkflowMode;
 	useTestDrivenDevelopment?: boolean;
 	worktree?: boolean;
+	sessionMode?: SessionMode;
 	context?: "fresh" | "fork";
 	cwd?: string;
 	maxOutput?: MaxOutputConfig;
@@ -94,29 +100,120 @@ interface ExecutionContextData {
 	onUpdate?: (r: AgentToolResult<Details>) => void;
 	agents: AgentConfig[];
 	runId: string;
-	sessionFileForIndex: (idx?: number) => string | undefined;
+	sessionFileForIndex: (input: { index?: number; childCwd: string; sessionMode: SessionMode }) => string | undefined;
 	artifactConfig: ArtifactConfig;
 	artifactsDir: string;
 	workflow: WorkflowMode;
 	useTestDrivenDevelopment: boolean;
+	detailsSessionMode: SessionMode;
+}
+
+/**
+ * Resolve the effective session mode for one child agent launch.
+ *
+ * @param params Tool or slash-command request parameters.
+ * @param agentConfig Target agent configuration for the child.
+ * @returns Effective session mode after applying caller precedence rules.
+ */
+function resolveAgentSessionMode(params: SubagentParamsLike, agentConfig: AgentConfig): SessionMode {
+	return resolveRequestedSessionMode({
+		sessionMode: params.sessionMode,
+		context: params.context,
+		agentSessionMode: agentConfig.sessionMode,
+		defaultSessionMode: "standalone",
+	});
+}
+
+/**
+ * Derive the executor-level fork badge mode for the aggregate result.
+ *
+ * @param sessionModes Effective session modes for the children participating in this run.
+ * @returns `fork` only when every child inherited the parent session branch.
+ */
+function resolveDetailsSessionMode(sessionModes: SessionMode[]): SessionMode {
+	return sessionModes.length > 0 && sessionModes.every((mode) => mode === sessionModes[0])
+		? sessionModes[0]
+		: "standalone";
+}
+
+/**
+ * Attach the effective session mode to one child result.
+ *
+ * @param result Child execution result from the lower-level runner.
+ * @param sessionMode Effective session mode used for that child.
+ * @returns Result annotated with explicit session-mode metadata.
+ */
+function withSingleResultSessionMode(result: SingleResult, sessionMode: SessionMode): SingleResult {
+	return { ...result, sessionMode };
+}
+
+/**
+ * Attach explicit session-mode metadata to a tool result while preserving the
+ * deprecated `details.context` fork indicator for compatibility.
+ *
+ * @param result Tool result emitted by the executor.
+ * @param sessionMode Effective session mode for the overall response.
+ * @returns Tool result with explicit session-mode details.
+ */
+function withSessionModeDetails(
+	result: AgentToolResult<Details>,
+	sessionMode: SessionMode,
+): AgentToolResult<Details> {
+	if (!result.details) return result;
+	const { context: _context, ...detailsWithoutContext } = result.details;
+	return {
+		...result,
+		details:
+			sessionMode === "fork"
+				? { ...detailsWithoutContext, sessionMode, context: "fork" }
+				: { ...detailsWithoutContext, sessionMode },
+	};
+}
+
+/**
+ * Attach session-mode metadata to child results emitted during progress updates.
+ *
+ * @param result Progress update from the lower-level runner.
+ * @param sessionMode Effective session mode for the child result(s).
+ * @returns Progress update with annotated child results.
+ */
+function withProgressResultSessionMode(
+	result: AgentToolResult<Details>,
+	sessionMode: SessionMode,
+): AgentToolResult<Details> {
+	if (!result.details?.results) return result;
+	return {
+		...result,
+		details: {
+			...result.details,
+			results: result.details.results.map((childResult) => withSingleResultSessionMode(childResult, sessionMode)),
+		},
+	};
 }
 
 function validateExecutionInput(
-	_params: SubagentParamsLike,
+	params: SubagentParamsLike,
 	agents: AgentConfig[],
 	hasTasks: boolean,
 	hasSingle: boolean,
 ): AgentToolResult<Details> | null {
 	if (Number(hasTasks) + Number(hasSingle) !== 1) {
-		return {
-			content: [
-				{
-					type: "text",
-					text: `Provide exactly one mode. Agents: ${agents.map((a) => a.name).join(", ") || "none"}`,
-				},
-			],
-			details: { mode: "single" as const, results: [] },
-		};
+		return withSessionModeDetails(
+			{
+				content: [
+					{
+						type: "text",
+						text: `Provide exactly one mode. Agents: ${agents.map((a) => a.name).join(", ") || "none"}`,
+					},
+				],
+				details: { mode: "single" as const, results: [] },
+			},
+			resolveRequestedSessionMode({
+				sessionMode: params.sessionMode,
+				context: params.context,
+				defaultSessionMode: "standalone",
+			}),
+		);
 	}
 
 	return null;
@@ -129,37 +226,31 @@ function getRequestedModeLabel(params: SubagentParamsLike): Details["mode"] {
 }
 
 function _buildRequestedModeError(params: SubagentParamsLike, message: string): AgentToolResult<Details> {
-	return withForkContext(
+	return withSessionModeDetails(
 		{
 			content: [{ type: "text", text: message }],
 			details: { mode: getRequestedModeLabel(params), results: [] },
 		},
-		params.context,
+		resolveRequestedSessionMode({
+			sessionMode: params.sessionMode,
+			context: params.context,
+			defaultSessionMode: "standalone",
+		}),
 	);
-}
-
-function withForkContext(
-	result: AgentToolResult<Details>,
-	context: SubagentParamsLike["context"],
-): AgentToolResult<Details> {
-	if (context !== "fork" || !result.details) return result;
-	return {
-		...result,
-		details: {
-			...result.details,
-			context: "fork",
-		},
-	};
 }
 
 function toExecutionErrorResult(params: SubagentParamsLike, error: unknown): AgentToolResult<Details> {
 	const message = error instanceof Error ? error.message : String(error);
-	return withForkContext(
+	return withSessionModeDetails(
 		{
 			content: [{ type: "text", text: message }],
 			details: { mode: getRequestedModeLabel(params), results: [] },
 		},
-		params.context,
+		resolveRequestedSessionMode({
+			sessionMode: params.sessionMode,
+			context: params.context,
+			defaultSessionMode: "standalone",
+		}),
 	);
 }
 
@@ -170,7 +261,7 @@ interface ForegroundParallelRunInput {
 	ctx: ExtensionContext;
 	signal: AbortSignal;
 	runId: string;
-	sessionFileForIndex: (idx?: number) => string | undefined;
+	sessionFileForIndex: (input: { index?: number; childCwd: string; sessionMode: SessionMode }) => string | undefined;
 	artifactConfig: ArtifactConfig;
 	artifactsDir: string;
 	maxOutput?: MaxOutputConfig;
@@ -178,6 +269,7 @@ interface ForegroundParallelRunInput {
 	maxSubagentDepths: number[];
 	modelOverrides: (string | undefined)[];
 	skillOverrides: (string[] | false | undefined)[];
+	sessionModes: SessionMode[];
 	behaviors: Array<ReturnType<typeof resolveStepBehavior>>;
 	liveResults: (SingleResult | undefined)[];
 	liveProgress: (AgentProgress | undefined)[];
@@ -299,12 +391,16 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 			index,
 			input.ctx.cwd,
 		);
-		return runSync(taskRuntimeCwd, input.agents, task.agent, input.taskTexts[index], {
+		const childResult = await runSync(taskRuntimeCwd, input.agents, task.agent, input.taskTexts[index], {
 			cwd: taskCwd,
 			signal: input.signal,
 			runId: input.runId,
 			index,
-			sessionFile: input.sessionFileForIndex(index),
+			sessionFile: input.sessionFileForIndex({
+				index,
+				childCwd: taskRuntimeCwd,
+				sessionMode: input.sessionModes[index],
+			}),
 			artifactsDir: input.artifactConfig.enabled ? input.artifactsDir : undefined,
 			artifactConfig: input.artifactConfig,
 			maxOutput: input.maxOutput,
@@ -316,7 +412,8 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 			useTestDrivenDevelopment: input.useTestDrivenDevelopment,
 			onUpdate: input.onUpdate
 				? (progressUpdate) => {
-						const stepResults = progressUpdate.details?.results || [];
+						const stepResults =
+							withProgressResultSessionMode(progressUpdate, input.sessionModes[index]).details?.results || [];
 						const stepProgress = progressUpdate.details?.progress || [];
 						if (stepResults.length > 0) input.liveResults[index] = stepResults[0];
 						if (stepProgress.length > 0) input.liveProgress[index] = stepProgress[0];
@@ -335,6 +432,7 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 					}
 				: undefined,
 		});
+		return withSingleResultSessionMode(childResult, input.sessionModes[index]);
 	});
 }
 
@@ -351,6 +449,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		onUpdate,
 		workflow,
 		useTestDrivenDevelopment,
+		detailsSessionMode,
 	} = data;
 	const config = deps.getConfig?.() ?? deps.config!;
 	const allProgress: AgentProgress[] = [];
@@ -405,7 +504,11 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 			packetDefaults,
 		);
 	});
-	const taskTexts = tasks.map((t, i) => injectSuperpowersPacketInstructions(t.task, behaviors[i]));
+	const sessionModes = agentConfigs.map((config) => resolveAgentSessionMode(params, config));
+	const taskTexts = tasks.map((t, i) => {
+		const taskText = injectSuperpowersPacketInstructions(t.task, behaviors[i]);
+		return sessionModes[i] === "fork" ? wrapForkTask(taskText) : taskText;
+	});
 	const liveResults: (SingleResult | undefined)[] = Array(tasks.length).fill(undefined) as (SingleResult | undefined)[];
 	const { setup: worktreeSetup, errorResult } = createParallelWorktreeSetup(
 		effectiveWorktree,
@@ -418,11 +521,6 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 	if (errorResult) return errorResult;
 
 	try {
-		if (params.context === "fork") {
-			for (let i = 0; i < taskTexts.length; i++) {
-				taskTexts[i] = wrapForkTask(taskTexts[i]);
-			}
-		}
 		const pendingProgress = tasks.map((task, index): AgentProgress => {
 			const configuredSkills = skillOverrides[index] === undefined ? behaviors[index]?.skills : skillOverrides[index];
 			const taskRuntimeCwd = resolveParallelTaskRuntimeCwd(task, params.cwd, worktreeSetup, index, ctx.cwd);
@@ -462,6 +560,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 			paramsCwd: params.cwd,
 			modelOverrides,
 			skillOverrides,
+			sessionModes,
 			behaviors,
 			maxSubagentDepths,
 			liveResults,
@@ -542,6 +641,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	}
 
 	let task = params.task!;
+	const sessionMode = resolveAgentSessionMode(params, agentConfig);
 	const modelOverride: string | undefined = params.model;
 	const skillOverride: string[] | false | undefined = normalizeSkillInput(params.skill);
 	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(config.maxSubagentDepth);
@@ -560,7 +660,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	);
 	task = injectSuperpowersPacketInstructions(task, behavior);
 
-	if (params.context === "fork") {
+	if (sessionMode === "fork") {
 		task = wrapForkTask(task);
 	}
 	const _cleanTask = task;
@@ -568,22 +668,29 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	const effectiveSkills = skillOverride;
 	const runtimeCwd = params.cwd ?? ctx.cwd;
 
-	const r = await runSync(runtimeCwd, agents, params.agent!, task, {
+	const r = withSingleResultSessionMode(
+		await runSync(runtimeCwd, agents, params.agent!, task, {
 		cwd: params.cwd,
 		signal,
 		runId,
-		sessionFile: sessionFileForIndex(0),
+		sessionFile: sessionFileForIndex({
+			index: 0,
+			childCwd: runtimeCwd,
+			sessionMode,
+		}),
 		artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
 		artifactConfig,
 		maxOutput: params.maxOutput,
 		maxSubagentDepth,
-		onUpdate,
+		onUpdate: onUpdate ? (progressUpdate) => onUpdate(withProgressResultSessionMode(progressUpdate, sessionMode)) : undefined,
 		modelOverride,
 		skills: effectiveSkills,
 		config: config,
 		workflow,
 		useTestDrivenDevelopment,
-	});
+		}),
+		sessionMode,
+	);
 	if (r.progress) allProgress.push(r.progress);
 	if (r.artifactPaths) allArtifactPaths.push(r.artifactPaths);
 
@@ -648,24 +755,43 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			};
 		}
 
-		const scope: AgentScope = "both";
 		const parentSessionFile = ctx.sessionManager.getSessionFile() ?? null;
 		deps.state.currentSessionId =
 			parentSessionFile ?? `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-		const agents = deps.discoverAgents(ctx.cwd, scope).agents;
+		const agents = deps.discoverAgents(ctx.cwd, "both").agents;
 		const runId = randomUUID().slice(0, 8);
 		const hasTasks = (params.tasks?.length ?? 0) > 0;
 		const hasSingle = Boolean(params.agent && params.task);
 		const validationError = validateExecutionInput(params, agents, hasTasks, hasSingle);
 		if (validationError) return validationError;
 
-		let sessionFileForIndex: (idx?: number) => string | undefined = () => undefined;
+		let detailsSessionMode = resolveRequestedSessionMode({
+			sessionMode: params.sessionMode,
+			context: params.context,
+			defaultSessionMode: "standalone",
+		});
+		if (hasSingle && params.agent) {
+			const agentConfig = agents.find((agent) => agent.name === params.agent);
+			if (agentConfig) detailsSessionMode = resolveAgentSessionMode(params, agentConfig);
+		} else if (hasTasks && params.tasks) {
+			const taskModes = params.tasks
+				.map((task) => agents.find((agent) => agent.name === task.agent))
+				.filter((agentConfig): agentConfig is AgentConfig => agentConfig !== undefined)
+				.map((agentConfig) => resolveAgentSessionMode(params, agentConfig));
+			detailsSessionMode = resolveDetailsSessionMode(taskModes);
+		}
+
+		let sessionFileForIndex: (input: {
+			index?: number;
+			childCwd: string;
+			sessionMode: SessionMode;
+		}) => string | undefined = () => undefined;
 		try {
-			const forkContext = createForkContextResolver(
-				ctx.sessionManager as unknown as ForkableSessionManager,
-				params.context,
-			);
-			sessionFileForIndex = (idx?: number) => forkContext.sessionFileForIndex(idx);
+			const sessionLaunchResolver = createSessionLaunchResolver({
+				sessionManager: ctx.sessionManager as unknown as SessionLaunchManager,
+				sessionRoot: path.join(deps.getSubagentSessionRoot(parentSessionFile), runId),
+			});
+			sessionFileForIndex = (input) => sessionLaunchResolver.sessionFileForIndex(input);
 		} catch (error) {
 			return toExecutionErrorResult(params, error);
 		}
@@ -677,7 +803,7 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 		const artifactsDir = getArtifactsDir(parentSessionFile);
 
 		const onUpdateWithContext = onUpdate
-			? (r: AgentToolResult<Details>) => onUpdate(withForkContext(r, params.context))
+			? (r: AgentToolResult<Details>) => onUpdate(withSessionModeDetails(r, detailsSessionMode))
 			: undefined;
 
 		const execData: ExecutionContextData = {
@@ -695,26 +821,27 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 				params.useTestDrivenDevelopment ??
 				config.superagents?.commands?.["sp-implement"]?.useTestDrivenDevelopment ??
 				true,
+			detailsSessionMode,
 		};
 
 		try {
 			if (hasTasks && params.tasks) {
-				return withForkContext(await runParallelPath(execData, deps), params.context);
+				return withSessionModeDetails(await runParallelPath(execData, deps), detailsSessionMode);
 			}
 
 			if (hasSingle) {
-				return withForkContext(await runSinglePath(execData, deps), params.context);
+				return withSessionModeDetails(await runSinglePath(execData, deps), detailsSessionMode);
 			}
 		} catch (error) {
 			return toExecutionErrorResult(params, error);
 		}
 
-		return withForkContext(
+		return withSessionModeDetails(
 			{
 				content: [{ type: "text", text: "Invalid params" }],
 				details: { mode: "single" as const, results: [] },
 			},
-			params.context,
+			detailsSessionMode,
 		);
 	};
 

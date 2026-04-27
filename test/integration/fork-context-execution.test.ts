@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
 import type { ExtensionConfig } from "../../src/shared/types.ts";
 import type { MockPi } from "../support/helpers.ts";
@@ -23,9 +25,17 @@ interface ExecutorModule {
 	};
 }
 
+interface AgentDiscoveryModule {
+	discoverAgents?: (cwd: string) => {
+		agents: Array<{ name: string; description: string; sessionMode?: "standalone" | "lineage-only" | "fork" }>;
+	};
+}
+
 const executorMod = await tryImport<ExecutorModule>("./src/execution/subagent-executor.ts");
 const available = !!executorMod;
 const createSubagentExecutor = executorMod?.createSubagentExecutor;
+const agentDiscoveryMod = await tryImport<AgentDiscoveryModule>("./src/agents/agents.ts");
+const discoverAgents = agentDiscoveryMod?.discoverAgents;
 
 /**
  * Run a git command without shell quoting so fixtures work on Windows and POSIX.
@@ -52,6 +62,27 @@ interface SessionManagerStub {
 	createBranchedSession(leafId: string): string;
 }
 
+/**
+ * Recursively collect child session files created under a fixture root.
+ *
+ * @param root Directory tree to scan.
+ * @returns Matching child session files.
+ */
+function findChildSessionFiles(root: string): string[] {
+	const matches: string[] = [];
+	for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+		const entryPath = path.join(root, entry.name);
+		if (entry.isDirectory()) {
+			matches.push(...findChildSessionFiles(entryPath));
+			continue;
+		}
+		if (entry.isFile() && entry.name.startsWith("child-") && entry.name.endsWith(".jsonl")) {
+			matches.push(entryPath);
+		}
+	}
+	return matches;
+}
+
 function makeSessionManagerRecorder(options: SessionStubOptions = {}) {
 	const calls: string[] = [];
 	let counter = 0;
@@ -65,6 +96,17 @@ function makeSessionManagerRecorder(options: SessionStubOptions = {}) {
 		},
 	};
 	return { manager, calls };
+}
+
+/**
+ * Read the seeded child-session header written by lineage-only launches.
+ *
+ * @param sessionFile Absolute child session path.
+ * @returns Parsed JSON header from the first line of the JSONL file.
+ */
+function readSessionHeader(sessionFile: string): Record<string, unknown> {
+	const firstLine = fs.readFileSync(sessionFile, "utf-8").trim().split("\n")[0];
+	return JSON.parse(firstLine);
 }
 
 function makeState(cwd: string) {
@@ -148,6 +190,13 @@ void describe(
 
 		function makeExecutor(
 			config: ExtensionConfig = { superagents: { commands: { "sp-implement": { worktrees: { enabled: false } } } } },
+			agents: Array<{ name: string; description: string; sessionMode?: "standalone" | "lineage-only" | "fork" }> = [
+				{ name: "echo", description: "Echo test agent" },
+				{ name: "second", description: "Second test agent" },
+			],
+			discoverAgentsImpl: (cwd: string) => {
+				agents: Array<{ name: string; description: string; sessionMode?: "standalone" | "lineage-only" | "fork" }>;
+			} = () => ({ agents }),
 		) {
 			return createSubagentExecutor!({
 				pi: { events: { emit: () => {} } },
@@ -157,12 +206,7 @@ void describe(
 				tempArtifactsDir: tempDir,
 				getSubagentSessionRoot: () => tempDir,
 				expandTilde: (p: string) => p,
-				discoverAgents: () => ({
-					agents: [
-						{ name: "echo", description: "Echo test agent" },
-						{ name: "second", description: "Second test agent" },
-					],
-				}),
+				discoverAgents: discoverAgentsImpl,
 			});
 		}
 
@@ -253,6 +297,67 @@ void describe(
 			assert.ok(result.content[0]?.text, "expected non-empty response content");
 			assert.equal(calls.length, 1);
 			assert.deepEqual(calls, ["leaf-123"]);
+		});
+
+		void it("treats context=fresh as standalone even when the agent default is lineage-only", async () => {
+			const parentSessionFile = path.join(tempDir, "parent.jsonl");
+			fs.writeFileSync(parentSessionFile, '{"type":"session"}\n', "utf-8");
+			const { manager, calls } = makeSessionManagerRecorder({
+				sessionFile: parentSessionFile,
+				leafId: "leaf-unused",
+			});
+			const executor = makeExecutor(
+				{ superagents: { commands: { "sp-implement": { worktrees: { enabled: false } } } } },
+				[{ name: "echo", description: "Echo test agent", sessionMode: "lineage-only" }],
+			);
+
+			const result = await executor.execute(
+				"id",
+				{ agent: "echo", task: "single task", context: "fresh" },
+				new AbortController().signal,
+				undefined,
+				makeCtx(manager),
+			);
+
+			assert.ok(result.content[0]?.text, "expected non-empty response content");
+			assert.deepEqual(calls, []);
+			const sessionFiles = findChildSessionFiles(tempDir);
+			assert.deepEqual(sessionFiles, [], "expected no seeded child session files");
+			assert.equal(result.details?.sessionMode, "standalone");
+			assert.equal(result.details?.context, undefined);
+		});
+
+		void it("seeds a linked child session when a built-in bounded agent defaults to lineage-only", async () => {
+			assert.ok(discoverAgents, "expected agent discovery module to be available");
+			const parentSessionFile = path.join(tempDir, "parent.jsonl");
+			fs.writeFileSync(parentSessionFile, '{"type":"session"}\n', "utf-8");
+			const { manager, calls } = makeSessionManagerRecorder({
+				sessionFile: parentSessionFile,
+				leafId: "leaf-unused",
+			});
+			const executor = makeExecutor(
+				{ superagents: { commands: { "sp-implement": { worktrees: { enabled: false } } } } },
+				[],
+				(cwd) => discoverAgents!(cwd),
+			);
+
+			const result = await executor.execute(
+				"id",
+				{ agent: "sp-implementer", task: "Implement the selected task." },
+				new AbortController().signal,
+				undefined,
+				makeCtx(manager),
+			);
+
+			assert.ok(result.content[0]?.text, "expected non-empty response content");
+			assert.deepEqual(calls, []);
+			assert.equal(result.details?.sessionMode, "lineage-only");
+			assert.equal(result.details?.context, undefined);
+			assert.equal(result.details?.results?.[0]?.sessionMode, "lineage-only");
+			const sessionFiles = findChildSessionFiles(tempDir);
+			assert.equal(sessionFiles.length, 1, "expected one seeded session file");
+			assert.equal(readSessionHeader(sessionFiles[0]).parentSession, parentSessionFile);
+			assert.equal(fs.readFileSync(sessionFiles[0], "utf-8").trim().split("\n").length, 1);
 		});
 
 		void it("creates isolated forked sessions per parallel task", async () => {
