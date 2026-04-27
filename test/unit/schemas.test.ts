@@ -9,11 +9,27 @@
  */
 
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { after, afterEach, before, beforeEach, describe, it } from "node:test";
+import { Value } from "typebox/value";
+import type { ExtensionConfig } from "../../src/shared/types.ts";
+import type { MockPi } from "../support/helpers.ts";
+import { createMockPi, createTempDir, removeTempDir, tryImport } from "../support/helpers.ts";
 
 interface SubagentParamsSchema {
+	anyOf?: Array<{
+		required?: string[];
+	}>;
+	additionalProperties?: boolean;
+	dependentRequired?: Record<string, string[]>;
 	properties?: {
 		workflow?: {
+			type?: string;
+			enum?: string[];
+			description?: string;
+		};
+		sessionMode?: {
 			type?: string;
 			enum?: string[];
 			description?: string;
@@ -24,6 +40,7 @@ interface SubagentParamsSchema {
 			description?: string;
 		};
 		tasks?: {
+			minItems?: number;
 			items?: {
 				properties?: {
 					agent?: {
@@ -56,14 +73,163 @@ try {
 	available = false;
 }
 
+interface ExecutorModule {
+	createSubagentExecutor?: (...args: unknown[]) => {
+		execute: (
+			id: string,
+			params: Record<string, unknown>,
+			signal: AbortSignal,
+			onUpdate: ((result: unknown) => void) | undefined,
+			ctx: unknown,
+		) => Promise<{ content: Array<{ text?: string }>; details?: { context?: "fresh" | "fork"; results?: unknown[] } }>;
+	};
+}
+
+interface SessionStubOptions {
+	sessionFile?: string;
+	leafId?: string | null;
+}
+
+interface SessionManagerStub {
+	getSessionFile(): string | undefined;
+	getLeafId(): string | null;
+	createBranchedSession(leafId: string): string;
+}
+
+const executorMod = await tryImport<ExecutorModule>("./src/execution/subagent-executor.ts");
+const executorAvailable = !!executorMod?.createSubagentExecutor;
+
+/**
+ * Create the minimum executor state required for compatibility tests.
+ *
+ * @param cwd Workspace root used by the executor under test.
+ * @returns State object compatible with the current executor wiring.
+ */
+function makeState(cwd: string) {
+	return {
+		baseCwd: cwd,
+		currentSessionId: null,
+		lastUiContext: null,
+		configGate: {
+			blocked: false,
+			diagnostics: [],
+			message: "",
+		},
+	};
+}
+
+/**
+ * Build a session manager stub that records requested fork operations.
+ *
+ * @param options Optional parent-session overrides for individual tests.
+ * @returns Recorder state and a compatible session manager implementation.
+ */
+function makeSessionManagerRecorder(options: SessionStubOptions = {}) {
+	const calls: string[] = [];
+	let counter = 0;
+	const manager: SessionManagerStub = {
+		getSessionFile: () => options.sessionFile,
+		getLeafId: () => (options.leafId === undefined ? "leaf-current" : options.leafId),
+		createBranchedSession: (leafId: string) => {
+			calls.push(leafId);
+			counter++;
+			return `/tmp/subagent-fork-${counter}.jsonl`;
+		},
+	};
+	return { manager, calls };
+}
+
+/**
+ * Create a minimal extension context for executor tests.
+ *
+ * @param cwd Workspace root used during execution.
+ * @param sessionManager Session manager stub for fork compatibility assertions.
+ * @returns Context object matching the executor's runtime expectations.
+ */
+function makeCtx(cwd: string, sessionManager: SessionManagerStub) {
+	return {
+		cwd,
+		hasUI: false,
+		ui: {},
+		modelRegistry: { getAvailable: () => [] },
+		sessionManager,
+	};
+}
+
+/**
+ * Construct a subagent executor with a tiny in-memory agent catalog.
+ *
+ * @param cwd Workspace root for the run.
+ * @param config Optional extension config overrides.
+ * @returns Executor instance under test.
+ */
+function makeExecutor(cwd: string, config: ExtensionConfig = {}): NonNullable<ExecutorModule["createSubagentExecutor"]> extends (
+	...args: unknown[]
+) => infer R
+	? R
+	: never {
+	return executorMod!.createSubagentExecutor!({
+		pi: { events: { emit: () => {} } },
+		state: makeState(cwd),
+		config,
+		tempArtifactsDir: cwd,
+		getSubagentSessionRoot: () => cwd,
+		expandTilde: (p: string) => p,
+		discoverAgents: () => ({
+			agents: [{ name: "echo", description: "Echo test agent" }],
+		}),
+	});
+}
+
+/**
+ * Read the JSON header written into a seeded lineage-only child session.
+ *
+ * @param sessionFile Absolute session file path returned by the executor.
+ * @returns Parsed session header object.
+ */
+function readSessionHeader(sessionFile: string): Record<string, unknown> {
+	const firstLine = fs.readFileSync(sessionFile, "utf-8").trim().split("\n")[0];
+	return JSON.parse(firstLine);
+}
+
+/**
+ * Recursively collect seeded child session files from a fixture root.
+ *
+ * @param root Directory tree to scan.
+ * @returns Matching child session files.
+ */
+function findChildSessionFiles(root: string): string[] {
+	const matches: string[] = [];
+	for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+		const entryPath = path.join(root, entry.name);
+		if (entry.isDirectory()) {
+			matches.push(...findChildSessionFiles(entryPath));
+			continue;
+		}
+		if (entry.isFile() && entry.name.startsWith("child-") && entry.name.endsWith(".jsonl")) {
+			matches.push(entryPath);
+		}
+	}
+	return matches;
+}
+
 void describe("SubagentParams schema", { skip: !available ? "typebox not available" : undefined }, () => {
-	void it("includes context field for fresh/fork execution mode", () => {
+	void it("includes sessionMode field for standalone, lineage-only, and fork", () => {
+		const sessionModeSchema = SubagentParams?.properties?.sessionMode;
+		assert.ok(sessionModeSchema, "sessionMode schema should exist");
+		assert.equal(sessionModeSchema.type, "string");
+		assert.deepEqual(sessionModeSchema.enum, ["standalone", "lineage-only", "fork"]);
+		assert.match(String(sessionModeSchema.description ?? ""), /lineage-only/);
+		assert.match(String(sessionModeSchema.description ?? ""), /fork/);
+	});
+
+	void it("keeps deprecated context field as a compatibility alias", () => {
 		const contextSchema = SubagentParams?.properties?.context;
 		assert.ok(contextSchema, "context schema should exist");
 		assert.equal(contextSchema.type, "string");
 		assert.deepEqual(contextSchema.enum, ["fresh", "fork"]);
-		assert.match(String(contextSchema.description ?? ""), /fresh/);
-		assert.match(String(contextSchema.description ?? ""), /fork/);
+		assert.match(String(contextSchema.description ?? ""), /deprecated/i);
+		assert.match(String(contextSchema.description ?? ""), /sessionMode/i);
 	});
 
 	void it("describes workflow as superpowers-only role execution", () => {
@@ -80,13 +246,29 @@ void describe("SubagentParams schema", { skip: !available ? "typebox not availab
 		assert.ok(agentSchema, "agent schema should exist");
 		assert.match(
 			String((agentSchema as { description?: string })?.description ?? ""),
-			/sp-recon|sp-implementer|superpowers role/i,
+			/discovered agent|sp-recon|sp-implementer|superpowers role/i,
 		);
 	});
 
 	void it("includes task field", () => {
 		const taskSchema = SubagentParams?.properties?.task;
 		assert.ok(taskSchema, "task schema should exist");
+	});
+
+	void it("rejects empty or incomplete execution selectors in the machine-readable schema", () => {
+		assert.equal(SubagentParams?.additionalProperties, false);
+		assert.deepEqual(SubagentParams?.dependentRequired?.agent, ["task"]);
+		assert.deepEqual(SubagentParams?.dependentRequired?.task, ["agent"]);
+		assert.deepEqual(
+			SubagentParams?.anyOf?.map((variant) => variant.required ?? []),
+			[["tasks"], ["agent"], ["task"]],
+		);
+		assert.equal(SubagentParams?.properties?.tasks?.minItems, 1);
+		assert.equal(Value.Check(SubagentParams as object, {}), false);
+		assert.equal(Value.Check(SubagentParams as object, { agent: "sp-recon" }), false);
+		assert.equal(Value.Check(SubagentParams as object, { task: "Investigate" }), false);
+		assert.equal(Value.Check(SubagentParams as object, { tasks: [] }), false);
+		assert.equal(Value.Check(SubagentParams as object, { agent: "sp-recon", task: "Investigate", extra: true }), false);
 	});
 
 	void it("includes useTestDrivenDevelopment field", () => {
@@ -133,3 +315,94 @@ void describe("SubagentParams schema", { skip: !available ? "typebox not availab
 		assert.equal(itemCount, undefined, "tasks[].count should not exist");
 	});
 });
+
+void describe(
+	"sessionMode runtime compatibility",
+	{ skip: !executorAvailable ? "subagent executor not importable" : undefined },
+	() => {
+		let tempDir: string;
+		let mockPi: MockPi;
+
+		before(() => {
+			mockPi = createMockPi();
+			mockPi.install();
+		});
+
+		after(() => {
+			mockPi.uninstall();
+		});
+
+		beforeEach(() => {
+			tempDir = createTempDir("pi-session-mode-test-");
+			mockPi.reset();
+			mockPi.onCall({ output: "ok" });
+		});
+
+		afterEach(() => {
+			removeTempDir(tempDir);
+		});
+
+		void it("accepts sessionMode=fork as the current fork behavior", async () => {
+			const { manager, calls } = makeSessionManagerRecorder({
+				sessionFile: "/tmp/parent.jsonl",
+				leafId: "leaf-fork",
+			});
+			const executor = makeExecutor(tempDir);
+
+			const result = await executor.execute(
+				"id",
+				{ agent: "echo", task: "test", sessionMode: "fork" },
+				new AbortController().signal,
+				undefined,
+				makeCtx(tempDir, manager),
+			);
+
+			assert.ok(result.content[0]?.text, "expected non-empty response content");
+			assert.deepEqual(calls, ["leaf-fork"]);
+			assert.equal(result.details?.sessionMode, "fork");
+			assert.equal(result.details?.context, "fork");
+		});
+
+		void it("treats sessionMode=standalone as non-fork behavior", async () => {
+			const { manager, calls } = makeSessionManagerRecorder({ sessionFile: undefined, leafId: null });
+			const executor = makeExecutor(tempDir);
+
+			const result = await executor.execute(
+				"id",
+				{ agent: "echo", task: "test", sessionMode: "standalone" },
+				new AbortController().signal,
+				undefined,
+				makeCtx(tempDir, manager),
+			);
+
+			assert.ok(result.content[0]?.text, "expected non-empty response content");
+			assert.deepEqual(calls, []);
+			assert.equal(result.details?.sessionMode, "standalone");
+			assert.equal(result.details?.context, undefined);
+		});
+
+		void it("seeds a linked child session for sessionMode=lineage-only", async () => {
+			const parentSessionFile = path.join(tempDir, "parent.jsonl");
+			fs.writeFileSync(parentSessionFile, '{"type":"session"}\n', "utf-8");
+			const { manager, calls } = makeSessionManagerRecorder({ sessionFile: parentSessionFile, leafId: null });
+			const executor = makeExecutor(tempDir);
+
+			const result = await executor.execute(
+				"id",
+				{ agent: "echo", task: "test", sessionMode: "lineage-only" },
+				new AbortController().signal,
+				undefined,
+				makeCtx(tempDir, manager),
+			);
+
+			assert.ok(result.content[0]?.text, "expected non-empty response content");
+			assert.deepEqual(calls, []);
+			assert.equal(result.details?.sessionMode, "lineage-only");
+			assert.equal(result.details?.context, undefined);
+			const sessionFiles = findChildSessionFiles(tempDir);
+			assert.equal(sessionFiles.length, 1, "expected one seeded session file");
+			assert.equal(readSessionHeader(sessionFiles[0]).parentSession, parentSessionFile);
+			assert.equal(fs.readFileSync(sessionFiles[0], "utf-8").trim().split("\n").length, 1);
+		});
+	},
+);

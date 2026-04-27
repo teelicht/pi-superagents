@@ -17,47 +17,70 @@ const SkillOverride = Type.Any({
 
 export const SuperpowersRoleNameSchema = Type.String({
 	description:
-		"Superpowers role agent name: sp-recon, sp-research, sp-implementer, sp-spec-review, sp-code-review, or sp-debug.",
+		"Discovered agent name to execute. Typical built-in Superpowers roles are sp-recon, sp-research, sp-implementer, sp-spec-review, sp-code-review, and sp-debug.",
 });
 
-export const TaskItem = Type.Object({
-	agent: SuperpowersRoleNameSchema,
-	task: Type.String(),
-	cwd: Type.Optional(Type.String()),
-	model: Type.Optional(Type.String({ description: "Override model for this Superpowers role task." })),
-	skill: Type.Optional(SkillOverride),
-});
+export const TaskItem = Type.Object(
+	{
+		agent: SuperpowersRoleNameSchema,
+		task: Type.String({ description: "Objective for this discovered agent task." }),
+		cwd: Type.Optional(Type.String()),
+		model: Type.Optional(Type.String({ description: "Override model for this discovered agent task." })),
+		skill: Type.Optional(SkillOverride),
+	},
+	{ additionalProperties: false },
+);
 
-export const SubagentParams = Type.Object({
-	agent: Type.Optional(SuperpowersRoleNameSchema),
-	task: Type.Optional(Type.String({ description: "The specific objective for the Superpowers role agent." })),
-	workflow: Type.Optional(
-		Type.String({
-			enum: ["superpowers"],
-			description: "Superpowers role execution workflow. Only 'superpowers' is supported.",
-		}),
-	),
-	useTestDrivenDevelopment: Type.Optional(
-		Type.Boolean({
-			description: "Whether sp-implementer should receive test-driven-development guidance.",
-		}),
-	),
-	tasks: Type.Optional(
-		Type.Array(TaskItem, {
-			description: "Parallel Superpowers role tasks for coordinated execution.",
-		}),
-	),
-	context: Type.Optional(
-		Type.String({
-			enum: ["fresh", "fork"],
-			description: "Execution context: 'fresh' starts new, 'fork' inherits from current Superpowers session.",
-		}),
-	),
-	cwd: Type.Optional(Type.String({ description: "Working directory for the Superpowers role task." })),
-	artifacts: Type.Optional(Type.Boolean({ description: "Whether to preserve execution artifacts for debugging." })),
-	includeProgress: Type.Optional(
-		Type.Boolean({ description: "Include detailed step-by-step progress in the tool output." }),
-	),
-	skill: Type.Optional(SkillOverride),
-	model: Type.Optional(Type.String({ description: "Override the model for this Superpowers role execution." })),
-});
+export const SubagentParams = Type.Object(
+	{
+		agent: Type.Optional(SuperpowersRoleNameSchema),
+		task: Type.Optional(Type.String({ description: "The specific objective for the selected discovered agent." })),
+		workflow: Type.Optional(
+			Type.String({
+				enum: ["superpowers"],
+				description: "Superpowers role execution workflow. Only 'superpowers' is supported.",
+			}),
+		),
+		useTestDrivenDevelopment: Type.Optional(
+			Type.Boolean({
+				description: "Whether sp-implementer should receive test-driven-development guidance.",
+			}),
+		),
+		tasks: Type.Optional(
+			Type.Array(TaskItem, {
+				description:
+					"Parallel discovered-agent tasks for coordinated execution. The common built-in choices are the Superpowers role agents.",
+				minItems: 1,
+			}),
+		),
+		sessionMode: Type.Optional(
+			Type.String({
+				enum: ["standalone", "lineage-only", "fork"],
+				description:
+					"Subagent session mode. 'standalone' has no parent link, 'lineage-only' links to the parent session without inheriting turns, and 'fork' inherits the parent session branch.",
+			}),
+		),
+		context: Type.Optional(
+			Type.String({
+				enum: ["fresh", "fork"],
+				description:
+					"Deprecated compatibility alias for sessionMode. 'fresh' maps to 'standalone' and 'fork' maps to 'fork'. Prefer sessionMode for new callers.",
+			}),
+		),
+		cwd: Type.Optional(Type.String({ description: "Working directory for the Superpowers role task." })),
+		artifacts: Type.Optional(Type.Boolean({ description: "Whether to preserve execution artifacts for debugging." })),
+		includeProgress: Type.Optional(
+			Type.Boolean({ description: "Include detailed step-by-step progress in the tool output." }),
+		),
+		skill: Type.Optional(SkillOverride),
+		model: Type.Optional(Type.String({ description: "Override the model for this discovered agent execution." })),
+	},
+	{
+		additionalProperties: false,
+		anyOf: [{ required: ["tasks"] }, { required: ["agent"] }, { required: ["task"] }],
+		dependentRequired: {
+			agent: ["task"],
+			task: ["agent"],
+		},
+	},
+);

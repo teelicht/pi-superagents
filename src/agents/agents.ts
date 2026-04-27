@@ -1,11 +1,17 @@
 /**
  * Agent discovery and configuration
+ *
+ * Key responsibilities:
+ * - discover built-in, user, and project agent markdown definitions
+ * - parse supported frontmatter fields into AgentConfig objects
+ * - preserve unknown frontmatter keys in extraFields for compatibility
  */
 
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { SessionMode } from "../shared/types.ts";
 import { parseFrontmatter } from "./frontmatter.ts";
 
 export const KNOWN_FIELDS = new Set([
@@ -18,6 +24,7 @@ export const KNOWN_FIELDS = new Set([
 	"extensions",
 	"interactive",
 	"maxSubagentDepth",
+	"session-mode",
 ]);
 
 export type AgentSource = "builtin" | "user" | "project";
@@ -37,6 +44,7 @@ export interface AgentConfig {
 	extensions?: string[];
 	interactive?: boolean;
 	maxSubagentDepth?: number;
+	sessionMode?: SessionMode;
 	extraFields?: Record<string, string>;
 }
 
@@ -130,6 +138,12 @@ function loadAgentsFromDir(dir: string, source: AgentSource): AgentConfig[] {
 			interactive: frontmatter.interactive === "true",
 			maxSubagentDepth:
 				Number.isInteger(parsedMaxSubagentDepth) && parsedMaxSubagentDepth >= 0 ? parsedMaxSubagentDepth : undefined,
+			sessionMode:
+				frontmatter["session-mode"] === "standalone" ||
+				frontmatter["session-mode"] === "lineage-only" ||
+				frontmatter["session-mode"] === "fork"
+					? frontmatter["session-mode"]
+					: undefined,
 			extraFields: Object.keys(extraFields).length > 0 ? extraFields : undefined,
 		});
 	}

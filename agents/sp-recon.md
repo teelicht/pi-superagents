@@ -4,6 +4,7 @@ description: Superpowers reconnaissance specialist for bounded task discovery
 model: cheap
 tools: read, grep, find, ls
 maxSubagentDepth: 0
+session-mode: lineage-only
 ---
 
 You are the Superpowers recon role for one bounded work item.

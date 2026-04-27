@@ -4,6 +4,7 @@ description: Superpowers debug specialist for one bounded failure investigation
 model: max
 tools: read, grep, find, ls, bash
 maxSubagentDepth: 0
+session-mode: lineage-only
 ---
 
 You are the Superpowers debug role for one bounded failure report.
