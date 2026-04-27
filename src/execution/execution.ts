@@ -38,7 +38,20 @@ export async function runSync(
 	task: string,
 	options: RunSyncOptions,
 ): Promise<SingleResult> {
-	const { cwd, signal, onUpdate, maxOutput, artifactsDir, artifactConfig, runId, index, modelOverride } = options;
+	const {
+		cwd,
+		signal,
+		onUpdate,
+		maxOutput,
+		artifactsDir,
+		artifactConfig,
+		runId,
+		index,
+		modelOverride,
+		sessionMode,
+		taskDelivery,
+		taskFilePath,
+	} = options;
 	const agent = agents.find((a) => a.name === agentName);
 	if (!agent) {
 		return {
@@ -104,6 +117,7 @@ export async function runSync(
 		systemPrompt,
 		mcpDirectTools: agent.mcpDirectTools,
 		promptFileStem: agent.name,
+		taskFilePath,
 	});
 
 	const result: SingleResult = {
@@ -115,6 +129,7 @@ export async function runSync(
 		model: modelArg,
 		skills: resolvedSkillNames,
 		skillsWarning,
+		sessionMode,
 	};
 
 	const progress: AgentProgress = {

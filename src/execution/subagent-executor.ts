@@ -13,7 +13,7 @@ import * as path from "node:path";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import type { AgentConfig, AgentScope } from "../agents/agents.ts";
-import { getArtifactsDir } from "../shared/artifacts.ts";
+import { ensureArtifactsDir, getArtifactsDir, getPacketPath, removeArtifactFile, writeArtifact } from "../shared/artifacts.ts";
 import { getPublishedExecutionSkills, normalizeSkillInput, resolveExecutionSkills } from "../shared/skills.ts";
 import {
 	type AgentProgress,
@@ -32,6 +32,7 @@ import {
 	type SingleResult,
 	type SubagentState,
 	type SessionMode,
+	type TaskDeliveryMode,
 	type WorkflowMode,
 	wrapForkTask,
 } from "../shared/types.ts";
@@ -41,11 +42,12 @@ import { aggregateParallelOutputs } from "./parallel-utils.ts";
 import {
 	createSessionLaunchResolver,
 	resolveRequestedSessionMode,
+	resolveTaskDeliveryMode,
 	type SessionLaunchManager,
 } from "./session-mode.ts";
 import { resolveStepBehavior } from "./settings.ts";
 import { resolveSuperagentWorktreeCreateOptions, resolveSuperagentWorktreeEnabled } from "./superagents-config.ts";
-import { buildSuperpowersPacketPlan, injectSuperpowersPacketInstructions } from "./superpowers-packets.ts";
+import { buildSuperpowersPacketContent, buildSuperpowersPacketPlan, injectSuperpowersPacketInstructions } from "./superpowers-packets.ts";
 import {
 	cleanupWorktrees,
 	createWorktrees,
@@ -280,6 +282,63 @@ interface ForegroundParallelRunInput {
 	useTestDrivenDevelopment: boolean;
 }
 
+interface PreparedLaunch {
+	sessionMode: SessionMode;
+	taskDelivery: TaskDeliveryMode;
+	sessionFile?: string;
+	taskText: string;
+	taskFilePath?: string;
+	packetFile?: string;
+	cleanup(): void;
+}
+
+function prepareLaunch(input: {
+	agentConfig: AgentConfig;
+	rawTask: string;
+	sessionMode: SessionMode;
+	artifactsDir: string;
+	runId: string;
+	index: number;
+	sessionFile: string | undefined;
+	useTestDrivenDevelopment: boolean;
+}): PreparedLaunch {
+	const taskDelivery = resolveTaskDeliveryMode(input.sessionMode);
+	
+	if (input.sessionMode === "fork") {
+		return {
+			sessionMode: input.sessionMode,
+			taskDelivery,
+			sessionFile: input.sessionFile,
+			taskText: wrapForkTask(input.rawTask),
+			cleanup() {},
+		};
+	}
+
+	const packetFile = getPacketPath(input.artifactsDir, input.runId, input.agentConfig.name, input.index);
+	ensureArtifactsDir(path.dirname(packetFile));
+	writeArtifact(
+		packetFile,
+		buildSuperpowersPacketContent({
+			agent: input.agentConfig.name,
+			sessionMode: input.sessionMode,
+			task: input.rawTask,
+			useTestDrivenDevelopment: input.useTestDrivenDevelopment,
+		}),
+	);
+	
+	return {
+		sessionMode: input.sessionMode,
+		taskDelivery,
+		sessionFile: input.sessionFile,
+		taskText: input.rawTask,
+		taskFilePath: packetFile,
+		packetFile,
+		cleanup() {
+			removeArtifactFile(packetFile);
+		},
+	};
+}
+
 function buildParallelModeError(message: string): AgentToolResult<Details> {
 	return {
 		content: [{ type: "text", text: message }],
@@ -391,9 +450,11 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 			index,
 			input.ctx.cwd,
 		);
-		const childResult = await runSync(taskRuntimeCwd, input.agents, task.agent, input.taskTexts[index], {
-			cwd: taskCwd,
-			signal: input.signal,
+		const prepared = prepareLaunch({
+			agentConfig: input.agents.find((a) => a.name === task.agent)!,
+			rawTask: input.taskTexts[index],
+			sessionMode: input.sessionModes[index],
+			artifactsDir: input.artifactsDir,
 			runId: input.runId,
 			index,
 			sessionFile: input.sessionFileForIndex({
@@ -401,37 +462,54 @@ async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Pr
 				childCwd: taskRuntimeCwd,
 				sessionMode: input.sessionModes[index],
 			}),
-			artifactsDir: input.artifactConfig.enabled ? input.artifactsDir : undefined,
-			artifactConfig: input.artifactConfig,
-			maxOutput: input.maxOutput,
-			maxSubagentDepth: input.maxSubagentDepths[index],
-			modelOverride: input.modelOverrides[index],
-			skills: effectiveSkills,
-			config: input.config,
-			workflow: input.workflow,
 			useTestDrivenDevelopment: input.useTestDrivenDevelopment,
-			onUpdate: input.onUpdate
-				? (progressUpdate) => {
-						const stepResults =
-							withProgressResultSessionMode(progressUpdate, input.sessionModes[index]).details?.results || [];
-						const stepProgress = progressUpdate.details?.progress || [];
-						if (stepResults.length > 0) input.liveResults[index] = stepResults[0];
-						if (stepProgress.length > 0) input.liveProgress[index] = stepProgress[0];
-						const mergedResults = input.liveResults.filter((result): result is SingleResult => result !== undefined);
-						const mergedProgress = input.liveProgress.filter(
-							(progress): progress is AgentProgress => progress !== undefined,
-						);
-						input.onUpdate?.({
-							content: progressUpdate.content,
-							details: {
-								mode: "parallel",
-								results: mergedResults,
-								progress: mergedProgress,
-							},
-						});
-					}
-				: undefined,
 		});
+
+		let childResult: SingleResult;
+		try {
+			childResult = await runSync(taskRuntimeCwd, input.agents, task.agent, prepared.taskText, {
+				cwd: taskCwd,
+				signal: input.signal,
+				runId: input.runId,
+				index,
+				sessionFile: prepared.sessionFile,
+				sessionMode: prepared.sessionMode,
+				taskDelivery: prepared.taskDelivery,
+				taskFilePath: prepared.taskFilePath,
+				artifactsDir: input.artifactConfig.enabled ? input.artifactsDir : undefined,
+				artifactConfig: input.artifactConfig,
+				maxOutput: input.maxOutput,
+				maxSubagentDepth: input.maxSubagentDepths[index],
+				modelOverride: input.modelOverrides[index],
+				skills: effectiveSkills,
+				config: input.config,
+				workflow: input.workflow,
+				useTestDrivenDevelopment: input.useTestDrivenDevelopment,
+				onUpdate: input.onUpdate
+					? (progressUpdate) => {
+							const stepResults =
+								withProgressResultSessionMode(progressUpdate, input.sessionModes[index]).details?.results || [];
+							const stepProgress = progressUpdate.details?.progress || [];
+							if (stepResults.length > 0) input.liveResults[index] = stepResults[0];
+							if (stepProgress.length > 0) input.liveProgress[index] = stepProgress[0];
+							const mergedResults = input.liveResults.filter((result): result is SingleResult => result !== undefined);
+							const mergedProgress = input.liveProgress.filter(
+								(progress): progress is AgentProgress => progress !== undefined,
+							);
+							input.onUpdate?.({
+								content: progressUpdate.content,
+								details: {
+									mode: "parallel",
+									results: mergedResults,
+									progress: mergedProgress,
+								},
+							});
+					  }
+					: undefined,
+			});
+		} finally {
+			prepared.cleanup();
+		}
 		return withSingleResultSessionMode(childResult, input.sessionModes[index]);
 	});
 }
@@ -505,10 +583,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		);
 	});
 	const sessionModes = agentConfigs.map((config) => resolveAgentSessionMode(params, config));
-	const taskTexts = tasks.map((t, i) => {
-		const taskText = injectSuperpowersPacketInstructions(t.task, behaviors[i]);
-		return sessionModes[i] === "fork" ? wrapForkTask(taskText) : taskText;
-	});
+	const taskTexts = tasks.map((t, i) => injectSuperpowersPacketInstructions(t.task, behaviors[i]));
 	const liveResults: (SingleResult | undefined)[] = Array(tasks.length).fill(undefined) as (SingleResult | undefined)[];
 	const { setup: worktreeSetup, errorResult } = createParallelWorktreeSetup(
 		effectiveWorktree,
@@ -659,36 +734,54 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		packetDefaults,
 	);
 	task = injectSuperpowersPacketInstructions(task, behavior);
-
-	if (sessionMode === "fork") {
-		task = wrapForkTask(task);
-	}
 	const _cleanTask = task;
 
 	const effectiveSkills = skillOverride;
 	const runtimeCwd = params.cwd ?? ctx.cwd;
 
 	const r = withSingleResultSessionMode(
-		await runSync(runtimeCwd, agents, params.agent!, task, {
-		cwd: params.cwd,
-		signal,
-		runId,
-		sessionFile: sessionFileForIndex({
-			index: 0,
-			childCwd: runtimeCwd,
-			sessionMode,
-		}),
-		artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
-		artifactConfig,
-		maxOutput: params.maxOutput,
-		maxSubagentDepth,
-		onUpdate: onUpdate ? (progressUpdate) => onUpdate(withProgressResultSessionMode(progressUpdate, sessionMode)) : undefined,
-		modelOverride,
-		skills: effectiveSkills,
-		config: config,
-		workflow,
-		useTestDrivenDevelopment,
-		}),
+		await (async () => {
+			const prepared = prepareLaunch({
+				agentConfig,
+				rawTask: task,
+				sessionMode,
+				artifactsDir,
+				runId,
+				index: 0,
+				sessionFile: sessionFileForIndex({
+					index: 0,
+					childCwd: runtimeCwd,
+					sessionMode,
+				}),
+				useTestDrivenDevelopment,
+			});
+			try {
+				return await runSync(runtimeCwd, agents, params.agent!, prepared.taskText, {
+					cwd: params.cwd,
+					signal,
+					runId,
+					index: 0,
+					sessionFile: prepared.sessionFile,
+					sessionMode: prepared.sessionMode,
+					taskDelivery: prepared.taskDelivery,
+					taskFilePath: prepared.taskFilePath,
+					artifactsDir: artifactConfig.enabled ? artifactsDir : undefined,
+					artifactConfig,
+					maxOutput: params.maxOutput,
+					maxSubagentDepth,
+					onUpdate: onUpdate
+						? (progressUpdate) => onUpdate(withProgressResultSessionMode(progressUpdate, sessionMode))
+						: undefined,
+					modelOverride,
+					skills: effectiveSkills,
+					config,
+					workflow,
+					useTestDrivenDevelopment,
+				});
+			} finally {
+				prepared.cleanup();
+			}
+		})(),
 		sessionMode,
 	);
 	if (r.progress) allProgress.push(r.progress);
