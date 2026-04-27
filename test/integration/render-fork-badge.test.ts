@@ -41,7 +41,7 @@ void describe(
 			const widget = renderSubagentResult!(
 				{
 					content: [{ type: "text", text: "Async: reviewer [abc123]" }],
-					details: { mode: "single", context: "fork", results: [] },
+					details: { mode: "single", sessionMode: "fork", results: [] },
 				},
 				{ expanded: false },
 				theme,
@@ -57,7 +57,7 @@ void describe(
 					content: [{ type: "text", text: "done" }],
 					details: {
 						mode: "single",
-						context: "fork",
+						sessionMode: "fork",
 						results: [
 							{
 								agent: "reviewer",

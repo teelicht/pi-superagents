@@ -58,7 +58,7 @@ export function renderSubagentResultLines(
 	const details = result.details;
 	if (!details || details.results.length === 0) {
 		const text = result.content[0]?.type === "text" ? result.content[0].text : "(no output)";
-		const prefix = details?.context === "fork" ? "[fork] " : "";
+		const prefix = details?.sessionMode === "fork" || details?.context === "fork" ? "[fork] " : "";
 		return [truncateLine(`${prefix}${text}`, options.width)];
 	}
 
@@ -169,7 +169,7 @@ function summarizeDetails(details: Details, rows: SubagentDisplayRow[]): Subagen
 		hasEmptyOutput,
 		toolCount: aggregate.toolCount,
 		durationMs: aggregate.durationMs,
-		contextLabel: details.context === "fork" ? " [fork]" : "",
+		contextLabel: details.sessionMode === "fork" || details.context === "fork" ? " [fork]" : "",
 	};
 }
 

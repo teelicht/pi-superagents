@@ -85,7 +85,7 @@ void describe("Superpowers root prompt", () => {
 		assert.match(prompt, /overrides any skill workflow/);
 		assert.match(prompt, /Do not use the `using-git-worktrees` skill/);
 		assert.match(prompt, /Do not create, switch to, or request git worktrees/);
-		assert.match(prompt, /context: "fork"/);
+		assert.match(prompt, /sessionMode: fork/);
 		assert.match(prompt, /using-superpowers could not be resolved/);
 		assert.match(prompt, /Plannotator browser review is DISABLED/);
 		assert.doesNotMatch(prompt, /superpowers_plan_review/);
@@ -177,7 +177,7 @@ void describe("Superpowers root prompt", () => {
 		assert.match(summary, /useTestDrivenDevelopment: true/);
 		assert.match(summary, /usePlannotatorReview: false/);
 		assert.match(summary, /worktrees\.enabled: false/);
-		assert.match(summary, /context: fork/);
+		assert.match(summary, /sessionMode: fork/);
 		assert.doesNotMatch(summary, /Required bootstrap skill/);
 		assert.doesNotMatch(summary, /Subagent delegation is/);
 		assert.doesNotMatch(summary, /User Task/);
@@ -192,7 +192,8 @@ void describe("Superpowers root prompt", () => {
 
 		assert.match(summary, /Superpowers ▸ design onboarding/);
 		assert.match(summary, /usePlannotatorReview: true/);
-		assert.match(summary, /context: fresh/);
+		assert.match(summary, /sessionMode: lineage-only/);
+		assert.doesNotMatch(summary, /context: fresh/);
 		assert.doesNotMatch(summary, /useBranches/);
 		assert.doesNotMatch(summary, /useSubagents/);
 		assert.doesNotMatch(summary, /useTestDrivenDevelopment/);
