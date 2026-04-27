@@ -173,6 +173,37 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		assert.equal(result.model, "openai-codex/gpt-5.5");
 	});
 
+	void it("keeps requested model when child pi emits a synthetic error model", async () => {
+		mockPi.onCall({
+			exitCode: 1,
+			jsonl: [
+				{
+					type: "message_end",
+					message: {
+						role: "assistant",
+						content: [{ type: "text", text: "" }],
+						model: "err",
+						errorMessage: "No models match pattern",
+						stopReason: "error",
+						usage: {
+							input: 0,
+							output: 0,
+							cacheRead: 0,
+							cacheWrite: 0,
+							cost: { total: 0 },
+						},
+					},
+				},
+			],
+		});
+		const agents = [makeAgent("echo", { model: "sonnet" })];
+
+		const result = await runSync(tempDir, agents, "echo", "Task", {});
+
+		assert.equal(result.exitCode, 1);
+		assert.equal(result.model, "sonnet");
+	});
+
 	void it("applies superpowers tier thinking when the tier config provides it", async () => {
 		mockPi.onCall({ echoArgs: true });
 		const agents = [makeAgent("sp-code-review", { model: "balanced" })];
