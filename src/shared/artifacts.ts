@@ -26,6 +26,24 @@ export function getArtifactPaths(artifactsDir: string, runId: string, agent: str
 	};
 }
 
+export function getPacketsDir(artifactsDir: string): string {
+	return path.join(artifactsDir, "packets");
+}
+
+export function getPacketPath(artifactsDir: string, runId: string, agent: string, index = 0): string {
+	const safeAgent = agent.replace(/[^\w.-]/g, "_");
+	return path.join(getPacketsDir(artifactsDir), `${runId}_${index}_${safeAgent}_packet.md`);
+}
+
+export function removeArtifactFile(filePath: string | undefined): void {
+	if (!filePath) return;
+	try {
+		fs.rmSync(filePath, { force: true });
+	} catch {
+		// Cleanup is best effort.
+	}
+}
+
 export function ensureArtifactsDir(dir: string): void {
 	fs.mkdirSync(dir, { recursive: true });
 }
@@ -56,14 +74,27 @@ export function cleanupOldArtifacts(dir: string, maxAgeDays: number): void {
 	const maxAgeMs = maxAgeDays * 24 * 60 * 60 * 1000;
 	const cutoff = now - maxAgeMs;
 
+	function cleanupPath(targetPath: string, cutoff: number): void {
+		const stat = fs.statSync(targetPath);
+		if (stat.isDirectory()) {
+			for (const child of fs.readdirSync(targetPath)) {
+				cleanupPath(path.join(targetPath, child), cutoff);
+			}
+			if (fs.readdirSync(targetPath).length === 0) {
+				fs.rmdirSync(targetPath);
+			}
+			return;
+		}
+		if (stat.mtimeMs < cutoff) {
+			fs.unlinkSync(targetPath);
+		}
+	}
+
 	for (const file of fs.readdirSync(dir)) {
 		if (file === CLEANUP_MARKER_FILE) continue;
 		const filePath = path.join(dir, file);
 		try {
-			const stat = fs.statSync(filePath);
-			if (stat.mtimeMs < cutoff) {
-				fs.unlinkSync(filePath);
-			}
+			cleanupPath(filePath, cutoff);
 		} catch {
 			/* empty */
 		}
