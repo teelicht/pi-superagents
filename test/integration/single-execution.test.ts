@@ -50,6 +50,13 @@ function writeSkill(cwd: string, name: string): void {
 	);
 }
 
+function assertModelArg(messages: unknown[], expectedModel: string): void {
+	const args = JSON.parse(getFinalOutput(messages)) as string[];
+	const index = args.indexOf("--models");
+	assert.notEqual(index, -1, `expected --models in ${JSON.stringify(args)}`);
+	assert.deepEqual(args.slice(index, index + 2), ["--models", expectedModel]);
+}
+
 void describe("single sync execution", { skip: !available ? "pi packages not available" : undefined }, () => {
 	let tempDir: string;
 	let mockPi: MockPi;
@@ -117,20 +124,17 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 	});
 
 	void it("uses agent model config", async () => {
-		mockPi.onCall({ output: "Done" });
+		mockPi.onCall({ echoArgs: true });
 		const agents = [makeAgent("echo", { model: "anthropic/claude-sonnet-4" })];
 
 		const result = await runSync(tempDir, agents, "echo", "Task", {});
 
 		assert.equal(result.exitCode, 0);
-		// result.model is set from agent config via applyThinkingSuffix, then
-		// overwritten by the first message_end event only if result.model is unset.
-		// Since agent has model config, it stays as the configured value.
-		assert.equal(result.model, "anthropic/claude-sonnet-4");
+		assertModelArg(result.messages, "anthropic/claude-sonnet-4");
 	});
 
 	void it("model override from options takes precedence", async () => {
-		mockPi.onCall({ output: "Done" });
+		mockPi.onCall({ echoArgs: true });
 		const agents = [makeAgent("echo", { model: "anthropic/claude-sonnet-4" })];
 
 		const result = await runSync(tempDir, agents, "echo", "Task", {
@@ -138,11 +142,39 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		});
 
 		assert.equal(result.exitCode, 0);
-		assert.equal(result.model, "openai/gpt-4o");
+		assertModelArg(result.messages, "openai/gpt-4o");
+	});
+
+	void it("records the actual model emitted by child pi", async () => {
+		mockPi.onCall({
+			jsonl: [
+				{
+					type: "message_end",
+					message: {
+						role: "assistant",
+						content: [{ type: "text", text: "Done" }],
+						model: "openai-codex/gpt-5.5",
+						usage: {
+							input: 100,
+							output: 50,
+							cacheRead: 0,
+							cacheWrite: 0,
+							cost: { total: 0.001 },
+						},
+					},
+				},
+			],
+		});
+		const agents = [makeAgent("echo", { model: "sonnet" })];
+
+		const result = await runSync(tempDir, agents, "echo", "Task", {});
+
+		assert.equal(result.exitCode, 0);
+		assert.equal(result.model, "openai-codex/gpt-5.5");
 	});
 
 	void it("applies superpowers tier thinking when the tier config provides it", async () => {
-		mockPi.onCall({ output: "Done" });
+		mockPi.onCall({ echoArgs: true });
 		const agents = [makeAgent("sp-code-review", { model: "balanced" })];
 
 		const result = await runSync(tempDir, agents, "sp-code-review", "Review task", {
@@ -160,13 +192,13 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		});
 
 		assert.equal(result.exitCode, 0);
-		assert.equal(result.model, "openai/gpt-5.4:medium");
+		assertModelArg(result.messages, "openai/gpt-5.4:medium");
 	});
 
 	void it("uses changed model tier config for later single executions", async () => {
 		const agents = [makeAgent("sp-code-review", { model: "balanced" })];
 
-		mockPi.onCall({ output: "Done" });
+		mockPi.onCall({ echoArgs: true });
 		const first = await runSync(tempDir, agents, "sp-code-review", "first", {
 			workflow: "superpowers",
 			runId: "first",
@@ -179,7 +211,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 			},
 		});
 
-		mockPi.onCall({ output: "Done" });
+		mockPi.onCall({ echoArgs: true });
 		const second = await runSync(tempDir, agents, "sp-code-review", "second", {
 			workflow: "superpowers",
 			runId: "second",
@@ -192,8 +224,8 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 			},
 		});
 
-		assert.equal(first.model, "openai/gpt-5.4");
-		assert.equal(second.model, "anthropic/claude-opus-4.6");
+		assertModelArg(first.messages, "openai/gpt-5.4");
+		assertModelArg(second.messages, "anthropic/claude-opus-4.6");
 	});
 
 	void it("tracks usage from message events", async () => {
