@@ -10,6 +10,7 @@ export interface BuildPiArgsInput {
 	task: string;
 	sessionEnabled: boolean;
 	sessionFile?: string;
+	taskFilePath?: string;
 	model?: string;
 	thinking?: string;
 	tools?: string[];
@@ -91,7 +92,9 @@ export function buildPiArgs(input: BuildPiArgsInput): BuildPiArgsResult {
 		args.push("--append-system-prompt", promptPath);
 	}
 
-	if (input.task.length > TASK_ARG_LIMIT) {
+	if (input.taskFilePath) {
+		args.push(`@${input.taskFilePath}`);
+	} else if (input.task.length > TASK_ARG_LIMIT) {
 		if (!tempDir) {
 			tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-"));
 		}

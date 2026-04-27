@@ -221,6 +221,9 @@ export interface RunSyncOptions {
 	runId: string;
 	index?: number;
 	sessionFile?: string;
+	sessionMode?: SessionMode;
+	taskDelivery?: TaskDeliveryMode;
+	taskFilePath?: string;
 	maxSubagentDepth?: number;
 	/** Override the agent's default model (format: "provider/id" or just "id") */
 	modelOverride?: string;
