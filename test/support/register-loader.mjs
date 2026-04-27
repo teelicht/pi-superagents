@@ -10,6 +10,14 @@
  *    which require --experimental-transform-types (not just strip-types).
  */
 
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { register } from "node:module";
+
+process.env.PI_SUPERAGENTS_RUN_HISTORY_PATH ??= join(
+	mkdtempSync(join(tmpdir(), "pi-superagents-test-history-")),
+	"run-history.jsonl",
+);
 
 register(new URL("./ts-loader.mjs", import.meta.url));
