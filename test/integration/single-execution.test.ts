@@ -14,15 +14,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
 import type { MockPi } from "../support/helpers.ts";
-import {
-	createMockPi,
-	createTempDir,
-	events,
-	makeAgent,
-	makeAgentConfigs,
-	removeTempDir,
-	tryImport,
-} from "../support/helpers.ts";
+import { createMockPi, createTempDir, events, makeAgent, makeAgentConfigs, removeTempDir, tryImport } from "../support/helpers.ts";
 
 // Top-level await: try importing pi-dependent modules
 const execution = await tryImport<any>("./src/execution/execution.ts");
@@ -43,11 +35,7 @@ const getFinalOutput = utils?.getFinalOutput;
 function writeSkill(cwd: string, name: string): void {
 	const skillsDir = path.join(cwd, ".agents", "skills");
 	fs.mkdirSync(skillsDir, { recursive: true });
-	fs.writeFileSync(
-		path.join(skillsDir, `${name}.md`),
-		`---\nname: ${name}\ndescription: test skill\n---\nUse ${name}.`,
-		"utf-8",
-	);
+	fs.writeFileSync(path.join(skillsDir, `${name}.md`), `---\nname: ${name}\ndescription: test skill\n---\nUse ${name}.`, "utf-8");
 }
 
 void describe("single sync execution", { skip: !available ? "pi packages not available" : undefined }, () => {

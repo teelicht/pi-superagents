@@ -16,12 +16,7 @@ import type { Theme } from "@mariozechner/pi-coding-agent";
 import type { Component, TUI } from "@mariozechner/pi-tui";
 import { matchesKey } from "@mariozechner/pi-tui";
 import type { ExtensionConfig, SubagentState } from "../shared/types.ts";
-import {
-	setSuperpowersModelTierModel,
-	toggleSuperpowersBoolean,
-	toggleSuperpowersWorktrees,
-	updateSuperpowersConfigText,
-} from "../superpowers/config-writer.ts";
+import { setSuperpowersModelTierModel, toggleSuperpowersBoolean, toggleSuperpowersWorktrees, updateSuperpowersConfigText } from "../superpowers/config-writer.ts";
 import { renderFramedPanel } from "./render-helpers.ts";
 
 /**
@@ -91,13 +86,7 @@ export class SuperpowersSettingsComponent implements Component {
 	 * @param getConfig Config accessor for fresh reads during render.
 	 * @param options Model picker options including available models, reload callback, and close callback.
 	 */
-	constructor(
-		tui: TUI,
-		theme: Theme,
-		state: SubagentState,
-		getConfig: ConfigAccessor,
-		options: SuperpowersSettingsModelPickerOptions = {},
-	) {
+	constructor(tui: TUI, theme: Theme, state: SubagentState, getConfig: ConfigAccessor, options: SuperpowersSettingsModelPickerOptions = {}) {
 		this.tui = tui;
 		this.theme = theme;
 		this.state = state;
@@ -110,8 +99,7 @@ export class SuperpowersSettingsComponent implements Component {
 
 	render(width: number): string[] {
 		const mode = this.mode;
-		const title =
-			mode === "settings" ? "Superpowers Settings" : mode === "tier-picker" ? "Select Model Tier" : "Select Model";
+		const title = mode === "settings" ? "Superpowers Settings" : mode === "tier-picker" ? "Select Model Tier" : "Select Model";
 		const footer =
 			mode === "settings"
 				? "p plannotator | s subagents | t tdd | m model tiers | w worktrees | q close"
@@ -223,15 +211,13 @@ export class SuperpowersSettingsComponent implements Component {
 			if (this.modelOptions.length === 0) return;
 
 			if (matchesKey(data, "up") || matchesKey(data, "k")) {
-				this.selectedModelIndex =
-					this.selectedModelIndex <= 0 ? this.modelOptions.length - 1 : this.selectedModelIndex - 1;
+				this.selectedModelIndex = this.selectedModelIndex <= 0 ? this.modelOptions.length - 1 : this.selectedModelIndex - 1;
 				this.tui.requestRender();
 				return;
 			}
 
 			if (matchesKey(data, "down") || matchesKey(data, "j")) {
-				this.selectedModelIndex =
-					this.selectedModelIndex >= this.modelOptions.length - 1 ? 0 : this.selectedModelIndex + 1;
+				this.selectedModelIndex = this.selectedModelIndex >= this.modelOptions.length - 1 ? 0 : this.selectedModelIndex + 1;
 				this.tui.requestRender();
 				return;
 			}
@@ -308,13 +294,10 @@ export class SuperpowersSettingsComponent implements Component {
 						const configuredSettings: string[] = [];
 						if ("usePlannotator" in preset) configuredSettings.push(`    usePlannotator: ${preset.usePlannotator}`);
 						if ("useSubagents" in preset) configuredSettings.push(`    useSubagents: ${preset.useSubagents}`);
-						if ("useTestDrivenDevelopment" in preset)
-							configuredSettings.push(`    useTestDrivenDevelopment: ${preset.useTestDrivenDevelopment}`);
+						if ("useTestDrivenDevelopment" in preset) configuredSettings.push(`    useTestDrivenDevelopment: ${preset.useTestDrivenDevelopment}`);
 						if ("useBranches" in preset) configuredSettings.push(`    useBranches: ${preset.useBranches}`);
-						if (preset.worktrees && "enabled" in preset.worktrees)
-							configuredSettings.push(`    worktrees.enabled: ${preset.worktrees.enabled}`);
-						if (preset.worktrees && "root" in preset.worktrees)
-							configuredSettings.push(`    worktrees.root: ${preset.worktrees.root ?? "default"}`);
+						if (preset.worktrees && "enabled" in preset.worktrees) configuredSettings.push(`    worktrees.enabled: ${preset.worktrees.enabled}`);
+						if (preset.worktrees && "root" in preset.worktrees) configuredSettings.push(`    worktrees.root: ${preset.worktrees.root ?? "default"}`);
 
 						return [`  ${name}:`, ...(configuredSettings.length ? configuredSettings : ["    (default settings)"])];
 					})
@@ -373,12 +356,7 @@ export class SuperpowersSettingsComponent implements Component {
 			return [errorMsg];
 		}
 
-		const lines: string[] = [
-			`Editing tier: ${this.selectedTier}`,
-			`Current: ${tierModel(currentValue)}`,
-			"",
-			"Available models:",
-		];
+		const lines: string[] = [`Editing tier: ${this.selectedTier}`, `Current: ${tierModel(currentValue)}`, "", "Available models:"];
 
 		for (let i = 0; i < this.modelOptions.length; i++) {
 			const model = this.modelOptions[i];

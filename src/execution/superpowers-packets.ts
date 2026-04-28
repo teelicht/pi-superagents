@@ -80,14 +80,8 @@ export function buildSuperpowersPacketPlan(role: ExecutionRole): SuperpowersPack
 	}
 }
 
-export function buildSuperpowersPacketContent(input: {
-	agent: string;
-	sessionMode: SessionMode;
-	task: string;
-	useTestDrivenDevelopment: boolean;
-}): string {
-	const modeLine =
-		input.agent === "sp-implementer" ? `Implementer Mode: ${input.useTestDrivenDevelopment ? "tdd" : "direct"}` : null;
+export function buildSuperpowersPacketContent(input: { agent: string; sessionMode: SessionMode; task: string; useTestDrivenDevelopment: boolean }): string {
+	const modeLine = input.agent === "sp-implementer" ? `Implementer Mode: ${input.useTestDrivenDevelopment ? "tdd" : "direct"}` : null;
 
 	return [
 		"# Superpowers Work Packet",

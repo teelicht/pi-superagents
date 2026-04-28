@@ -15,14 +15,10 @@ void describe("ts-loader", () => {
 
 		try {
 			let resolvedSpecifier: string | undefined;
-			const result = resolve(
-				"./target.js",
-				{ parentURL: pathToFileURL(path.join(parentDir, "entry.mjs")).href },
-				(specifier: string) => {
-					resolvedSpecifier = specifier;
-					return { url: pathToFileURL(path.resolve(parentDir, specifier)).href };
-				},
-			);
+			const result = resolve("./target.js", { parentURL: pathToFileURL(path.join(parentDir, "entry.mjs")).href }, (specifier: string) => {
+				resolvedSpecifier = specifier;
+				return { url: pathToFileURL(path.resolve(parentDir, specifier)).href };
+			});
 
 			assert.equal(resolvedSpecifier, "./target.ts");
 			assert.equal(result.url, pathToFileURL(path.join(parentDir, "target.ts")).href);

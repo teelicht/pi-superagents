@@ -7,21 +7,8 @@ import type { Message } from "@mariozechner/pi-ai";
 import type { AgentConfig } from "../agents/agents.ts";
 import { ensureArtifactsDir, getArtifactPaths, writeArtifact, writeMetadata } from "../shared/artifacts.ts";
 import { buildSkillInjection, getPublishedExecutionSkills, resolveExecutionSkills } from "../shared/skills.ts";
-import {
-	type AgentProgress,
-	type ArtifactPaths,
-	DEFAULT_MAX_OUTPUT,
-	getSubagentDepthEnv,
-	type RunSyncOptions,
-	type SingleResult,
-	truncateOutput,
-} from "../shared/types.ts";
-import {
-	detectSubagentError,
-	extractTextFromContent,
-	extractToolArgsPreview,
-	getFinalOutput,
-} from "../shared/utils.ts";
+import { type AgentProgress, type ArtifactPaths, DEFAULT_MAX_OUTPUT, getSubagentDepthEnv, type RunSyncOptions, type SingleResult, truncateOutput } from "../shared/types.ts";
+import { detectSubagentError, extractTextFromContent, extractToolArgsPreview, getFinalOutput } from "../shared/utils.ts";
 import { createJsonlWriter } from "./jsonl-writer.ts";
 import { applyThinkingSuffix, buildPiArgs, cleanupTempDir } from "./pi-args.ts";
 import { getPiSpawnCommand } from "./pi-spawn.ts";
@@ -31,27 +18,8 @@ import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./su
 /**
  * Run a subagent synchronously (blocking until complete)
  */
-export async function runSync(
-	runtimeCwd: string,
-	agents: AgentConfig[],
-	agentName: string,
-	task: string,
-	options: RunSyncOptions,
-): Promise<SingleResult> {
-	const {
-		cwd,
-		signal,
-		onUpdate,
-		maxOutput,
-		artifactsDir,
-		artifactConfig,
-		runId,
-		index,
-		modelOverride,
-		sessionMode,
-		taskDelivery,
-		taskFilePath,
-	} = options;
+export async function runSync(runtimeCwd: string, agents: AgentConfig[], agentName: string, task: string, options: RunSyncOptions): Promise<SingleResult> {
+	const { cwd, signal, onUpdate, maxOutput, artifactsDir, artifactConfig, runId, index, modelOverride, sessionMode, taskFilePath } = options;
 	const agent = agents.find((a) => a.name === agentName);
 	if (!agent) {
 		return {

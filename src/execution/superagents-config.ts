@@ -38,11 +38,7 @@ export function getSuperagentSettings(config: ExtensionConfig): ExtensionConfig[
  * @param config Extension config containing optional Superpowers settings.
  * @returns The effective worktree preference for the run.
  */
-export function resolveSuperagentWorktreeEnabled(
-	requested: boolean | undefined,
-	workflow: WorkflowMode,
-	config: ExtensionConfig,
-): boolean | undefined {
+export function resolveSuperagentWorktreeEnabled(requested: boolean | undefined, workflow: WorkflowMode, config: ExtensionConfig): boolean | undefined {
 	if (workflow === "superpowers") {
 		const worktrees = config.superagents?.commands?.["sp-implement"]?.worktrees;
 		if (worktrees?.enabled === false) return false;
@@ -59,10 +55,7 @@ export function resolveSuperagentWorktreeEnabled(
  * @param config Extension config containing optional Superpowers settings.
  * @returns Resolved worktree root settings for the active workflow.
  */
-export function resolveSuperagentWorktreeRuntimeOptions(
-	workflow: WorkflowMode,
-	config: ExtensionConfig,
-): Omit<CreateWorktreesOptions, "agents"> {
+export function resolveSuperagentWorktreeRuntimeOptions(workflow: WorkflowMode, config: ExtensionConfig): Omit<CreateWorktreesOptions, "agents"> {
 	if (workflow !== "superpowers") return {};
 
 	const worktrees = config.superagents?.commands?.["sp-implement"]?.worktrees;
@@ -82,11 +75,7 @@ export function resolveSuperagentWorktreeRuntimeOptions(
  * @param input Workflow/config metadata plus the agent labels for the worktree batch.
  * @returns Concrete options for createWorktrees().
  */
-export function resolveSuperagentWorktreeCreateOptions(input: {
-	workflow: WorkflowMode;
-	config: ExtensionConfig;
-	agents: string[];
-}): CreateWorktreesOptions {
+export function resolveSuperagentWorktreeCreateOptions(input: { workflow: WorkflowMode; config: ExtensionConfig; agents: string[] }): CreateWorktreesOptions {
 	return {
 		agents: input.agents,
 		...resolveSuperagentWorktreeRuntimeOptions(input.workflow, input.config),

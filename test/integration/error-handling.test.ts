@@ -186,11 +186,7 @@ void describe("runSync error handling", { skip: !piAvailable ? "pi packages not 
 
 	void it("detectSubagentError overrides exit 0 on hidden failure", async () => {
 		mockPi.onCall({
-			jsonl: [
-				events.toolStart("bash", { command: "deploy" }),
-				events.toolEnd("bash"),
-				events.toolResult("bash", "connection refused"),
-			],
+			jsonl: [events.toolStart("bash", { command: "deploy" }), events.toolEnd("bash"), events.toolResult("bash", "connection refused")],
 		});
 		const agents = makeAgentConfigs(["deployer"]);
 

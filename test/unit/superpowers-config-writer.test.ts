@@ -4,12 +4,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-	setSuperpowersModelTierModel,
-	toggleSuperpowersBoolean,
-	toggleSuperpowersWorktrees,
-	updateSuperpowersConfigText,
-} from "../../src/superpowers/config-writer.ts";
+import { setSuperpowersModelTierModel, toggleSuperpowersBoolean, toggleSuperpowersWorktrees, updateSuperpowersConfigText } from "../../src/superpowers/config-writer.ts";
 
 void describe("Superpowers config writer", () => {
 	void it("toggles useSubagents without changing other settings", () => {
@@ -47,9 +42,7 @@ void describe("Superpowers config writer", () => {
 	});
 
 	void it("creates superagents settings from an empty override", () => {
-		const updated = updateSuperpowersConfigText("{}", (config) =>
-			toggleSuperpowersBoolean(config, "useTestDrivenDevelopment"),
-		);
+		const updated = updateSuperpowersConfigText("{}", (config) => toggleSuperpowersBoolean(config, "useTestDrivenDevelopment"));
 		assert.deepEqual(JSON.parse(updated), {
 			superagents: {
 				commands: {
@@ -84,9 +77,8 @@ void describe("Superpowers config writer", () => {
 	});
 
 	void it("updates an object model tier while preserving thinking", () => {
-		const updated = updateSuperpowersConfigText(
-			'{\n  "superagents": {\n    "modelTiers": {\n      "fast": { "model": "a", "thinking": "low" }\n    }\n  }\n}\n',
-			(config) => setSuperpowersModelTierModel(config, "fast", "b"),
+		const updated = updateSuperpowersConfigText('{\n  "superagents": {\n    "modelTiers": {\n      "fast": { "model": "a", "thinking": "low" }\n    }\n  }\n}\n', (config) =>
+			setSuperpowersModelTierModel(config, "fast", "b"),
 		);
 		assert.deepEqual(JSON.parse(updated), {
 			superagents: {
@@ -98,9 +90,8 @@ void describe("Superpowers config writer", () => {
 	});
 
 	void it("converts a string model tier to object form", () => {
-		const updated = updateSuperpowersConfigText(
-			'{\n  "superagents": {\n    "modelTiers": { "fast": "a" }\n  }\n}\n',
-			(config) => setSuperpowersModelTierModel(config, "fast", "b"),
+		const updated = updateSuperpowersConfigText('{\n  "superagents": {\n    "modelTiers": { "fast": "a" }\n  }\n}\n', (config) =>
+			setSuperpowersModelTierModel(config, "fast", "b"),
 		);
 		assert.deepEqual(JSON.parse(updated), {
 			superagents: {
@@ -112,9 +103,7 @@ void describe("Superpowers config writer", () => {
 	});
 
 	void it("creates missing model tier containers", () => {
-		const updated = updateSuperpowersConfigText('{\n  "superagents": {}\n}\n', (config) =>
-			setSuperpowersModelTierModel(config, "fast", "b"),
-		);
+		const updated = updateSuperpowersConfigText('{\n  "superagents": {}\n}\n', (config) => setSuperpowersModelTierModel(config, "fast", "b"));
 		assert.deepEqual(JSON.parse(updated), {
 			superagents: {
 				modelTiers: {

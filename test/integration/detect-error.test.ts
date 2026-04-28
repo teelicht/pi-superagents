@@ -61,19 +61,12 @@ void describe("detectSubagentError", { skip: !available ? "utils not importable"
 	});
 
 	void it("returns no error when all tool results succeed", () => {
-		const messages = [
-			toolResult("read", "file contents here"),
-			toolResult("bash", "ls output"),
-			toolResult("read", "more contents"),
-		];
+		const messages = [toolResult("read", "file contents here"), toolResult("bash", "ls output"), toolResult("read", "more contents")];
 		assert.equal(detectSubagentError!(messages).hasError, false);
 	});
 
 	void it("detects isError tool result as failure (no assistant response)", () => {
-		const messages = [
-			toolResult("read", "file contents"),
-			toolResult("read", "EISDIR: illegal operation on a directory, read", true),
-		];
+		const messages = [toolResult("read", "file contents"), toolResult("read", "EISDIR: illegal operation on a directory, read", true)];
 		const result = detectSubagentError!(messages);
 		assert.equal(result.hasError, true);
 		assert.equal(result.errorType, "read");
@@ -124,10 +117,7 @@ void describe("detectSubagentError", { skip: !available ? "utils not importable"
 	});
 
 	void it("ignores bash fatal pattern when agent responded after", () => {
-		const messages = [
-			toolResult("bash", "ls: permission denied: /root/secret"),
-			assistantMsg("I couldn't access /root/secret, but I found the data elsewhere."),
-		];
+		const messages = [toolResult("bash", "ls: permission denied: /root/secret"), assistantMsg("I couldn't access /root/secret, but I found the data elsewhere.")];
 		const result = detectSubagentError!(messages);
 		assert.equal(result.hasError, false, "fatal pattern before agent's text response = recovered");
 	});
@@ -135,22 +125,14 @@ void describe("detectSubagentError", { skip: !available ? "utils not importable"
 	// ---- Errors AFTER the last assistant text response are still caught ----
 
 	void it("detects error after agent's last text response", () => {
-		const messages = [
-			assistantMsg("Here is my analysis..."),
-			toolResult("bash", "rm -rf /important", false),
-			toolResult("bash", "error: process exited with code 1", false),
-		];
+		const messages = [assistantMsg("Here is my analysis..."), toolResult("bash", "rm -rf /important", false), toolResult("bash", "error: process exited with code 1", false)];
 		const result = detectSubagentError!(messages);
 		assert.equal(result.hasError, true);
 		assert.equal(result.exitCode, 1);
 	});
 
 	void it("detects isError after agent's last text response", () => {
-		const messages = [
-			toolResult("read", "file ok"),
-			assistantMsg("Let me try one more thing..."),
-			toolResult("write", "Permission denied", true),
-		];
+		const messages = [toolResult("read", "file ok"), assistantMsg("Let me try one more thing..."), toolResult("write", "Permission denied", true)];
 		const result = detectSubagentError!(messages);
 		assert.equal(result.hasError, true);
 		assert.equal(result.errorType, "write");
@@ -169,11 +151,7 @@ void describe("detectSubagentError", { skip: !available ? "utils not importable"
 		// The error at index 0 should still be detected because the tool-call-only
 		// assistant message doesn't count as recovery. The final tool result is
 		// successful to ensure this test actually distinguishes correct behavior.
-		const messages = [
-			toolResult("bash", "permission denied: /etc/shadow"),
-			assistantToolCall("bash"),
-			toolResult("bash", "command succeeded"),
-		];
+		const messages = [toolResult("bash", "permission denied: /etc/shadow"), assistantToolCall("bash"), toolResult("bash", "command succeeded")];
 		const result = detectSubagentError!(messages);
 		assert.equal(result.hasError, true, "tool-call assistant message without text is not a recovery");
 	});

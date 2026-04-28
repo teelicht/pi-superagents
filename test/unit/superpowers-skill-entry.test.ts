@@ -12,12 +12,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-	buildResolvedSkillEntryPrompt,
-	buildSkillEntryPromptInput,
-	parseSkillCommandInput,
-	shouldInterceptSkillCommand,
-} from "../../src/superpowers/skill-entry.ts";
+import { buildResolvedSkillEntryPrompt, buildSkillEntryPromptInput, parseSkillCommandInput, shouldInterceptSkillCommand } from "../../src/superpowers/skill-entry.ts";
 
 void describe("Superpowers skill entry helpers", () => {
 	void it("parses direct /skill commands", () => {
@@ -160,9 +155,7 @@ void describe("Superpowers skill entry helpers", () => {
 			profile,
 			resolveSkill: (_cwd, name) => skills.get(name),
 			resolveSkillNames: (names) => {
-				const resolved = names
-					.map((name) => skills.get(name))
-					.filter((skill): skill is NonNullable<typeof skill> => Boolean(skill));
+				const resolved = names.map((name) => skills.get(name)).filter((skill): skill is NonNullable<typeof skill> => Boolean(skill));
 				const missing = names.filter((name) => !skills.has(name));
 				return { resolved, missing };
 			},

@@ -84,13 +84,7 @@ void test("SuperpowersSettingsComponent renders settings in a framed panel", () 
 		},
 	};
 
-	const component = new SuperpowersSettingsComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		getConfigForTest(config),
-		{ models: [] },
-	);
+	const component = new SuperpowersSettingsComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, getConfigForTest(config), { models: [] });
 
 	const rendered = component.render(100).join("\n");
 	assert.match(rendered, /Superpowers Settings/);
@@ -107,11 +101,7 @@ void test("SuperpowersSettingsComponent renders settings in a framed panel", () 
 void test("SuperpowersSettingsComponent writes setting toggles to config", () => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-settings-"));
 	const configPath = path.join(dir, "config.json");
-	fs.writeFileSync(
-		configPath,
-		'{\n  "superagents": { "commands": { "sp-implement": { "useSubagents": true, "worktrees": { "enabled": false } } } }\n}\n',
-		"utf-8",
-	);
+	fs.writeFileSync(configPath, '{\n  "superagents": { "commands": { "sp-implement": { "useSubagents": true, "worktrees": { "enabled": false } } } }\n}\n', "utf-8");
 
 	const config: ExtensionConfig = {
 		superagents: {
@@ -123,13 +113,7 @@ void test("SuperpowersSettingsComponent writes setting toggles to config", () =>
 	};
 
 	const tuiMock = createTuiMock();
-	const component = new SuperpowersSettingsComponent(
-		tuiMock as never,
-		createThemeMock() as never,
-		createState(configPath) as never,
-		getConfigForTest(config),
-		{ models: [] },
-	);
+	const component = new SuperpowersSettingsComponent(tuiMock as never, createThemeMock() as never, createState(configPath) as never, getConfigForTest(config), { models: [] });
 
 	component.toggleUseSubagents();
 	component.toggleWorktrees();
@@ -150,13 +134,7 @@ void test("SuperpowersSettingsComponent writes setting toggles to config", () =>
 void test("SuperpowersSettingsComponent reports unavailable config path", () => {
 	const config: ExtensionConfig = { superagents: {} };
 
-	const component = new SuperpowersSettingsComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		getConfigForTest(config),
-		{ models: [] },
-	);
+	const component = new SuperpowersSettingsComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, getConfigForTest(config), { models: [] });
 
 	component.toggleUseSubagents();
 
@@ -183,22 +161,12 @@ void test("SuperpowersSettingsComponent writes model tier selections and reloads
 	};
 
 	const tuiMock = createTuiMock();
-	const component = new SuperpowersSettingsComponent(
-		tuiMock as never,
-		createThemeMock() as never,
-		createState(configPath) as never,
-		getConfigForTest(config),
-		{
-			models: [
-				createModel("opencode-go", "minimax-m2.7", "MiniMax M2.7"),
-				createModel("opencode-go", "glm-5.1", "GLM-5.1"),
-				createModel("openai", "gpt-5.4", "GPT-5.4"),
-			],
-			reloadConfig: () => {
-				_reloadCount++;
-			},
+	const component = new SuperpowersSettingsComponent(tuiMock as never, createThemeMock() as never, createState(configPath) as never, getConfigForTest(config), {
+		models: [createModel("opencode-go", "minimax-m2.7", "MiniMax M2.7"), createModel("opencode-go", "glm-5.1", "GLM-5.1"), createModel("openai", "gpt-5.4", "GPT-5.4")],
+		reloadConfig: () => {
+			_reloadCount++;
 		},
-	);
+	});
 
 	// First verify initial state shows "cheap" tier entry
 	const rendered = component.render(92).join("\n");
@@ -229,18 +197,9 @@ void test("SuperpowersSettingsComponent selects and navigates model tiers", () =
 		},
 	};
 	const tuiMock = createTuiMock();
-	const component = new SuperpowersSettingsComponent(
-		tuiMock as never,
-		createThemeMock() as never,
-		createState() as never,
-		getConfigForTest(config),
-		{
-			models: [
-				createModel("opencode", "minimax-m2.5-free", "MiniMax free"),
-				createModel("opencode-go", "minimax-m2.7", "MiniMax M2.7"),
-			],
-		},
-	);
+	const component = new SuperpowersSettingsComponent(tuiMock as never, createThemeMock() as never, createState() as never, getConfigForTest(config), {
+		models: [createModel("opencode", "minimax-m2.5-free", "MiniMax free"), createModel("opencode-go", "minimax-m2.7", "MiniMax M2.7")],
+	});
 
 	component.handleInput("m");
 	let rendered = component.render(92).join("\n");
@@ -267,16 +226,10 @@ void test("SuperpowersSettingsComponent reports when no models are available", (
 		},
 	};
 
-	const component = new SuperpowersSettingsComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		getConfigForTest(config),
-		{
-			models: [],
-			modelRegistryError: undefined,
-		},
-	);
+	const component = new SuperpowersSettingsComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, getConfigForTest(config), {
+		models: [],
+		modelRegistryError: undefined,
+	});
 
 	const rendered = component.render(92).join("\n");
 	// Should show a message when no model options available

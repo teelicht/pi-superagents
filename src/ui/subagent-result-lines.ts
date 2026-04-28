@@ -51,14 +51,11 @@ interface SubagentDisplaySummary {
  * @param options Expansion state and current rendering width.
  * @returns Lines ready to wrap in a TUI Text component.
  */
-export function renderSubagentResultLines(
-	result: AgentToolResult<Details>,
-	options: RenderSubagentResultLinesOptions,
-): string[] {
+export function renderSubagentResultLines(result: AgentToolResult<Details>, options: RenderSubagentResultLinesOptions): string[] {
 	const details = result.details;
 	if (!details || details.results.length === 0) {
 		const text = result.content[0]?.type === "text" ? result.content[0].text : "(no output)";
-		const prefix = details?.sessionMode === "fork" || details?.context === "fork" ? "[fork] " : "";
+		const prefix = details?.sessionMode === "fork" ? "[fork] " : "";
 		return [truncateLine(`${prefix}${text}`, options.width)];
 	}
 
@@ -133,9 +130,7 @@ function summarizeDetails(details: Details, rows: SubagentDisplayRow[]): Subagen
 	const totalCount = Math.max(rows.length, details.results.length);
 	const okCount = rows.filter((row) => row.status === "completed" && row.result?.exitCode !== 1).length;
 	const hasRunning = rows.some((row) => row.status === "running" || row.status === "pending");
-	const hasFailure = rows.some(
-		(row) => row.status === "failed" || (row.result !== undefined && row.result.exitCode !== 0),
-	);
+	const hasFailure = rows.some((row) => row.status === "failed" || (row.result !== undefined && row.result.exitCode !== 0));
 	const hasEmptyOutput = rows.some((row) => row.result?.exitCode === 0 && !getSingleResultOutput(row.result).trim());
 	const fallbackSummary = rows.reduce(
 		(acc, row) => {
@@ -169,7 +164,7 @@ function summarizeDetails(details: Details, rows: SubagentDisplayRow[]): Subagen
 		hasEmptyOutput,
 		toolCount: aggregate.toolCount,
 		durationMs: aggregate.durationMs,
-		contextLabel: details.sessionMode === "fork" || details.context === "fork" ? " [fork]" : "",
+		contextLabel: details.sessionMode === "fork" ? " [fork]" : "",
 	};
 }
 
@@ -221,8 +216,7 @@ function renderExpandedLines(summary: SubagentDisplaySummary, rows: SubagentDisp
  */
 function formatExpandedRow(row: SubagentDisplayRow): string {
 	const summary = row.summary;
-	const stats =
-		summary && summary.toolCount > 0 ? `  ${summary.toolCount} tools  ${formatDuration(summary.durationMs)}` : "";
+	const stats = summary && summary.toolCount > 0 ? `  ${summary.toolCount} tools  ${formatDuration(summary.durationMs)}` : "";
 	return `- ${row.status}  ${row.agent}  ${row.task}${stats}`;
 }
 
@@ -299,8 +293,7 @@ function formatHeader(summary: SubagentDisplaySummary): string {
  */
 function formatCollapsedRow(row: SubagentDisplayRow, includeStatus: boolean): string {
 	const summary = row.summary;
-	const stats =
-		summary && summary.toolCount > 0 ? `  ${summary.toolCount} tools  ${formatDuration(summary.durationMs)}` : "";
+	const stats = summary && summary.toolCount > 0 ? `  ${summary.toolCount} tools  ${formatDuration(summary.durationMs)}` : "";
 	const status = includeStatus ? `${row.status}  ` : "";
 	return `- ${status}${row.agent}  ${row.task}${stats}`;
 }

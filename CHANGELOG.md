@@ -2,9 +2,19 @@
 
 ## [7.0.0] - 2026-04-27
 
-- **Lineage-Only Packets**
+- **Lineage-Only Communication**
   - Bounded Superpowers roles now default to `session-mode: lineage-only`. Child sessions stay linked to the parent for `/tree`, but they do not inherit parent conversation turns.
   - Work briefs are delivered through runtime-managed packet artifacts under the session artifact directory and cleaned up automatically after the child exits.
+- **Executor Consolidation**
+  - Extracted shared per-task execution pipeline into `runChild()` — used by both single and parallel paths for `prepareLaunch → runSync → cleanup → annotate`.
+  - Extracted `executor-validation.ts` with session-mode decorators (`withSessionModeDetails`, `withSingleResultSessionMode`, `withProgressResultSessionMode`) and validation helpers (`validateExecutionInput`, `toExecutionErrorResult`, `buildParallelModeError`).
+  - Removed inline duplicates of parallel worktree helpers and `buildParallelModeError` — now imported from `worktree.ts` and `executor-validation.ts`.
+  - Kept all execution paths in `subagent-executor.ts` (single file, no over-fragmentation) — reduced from ~940 to ~770 lines.
+  - Removed dead code: `_buildRequestedModeError`, `_cleanTask`, commented `fs` import, `LegacyExecutionContext`.
+  - Removed `context` field from `SubagentParamsLike`, `Details`, `resolveRequestedSessionMode`, and UI renderer.
+  - Migrated `fork-context-execution.test.ts` from `context` to `sessionMode`.
+  - Cleaned `ExecutorDeps`: removed unused `pi`, `expandTilde`, `tempArtifactsDir`, `config?`.
+- Bump devDependencies for pi-mono packages from ^0.69.0 to ^0.70.0
 
 ## [0.6.3] - 2026-04-23
 

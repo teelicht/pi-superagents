@@ -37,9 +37,7 @@ let discoverAgents: ((cwd: string) => AgentDiscoveryResult) | undefined;
 let discoverAgentsAll: ((cwd: string) => AgentDiscoveryAllResult) | undefined;
 let resolveSkillPath: ((skillName: string, cwd: string) => ResolvedSkill | null | undefined) | undefined;
 let clearSkillCache: (() => void) | undefined;
-let discoverAvailableSkills:
-	| ((cwd: string) => Array<{ name: string; source: string; description?: string }>)
-	| undefined;
+let discoverAvailableSkills: ((cwd: string) => Array<{ name: string; source: string; description?: string }>) | undefined;
 let moduleLoadError: unknown;
 
 const originalHome = process.env.HOME;
@@ -91,10 +89,7 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 
 		const skillsDir = path.join(cwdDir, ".agents", "skills");
 		fs.mkdirSync(skillsDir, { recursive: true });
-		fs.writeFileSync(
-			path.join(skillsDir, "test-skill-1.md"),
-			"---\nname: test-skill-1\ndescription: test desc\n---\nSkill content",
-		);
+		fs.writeFileSync(path.join(skillsDir, "test-skill-1.md"), "---\nname: test-skill-1\ndescription: test desc\n---\nSkill content");
 
 		clearSkillCache!();
 		const resolved = resolveSkillPath!("test-skill-1", cwdDir);
@@ -111,10 +106,7 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 
 		const userSkillsDir = path.join(fakeUserAgentsDir, "skills");
 		fs.mkdirSync(userSkillsDir, { recursive: true });
-		fs.writeFileSync(
-			path.join(userSkillsDir, "test-skill-2.md"),
-			"---\nname: test-skill-2\ndescription: test desc\n---\nSkill content",
-		);
+		fs.writeFileSync(path.join(userSkillsDir, "test-skill-2.md"), "---\nname: test-skill-2\ndescription: test desc\n---\nSkill content");
 
 		clearSkillCache!();
 		const resolved = resolveSkillPath!("test-skill-2", cwdDir);
@@ -131,10 +123,7 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 
 		const agentsDir = path.join(cwdDir, ".agents");
 		fs.mkdirSync(agentsDir, { recursive: true });
-		fs.writeFileSync(
-			path.join(agentsDir, "test-agent-1.md"),
-			"---\nname: test-agent-1\ndescription: Test agent\n---\nAgent content",
-		);
+		fs.writeFileSync(path.join(agentsDir, "test-agent-1.md"), "---\nname: test-agent-1\ndescription: Test agent\n---\nAgent content");
 
 		const result = discoverAgentsAll!(cwdDir);
 		const agent = result.project.find((candidate) => candidate.name === "test-agent-1");
@@ -147,10 +136,7 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 
 		const userAgentsDir = fakeUserAgentsDir;
 		fs.mkdirSync(userAgentsDir, { recursive: true });
-		fs.writeFileSync(
-			path.join(userAgentsDir, "test-agent-2.md"),
-			"---\nname: test-agent-2\ndescription: Test agent\n---\nAgent content",
-		);
+		fs.writeFileSync(path.join(userAgentsDir, "test-agent-2.md"), "---\nname: test-agent-2\ndescription: Test agent\n---\nAgent content");
 
 		const result = discoverAgentsAll!(cwdDir);
 		const agent = result.user.find((candidate) => candidate.name === "test-agent-2");
@@ -177,14 +163,7 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 	void test("should resolve built-in bounded agents with lineage-only session-mode", () => {
 		assertModulesLoaded();
 
-		const boundedAgentNames = [
-			"sp-recon",
-			"sp-research",
-			"sp-implementer",
-			"sp-spec-review",
-			"sp-code-review",
-			"sp-debug",
-		];
+		const boundedAgentNames = ["sp-recon", "sp-research", "sp-implementer", "sp-spec-review", "sp-code-review", "sp-debug"];
 
 		const result = discoverAgents!(cwdDir);
 		for (const agentName of boundedAgentNames) {

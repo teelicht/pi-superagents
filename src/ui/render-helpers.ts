@@ -68,28 +68,16 @@ function stylePanelRow(line: string, _width: number, theme: Theme): string {
  * @param footer Optional footer/help row shown above the bottom border.
  * @returns Fully framed string rows, each padded to the same visible width.
  */
-export function renderFramedPanel(
-	title: string,
-	bodyLines: string[],
-	width: number,
-	theme: Theme,
-	footer?: string,
-): string[] {
+export function renderFramedPanel(title: string, bodyLines: string[], width: number, theme: Theme, footer?: string): string[] {
 	const panelWidth = Math.max(12, width);
 	const innerWidth = panelWidth - 2;
-	const border = (left: string, fill: string, right: string): string =>
-		stylePanelRow(theme.fg("success", `${left}${fill.repeat(innerWidth)}${right}`), panelWidth, theme);
+	const border = (left: string, fill: string, right: string): string => stylePanelRow(theme.fg("success", `${left}${fill.repeat(innerWidth)}${right}`), panelWidth, theme);
 	const content = (text: string): string => {
 		const padded = truncateToWidth(text, innerWidth, "...", true);
 		return stylePanelRow(`${theme.fg("success", "│")}${padded}${theme.fg("success", "│")}`, panelWidth, theme);
 	};
 
-	const lines = [
-		border("┌", "─", "┐"),
-		content(` ${title}`),
-		border("├", "─", "┤"),
-		...bodyLines.map((line) => content(line.length === 0 ? "" : ` ${line}`)),
-	];
+	const lines = [border("┌", "─", "┐"), content(` ${title}`), border("├", "─", "┤"), ...bodyLines.map((line) => content(line.length === 0 ? "" : ` ${line}`))];
 
 	if (footer !== undefined) {
 		lines.push(border("├", "─", "┤"), content(` ${footer}`));

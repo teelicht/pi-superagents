@@ -42,8 +42,7 @@ function buildMetadata(input: SuperpowersRootPromptInput): string {
 	const lines: string[] = ['workflow: "superpowers"'];
 	if (input.useBranches !== undefined) lines.push(`useBranches: ${input.useBranches}`);
 	if (input.useSubagents !== undefined) lines.push(`useSubagents: ${input.useSubagents}`);
-	if (input.useTestDrivenDevelopment !== undefined)
-		lines.push(`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`);
+	if (input.useTestDrivenDevelopment !== undefined) lines.push(`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`);
 	if (input.usePlannotatorReview !== undefined) lines.push(`usePlannotatorReview: ${input.usePlannotatorReview}`);
 	if (input.worktrees !== undefined) lines.push(`worktrees.enabled: ${input.worktrees.enabled}`);
 	lines.push(`sessionMode: ${input.fork ? "fork" : "lineage-only"}`);
@@ -63,16 +62,7 @@ function buildSkillBootstrap(skill: SuperpowersRootPromptSkill | undefined): str
 			"using-superpowers could not be resolved. State this limitation briefly, then proceed with best-effort Superpowers behavior.",
 		].join("\n");
 	}
-	return [
-		"Required bootstrap skill:",
-		`Name: ${skill.name}`,
-		`Path: ${skill.path}`,
-		"",
-		"Skill content:",
-		"```markdown",
-		skill.content,
-		"```",
-	].join("\n");
+	return ["Required bootstrap skill:", `Name: ${skill.name}`, `Path: ${skill.path}`, "", "Skill content:", "```markdown", skill.content, "```"].join("\n");
 }
 
 /**
@@ -105,17 +95,7 @@ function buildEntrySkillBlock(input: SuperpowersRootPromptInput): string {
  */
 function buildOverlaySkillsBlock(overlaySkills: SuperpowersRootPromptSkill[] | undefined): string {
 	if (!overlaySkills || overlaySkills.length === 0) return "";
-	return [
-		"Overlay skills:",
-		...overlaySkills.flatMap((skill) => [
-			"",
-			`Name: ${skill.name}`,
-			`Path: ${skill.path}`,
-			"```markdown",
-			skill.content,
-			"```",
-		]),
-	].join("\n");
+	return ["Overlay skills:", ...overlaySkills.flatMap((skill) => ["", `Name: ${skill.name}`, `Path: ${skill.path}`, "```markdown", skill.content, "```"])].join("\n");
 }
 
 /**
@@ -289,8 +269,7 @@ export function buildSuperpowersVisiblePromptSummary(input: SuperpowersRootPromp
 	const configLines: string[] = [];
 	if (input.useBranches !== undefined) configLines.push(`useBranches: ${input.useBranches}`);
 	if (input.useSubagents !== undefined) configLines.push(`useSubagents: ${input.useSubagents}`);
-	if (input.useTestDrivenDevelopment !== undefined)
-		configLines.push(`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`);
+	if (input.useTestDrivenDevelopment !== undefined) configLines.push(`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`);
 	if (input.usePlannotatorReview !== undefined) configLines.push(`usePlannotatorReview: ${input.usePlannotatorReview}`);
 	if (input.worktrees !== undefined) configLines.push(`worktrees.enabled: ${input.worktrees.enabled}`);
 	configLines.push(`sessionMode: ${input.fork ? "fork" : "lineage-only"}`);

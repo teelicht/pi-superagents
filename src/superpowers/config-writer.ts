@@ -59,10 +59,7 @@ export function updateSuperpowersConfigText(rawText: string, update: (config: Mu
  * @param key - Boolean setting key to toggle.
  * @returns The same config reference, modified.
  */
-export function toggleSuperpowersBoolean(
-	config: MutableConfig,
-	key: "useSubagents" | "useTestDrivenDevelopment" | "usePlannotator",
-): MutableConfig {
+export function toggleSuperpowersBoolean(config: MutableConfig, key: "useSubagents" | "useTestDrivenDevelopment" | "usePlannotator"): MutableConfig {
 	const settings = ensureSuperagents(config);
 	settings.commands ??= {};
 	settings.commands["sp-implement"] ??= {};

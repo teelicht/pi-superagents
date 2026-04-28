@@ -168,10 +168,7 @@ Creative problem solving skill.`,
 
 		const notifications: string[] = [];
 		const ctx = createCtx(cwd, notifications);
-		const result = (inputHandler as InputHandler)(
-			{ text: "/skill:brainstorming design middleware", source: "interactive" },
-			ctx,
-		);
+		const result = (inputHandler as InputHandler)({ text: "/skill:brainstorming design middleware", source: "interactive" }, ctx);
 
 		assert.deepEqual(result, { action: "handled" });
 		assert.equal(mock.userMessages.length, 1);
@@ -182,10 +179,7 @@ Creative problem solving skill.`,
 
 		const hidden = mock.lifecycle
 			.get("before_agent_start")
-			?.map(
-				(handler) =>
-					handler({ prompt: mock.userMessages[0] }) as { message?: { content: string; display: boolean } } | undefined,
-			)
+			?.map((handler) => handler({ prompt: mock.userMessages[0] }) as { message?: { content: string; display: boolean } } | undefined)
 			.find((entry) => entry?.message);
 		assert.equal(hidden?.message?.display, false);
 		assert.match(hidden?.message?.content ?? "", /Entry skill:/);
@@ -203,20 +197,8 @@ Creative problem solving skill.`,
 		const inputHandler = mock.lifecycle.get("input")?.[0];
 		assert.ok(inputHandler, "expected input handler to be registered");
 
-		assert.deepEqual(
-			(inputHandler as InputHandler)(
-				{ text: "/skill:brainstorming design middleware", source: "interactive" },
-				createCtx(cwd),
-			),
-			{ action: "continue" },
-		);
-		assert.deepEqual(
-			(inputHandler as InputHandler)(
-				{ text: "/skill:brainstorming design middleware", source: "extension" },
-				createCtx(cwd),
-			),
-			{ action: "continue" },
-		);
+		assert.deepEqual((inputHandler as InputHandler)({ text: "/skill:brainstorming design middleware", source: "interactive" }, createCtx(cwd)), { action: "continue" });
+		assert.deepEqual((inputHandler as InputHandler)({ text: "/skill:brainstorming design middleware", source: "extension" }, createCtx(cwd)), { action: "continue" });
 		assert.equal(mock.userMessages.length, 0);
 	});
 });

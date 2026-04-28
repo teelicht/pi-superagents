@@ -11,7 +11,7 @@ These are the parameters the **LLM agent** passes when it calls the `subagent` t
 | `tasks`           | `TaskItem[]`                            | -                         | Array of tasks for parallel execution. Each item must specify `agent` and `task`. |
 | `workflow`        | `"superpowers"`                         | `"superpowers"`           | Explicitly marks the run as a Superpowers workflow. Only `superpowers` is supported. |
 | `useTestDrivenDevelopment` | boolean                        | config-derived, usually `true` | Enables test-driven development guidance for `sp-implementer` tasks. |
-| `context`         | `"fresh" \| "fork"`                     | `"fresh"`                 | Execution context mode. `"fork"` branches from the current parent session. |
+| `sessionMode`     | `"standalone" \| "lineage-only" \| "fork"` | `"lineage-only"` (bounded roles) | Child session visibility mode. `lineage-only` links to parent session tree without inheriting conversation turns; `fork` inherits full parent history; `standalone` is fully isolated. |
 | `cwd`             | string                                  | parent cwd                | Working directory for the subagent. |
 | `skill`           | `string \| string[] \| false`           | agent default             | Skills to inject into the agent prompt. `false` disables all skills. |
 | `model`           | string                                  | agent default             | Override the model for this specific run. Can be a concrete ID or a tier name (`cheap`, `balanced`, `max`). |
@@ -19,6 +19,8 @@ These are the parameters the **LLM agent** passes when it calls the `subagent` t
 | `includeProgress` | boolean                                 | `false`                   | Whether to include full internal progress metadata in the result. |
 
 Resolved skills, including per-call `skill` overrides and configured overlays, are shown in `/subagents-status` for active and recent subagent runs. Missing skills are shown as warnings there.
+
+Provide either `agent` plus `task` for a single delegation, or `tasks` for parallel delegation. The runtime validates this selector after Pi accepts the tool call; the machine-readable schema stays intentionally simple for host compatibility.
 
 Subagent output is inline: the child Pi process streams assistant text back through the `subagent` tool result. The tool does not accept an output-file parameter and does not instruct Superpowers roles to write repo-root report files.
 
@@ -32,13 +34,19 @@ Subagent output is inline: the child Pi process streams assistant text back thro
 | `model` | string  | Optional model/tier override for this task. |
 | `skill` | mixed   | Optional skill override for this task. |
 
-## Context: Fork
+## Session Mode
 
-`context: "fork"` branches the session from the current parent state. This allows the subagent to "see" the prior conversation history as read-only context while working in its own isolated branch. This is highly recommended for complex tasks where the subagent needs the full background of the current session.
+`sessionMode` controls how much of the parent session the subagent receives:
+
+- **`lineage-only`** (default for bounded roles): The child session is linked to the parent for `/tree` visibility, but it does not inherit parent conversation turns. The child receives a curated work-brief packet instead. This is the recommended default for bounded Superpowers roles.
+- **`fork`**: The child inherits the full parent conversation history as read-only context, working in its own isolated branch. Useful when the subagent genuinely needs the full session background.
+- **`standalone`**: Fully isolated session with no parent linkage or inherited context.
 
 ## Artifacts
 
 When `artifacts` is enabled, Pi Superagents stores debugging input, output, JSONL, and metadata files in the session artifact directory. These artifacts are separate from the repository working tree and replace the older file-handoff pattern that wrote `implementer-report.md`, `spec-review.md`, or `code-review.md` into the project root.
+
+Work briefs for bounded roles are also delivered as packet files under `<session-artifacts-dir>/packets/`. The runtime creates these packets before launching the child, passes the packet path to the child as its input brief, and cleans them up automatically when the child exits.
 
 ## Review Bridge Tools
 

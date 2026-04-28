@@ -88,9 +88,7 @@ export function detectSubagentError(messages: Message[]): ErrorInfo {
 	for (let i = messages.length - 1; i >= 0; i--) {
 		const msg = messages[i];
 		if (msg.role === "assistant") {
-			const hasText =
-				Array.isArray(msg.content) &&
-				msg.content.some((c) => c.type === "text" && "text" in c && c.text.trim().length > 0);
+			const hasText = Array.isArray(msg.content) && msg.content.some((c) => c.type === "text" && "text" in c && c.text.trim().length > 0);
 			if (hasText) {
 				lastAssistantTextIndex = i;
 				break;

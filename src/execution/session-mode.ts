@@ -14,7 +14,7 @@
 import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { LegacyExecutionContext, SessionMode, TaskDeliveryMode } from "../shared/types.ts";
+import type { SessionMode, TaskDeliveryMode } from "../shared/types.ts";
 
 export interface SessionLaunchManager {
 	getSessionFile(): string | undefined;
@@ -23,11 +23,7 @@ export interface SessionLaunchManager {
 }
 
 export interface SessionLaunchResolver {
-	sessionFileForIndex(input: {
-		sessionMode: SessionMode;
-		index?: number;
-		childCwd: string;
-	}): string | undefined;
+	sessionFileForIndex(input: { sessionMode: SessionMode; index?: number; childCwd: string }): string | undefined;
 }
 
 /**
@@ -35,24 +31,16 @@ export interface SessionLaunchResolver {
  *
  * Precedence is:
  * 1. explicit `sessionMode`
- * 2. deprecated `context` alias
- * 3. agent frontmatter default
- * 4. system default
+ * 2. agent frontmatter default
+ * 3. system default
  *
  * @param input Session-mode inputs gathered from callers and agent config.
  * @returns Effective session mode for the child launch.
  */
-export function resolveRequestedSessionMode(input: {
-	sessionMode?: unknown;
-	context?: unknown;
-	agentSessionMode?: SessionMode;
-	defaultSessionMode?: SessionMode;
-}): SessionMode {
+export function resolveRequestedSessionMode(input: { sessionMode?: unknown; agentSessionMode?: SessionMode; defaultSessionMode?: SessionMode }): SessionMode {
 	if (input.sessionMode === "standalone" || input.sessionMode === "lineage-only" || input.sessionMode === "fork") {
 		return input.sessionMode;
 	}
-	if (input.context === "fork") return "fork";
-	if (input.context === "fresh") return "standalone";
 	return input.agentSessionMode ?? input.defaultSessionMode ?? "standalone";
 }
 
@@ -71,11 +59,7 @@ export function resolveTaskDeliveryMode(sessionMode: SessionMode): TaskDeliveryM
  *
  * @param params Parent/session metadata for the child launch.
  */
-export function seedLineageOnlySessionFile(params: {
-	parentSessionFile: string;
-	childSessionFile: string;
-	childCwd: string;
-}): void {
+export function seedLineageOnlySessionFile(params: { parentSessionFile: string; childSessionFile: string; childCwd: string }): void {
 	const header = {
 		type: "session",
 		version: 3,
@@ -106,23 +90,12 @@ function getLineageOnlySessionPath(sessionRoot: string, index: number): string {
  * @param input Runtime launch dependencies for child session creation.
  * @returns Resolver that returns the effective session file for each child index.
  */
-export function createSessionLaunchResolver(input: {
-	sessionManager: SessionLaunchManager;
-	sessionRoot: string;
-}): SessionLaunchResolver {
+export function createSessionLaunchResolver(input: { sessionManager: SessionLaunchManager; sessionRoot: string }): SessionLaunchResolver {
 	const forkedSessionFiles = new Map<number, string>();
 	const lineageOnlySessionFiles = new Map<number, string>();
 
 	return {
-		sessionFileForIndex({
-			sessionMode,
-			index = 0,
-			childCwd,
-		}: {
-			sessionMode: SessionMode;
-			index?: number;
-			childCwd: string;
-		}): string | undefined {
+		sessionFileForIndex({ sessionMode, index = 0, childCwd }: { sessionMode: SessionMode; index?: number; childCwd: string }): string | undefined {
 			if (sessionMode === "standalone") return undefined;
 
 			const parentSessionFile = input.sessionManager.getSessionFile();

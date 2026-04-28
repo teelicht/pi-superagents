@@ -30,9 +30,7 @@ interface HarnessCompatibleSession {
 	session?: {
 		_modelRegistry?: {
 			hasConfiguredAuth?: (model: unknown) => boolean;
-			getApiKeyAndHeaders?: (
-				model: unknown,
-			) => Promise<{ ok: boolean; apiKey?: string; headers?: Record<string, string> }>;
+			getApiKeyAndHeaders?: (model: unknown) => Promise<{ ok: boolean; apiKey?: string; headers?: Record<string, string> }>;
 			getApiKeyForProvider?: (provider: string) => Promise<string | undefined>;
 			getApiKey?: (provider: string) => Promise<string | undefined>;
 		};

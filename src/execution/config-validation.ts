@@ -28,26 +28,12 @@ export interface FormatConfigDiagnosticsOptions {
 
 const TOP_LEVEL_KEYS = new Set(["superagents"]);
 
-const SUPERAGENTS_KEYS = new Set([
-	"commands",
-	"modelTiers",
-	"skillOverlays",
-	"interceptSkillCommands",
-	"superpowersSkills",
-]);
+const SUPERAGENTS_KEYS = new Set(["commands", "modelTiers", "skillOverlays", "interceptSkillCommands", "superpowersSkills"]);
 
 /** Skills that can be intercepted for direct command interception. */
 const SUPPORTED_INTERCEPTED_SKILLS = new Set(["brainstorming", "writing-plans"]);
 
-const COMMAND_PRESET_KEYS = new Set([
-	"description",
-	"entrySkill",
-	"useBranches",
-	"useSubagents",
-	"useTestDrivenDevelopment",
-	"usePlannotator",
-	"worktrees",
-]);
+const COMMAND_PRESET_KEYS = new Set(["description", "entrySkill", "useBranches", "useSubagents", "useTestDrivenDevelopment", "usePlannotator", "worktrees"]);
 
 const COMMAND_NAME_PATTERN = /^(?:superpowers-[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|sp-[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)$/;
 
@@ -122,12 +108,7 @@ function jsonEqual(left: unknown, right: unknown): boolean {
  * @param key Key to validate.
  * @param path Dot-separated config path.
  */
-function validateOptionalStringOrNull(
-	diagnostics: ConfigDiagnostic[],
-	config: Record<string, unknown>,
-	key: string,
-	path: string,
-): void {
+function validateOptionalStringOrNull(diagnostics: ConfigDiagnostic[], config: Record<string, unknown>, key: string, path: string): void {
 	if (!(key in config)) return;
 	const value = config[key];
 	if (value !== null && typeof value !== "string") {
@@ -156,8 +137,7 @@ function validateModelTier(diagnostics: ConfigDiagnostic[], value: unknown, path
 		return;
 	}
 	for (const key of Object.keys(value)) {
-		if (!MODEL_TIER_KEYS.has(key))
-			addError(diagnostics, `${path}.${key}`, "is not a supported config key.", "unknown_key");
+		if (!MODEL_TIER_KEYS.has(key)) addError(diagnostics, `${path}.${key}`, "is not a supported config key.", "unknown_key");
 	}
 	if (typeof value.model !== "string" || !value.model.trim()) {
 		addError(diagnostics, `${path}.model`, "must be a non-empty string.");
@@ -272,11 +252,7 @@ function validateInterceptSkillCommands(diagnostics: ConfigDiagnostic[], value: 
 			return;
 		}
 		if (!SUPPORTED_INTERCEPTED_SKILLS.has(entry)) {
-			addError(
-				diagnostics,
-				`superagents.interceptSkillCommands[${index}]`,
-				"must be one of: brainstorming, writing-plans.",
-			);
+			addError(diagnostics, `superagents.interceptSkillCommands[${index}]`, "must be one of: brainstorming, writing-plans.");
 		}
 	});
 }
@@ -324,11 +300,7 @@ export function validateConfigObject(rawConfig: unknown): ConfigValidationResult
 				} else {
 					for (const [commandName, commandValue] of Object.entries(commands)) {
 						if (!COMMAND_NAME_PATTERN.test(commandName)) {
-							addError(
-								diagnostics,
-								`superagents.commands.${commandName}`,
-								"must match superpowers-<name> or sp-<name> (lowercase alphanumeric and hyphens).",
-							);
+							addError(diagnostics, `superagents.commands.${commandName}`, "must match superpowers-<name> or sp-<name> (lowercase alphanumeric and hyphens).");
 						}
 						validateCommandPreset(diagnostics, commandValue, `superagents.commands.${commandName}`);
 					}
@@ -400,8 +372,7 @@ export function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfi
 	};
 
 	// Replace-not-merge for interceptSkillCommands
-	const mergedInterceptSkillCommands =
-		overrideSuperagents?.interceptSkillCommands ?? defaultSuperagents?.interceptSkillCommands ?? [];
+	const mergedInterceptSkillCommands = overrideSuperagents?.interceptSkillCommands ?? defaultSuperagents?.interceptSkillCommands ?? [];
 
 	const mergedSuperagents =
 		defaultSuperagents || overrideSuperagents
@@ -475,20 +446,10 @@ export function loadEffectiveConfig(defaults: ExtensionConfig, userConfig: unkno
  * @param options Config and example paths for repair guidance.
  * @returns Multi-line notification text.
  */
-export function formatConfigDiagnostics(
-	diagnostics: ConfigDiagnostic[],
-	options: FormatConfigDiagnosticsOptions,
-): string {
+export function formatConfigDiagnostics(diagnostics: ConfigDiagnostic[], options: FormatConfigDiagnosticsOptions): string {
 	const headline = diagnostics.some((diagnostic) => diagnostic.level === "error")
 		? "pi-superagents is disabled because config.json needs attention."
 		: "pi-superagents config.json has warnings.";
 	const body = diagnostics.map((diagnostic) => `- ${diagnostic.path}: ${diagnostic.message}`);
-	return [
-		headline,
-		`Path: ${options.configPath}`,
-		"",
-		...body,
-		"",
-		`See ${options.examplePath} for the current config shape.`,
-	].join("\n");
+	return [headline, `Path: ${options.configPath}`, "", ...body, "", `See ${options.examplePath} for the current config shape.`].join("\n");
 }

@@ -18,18 +18,13 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { EventEmitter } from "node:events";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import { resolveStepBehavior } from "../../src/execution/settings.ts";
-import {
-	buildSuperpowersPacketPlan,
-	injectSuperpowersPacketInstructions,
-	buildSuperpowersPacketContent,
-} from "../../src/execution/superpowers-packets.ts";
-import { getPacketPath, cleanupOldArtifacts } from "../../src/shared/artifacts.ts";
+import { buildSuperpowersPacketContent, buildSuperpowersPacketPlan, injectSuperpowersPacketInstructions } from "../../src/execution/superpowers-packets.ts";
+import { cleanupOldArtifacts, getPacketPath } from "../../src/shared/artifacts.ts";
 import { getAvailableSkillNames } from "../../src/shared/skills.ts";
 import type { Details } from "../../src/shared/types.ts";
 import type { MockPi } from "../support/helpers.ts";
@@ -119,11 +114,7 @@ void describe("superpowers packets", () => {
 	 */
 	void it("injects packet filenames into task text for implementer role", () => {
 		const packets = buildSuperpowersPacketPlan("sp-implementer");
-		const behavior = resolveStepBehavior(
-			{ name: "sp-implementer", description: "I", systemPrompt: "...", source: "builtin", filePath: "/tmp" },
-			{},
-			packets,
-		);
+		const behavior = resolveStepBehavior({ name: "sp-implementer", description: "I", systemPrompt: "...", source: "builtin", filePath: "/tmp" }, {}, packets);
 		const task = injectSuperpowersPacketInstructions("Implement the selected task.", behavior);
 		assert.ok(task.includes("task-brief.md"), "should reference task-brief.md");
 		assert.ok(!task.includes("[Write to:"), "should not inject [Write to:] instruction");
@@ -139,25 +130,15 @@ void describe("superpowers packets", () => {
 		const task = "Do something with context.md";
 		// sp-recon has output: false, meaning no injection expected
 		const packets = buildSuperpowersPacketPlan("sp-recon");
-		const behavior = resolveStepBehavior(
-			{ name: "sp-recon", description: "R", systemPrompt: "...", source: "builtin", filePath: "/tmp" },
-			{},
-			packets,
-		);
+		const behavior = resolveStepBehavior({ name: "sp-recon", description: "R", systemPrompt: "...", source: "builtin", filePath: "/tmp" }, {}, packets);
 		const injected = injectSuperpowersPacketInstructions(task, behavior);
 		// sp-recon output is false, so no output file instruction should be injected
 		assert.ok(!injected.includes("debug-brief.md"), "should not force debug-brief.md output");
 	});
 
 	void it("generates expected packet paths for subagents", () => {
-		assert.equal(
-			getPacketPath("/tmp/subagent-artifacts", "a1b2c3d4", "sp-implementer", 0),
-			"/tmp/subagent-artifacts/packets/a1b2c3d4_0_sp-implementer_packet.md",
-		);
-		assert.equal(
-			getPacketPath("/tmp/subagent-artifacts", "a1b2c3d4", "sp-code/review", 2),
-			"/tmp/subagent-artifacts/packets/a1b2c3d4_2_sp-code_review_packet.md",
-		);
+		assert.equal(getPacketPath("/tmp/subagent-artifacts", "a1b2c3d4", "sp-implementer", 0), "/tmp/subagent-artifacts/packets/a1b2c3d4_0_sp-implementer_packet.md");
+		assert.equal(getPacketPath("/tmp/subagent-artifacts", "a1b2c3d4", "sp-code/review", 2), "/tmp/subagent-artifacts/packets/a1b2c3d4_2_sp-code_review_packet.md");
 	});
 
 	void it("cleans up nested files during stale artifact cleanup", () => {
@@ -167,11 +148,11 @@ void describe("superpowers packets", () => {
 			fs.mkdirSync(packetsDir, { recursive: true });
 			const packetFile = path.join(packetsDir, "run_0_agent_packet.md");
 			fs.writeFileSync(packetFile, "content");
-			
+
 			// Set time to be explicitly older than cutoff
 			const past = Date.now() - 3 * 24 * 60 * 60 * 1000;
 			fs.utimesSync(packetFile, past / 1000, past / 1000);
-			
+
 			cleanupOldArtifacts(artifactsDir, 1);
 			assert.equal(fs.existsSync(packetFile), false, "nested packet file should be cleaned up");
 		} finally {
@@ -252,7 +233,6 @@ void describe(
 		 */
 		function makeExecutor(agents: any[], config: Record<string, unknown> = {}) {
 			return createSubagentExecutor({
-				pi: { events: new EventEmitter() },
 				state: {
 					baseCwd: tempDir,
 					currentSessionId: null,
@@ -263,10 +243,8 @@ void describe(
 						message: "",
 					},
 				},
-				config,
-				tempArtifactsDir: tempDir,
+				getConfig: () => config,
 				getSubagentSessionRoot: () => tempDir,
-				expandTilde: (filePath: string) => filePath,
 				discoverAgents: () => ({ agents }),
 			});
 		}
@@ -370,10 +348,7 @@ This skill should resolve from params.cwd.`,
 			assert.ok(!result.isError, JSON.stringify(result.content));
 			assert.equal(result.details.mode, "single");
 			assert.ok(result.details.results.length > 0, "should have results");
-			assert.ok(
-				result.details.results[0].skills?.includes("child-only-skill"),
-				"single-task result should publish skills resolved from params.cwd",
-			);
+			assert.ok(result.details.results[0].skills?.includes("child-only-skill"), "single-task result should publish skills resolved from params.cwd");
 		});
 
 		void it("injects superpowers packet instructions into foreground parallel tasks", async () => {
@@ -575,14 +550,8 @@ description: Task cwd scoped test skill
 This skill should only resolve from the child task cwd.`,
 				"utf-8",
 			);
-			assert.ok(
-				getAvailableSkillNames(implementerTaskCwd).has("vanishing-skill"),
-				"should discover the temporary skill",
-			);
-			assert.ok(
-				getAvailableSkillNames(implementerTaskCwd).has("child-only-skill"),
-				"should discover the child cwd skill",
-			);
+			assert.ok(getAvailableSkillNames(implementerTaskCwd).has("vanishing-skill"), "should discover the temporary skill");
+			assert.ok(getAvailableSkillNames(implementerTaskCwd).has("child-only-skill"), "should discover the child cwd skill");
 			fs.rmSync(path.join(vanishingSkillDir, "SKILL.md"));
 
 			const executor = makeExecutor(agents);
@@ -610,21 +579,11 @@ This skill should only resolve from the child task cwd.`,
 			assert.equal(result.details.mode, "parallel");
 			const firstTwoRowUpdate = updates.find((update) => update.details.progress?.length === 2);
 			assert.ok(firstTwoRowUpdate, "should emit a live update with both rows populated");
-			const completedImplementerResult = result.details.results.find(
-				(childResult: { agent: string; skills?: string[] }) => childResult.agent === "sp-implementer",
-			);
+			const completedImplementerResult = result.details.results.find((childResult: { agent: string; skills?: string[] }) => childResult.agent === "sp-implementer");
 			assert.ok(completedImplementerResult, "should include the implementer child result");
-			assert.ok(
-				!completedImplementerResult.skills?.includes("vanishing-skill"),
-				"child-facing published skills should omit unresolved skills",
-			);
-			assert.ok(
-				completedImplementerResult.skills?.includes("child-only-skill"),
-				"child-facing published skills should include task-cwd skills",
-			);
-			const pendingImplementerRow = firstTwoRowUpdate.details.progress!.find(
-				(progress) => progress.agent === "sp-implementer",
-			);
+			assert.ok(!completedImplementerResult.skills?.includes("vanishing-skill"), "child-facing published skills should omit unresolved skills");
+			assert.ok(completedImplementerResult.skills?.includes("child-only-skill"), "child-facing published skills should include task-cwd skills");
+			const pendingImplementerRow = firstTwoRowUpdate.details.progress!.find((progress) => progress.agent === "sp-implementer");
 			assert.ok(pendingImplementerRow, "should include the pending implementer row");
 			assert.deepEqual(pendingImplementerRow.skills, completedImplementerResult.skills);
 			assert.deepEqual(

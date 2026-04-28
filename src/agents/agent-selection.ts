@@ -1,11 +1,6 @@
 import type { AgentConfig, AgentScope } from "./agents.ts";
 
-export function mergeAgentsForScope(
-	scope: AgentScope,
-	userAgents: AgentConfig[],
-	projectAgents: AgentConfig[],
-	builtinAgents: AgentConfig[] = [],
-): AgentConfig[] {
+export function mergeAgentsForScope(scope: AgentScope, userAgents: AgentConfig[], projectAgents: AgentConfig[], builtinAgents: AgentConfig[] = []): AgentConfig[] {
 	const agentMap = new Map<string, AgentConfig>();
 
 	for (const agent of builtinAgents) agentMap.set(agent.name, agent);

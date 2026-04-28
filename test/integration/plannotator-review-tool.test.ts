@@ -21,13 +21,7 @@ interface ToolResult {
 
 interface RegisteredTool {
 	name: string;
-	execute(
-		id: string,
-		params: Record<string, unknown>,
-		signal: AbortSignal | undefined,
-		onUpdate: unknown,
-		ctx: ReturnType<typeof createCtx>,
-	): Promise<ToolResult>;
+	execute(id: string, params: Record<string, unknown>, signal: AbortSignal | undefined, onUpdate: unknown, ctx: ReturnType<typeof createCtx>): Promise<ToolResult>;
 }
 
 /**
@@ -145,11 +139,7 @@ void describe("superpowers_plan_review tool", () => {
 		setTestHome(home);
 		const extensionDir = path.join(home, ".pi", "agent", "extensions", "subagent");
 		fs.mkdirSync(extensionDir, { recursive: true });
-		fs.writeFileSync(
-			path.join(extensionDir, "config.json"),
-			JSON.stringify({ superagents: { commands: { "sp-plan": { usePlannotator: true } } } }),
-			"utf-8",
-		);
+		fs.writeFileSync(path.join(extensionDir, "config.json"), JSON.stringify({ superagents: { commands: { "sp-plan": { usePlannotator: true } } } }), "utf-8");
 		const module = await import("../../src/extension/index.ts");
 		const mock = createPiMock(customEvents);
 		module.default(mock.pi as never);
@@ -182,13 +172,7 @@ void describe("superpowers_plan_review tool", () => {
 			});
 		});
 
-		const result = await tool.execute(
-			"review-approval",
-			{ planContent: "Final plan", planFilePath: "docs/plan.md" },
-			undefined,
-			undefined,
-			createCtx([]),
-		);
+		const result = await tool.execute("review-approval", { planContent: "Final plan", planFilePath: "docs/plan.md" }, undefined, undefined, createCtx([]));
 
 		assert.equal(result.content[0].text, "Plannotator approved the plan review. Continue the Superpowers workflow.");
 	});
@@ -199,11 +183,7 @@ void describe("superpowers_plan_review tool", () => {
 		setTestHome(home);
 		const extensionDir = path.join(home, ".pi", "agent", "extensions", "subagent");
 		fs.mkdirSync(extensionDir, { recursive: true });
-		fs.writeFileSync(
-			path.join(extensionDir, "config.json"),
-			JSON.stringify({ superagents: { commands: { "sp-plan": { usePlannotator: false } } } }),
-			"utf-8",
-		);
+		fs.writeFileSync(path.join(extensionDir, "config.json"), JSON.stringify({ superagents: { commands: { "sp-plan": { usePlannotator: false } } } }), "utf-8");
 		const module = await import("../../src/extension/index.ts");
 		const mock = createPiMock();
 		module.default(mock.pi as never);
@@ -211,18 +191,9 @@ void describe("superpowers_plan_review tool", () => {
 		const tool = mock.tools.get("superpowers_plan_review");
 		assert.ok(tool, "expected superpowers_plan_review tool to be registered");
 
-		const result = await tool.execute(
-			"review-disabled",
-			{ planContent: "Final plan" },
-			undefined,
-			undefined,
-			createCtx([]),
-		);
+		const result = await tool.execute("review-disabled", { planContent: "Final plan" }, undefined, undefined, createCtx([]));
 
-		assert.equal(
-			result.content[0].text,
-			"Plannotator review is disabled in config. Continue with the normal text-based Superpowers approval flow.",
-		);
+		assert.equal(result.content[0].text, "Plannotator review is disabled in config. Continue with the normal text-based Superpowers approval flow.");
 	});
 
 	void it("returns rejection feedback for revision", async () => {
@@ -243,13 +214,7 @@ void describe("superpowers_plan_review tool", () => {
 			});
 		});
 
-		const result = await tool.execute(
-			"review-reject",
-			{ planContent: "Final plan" },
-			undefined,
-			undefined,
-			createCtx([]),
-		);
+		const result = await tool.execute("review-reject", { planContent: "Final plan" }, undefined, undefined, createCtx([]));
 
 		assert.equal(result.content[0].text, `Plannotator requested plan changes:\nAdd rollback steps.`);
 	});
@@ -265,23 +230,14 @@ void describe("superpowers_plan_review tool", () => {
 			typedRequest.respond({ status: "unavailable", error: "Browser bridge offline" });
 		});
 
-		const result = await tool.execute(
-			"review-unavailable",
-			{ planContent: "Final plan" },
-			undefined,
-			undefined,
-			createCtx(notifications),
-		);
+		const result = await tool.execute("review-unavailable", { planContent: "Final plan" }, undefined, undefined, createCtx(notifications));
 
 		assert.equal(notifications.length, 1);
 		assert.deepEqual(notifications[0], {
 			message: "Plannotator unavailable: Browser bridge offline. Falling back to text-based approval.",
 			type: "warning",
 		});
-		assert.equal(
-			result.content[0].text,
-			`Plannotator unavailable: Browser bridge offline\nContinue with the normal text-based Superpowers approval flow.`,
-		);
+		assert.equal(result.content[0].text, `Plannotator unavailable: Browser bridge offline\nContinue with the normal text-based Superpowers approval flow.`);
 	});
 
 	void it("fails softly when synchronous event-bus errors escape the bridge", async () => {
@@ -298,13 +254,7 @@ void describe("superpowers_plan_review tool", () => {
 		assert.ok(tool, "expected superpowers_plan_review tool to be registered");
 		const notifications: Array<{ message: string; type?: string }> = [];
 
-		const result = await tool.execute(
-			"review-sync-error",
-			{ planContent: "Final plan" },
-			undefined,
-			undefined,
-			createCtx(notifications),
-		);
+		const result = await tool.execute("review-sync-error", { planContent: "Final plan" }, undefined, undefined, createCtx(notifications));
 
 		assert.equal(notifications.length, 1);
 		assert.equal(notifications[0]?.type, "warning");
@@ -348,11 +298,7 @@ void describe("superpowers_spec_review tool", () => {
 		setTestHome(home);
 		const extensionDir = path.join(home, ".pi", "agent", "extensions", "subagent");
 		fs.mkdirSync(extensionDir, { recursive: true });
-		fs.writeFileSync(
-			path.join(extensionDir, "config.json"),
-			JSON.stringify({ superagents: { commands: { "sp-brainstorm": { usePlannotator: true } } } }),
-			"utf-8",
-		);
+		fs.writeFileSync(path.join(extensionDir, "config.json"), JSON.stringify({ superagents: { commands: { "sp-brainstorm": { usePlannotator: true } } } }), "utf-8");
 		const module = await import("../../src/extension/index.ts");
 		const mock = createPiMock(customEvents);
 		module.default(mock.pi as never);
@@ -385,18 +331,9 @@ void describe("superpowers_spec_review tool", () => {
 			});
 		});
 
-		const result = await tool.execute(
-			"spec-review-approval",
-			{ specContent: "Final spec", specFilePath: "docs/superpowers/specs/spec.md" },
-			undefined,
-			undefined,
-			createCtx([]),
-		);
+		const result = await tool.execute("spec-review-approval", { specContent: "Final spec", specFilePath: "docs/superpowers/specs/spec.md" }, undefined, undefined, createCtx([]));
 
-		assert.equal(
-			result.content[0].text,
-			"Plannotator approved the saved spec review. Continue the Superpowers workflow.",
-		);
+		assert.equal(result.content[0].text, "Plannotator approved the saved spec review. Continue the Superpowers workflow.");
 	});
 
 	void it("returns saved-spec rejection feedback for revision", async () => {
@@ -417,13 +354,7 @@ void describe("superpowers_spec_review tool", () => {
 			});
 		});
 
-		const result = await tool.execute(
-			"spec-review-rejected",
-			{ specContent: "Final spec" },
-			undefined,
-			undefined,
-			createCtx([]),
-		);
+		const result = await tool.execute("spec-review-rejected", { specContent: "Final spec" }, undefined, undefined, createCtx([]));
 
 		assert.match(result.content[0].text, /Plannotator requested saved spec changes/);
 		assert.match(result.content[0].text, /Clarify interception opt-in/);
@@ -435,11 +366,7 @@ void describe("superpowers_spec_review tool", () => {
 		setTestHome(home);
 		const extensionDir = path.join(home, ".pi", "agent", "extensions", "subagent");
 		fs.mkdirSync(extensionDir, { recursive: true });
-		fs.writeFileSync(
-			path.join(extensionDir, "config.json"),
-			JSON.stringify({ superagents: { commands: { "sp-brainstorm": { usePlannotator: false } } } }),
-			"utf-8",
-		);
+		fs.writeFileSync(path.join(extensionDir, "config.json"), JSON.stringify({ superagents: { commands: { "sp-brainstorm": { usePlannotator: false } } } }), "utf-8");
 		const module = await import("../../src/extension/index.ts");
 		const mock = createPiMock();
 		module.default(mock.pi as never);
@@ -447,18 +374,9 @@ void describe("superpowers_spec_review tool", () => {
 		const tool = mock.tools.get("superpowers_spec_review");
 		assert.ok(tool, "expected superpowers_spec_review tool to be registered");
 
-		const result = await tool.execute(
-			"spec-review-disabled",
-			{ specContent: "Final spec" },
-			undefined,
-			undefined,
-			createCtx([]),
-		);
+		const result = await tool.execute("spec-review-disabled", { specContent: "Final spec" }, undefined, undefined, createCtx([]));
 
-		assert.equal(
-			result.content[0].text,
-			"Plannotator saved spec review is disabled in config. Continue with the normal text-based Superpowers review flow.",
-		);
+		assert.equal(result.content[0].text, "Plannotator saved spec review is disabled in config. Continue with the normal text-based Superpowers review flow.");
 	});
 
 	void it("fails softly when Plannotator reports unavailable and notifies once", async () => {
@@ -472,23 +390,14 @@ void describe("superpowers_spec_review tool", () => {
 			typedRequest.respond({ status: "unavailable", error: "Browser bridge offline" });
 		});
 
-		const result = await tool.execute(
-			"spec-review-unavailable",
-			{ specContent: "Final spec" },
-			undefined,
-			undefined,
-			createCtx(notifications),
-		);
+		const result = await tool.execute("spec-review-unavailable", { specContent: "Final spec" }, undefined, undefined, createCtx(notifications));
 
 		assert.equal(notifications.length, 1);
 		assert.deepEqual(notifications[0], {
 			message: "Plannotator unavailable: Browser bridge offline. Falling back to text-based spec review.",
 			type: "warning",
 		});
-		assert.equal(
-			result.content[0].text,
-			`Plannotator unavailable: Browser bridge offline\nContinue with the normal text-based Superpowers review flow.`,
-		);
+		assert.equal(result.content[0].text, `Plannotator unavailable: Browser bridge offline\nContinue with the normal text-based Superpowers review flow.`);
 	});
 
 	void it("fails softly when synchronous event-bus errors escape the bridge", async () => {
@@ -505,13 +414,7 @@ void describe("superpowers_spec_review tool", () => {
 		assert.ok(tool, "expected superpowers_spec_review tool to be registered");
 		const notifications: Array<{ message: string; type?: string }> = [];
 
-		const result = await tool.execute(
-			"spec-review-sync-error",
-			{ specContent: "Final spec" },
-			undefined,
-			undefined,
-			createCtx(notifications),
-		);
+		const result = await tool.execute("spec-review-sync-error", { specContent: "Final spec" }, undefined, undefined, createCtx(notifications));
 
 		assert.equal(notifications.length, 1);
 		assert.equal(notifications[0]?.type, "warning");

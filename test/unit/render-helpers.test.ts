@@ -43,13 +43,7 @@ void test("formatScrollInfo returns correct labels", () => {
 
 void test("renderFramedPanel wraps content in a stable green frame with background", () => {
 	const { calls, theme } = createRecordingTheme();
-	const lines = renderFramedPanel(
-		"Subagents Status",
-		["Active", "> sp-implementer | OK"],
-		32,
-		theme as never,
-		"q close",
-	);
+	const lines = renderFramedPanel("Subagents Status", ["Active", "> sp-implementer | OK"], 32, theme as never, "q close");
 
 	assert.deepStrictEqual(lines, [
 		"┌──────────────────────────────┐",

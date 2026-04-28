@@ -12,13 +12,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-	inferExecutionRole,
-	resolveImplementerSkillSet,
-	resolveModelForAgent,
-	resolveRoleSkillSet,
-	resolveRoleTools,
-} from "../../src/execution/superpowers-policy.ts";
+import { inferExecutionRole, resolveImplementerSkillSet, resolveModelForAgent, resolveRoleSkillSet, resolveRoleTools } from "../../src/execution/superpowers-policy.ts";
 import { READ_ONLY_TOOLS } from "../../src/shared/tool-registry.ts";
 
 void describe("superpowers policy", () => {

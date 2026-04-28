@@ -11,11 +11,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-	formatConfigDiagnostics,
-	loadEffectiveConfig,
-	validateConfigObject,
-} from "../../src/execution/config-validation.ts";
+import { formatConfigDiagnostics, loadEffectiveConfig, validateConfigObject } from "../../src/execution/config-validation.ts";
 import type { ExtensionConfig } from "../../src/shared/types.ts";
 
 const defaults: ExtensionConfig = {
@@ -383,16 +379,11 @@ void describe("config validation", () => {
 			},
 		});
 		assert.equal(result.blocked, false);
-		assert.ok(
-			result.diagnostics.some((d) => d.path === "superagents.superpowersSkills" && d.code === "defaults_only_key"),
-		);
+		assert.ok(result.diagnostics.some((d) => d.path === "superagents.superpowersSkills" && d.code === "defaults_only_key"));
 	});
 
 	void it("passes superpowersSkills from defaults through to effective config", () => {
-		const result = loadEffectiveConfig(
-			{ superagents: { ...defaults.superagents, superpowersSkills: ["using-superpowers", "brainstorming"] } },
-			{},
-		);
+		const result = loadEffectiveConfig({ superagents: { ...defaults.superagents, superpowersSkills: ["using-superpowers", "brainstorming"] } }, {});
 		assert.equal(result.blocked, false);
 		assert.deepEqual(result.config.superagents?.superpowersSkills, ["using-superpowers", "brainstorming"]);
 	});
