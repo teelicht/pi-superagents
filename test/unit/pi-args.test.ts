@@ -26,4 +26,22 @@ void describe("buildPiArgs session wiring", () => {
 
 		assert.ok(!args.includes("--session"));
 	});
+
+	void it("preserves path-like tool extensions when extension discovery is disabled", () => {
+		const { args } = buildPiArgs({
+			baseArgs: ["-p"],
+			task: "hello",
+			sessionEnabled: true,
+			tools: ["read", "./custom-tool.ts"],
+			extensions: [],
+		});
+
+		assert.ok(args.includes("--no-extensions"));
+		assert.ok(args.includes("--tools"));
+		assert.ok(args.includes("read"));
+		assert.deepEqual(args.slice(args.indexOf("--extension"), args.indexOf("--extension") + 2), [
+			"--extension",
+			"./custom-tool.ts",
+		]);
+	});
 });
