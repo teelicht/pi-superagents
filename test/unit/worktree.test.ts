@@ -131,38 +131,34 @@ void describe("worktree", () => {
 		}
 	});
 
-	void it(
-		"createWorktrees rejects symlinked absolute roots that resolve inside the repository",
-		{
-			skip: process.platform === "win32" ? "Symlink behavior differs on Windows CI environments." : undefined,
-		},
-		() => {
-			const repoDir = createRepo("pi-worktree-symlinked-root-");
-			const actualRoot = path.join(repoDir, "local-worktrees");
-			const symlinkParent = fs.mkdtempSync(path.join(os.tmpdir(), "pi-worktree-symlink-parent-"));
-			const symlinkRoot = path.join(symlinkParent, "worktrees-link");
-			try {
-				fs.mkdirSync(actualRoot, { recursive: true });
-				fs.symlinkSync(actualRoot, symlinkRoot);
+	void it("createWorktrees rejects symlinked absolute roots that resolve inside the repository", {
+		skip: process.platform === "win32" ? "Symlink behavior differs on Windows CI environments." : undefined,
+	}, () => {
+		const repoDir = createRepo("pi-worktree-symlinked-root-");
+		const actualRoot = path.join(repoDir, "local-worktrees");
+		const symlinkParent = fs.mkdtempSync(path.join(os.tmpdir(), "pi-worktree-symlink-parent-"));
+		const symlinkRoot = path.join(symlinkParent, "worktrees-link");
+		try {
+			fs.mkdirSync(actualRoot, { recursive: true });
+			fs.symlinkSync(actualRoot, symlinkRoot);
 
-				assert.throws(
-					() =>
-						createWorktrees(repoDir, "symlinked-root", 1, {
-							rootDir: symlinkRoot,
-							requireIgnoredRoot: true,
-						}),
-					/Configured worktree root must be ignored by git/i,
-				);
-			} finally {
-				try {
-					fs.rmSync(symlinkParent, { recursive: true, force: true });
-				} catch {
-					/* empty */
-				}
-				cleanupRepo(repoDir);
+			assert.throws(
+				() =>
+					createWorktrees(repoDir, "symlinked-root", 1, {
+						rootDir: symlinkRoot,
+						requireIgnoredRoot: true,
+					}),
+				/Configured worktree root must be ignored by git/i,
+			);
+		} finally {
+			try {
+				fs.rmSync(symlinkParent, { recursive: true, force: true });
+			} catch {
+				/* empty */
 			}
-		},
-	);
+			cleanupRepo(repoDir);
+		}
+	});
 
 	void it("createWorktrees rejects dirty repositories", () => {
 		const repoDir = createRepo("pi-worktree-dirty-");
@@ -257,65 +253,57 @@ void describe("worktree", () => {
 		}
 	});
 
-	void it(
-		"createWorktrees creates node_modules symlink when node_modules exists",
-		{
-			skip: process.platform === "win32" ? "Symlink behavior differs on Windows CI environments." : undefined,
-		},
-		() => {
-			const repoDir = createRepo("pi-worktree-node-modules-");
-			const nodeModulesDir = path.join(repoDir, "node_modules");
-			fs.mkdirSync(nodeModulesDir, { recursive: true });
-			fs.writeFileSync(path.join(nodeModulesDir, "fixture.txt"), "fixture\n", "utf-8");
+	void it("createWorktrees creates node_modules symlink when node_modules exists", {
+		skip: process.platform === "win32" ? "Symlink behavior differs on Windows CI environments." : undefined,
+	}, () => {
+		const repoDir = createRepo("pi-worktree-node-modules-");
+		const nodeModulesDir = path.join(repoDir, "node_modules");
+		fs.mkdirSync(nodeModulesDir, { recursive: true });
+		fs.writeFileSync(path.join(nodeModulesDir, "fixture.txt"), "fixture\n", "utf-8");
 
-			let setup: WorktreeSetup | undefined;
-			try {
-				setup = createWorktrees(repoDir, "node-modules", 1);
-				const symlinkPath = path.join(setup.worktrees[0].path, "node_modules");
-				assert.equal(setup.worktrees[0].nodeModulesLinked, true);
-				assert.deepEqual(setup.worktrees[0].syntheticPaths, ["node_modules"]);
-				assert.ok(fs.existsSync(symlinkPath), "node_modules link should exist");
-				assert.equal(fs.lstatSync(symlinkPath).isSymbolicLink(), true, "node_modules should be a symlink");
-				assert.equal(fs.realpathSync(symlinkPath), fs.realpathSync(nodeModulesDir));
-			} finally {
-				if (setup) cleanupWorktrees(setup);
-				cleanupRepo(repoDir);
-			}
-		},
-	);
+		let setup: WorktreeSetup | undefined;
+		try {
+			setup = createWorktrees(repoDir, "node-modules", 1);
+			const symlinkPath = path.join(setup.worktrees[0].path, "node_modules");
+			assert.equal(setup.worktrees[0].nodeModulesLinked, true);
+			assert.deepEqual(setup.worktrees[0].syntheticPaths, ["node_modules"]);
+			assert.ok(fs.existsSync(symlinkPath), "node_modules link should exist");
+			assert.equal(fs.lstatSync(symlinkPath).isSymbolicLink(), true, "node_modules should be a symlink");
+			assert.equal(fs.realpathSync(symlinkPath), fs.realpathSync(nodeModulesDir));
+		} finally {
+			if (setup) cleanupWorktrees(setup);
+			cleanupRepo(repoDir);
+		}
+	});
 
-	void it(
-		"diffWorktrees preserves a tracked node_modules symlink",
-		{
-			skip: process.platform === "win32" ? "Symlink behavior differs on Windows CI environments." : undefined,
-		},
-		() => {
-			const repoDir = createRepo("pi-worktree-tracked-node-modules-");
-			const vendorDir = path.join(repoDir, "vendor-modules");
-			fs.mkdirSync(vendorDir, { recursive: true });
-			fs.writeFileSync(path.join(vendorDir, "fixture.txt"), "fixture\n", "utf-8");
-			fs.symlinkSync("vendor-modules", path.join(repoDir, "node_modules"));
-			git(repoDir, ["add", "vendor-modules", "-f", "node_modules"]);
-			git(repoDir, ["commit", "-m", "track node_modules symlink"]);
+	void it("diffWorktrees preserves a tracked node_modules symlink", {
+		skip: process.platform === "win32" ? "Symlink behavior differs on Windows CI environments." : undefined,
+	}, () => {
+		const repoDir = createRepo("pi-worktree-tracked-node-modules-");
+		const vendorDir = path.join(repoDir, "vendor-modules");
+		fs.mkdirSync(vendorDir, { recursive: true });
+		fs.writeFileSync(path.join(vendorDir, "fixture.txt"), "fixture\n", "utf-8");
+		fs.symlinkSync("vendor-modules", path.join(repoDir, "node_modules"));
+		git(repoDir, ["add", "vendor-modules", "-f", "node_modules"]);
+		git(repoDir, ["commit", "-m", "track node_modules symlink"]);
 
-			let setup: WorktreeSetup | undefined;
-			try {
-				setup = createWorktrees(repoDir, "tracked-node-modules", 1);
-				assert.equal(setup.worktrees[0].nodeModulesLinked, false);
-				assert.deepEqual(setup.worktrees[0].syntheticPaths, []);
-				fs.writeFileSync(path.join(setup.worktrees[0].path, "tracked.txt"), "modified\n", "utf-8");
+		let setup: WorktreeSetup | undefined;
+		try {
+			setup = createWorktrees(repoDir, "tracked-node-modules", 1);
+			assert.equal(setup.worktrees[0].nodeModulesLinked, false);
+			assert.deepEqual(setup.worktrees[0].syntheticPaths, []);
+			fs.writeFileSync(path.join(setup.worktrees[0].path, "tracked.txt"), "modified\n", "utf-8");
 
-				const diffsDir = path.join(repoDir, "artifacts", "tracked-node-modules-diffs");
-				const diffs = diffWorktrees(setup, ["agent-a"], diffsDir);
-				const patch = fs.readFileSync(diffs[0].patchPath, "utf-8");
-				assert.doesNotMatch(patch, /diff --git a\/node_modules b\/node_modules/);
-				assert.equal(fs.lstatSync(path.join(setup.worktrees[0].path, "node_modules")).isSymbolicLink(), true);
-			} finally {
-				if (setup) cleanupWorktrees(setup);
-				cleanupRepo(repoDir);
-			}
-		},
-	);
+			const diffsDir = path.join(repoDir, "artifacts", "tracked-node-modules-diffs");
+			const diffs = diffWorktrees(setup, ["agent-a"], diffsDir);
+			const patch = fs.readFileSync(diffs[0].patchPath, "utf-8");
+			assert.doesNotMatch(patch, /diff --git a\/node_modules b\/node_modules/);
+			assert.equal(fs.lstatSync(path.join(setup.worktrees[0].path, "node_modules")).isSymbolicLink(), true);
+		} finally {
+			if (setup) cleanupWorktrees(setup);
+			cleanupRepo(repoDir);
+		}
+	});
 
 	void it("runs a repo-relative worktree setup hook and records synthetic paths", { skip: hookScriptSkip }, () => {
 		const repoDir = createRepo("pi-worktree-hook-relative-");
