@@ -5,8 +5,15 @@
  */
 
 import * as assert from "node:assert";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import { test } from "node:test";
-import { globalRunHistory } from "../../src/execution/run-history.ts";
+
+const tempHistoryDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-superagents-run-history-test-"));
+process.env.PI_SUPERAGENTS_RUN_HISTORY_PATH = path.join(tempHistoryDir, "run-history.jsonl");
+
+const { globalRunHistory } = await import("../../src/execution/run-history.ts");
 
 void test("globalRunHistory tracks active and finished runs", () => {
 	globalRunHistory.activeRuns.clear();
