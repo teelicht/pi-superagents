@@ -65,7 +65,7 @@
     "typebox": "*"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.3.5",
+    "@biomejs/biome": "2.4.13",
     "@marcfargas/pi-test-harness": "^0.5.0",
     "@mariozechner/pi-agent-core": "^0.70.0",
     "@mariozechner/pi-ai": "^0.70.0",
