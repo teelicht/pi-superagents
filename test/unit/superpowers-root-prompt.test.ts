@@ -41,17 +41,11 @@ void describe("Superpowers root prompt", () => {
 		assert.match(prompt, /worktrees\.enabled: true/);
 		assert.match(prompt, /Subagent delegation is ENABLED/);
 		assert.match(prompt, /Branch policy is ENABLED/);
-		assert.match(
-			prompt,
-			/Use a dedicated git branch for this implementation plan\/spec before implementation work begins/,
-		);
+		assert.match(prompt, /Use a dedicated git branch for this implementation plan\/spec before implementation work begins/);
 		assert.match(prompt, /Treat git branches and Pi session forks as separate concepts/);
 		assert.match(prompt, /superpowers_plan_review/);
 		assert.match(prompt, /superpowers_spec_review/);
-		assert.match(
-			prompt,
-			/returns rejected, treat the response as review feedback, revise the artifact, save it, and resubmit/,
-		);
+		assert.match(prompt, /returns rejected, treat the response as review feedback, revise the artifact, save it, and resubmit/);
 		assert.match(prompt, /If the tool returns unavailable, show one concise warning/);
 		assert.doesNotMatch(prompt, /exactly once/);
 		assert.match(prompt, /must use the `subagent` tool/);

@@ -11,6 +11,10 @@ import { spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import type { AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { Details, ExtensionConfig, TaskParam, WorkflowMode } from "../shared/types.ts";
+import { buildParallelModeError } from "./executor-validation.ts";
+import { resolveSuperagentWorktreeCreateOptions } from "./superagents-config.ts";
 
 export interface WorktreeSetup {
 	cwd: string;
@@ -149,10 +153,7 @@ function normalizeComparableCwd(cwd: string): string {
 	}
 }
 
-export function findWorktreeTaskCwdConflict(
-	tasks: ReadonlyArray<{ agent: string; cwd?: string }>,
-	sharedCwd: string,
-): WorktreeTaskCwdConflict | undefined {
+export function findWorktreeTaskCwdConflict(tasks: ReadonlyArray<{ agent: string; cwd?: string }>, sharedCwd: string): WorktreeTaskCwdConflict | undefined {
 	const normalizedSharedCwd = normalizeComparableCwd(sharedCwd);
 	for (let index = 0; index < tasks.length; index++) {
 		const task = tasks[index];
@@ -217,8 +218,7 @@ function resolveCanonicalPath(targetPath: string): string {
 			const canonicalBase = fs.realpathSync.native(candidate);
 			return pendingSegments.length === 0 ? canonicalBase : path.join(canonicalBase, ...pendingSegments.reverse());
 		} catch (error) {
-			const code =
-				error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : undefined;
+			const code = error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : undefined;
 			if (code !== "ENOENT") return candidate;
 		}
 
@@ -262,10 +262,7 @@ function parseHookTimeout(timeoutMs: number | undefined): number {
 	return timeoutMs;
 }
 
-function resolveWorktreeSetupHook(
-	repoRoot: string,
-	config: WorktreeSetupHookConfig | undefined,
-): ResolvedWorktreeSetupHook | undefined {
+function resolveWorktreeSetupHook(repoRoot: string, config: WorktreeSetupHookConfig | undefined): ResolvedWorktreeSetupHook | undefined {
 	if (!config) return undefined;
 	const hookPath = config.hookPath.trim();
 	if (!hookPath) {
@@ -388,8 +385,7 @@ function assertProjectLocalRootIgnored(repoRoot: string, rootDir: string): void 
 	const canonicalRepoRoot = normalizePathForComparison(resolveCanonicalPath(repoRoot));
 	const canonicalRootDir = normalizePathForComparison(resolveCanonicalPath(rootDir));
 	const relativeRoot = path.relative(canonicalRepoRoot, canonicalRootDir);
-	const isProjectLocal =
-		relativeRoot === "" || relativeRoot === "." || (!relativeRoot.startsWith("..") && !path.isAbsolute(relativeRoot));
+	const isProjectLocal = relativeRoot === "" || relativeRoot === "." || (!relativeRoot.startsWith("..") && !path.isAbsolute(relativeRoot));
 	if (!isProjectLocal) return;
 	const gitRelativeRoot = (relativeRoot || ".").split(path.sep).join("/");
 	const result = runGit(repoRoot, ["check-ignore", "-q", "--", gitRelativeRoot]);
@@ -477,13 +473,7 @@ function createSingleWorktree(
 function removeSyntheticPath(worktree: WorktreeInfo, syntheticPath: string): void {
 	const resolved = path.resolve(worktree.path, syntheticPath);
 	const relative = path.relative(worktree.path, resolved);
-	if (
-		!relative ||
-		relative === "." ||
-		relative === ".." ||
-		relative.startsWith(`..${path.sep}`) ||
-		path.isAbsolute(relative)
-	) {
+	if (!relative || relative === "." || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
 		return;
 	}
 
@@ -550,12 +540,7 @@ function parseNumstat(numstat: string): { filesChanged: number; insertions: numb
 	return { filesChanged, insertions, deletions };
 }
 
-function captureWorktreeDiff(
-	setup: WorktreeSetup,
-	worktree: WorktreeInfo,
-	agent: string,
-	patchPath: string,
-): WorktreeDiff {
+function captureWorktreeDiff(setup: WorktreeSetup, worktree: WorktreeInfo, agent: string, patchPath: string): WorktreeDiff {
 	removeSyntheticPathsBeforeDiff(worktree);
 	runGitChecked(worktree.path, ["add", "-A"]);
 	const diffStat = runGitChecked(worktree.path, ["diff", "--cached", "--stat", setup.baseCommit]).trim();
@@ -615,12 +600,7 @@ function hasWorktreeChanges(diff: WorktreeDiff): boolean {
  * @returns Worktree setup metadata for downstream execution and cleanup.
  * @throws {Error} When the repository is dirty, the root policy is invalid, or git setup fails.
  */
-export function createWorktrees(
-	cwd: string,
-	runId: string,
-	count: number,
-	options?: CreateWorktreesOptions,
-): WorktreeSetup {
+export function createWorktrees(cwd: string, runId: string, count: number, options?: CreateWorktreesOptions): WorktreeSetup {
 	const repo = resolveRepoState(cwd);
 	const rootDir = resolveConfiguredWorktreeRoot(repo.toplevel, options?.rootDir);
 	const setupHook = resolveWorktreeSetupHook(repo.toplevel, options?.setupHook);
@@ -635,18 +615,7 @@ export function createWorktrees(
 
 	try {
 		for (let index = 0; index < count; index++) {
-			worktrees.push(
-				createSingleWorktree(
-					repo.toplevel,
-					repo.cwdRelative,
-					runId,
-					index,
-					repo.baseCommit,
-					setupHook,
-					options?.agents?.[index],
-					rootDir,
-				),
-			);
+			worktrees.push(createSingleWorktree(repo.toplevel, repo.cwdRelative, runId, index, repo.baseCommit, setupHook, options?.agents?.[index], rootDir));
 		}
 	} catch (error) {
 		cleanupWorktrees({
@@ -704,9 +673,7 @@ export function formatWorktreeDiffSummary(diffs: WorktreeDiff[]): string {
 
 	const lines: string[] = ["=== Worktree Changes ===", ""];
 	for (const diff of changed) {
-		lines.push(
-			`--- Task ${diff.index + 1} (${diff.agent}): ${diff.filesChanged} files changed, +${diff.insertions} -${diff.deletions} ---`,
-		);
+		lines.push(`--- Task ${diff.index + 1} (${diff.agent}): ${diff.filesChanged} files changed, +${diff.insertions} -${diff.deletions} ---`);
 		if (diff.diffStat.trim().length > 0) {
 			lines.push(diff.diffStat);
 		}
@@ -716,4 +683,84 @@ export function formatWorktreeDiffSummary(diffs: WorktreeDiff[]): string {
 	const patchesDir = path.dirname(changed[0].patchPath);
 	lines.push(`Full patches: ${patchesDir}`);
 	return lines.join("\n").trimEnd();
+}
+
+/**
+ * Creates git worktrees for a parallel run when the caller enables worktree
+ * isolation, while scoping any configured Superpowers root override to the
+ * explicit Superpowers workflow only.
+ *
+ * @param enabled Whether parallel worktree isolation is enabled for the run.
+ * @param cwd Shared working directory for the parallel tasks.
+ * @param runId Unique identifier for the current run.
+ * @param tasks Parallel task definitions used to label worktrees.
+ * @param workflow Execution workflow metadata for the current run.
+ * @param config Extension configuration, including optional Superpowers settings.
+ * @returns A created worktree setup or an error result suitable for the caller.
+ */
+export function createParallelWorktreeSetup(
+	enabled: boolean | undefined,
+	cwd: string,
+	runId: string,
+	tasks: TaskParam[],
+	workflow: WorkflowMode,
+	config: ExtensionConfig,
+): { setup?: WorktreeSetup; errorResult?: AgentToolResult<Details> } {
+	if (!enabled) return {};
+	try {
+		return {
+			setup: createWorktrees(cwd, runId, tasks.length, {
+				...resolveSuperagentWorktreeCreateOptions({
+					workflow,
+					config,
+					agents: tasks.map((task) => task.agent),
+				}),
+			}),
+		};
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		return { errorResult: buildParallelModeError(message) };
+	}
+}
+
+export function buildParallelWorktreeTaskCwdError(tasks: ReadonlyArray<{ agent: string; cwd?: string }>, sharedCwd: string): string | undefined {
+	const conflict = findWorktreeTaskCwdConflict(tasks, sharedCwd);
+	if (!conflict) return undefined;
+	return formatWorktreeTaskCwdConflict(conflict, sharedCwd);
+}
+
+export function resolveParallelTaskCwd(task: TaskParam, paramsCwd: string | undefined, worktreeSetup: WorktreeSetup | undefined, index: number): string | undefined {
+	if (worktreeSetup) return worktreeSetup.worktrees[index].agentCwd;
+	return task.cwd ?? paramsCwd;
+}
+
+/**
+ * Resolve the cwd used for child-scoped runtime concerns such as skill lookup.
+ *
+ * @param task Parallel task configuration.
+ * @param paramsCwd Shared cwd override supplied to the parallel run.
+ * @param worktreeSetup Optional worktree mapping for isolated parallel runs.
+ * @param index Parallel task index.
+ * @param fallbackCwd Parent execution cwd when the child does not override it.
+ * @returns Effective runtime cwd for the child task.
+ */
+export function resolveParallelTaskRuntimeCwd(
+	task: TaskParam,
+	paramsCwd: string | undefined,
+	worktreeSetup: WorktreeSetup | undefined,
+	index: number,
+	fallbackCwd: string,
+): string {
+	return resolveParallelTaskCwd(task, paramsCwd, worktreeSetup, index) ?? fallbackCwd;
+}
+
+export function buildParallelWorktreeSuffix(worktreeSetup: WorktreeSetup | undefined, artifactsDir: string, tasks: TaskParam[]): string {
+	if (!worktreeSetup) return "";
+	const diffsDir = path.join(artifactsDir, "worktree-diffs");
+	const diffs = diffWorktrees(
+		worktreeSetup,
+		tasks.map((task) => task.agent),
+		diffsDir,
+	);
+	return formatWorktreeDiffSummary(diffs);
 }

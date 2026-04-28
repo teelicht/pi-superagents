@@ -54,10 +54,7 @@ export interface PlannotatorReviewResult {
 	permissionMode?: string;
 }
 
-export type PlanReviewOutcome =
-	| { status: "approved" }
-	| { status: "rejected"; feedback: string }
-	| { status: "unavailable"; reason: string };
+export type PlanReviewOutcome = { status: "approved" } | { status: "rejected"; feedback: string } | { status: "unavailable"; reason: string };
 
 export interface RequestPlannotatorPlanReviewInput {
 	events: PlannotatorEventBus;
@@ -120,9 +117,7 @@ function getRequestEmitFailureReason(error: unknown): string {
  * - returns `unavailable` when Plannotator reports unavailable, reports error,
  *   omits a review id, or times out during request/review waiting
  */
-export async function requestPlannotatorPlanReview(
-	input: RequestPlannotatorPlanReviewInput,
-): Promise<PlanReviewOutcome> {
+export async function requestPlannotatorPlanReview(input: RequestPlannotatorPlanReviewInput): Promise<PlanReviewOutcome> {
 	const requestId = `plannotator-review-${randomUUID()}`;
 	const requestTimeoutMs = input.requestTimeoutMs ?? DEFAULT_PLANNOTATOR_REQUEST_TIMEOUT_MS;
 	const reviewTimeoutMs = input.reviewTimeoutMs ?? DEFAULT_PLANNOTATOR_REVIEW_TIMEOUT_MS;

@@ -50,12 +50,7 @@ export function flattenSteps(steps: RunnerStep[]): RunnerSubagentStep[] {
 /** Run async tasks with bounded concurrency, preserving result order.
  *  `staggerMs` adds a small delay between each worker's start to avoid
  *  file-lock contention when multiple subagents read shared config. */
-export async function mapConcurrent<T, R>(
-	items: T[],
-	limit: number,
-	fn: (item: T, i: number) => Promise<R>,
-	staggerMs = 150,
-): Promise<R[]> {
+export async function mapConcurrent<T, R>(items: T[], limit: number, fn: (item: T, i: number) => Promise<R>, staggerMs = 150): Promise<R[]> {
 	// Clamp to at least 1; NaN/undefined/0/negative all become 1
 	const safeLimit = Math.max(1, Math.floor(limit) || 1);
 	const results: R[] = Array(items.length).fill(undefined) as unknown as R[];

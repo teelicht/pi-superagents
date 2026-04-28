@@ -25,17 +25,7 @@ void describe("package.json manifest", () => {
 	void it("publishes the src-based Pi extension entrypoints and files", () => {
 		const packageJson = readPackageJson();
 		assert.deepEqual((packageJson.pi as { extensions?: string[] }).extensions, ["./src/extension/index.ts"]);
-		assert.deepEqual(packageJson.files, [
-			"src/",
-			"scripts/",
-			"agents/",
-			"docs/",
-			"default-config.json",
-			"config.example.json",
-			"*.mjs",
-			"README.md",
-			"CHANGELOG.md",
-		]);
+		assert.deepEqual(packageJson.files, ["src/", "scripts/", "agents/", "docs/", "default-config.json", "config.example.json", "*.mjs", "README.md", "CHANGELOG.md"]);
 	});
 
 	void it("only advertises Pi extension entrypoints that exist in the package", () => {

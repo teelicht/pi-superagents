@@ -14,13 +14,7 @@ import { describe, it } from "node:test";
 
 const TOP_LEVEL_OPTION_KEYS = ["superagents"] as const;
 
-const SUPERAGENTS_OPTION_KEYS = [
-	"commands",
-	"modelTiers",
-	"skillOverlays",
-	"interceptSkillCommands",
-	"superpowersSkills",
-] as const;
+const SUPERAGENTS_OPTION_KEYS = ["commands", "modelTiers", "skillOverlays", "interceptSkillCommands", "superpowersSkills"] as const;
 
 /**
  * Read and parse a config JSON file from the repository root.
@@ -40,11 +34,7 @@ function readConfigFile(fileName: string): Record<string, unknown> {
  * @param bundledDefaultsOnly When true, includes bundled-defaults-only keys like superpowersSkills.
  * @param bundledDefaults Has built-in commands (true for default-config.json, false for config.example.json).
  */
-function assertPublicConfigSurface(
-	config: Record<string, unknown>,
-	bundledDefaultsOnly = false,
-	bundledDefaults = true,
-): void {
+function assertPublicConfigSurface(config: Record<string, unknown>, bundledDefaultsOnly = false, bundledDefaults = true): void {
 	const superagents = config.superagents as {
 		[key: string]: unknown;
 		modelTiers?: Record<string, unknown>;
@@ -127,10 +117,7 @@ void describe("config templates", () => {
 
 	void it("includes illustrative slash command presets in config.example.json", () => {
 		const config = readConfigFile("config.example.json");
-		const commands = (config.superagents as Record<string, unknown>).commands as Record<
-			string,
-			Record<string, unknown>
-		>;
+		const commands = (config.superagents as Record<string, unknown>).commands as Record<string, Record<string, unknown>>;
 		assert.deepEqual(commands["sp-lean"], {
 			description: "Run Superpowers lean: no subagents, no TDD",
 			entrySkill: "using-superpowers",

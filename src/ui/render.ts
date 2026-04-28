@@ -33,11 +33,7 @@ function getTermWidth(): number {
  * @param _theme Current UI theme; accepted for the Pi renderer contract.
  * @returns TUI component for the subagent result.
  */
-export function renderSubagentResult(
-	result: AgentToolResult<Details>,
-	options: { expanded: boolean },
-	_theme: unknown,
-): Component {
+export function renderSubagentResult(result: AgentToolResult<Details>, options: { expanded: boolean }, _theme: unknown): Component {
 	const width = Math.max(20, getTermWidth() - 4);
 	return new Text(renderSubagentResultLines(result, { expanded: options.expanded, width }).join("\n"), 0, 0);
 }

@@ -45,13 +45,7 @@ function writeTestAgents(cwd: string, agents: Array<{ name: string; description?
 	const agentsDir = path.join(cwd, ".pi", "agents");
 	fs.mkdirSync(agentsDir, { recursive: true });
 	for (const agent of agents) {
-		const frontmatter = [
-			"---",
-			`name: ${agent.name}`,
-			`description: ${agent.description ?? `Test agent ${agent.name}`}`,
-			agent.model ? `model: ${agent.model}` : null,
-			"---",
-		]
+		const frontmatter = ["---", `name: ${agent.name}`, `description: ${agent.description ?? `Test agent ${agent.name}`}`, agent.model ? `model: ${agent.model}` : null, "---"]
 			.filter(Boolean)
 			.join("\n");
 		const content = `${frontmatter}\n\nYou are a test agent named ${agent.name}.\n`;
@@ -74,12 +68,7 @@ void describe("subagent tool — validation", { skip: !available ? "pi-test-harn
 			mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },
 		});
 
-		await t.run(
-			when("Call nonexistent agent", [
-				calls("subagent", { agent: "nonexistent_agent_xyz", task: "hello" }),
-				says("Agent not found."),
-			]),
-		);
+		await t.run(when("Call nonexistent agent", [calls("subagent", { agent: "nonexistent_agent_xyz", task: "hello" }), says("Agent not found.")]));
 
 		const results = t.events.toolResultsFor("subagent");
 		assert.equal(results.length, 1);
@@ -90,66 +79,52 @@ void describe("subagent tool — validation", { skip: !available ? "pi-test-harn
 	});
 });
 
-void describe(
-	"subagent tool — single execution",
-	{ skip: !available ? "pi-test-harness not available" : undefined },
-	() => {
-		const { createTestSession, when, calls, says } = harness;
-		let t: any;
+void describe("subagent tool — single execution", { skip: !available ? "pi-test-harness not available" : undefined }, () => {
+	const { createTestSession, when, calls, says } = harness;
+	let t: any;
 
-		afterEach(() => {
-			t?.dispose();
-			mockPi?.reset();
+	afterEach(() => {
+		t?.dispose();
+		mockPi?.reset();
+	});
+
+	void it("executes single agent and returns output", async () => {
+		mockPi?.onCall({ output: "Hello from the subagent!" });
+
+		t = await createTestSession({
+			extensions: [EXTENSION],
+			mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },
 		});
 
-		void it("executes single agent and returns output", async () => {
-			mockPi?.onCall({ output: "Hello from the subagent!" });
+		writeTestAgents(t.cwd, [{ name: "echo" }]);
 
-			t = await createTestSession({
-				extensions: [EXTENSION],
-				mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },
-			});
+		await t.run(when("Run the echo agent", [calls("subagent", { agent: "echo", task: "Say hello" }), says("The agent responded.")]));
 
-			writeTestAgents(t.cwd, [{ name: "echo" }]);
+		const results = t.events.toolResultsFor("subagent");
+		assert.equal(results.length, 1);
+		assert.ok(!results[0].isError, `should succeed: ${results[0].text.slice(0, 200)}`);
+		assert.ok(results[0].text.includes("Hello from the subagent"), `should contain output: ${results[0].text.slice(0, 200)}`);
+	});
 
-			await t.run(
-				when("Run the echo agent", [
-					calls("subagent", { agent: "echo", task: "Say hello" }),
-					says("The agent responded."),
-				]),
-			);
+	void it("returns error for failed agent", async () => {
+		mockPi?.onCall({ exitCode: 1, stderr: "Agent crashed hard" });
 
-			const results = t.events.toolResultsFor("subagent");
-			assert.equal(results.length, 1);
-			assert.ok(!results[0].isError, `should succeed: ${results[0].text.slice(0, 200)}`);
-			assert.ok(
-				results[0].text.includes("Hello from the subagent"),
-				`should contain output: ${results[0].text.slice(0, 200)}`,
-			);
+		t = await createTestSession({
+			extensions: [EXTENSION],
+			mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },
 		});
 
-		void it("returns error for failed agent", async () => {
-			mockPi?.onCall({ exitCode: 1, stderr: "Agent crashed hard" });
+		writeTestAgents(t.cwd, [{ name: "crasher" }]);
 
-			t = await createTestSession({
-				extensions: [EXTENSION],
-				mockTools: { bash: "ok", read: "ok", write: "ok", edit: "ok" },
-			});
+		await t.run(when("Run the crasher", [calls("subagent", { agent: "crasher", task: "Crash please" }), says("It failed.")]));
 
-			writeTestAgents(t.cwd, [{ name: "crasher" }]);
-
-			await t.run(
-				when("Run the crasher", [calls("subagent", { agent: "crasher", task: "Crash please" }), says("It failed.")]),
-			);
-
-			const results = t.events.toolResultsFor("subagent");
-			assert.equal(results.length, 1);
-			assert.match(results[0].text, /Agent crashed hard/);
-			const details = results[0].details as SubagentToolDetails;
-			assert.equal(details.mode, "single");
-			assert.equal(details.results?.length, 1);
-			assert.equal(details.results?.[0]?.exitCode, 1);
-			assert.match(details.results?.[0]?.error ?? "", /Agent crashed hard/);
-		});
-	},
-);
+		const results = t.events.toolResultsFor("subagent");
+		assert.equal(results.length, 1);
+		assert.match(results[0].text, /Agent crashed hard/);
+		const details = results[0].details as SubagentToolDetails;
+		assert.equal(details.mode, "single");
+		assert.equal(details.results?.length, 1);
+		assert.equal(details.results?.[0]?.exitCode, 1);
+		assert.match(details.results?.[0]?.error ?? "", /Agent crashed hard/);
+	});
+});

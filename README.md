@@ -8,6 +8,8 @@
 - **Role-Specific Agents**: Thin agents-layer for every phase of the development lifecycle.
 - **Model Tiers**: Abstract model selection (cheap, balanced, max) for each agent. One model can be configured per tier. Custom tiers are possible. Models can be changed through the `/sp-settings` TUI.
 - **Compact Inline Subagent Results**: Subagent tool results render as collapsed single-line summaries with an expandable details view, keeping the Pi conversation readable during multi-step Superpowers workflows.
+- **Lineage-Only Sessions**: Bounded Superpowers roles default to `sessionMode: lineage-only`. Child sessions stay linked to the parent for session tree visibility, but do not inherit parent conversation turns.
+- **Packet Handoffs**: Work briefs are delivered through runtime-managed packet artifacts in the session artifact directory, automatically cleaned up after the child exits.
 - **Inline Agent Handoffs**: Role outputs are returned through Pi tool results and session artefacts.
 - **Worktree Isolation**: Optional git worktree creation for parallel tasks to prevent filesystem conflicts (setting).
 - **Skill Overlays**: Configure additional skills to load alongside superpowers process skills. Entry overlays resolve for the active entry skill; see [Configuration](docs/configuration.md#skill-overlays).
@@ -57,7 +59,7 @@ The `/sp-implement` command activates a structured workflow for task execution w
 4. **Review** (`sp-code-review`): Automated review of changes against project standards.
 5. **Debug** (`sp-debug`): Root cause analysis and fix verification for regressions.
 
-Subagent-driven development keeps implementer and reviewer reports inline in the Pi conversation. It does not create repo-root packet files such as `implementer-report.md`, `spec-review.md`, `code-review.md`, `debug-brief.md`, or `task-brief.md`; those names are ignored if an older prompt or manual run creates them.
+Subagent-driven development keeps implementer and reviewer reports inline in the Pi conversation. Bounded roles default to `lineage-only` — they see a curated work brief rather than the full parent conversation history. The runtime does not create repo-root packet files such as `implementer-report.md`, `spec-review.md`, `code-review.md`, `debug-brief.md`, or `task-brief.md`; those names are ignored if an older prompt or manual run creates them.
 
 ## Configuration & Documentation
 

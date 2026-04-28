@@ -40,24 +40,10 @@ export interface PacketDefaults {
  * @param packetDefaults Superpowers role packet defaults.
  * @returns Effective read/progress/skill/model behavior for the step.
  */
-export function resolveStepBehavior(
-	agentConfig: AgentConfig,
-	stepOverrides: StepOverrides,
-	packetDefaults?: PacketDefaults,
-): ResolvedStepBehavior {
-	const reads =
-		stepOverrides.reads !== undefined
-			? stepOverrides.reads
-			: packetDefaults?.reads !== undefined
-				? packetDefaults.reads
-				: false;
+export function resolveStepBehavior(agentConfig: AgentConfig, stepOverrides: StepOverrides, packetDefaults?: PacketDefaults): ResolvedStepBehavior {
+	const reads = stepOverrides.reads !== undefined ? stepOverrides.reads : packetDefaults?.reads !== undefined ? packetDefaults.reads : false;
 
-	const progress =
-		stepOverrides.progress !== undefined
-			? stepOverrides.progress
-			: packetDefaults?.progress !== undefined
-				? packetDefaults.progress
-				: false;
+	const progress = stepOverrides.progress !== undefined ? stepOverrides.progress : packetDefaults?.progress !== undefined ? packetDefaults.progress : false;
 
 	let skills: string[] | false;
 	if (stepOverrides.skills === false) {

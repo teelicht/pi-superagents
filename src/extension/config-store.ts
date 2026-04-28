@@ -106,18 +106,13 @@ export function readJsonConfig(filePath: string): unknown {
  * @returns Validated config state for runtime registration.
  */
 export function loadRuntimeConfigState(packageConfigDir: string, userConfigDir = packageConfigDir): LoadedConfigState {
-	const { bundledDefaultConfigPath, userConfigPath, exampleConfigPath } = resolveRuntimeConfigPaths(
-		packageConfigDir,
-		userConfigDir,
-	);
+	const { bundledDefaultConfigPath, userConfigPath, exampleConfigPath } = resolveRuntimeConfigPaths(packageConfigDir, userConfigDir);
 
 	try {
 		const bundledDefaults = (readJsonConfig(bundledDefaultConfigPath) ?? {}) as ExtensionConfig;
 		const userConfig = readJsonConfig(userConfigPath);
 		const result = loadEffectiveConfig(bundledDefaults, userConfig);
-		const message = result.diagnostics.length
-			? formatConfigDiagnostics(result.diagnostics, { configPath: userConfigPath, examplePath: exampleConfigPath })
-			: "";
+		const message = result.diagnostics.length ? formatConfigDiagnostics(result.diagnostics, { configPath: userConfigPath, examplePath: exampleConfigPath }) : "";
 
 		return {
 			config: result.config,
@@ -204,10 +199,7 @@ export function assignGate(state: LoadedConfigState, target?: ConfigGateState): 
  * @param userConfigDir Absolute path to the user config directory. Defaults to `packageConfigDir`.
  * @returns Runtime config store with getConfig, getGateState, and reloadConfig.
  */
-export function createRuntimeConfigStore(
-	packageConfigDir: string,
-	userConfigDir = packageConfigDir,
-): RuntimeConfigStore {
+export function createRuntimeConfigStore(packageConfigDir: string, userConfigDir = packageConfigDir): RuntimeConfigStore {
 	let currentState = loadRuntimeConfigState(packageConfigDir, userConfigDir);
 	// Store a single gate object that gets mutated on reload
 	const gate = assignGate(currentState);

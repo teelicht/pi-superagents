@@ -15,20 +15,17 @@ import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@mariozechn
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "typebox";
 import { discoverAgents } from "../agents/agents.ts";
-import { createSubagentExecutor, type SubagentParamsLike } from "../execution/subagent-executor.ts";
+import { createSubagentExecutor } from "../execution/subagent-executor.ts";
 import { requestPlannotatorPlanReview } from "../integrations/plannotator.ts";
 import { cleanupAllArtifactDirs, cleanupOldArtifacts, getArtifactsDir } from "../shared/artifacts.ts";
 import { SubagentParams } from "../shared/schemas.ts";
 import { resolveAvailableSkill, resolveSkills } from "../shared/skills.ts";
+import type { SubagentParamsLike } from "../shared/types.ts";
 import { DEFAULT_ARTIFACT_CONFIG, type Details, type SubagentState } from "../shared/types.ts";
 import { registerSlashCommands } from "../slash/slash-commands.ts";
 import { createSuperpowersPromptDispatcher } from "../superpowers/prompt-dispatch.ts";
 import { buildSuperpowersVisiblePromptSummary } from "../superpowers/root-prompt.ts";
-import {
-	buildResolvedSkillEntryPrompt,
-	parseSkillCommandInput,
-	shouldInterceptSkillCommand,
-} from "../superpowers/skill-entry.ts";
+import { buildResolvedSkillEntryPrompt, parseSkillCommandInput, shouldInterceptSkillCommand } from "../superpowers/skill-entry.ts";
 import { parseSuperpowersWorkflowArgs, resolveSuperpowersRunProfile } from "../superpowers/workflow-profile.ts";
 import { renderSubagentResult } from "../ui/render.ts";
 import { createRuntimeConfigStore } from "./config-store.ts";
@@ -58,16 +55,6 @@ function getSubagentSessionRoot(parentSessionFile: string | null): string {
 function _readJsonConfig(filePath: string): unknown {
 	if (!fs.existsSync(filePath)) return undefined;
 	return JSON.parse(fs.readFileSync(filePath, "utf-8"));
-}
-
-/**
- * Expand a leading tilde in a filesystem path.
- *
- * @param p Input path that may start with `~/`.
- * @returns Absolute path rooted at the current home directory when needed.
- */
-function expandTilde(p: string): string {
-	return p.startsWith("~/") ? path.join(os.homedir(), p.slice(2)) : p;
 }
 
 /**
@@ -134,9 +121,7 @@ function _ensureAccessibleDir(dirPath: string): void {
 
 const SuperpowersPlanReviewParams = Type.Object({
 	planContent: Type.String({ description: "Final Superpowers implementation plan content to review." }),
-	planFilePath: Type.Optional(
-		Type.String({ description: "Saved plan file path for the final Superpowers plan when available." }),
-	),
+	planFilePath: Type.Optional(Type.String({ description: "Saved plan file path for the final Superpowers plan when available." })),
 });
 
 /**
@@ -147,9 +132,7 @@ const SuperpowersPlanReviewParams = Type.Object({
  */
 const SuperpowersSpecReviewParams = Type.Object({
 	specContent: Type.String({ description: "Final saved Superpowers brainstorming spec content to review." }),
-	specFilePath: Type.Optional(
-		Type.String({ description: "Saved Superpowers brainstorming spec file path when available." }),
-	),
+	specFilePath: Type.Optional(Type.String({ description: "Saved Superpowers brainstorming spec file path when available." })),
 });
 
 /**
@@ -196,7 +179,7 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 	const extensionEntryDir = path.dirname(fileURLToPath(import.meta.url));
 	const configStore = createRuntimeConfigStore(resolvePackageRoot(extensionEntryDir), resolveUserConfigDir());
 	const config = configStore.getConfig();
-	const tempArtifactsDir = getArtifactsDir(null);
+
 	cleanupAllArtifactDirs(DEFAULT_ARTIFACT_CONFIG.cleanupDays);
 
 	const state: SubagentState = {
@@ -207,12 +190,9 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 	};
 
 	const executor = createSubagentExecutor({
-		pi,
 		state,
 		getConfig: () => configStore.getConfig(),
-		tempArtifactsDir,
 		getSubagentSessionRoot,
-		expandTilde,
 		discoverAgents,
 	});
 
@@ -247,14 +227,9 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 	 * @param ctx Extension context for optional UI notifications.
 	 * @returns Fail-soft review status text for the Superpowers root prompt contract.
 	 */
-	async function executeSuperpowersPlanReview(
-		params: { planContent: string; planFilePath?: string },
-		ctx: ExtensionContext,
-	): Promise<AgentToolResult<Details>> {
+	async function executeSuperpowersPlanReview(params: { planContent: string; planFilePath?: string }, ctx: ExtensionContext): Promise<AgentToolResult<Details>> {
 		if (config.superagents?.commands?.["sp-plan"]?.usePlannotator !== true) {
-			return createTextToolResult(
-				"Plannotator review is disabled in config. Continue with the normal text-based Superpowers approval flow.",
-			);
+			return createTextToolResult("Plannotator review is disabled in config. Continue with the normal text-based Superpowers approval flow.");
 		}
 
 		try {
@@ -303,14 +278,9 @@ Continue with the normal text-based Superpowers approval flow.`,
 	 * @param ctx Extension context for optional UI notifications.
 	 * @returns Fail-soft saved-spec review status text.
 	 */
-	async function executeSuperpowersSpecReview(
-		params: { specContent: string; specFilePath?: string },
-		ctx: ExtensionContext,
-	): Promise<AgentToolResult<Details>> {
+	async function executeSuperpowersSpecReview(params: { specContent: string; specFilePath?: string }, ctx: ExtensionContext): Promise<AgentToolResult<Details>> {
 		if (config.superagents?.commands?.["sp-brainstorm"]?.usePlannotator !== true) {
-			return createTextToolResult(
-				"Plannotator saved spec review is disabled in config. Continue with the normal text-based Superpowers review flow.",
-			);
+			return createTextToolResult("Plannotator saved spec review is disabled in config. Continue with the normal text-based Superpowers review flow.");
 		}
 
 		try {
@@ -352,8 +322,7 @@ Continue with the normal text-based Superpowers review flow.`,
 	const planReviewTool: ToolDefinition<typeof SuperpowersPlanReviewParams, Details> = {
 		name: "superpowers_plan_review",
 		label: "Superpowers Plan Review",
-		description:
-			"Send the final Superpowers implementation plan through the optional Plannotator browser review bridge. Use only at the normal plan approval point.",
+		description: "Send the final Superpowers implementation plan through the optional Plannotator browser review bridge. Use only at the normal plan approval point.",
 		parameters: SuperpowersPlanReviewParams,
 		execute(_id, params, _signal, _onUpdate, ctx) {
 			return executeSuperpowersPlanReview(params as { planContent: string; planFilePath?: string }, ctx);
@@ -363,8 +332,7 @@ Continue with the normal text-based Superpowers review flow.`,
 	const specReviewTool: ToolDefinition<typeof SuperpowersSpecReviewParams, Details> = {
 		name: "superpowers_spec_review",
 		label: "Superpowers Spec Review",
-		description:
-			"Send the final saved Superpowers brainstorming spec through the optional Plannotator browser review bridge. Use only after the saved brainstorming spec exists.",
+		description: "Send the final saved Superpowers brainstorming spec through the optional Plannotator browser review bridge. Use only after the saved brainstorming spec exists.",
 		parameters: SuperpowersSpecReviewParams,
 		execute(_id, params, _signal, _onUpdate, ctx) {
 			return executeSuperpowersSpecReview(params as { specContent: string; specFilePath?: string }, ctx);
@@ -389,25 +357,14 @@ Bounded role agents are not allowed to call subagents.`,
 			if (state.configGate.blocked) {
 				return Promise.resolve(configBlockedResult(state.configGate.message));
 			}
-			return executor.execute(
-				id,
-				params as unknown as SubagentParamsLike,
-				signal ?? new AbortController().signal,
-				onUpdate,
-				ctx,
-			);
+			return executor.execute(id, params as unknown as SubagentParamsLike, signal ?? new AbortController().signal, onUpdate, ctx);
 		},
 
 		renderCall(args, theme) {
 			const isParallel = (args.tasks?.length ?? 0) > 0;
 			const parallelCount = effectiveParallelTaskCount(args.tasks as Array<{ count?: unknown }> | undefined);
-			if (isParallel)
-				return new Text(`${theme.fg("toolTitle", theme.bold("subagent "))}parallel (${parallelCount})`, 0, 0);
-			return new Text(
-				`${theme.fg("toolTitle", theme.bold("subagent "))}${theme.fg("accent", args.agent || "?")}`,
-				0,
-				0,
-			);
+			if (isParallel) return new Text(`${theme.fg("toolTitle", theme.bold("subagent "))}parallel (${parallelCount})`, 0, 0);
+			return new Text(`${theme.fg("toolTitle", theme.bold("subagent "))}${theme.fg("accent", args.agent || "?")}`, 0, 0);
 		},
 
 		renderResult(result, options, theme) {
@@ -461,8 +418,7 @@ Bounded role agents are not allowed to call subagents.`,
 		// Resolve the Superpowers run profile with intercepted-skill entry
 		const profile = resolveSuperpowersRunProfile({
 			config,
-			commandName:
-				commandNameForInterceptedSkill(parsedSkillCommand.skillName) ?? `skill:${parsedSkillCommand.skillName}`,
+			commandName: commandNameForInterceptedSkill(parsedSkillCommand.skillName) ?? `skill:${parsedSkillCommand.skillName}`,
 			parsed: parsedWorkflowArgs,
 			entrySkill: parsedSkillCommand.skillName,
 		});
@@ -516,8 +472,7 @@ Bounded role agents are not allowed to call subagents.`,
 
 	const resetSessionState = (ctx: ExtensionContext) => {
 		state.baseCwd = ctx.cwd;
-		state.currentSessionId =
-			ctx.sessionManager.getSessionFile() ?? `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+		state.currentSessionId = ctx.sessionManager.getSessionFile() ?? `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 		state.lastUiContext = ctx;
 		cleanupSessionArtifacts(ctx);
 	};

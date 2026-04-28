@@ -13,14 +13,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { describe, it } from "node:test";
-import {
-	cleanupWorktrees,
-	createWorktrees,
-	diffWorktrees,
-	findWorktreeTaskCwdConflict,
-	formatWorktreeDiffSummary,
-	type WorktreeSetup,
-} from "../../src/execution/worktree.ts";
+import { cleanupWorktrees, createWorktrees, diffWorktrees, findWorktreeTaskCwdConflict, formatWorktreeDiffSummary, type WorktreeSetup } from "../../src/execution/worktree.ts";
 
 function git(cwd: string, args: string[]): string {
 	const result = spawnSync("git", ["-C", cwd, ...args], { encoding: "utf-8" });
@@ -59,8 +52,7 @@ function createHookScript(_repoDir: string, fileName: string, source: string): s
 	return hookPath;
 }
 
-const hookScriptSkip =
-	process.platform === "win32" ? "Hook script execution differs on Windows CI environments." : undefined;
+const hookScriptSkip = process.platform === "win32" ? "Hook script execution differs on Windows CI environments." : undefined;
 
 void describe("worktree", () => {
 	void it("createWorktrees returns expected structure", () => {
@@ -176,10 +168,7 @@ void describe("worktree", () => {
 		const repoDir = createRepo("pi-worktree-dirty-");
 		try {
 			fs.writeFileSync(path.join(repoDir, "tracked.txt"), "dirty\n", "utf-8");
-			assert.throws(
-				() => createWorktrees(repoDir, "dirty", 1),
-				/worktree isolation requires a clean git working tree/i,
-			);
+			assert.throws(() => createWorktrees(repoDir, "dirty", 1), /worktree isolation requires a clean git working tree/i);
 		} finally {
 			cleanupRepo(repoDir);
 		}
@@ -187,10 +176,7 @@ void describe("worktree", () => {
 
 	void it("findWorktreeTaskCwdConflict allows omitted or matching task cwd values", () => {
 		const sharedCwd = path.join("/tmp", "repo");
-		assert.equal(
-			findWorktreeTaskCwdConflict([{ agent: "worker-a" }, { agent: "worker-b", cwd: sharedCwd }], sharedCwd),
-			undefined,
-		);
+		assert.equal(findWorktreeTaskCwdConflict([{ agent: "worker-a" }, { agent: "worker-b", cwd: sharedCwd }], sharedCwd), undefined);
 	});
 
 	void it("findWorktreeTaskCwdConflict returns the first conflicting task cwd", () => {
@@ -385,10 +371,7 @@ process.stdout.write(JSON.stringify({ syntheticPaths: [] }));
 	void it("rejects bare command names for worktree setup hooks", () => {
 		const repoDir = createRepo("pi-worktree-hook-bare-");
 		try {
-			assert.throws(
-				() => createWorktrees(repoDir, "hook-bare", 1, { setupHook: { hookPath: "node" } }),
-				/worktree setup hook must be an absolute path or a repo-relative path/i,
-			);
+			assert.throws(() => createWorktrees(repoDir, "hook-bare", 1, { setupHook: { hookPath: "node" } }), /worktree setup hook must be an absolute path or a repo-relative path/i);
 		} finally {
 			cleanupRepo(repoDir);
 		}
@@ -407,10 +390,7 @@ process.stdout.write(JSON.stringify({ syntheticPaths: ["tracked.txt"] }));
 		);
 		const runId = `hook-tracked-${Date.now().toString(36)}`;
 		try {
-			assert.throws(
-				() => createWorktrees(repoDir, runId, 1, { setupHook: { hookPath: path.relative(repoDir, hookPath) } }),
-				/cannot mark tracked paths as synthetic/i,
-			);
+			assert.throws(() => createWorktrees(repoDir, runId, 1, { setupHook: { hookPath: path.relative(repoDir, hookPath) } }), /cannot mark tracked paths as synthetic/i);
 		} finally {
 			cleanupRepo(repoDir);
 		}
@@ -429,10 +409,7 @@ process.stdout.write(JSON.stringify({ syntheticPaths: [payload.worktreePath + "/
 		);
 		const runId = `hook-absolute-synthetic-${Date.now().toString(36)}`;
 		try {
-			assert.throws(
-				() => createWorktrees(repoDir, runId, 1, { setupHook: { hookPath: path.relative(repoDir, hookPath) } }),
-				/synthetic path must be relative/i,
-			);
+			assert.throws(() => createWorktrees(repoDir, runId, 1, { setupHook: { hookPath: path.relative(repoDir, hookPath) } }), /synthetic path must be relative/i);
 		} finally {
 			cleanupRepo(repoDir);
 		}
@@ -485,10 +462,7 @@ process.stdout.write(JSON.stringify({ syntheticPaths: [] }));
 `,
 		);
 		try {
-			assert.throws(
-				() => createWorktrees(repoDir, runId, 2, { setupHook: { hookPath: path.relative(repoDir, hookPath) } }),
-				/worktree setup hook failed with exit code 1/i,
-			);
+			assert.throws(() => createWorktrees(repoDir, runId, 2, { setupHook: { hookPath: path.relative(repoDir, hookPath) } }), /worktree setup hook failed with exit code 1/i);
 			const branchList = git(repoDir, ["branch", "--list", `pi-parallel-${runId}-*`]);
 			assert.equal(branchList.trim(), "", "temporary branches should be cleaned up after setup failure");
 		} finally {

@@ -49,11 +49,7 @@ import type { ExtensionConfig, SubagentState, SuperpowersCommandPreset } from ".
 import { createSuperpowersPromptDispatcher } from "../superpowers/prompt-dispatch.ts";
 import { buildSuperpowersVisiblePromptSummary } from "../superpowers/root-prompt.ts";
 import { buildResolvedSkillEntryPrompt } from "../superpowers/skill-entry.ts";
-import {
-	parseSuperpowersWorkflowArgs,
-	type ResolvedSuperpowersRunProfile,
-	resolveSuperpowersRunProfile,
-} from "../superpowers/workflow-profile.ts";
+import { parseSuperpowersWorkflowArgs, type ResolvedSuperpowersRunProfile, resolveSuperpowersRunProfile } from "../superpowers/workflow-profile.ts";
 import { SuperpowersSettingsComponent } from "../ui/sp-settings.ts";
 import { SubagentsStatusComponent } from "../ui/subagents-status.ts";
 
@@ -77,11 +73,7 @@ function notifyIfConfigBlocked(state: SubagentState, ctx: ExtensionContext): boo
  * @param ctx Current extension context.
  * @param profile Resolved Superpowers run profile.
  */
-function sendSkillEntryPrompt(
-	dispatcher: ReturnType<typeof createSuperpowersPromptDispatcher>,
-	ctx: ExtensionContext,
-	profile: ResolvedSuperpowersRunProfile,
-): void {
+function sendSkillEntryPrompt(dispatcher: ReturnType<typeof createSuperpowersPromptDispatcher>, ctx: ExtensionContext, profile: ResolvedSuperpowersRunProfile): void {
 	const promptResult = buildResolvedSkillEntryPrompt({
 		cwd: ctx.cwd,
 		profile,
@@ -130,12 +122,7 @@ async function openSubagentsStatusOverlay(ctx: ExtensionContext): Promise<void> 
  * @param configSource Effective extension config displayed in the overlay.
  * @param reloadConfig Optional callback to reload config after changes.
  */
-async function openSuperpowersSettingsOverlay(
-	ctx: ExtensionContext,
-	state: SubagentState,
-	configSource: ConfigSource,
-	reloadConfig?: () => void,
-): Promise<void> {
+async function openSuperpowersSettingsOverlay(ctx: ExtensionContext, state: SubagentState, configSource: ConfigSource, reloadConfig?: () => void): Promise<void> {
 	if (!ctx.hasUI) return;
 	// Get model options from the model registry
 	let modelOptions: SettingsModelOption[] = [];
@@ -196,10 +183,7 @@ function registerSuperpowersCommand(
 			const parsed = parseSuperpowersWorkflowArgs(rawArgs);
 			if (!parsed?.task) {
 				if (ctx.hasUI) {
-					ctx.ui.notify(
-						`Usage: /${commandName} [lean|full|tdd|direct|subagents|no-subagents] <task> [--fork]`,
-						"error",
-					);
+					ctx.ui.notify(`Usage: /${commandName} [lean|full|tdd|direct|subagents|no-subagents] <task> [--fork]`, "error");
 				}
 				return Promise.resolve();
 			}
@@ -232,12 +216,7 @@ function registerSuperpowersCommand(
  * @param configSource Effective extension config for default resolution.
  * @param reloadConfig Optional callback to reload config after settings changes.
  */
-export function registerSlashCommands(
-	pi: ExtensionAPI,
-	state: SubagentState,
-	configSource: ConfigSource,
-	reloadConfig?: () => void,
-): void {
+export function registerSlashCommands(pi: ExtensionAPI, state: SubagentState, configSource: ConfigSource, reloadConfig?: () => void): void {
 	const config = readConfig(configSource);
 	const dispatcher = createSuperpowersPromptDispatcher(pi);
 

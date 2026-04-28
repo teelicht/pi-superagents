@@ -116,9 +116,7 @@ export function buildSkillEntryPromptInput(params: BuildSkillEntryPromptInputPar
  * @param input Skill resolution inputs and dependencies.
  * @returns Prompt text, or an error when a required skill cannot be resolved.
  */
-export function buildResolvedSkillEntryPrompt(
-	input: BuildResolvedSkillEntryPromptParams,
-): { prompt: string } | { error: string } {
+export function buildResolvedSkillEntryPrompt(input: BuildResolvedSkillEntryPromptParams): { prompt: string } | { error: string } {
 	const usingSuperpowersSkill = input.resolveSkill(input.cwd, "using-superpowers");
 	const entrySkillName = input.profile.entrySkill;
 	const entrySkill = entrySkillName ? input.resolveSkill(input.cwd, entrySkillName) : undefined;

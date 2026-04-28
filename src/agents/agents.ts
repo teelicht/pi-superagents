@@ -14,18 +14,7 @@ import { fileURLToPath } from "node:url";
 import type { SessionMode } from "../shared/types.ts";
 import { parseFrontmatter } from "./frontmatter.ts";
 
-export const KNOWN_FIELDS = new Set([
-	"name",
-	"description",
-	"tools",
-	"model",
-	"thinking",
-	"skills",
-	"extensions",
-	"interactive",
-	"maxSubagentDepth",
-	"session-mode",
-]);
+export const KNOWN_FIELDS = new Set(["name", "description", "tools", "model", "thinking", "skills", "extensions", "interactive", "maxSubagentDepth", "session-mode"]);
 
 export type AgentSource = "builtin" | "user" | "project";
 export type AgentScope = "project" | "user" | "both";
@@ -136,12 +125,9 @@ function loadAgentsFromDir(dir: string, source: AgentSource): AgentConfig[] {
 			skills: skills && skills.length > 0 ? skills : undefined,
 			extensions,
 			interactive: frontmatter.interactive === "true",
-			maxSubagentDepth:
-				Number.isInteger(parsedMaxSubagentDepth) && parsedMaxSubagentDepth >= 0 ? parsedMaxSubagentDepth : undefined,
+			maxSubagentDepth: Number.isInteger(parsedMaxSubagentDepth) && parsedMaxSubagentDepth >= 0 ? parsedMaxSubagentDepth : undefined,
 			sessionMode:
-				frontmatter["session-mode"] === "standalone" ||
-				frontmatter["session-mode"] === "lineage-only" ||
-				frontmatter["session-mode"] === "fork"
+				frontmatter["session-mode"] === "standalone" || frontmatter["session-mode"] === "lineage-only" || frontmatter["session-mode"] === "fork"
 					? frontmatter["session-mode"]
 					: undefined,
 			extraFields: Object.keys(extraFields).length > 0 ? extraFields : undefined,

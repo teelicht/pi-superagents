@@ -11,16 +11,7 @@ import { parseFrontmatter } from "../agents/frontmatter.ts";
 import { resolveImplementerSkillSet, resolveRoleSkillSet } from "../execution/superpowers-policy.ts";
 import type { ExecutionRole, ExtensionConfig, WorkflowMode } from "./types.ts";
 
-export type SkillSource =
-	| "project"
-	| "user"
-	| "project-package"
-	| "user-package"
-	| "project-settings"
-	| "user-settings"
-	| "extension"
-	| "builtin"
-	| "unknown";
+export type SkillSource = "project" | "user" | "project-package" | "user-package" | "project-settings" | "user-settings" | "extension" | "builtin" | "unknown";
 
 export interface ResolvedSkill {
 	name: string;
@@ -82,11 +73,7 @@ const AGENT_DIR = path.join(os.homedir(), ".pi", "agent");
  * @param input Project cwd, optional Pi agent directory, and resolved skill paths.
  * @returns Options accepted by PI 0.68 while remaining safe to pass to older runtimes.
  */
-export function buildLoadSkillsOptionsForPi(input: {
-	cwd: string;
-	agentDir?: string;
-	skillPaths: string[];
-}): PiLoadSkillsCompatOptions {
+export function buildLoadSkillsOptionsForPi(input: { cwd: string; agentDir?: string; skillPaths: string[] }): PiLoadSkillsCompatOptions {
 	return {
 		cwd: input.cwd,
 		agentDir: input.agentDir ?? AGENT_DIR,
@@ -260,10 +247,7 @@ function inferSkillSource(sourceInfo: { source: string; scope: string }, filePat
 	return "unknown";
 }
 
-function chooseHigherPrioritySkill(
-	existing: CachedSkillEntry | undefined,
-	candidate: CachedSkillEntry,
-): CachedSkillEntry {
+function chooseHigherPrioritySkill(existing: CachedSkillEntry | undefined, candidate: CachedSkillEntry): CachedSkillEntry {
 	if (!existing) return candidate;
 	const existingPriority = SOURCE_PRIORITY[existing.source] ?? 0;
 	const candidatePriority = SOURCE_PRIORITY[candidate.source] ?? 0;

@@ -9,10 +9,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-	createSuperpowersPromptDispatcher,
-	SUPERPOWERS_CONTRACT_CUSTOM_TYPE,
-} from "../../src/superpowers/prompt-dispatch.ts";
+import { createSuperpowersPromptDispatcher, SUPERPOWERS_CONTRACT_CUSTOM_TYPE } from "../../src/superpowers/prompt-dispatch.ts";
 
 type BeforeAgentStartHandler = (event: { prompt: string }) =>
 	| {
@@ -38,15 +35,9 @@ void describe("Superpowers prompt dispatcher", () => {
 			},
 		} as never);
 
-		dispatcher.send(
-			"Superpowers ▸ fix auth\n\nConfig:\nuseBranches: true",
-			"# Superpowers Root Session Contract\nsecret runtime contract",
-			{ isIdle: () => true },
-		);
+		dispatcher.send("Superpowers ▸ fix auth\n\nConfig:\nuseBranches: true", "# Superpowers Root Session Contract\nsecret runtime contract", { isIdle: () => true });
 
-		assert.deepEqual(sentMessages, [
-			{ content: "Superpowers ▸ fix auth\n\nConfig:\nuseBranches: true", options: undefined },
-		]);
+		assert.deepEqual(sentMessages, [{ content: "Superpowers ▸ fix auth\n\nConfig:\nuseBranches: true", options: undefined }]);
 		const injected = beforeAgentStart?.({ prompt: sentMessages[0].content });
 		assert.equal(injected?.message?.customType, SUPERPOWERS_CONTRACT_CUSTOM_TYPE);
 		assert.equal(injected?.message?.display, false);

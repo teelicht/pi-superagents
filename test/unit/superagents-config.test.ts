@@ -9,11 +9,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-	getSuperagentSettings,
-	resolveSuperagentWorktreeCreateOptions,
-	resolveSuperagentWorktreeEnabled,
-} from "../../src/execution/superagents-config.ts";
+import { getSuperagentSettings, resolveSuperagentWorktreeCreateOptions, resolveSuperagentWorktreeEnabled } from "../../src/execution/superagents-config.ts";
 
 void describe("superagents config helpers", () => {
 	/**

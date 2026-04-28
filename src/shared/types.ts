@@ -48,8 +48,6 @@ export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhi
 
 export type SessionMode = "standalone" | "lineage-only" | "fork";
 
-export type LegacyExecutionContext = "fresh" | "fork";
-
 export type TaskDeliveryMode = "direct" | "artifact";
 
 /**
@@ -67,14 +65,7 @@ export interface ModelTierConfig {
 
 export type ModelTierSetting = string | ModelTierConfig;
 
-export type ExecutionRole =
-	| "root-planning"
-	| "sp-recon"
-	| "sp-research"
-	| "sp-implementer"
-	| "sp-spec-review"
-	| "sp-code-review"
-	| "sp-debug";
+export type ExecutionRole = "root-planning" | "sp-recon" | "sp-research" | "sp-implementer" | "sp-spec-review" | "sp-code-review" | "sp-debug";
 
 // ============================================================================
 // Skills
@@ -137,7 +128,7 @@ export interface SingleResult {
 export interface Details {
 	mode: "single" | "parallel";
 	sessionMode?: SessionMode;
-	context?: "fresh" | "fork";
+
 	results: SingleResult[];
 	progress?: AgentProgress[];
 	progressSummary?: ProgressSummary;
@@ -192,9 +183,7 @@ export interface SubagentState {
 // Display
 // ============================================================================
 
-export type DisplayItem =
-	| { type: "text"; text: string }
-	| { type: "tool"; name: string; args: Record<string, unknown> };
+export type DisplayItem = { type: "text"; text: string } | { type: "tool"; name: string; args: Record<string, unknown> };
 
 // ============================================================================
 // Error Handling
@@ -342,11 +331,7 @@ export function normalizeMaxSubagentDepth(value: unknown): number | undefined {
 }
 
 export function resolveCurrentMaxSubagentDepth(configMaxDepth?: number): number {
-	return (
-		normalizeMaxSubagentDepth(process.env.PI_SUBAGENT_MAX_DEPTH) ??
-		normalizeMaxSubagentDepth(configMaxDepth) ??
-		DEFAULT_SUBAGENT_MAX_DEPTH
-	);
+	return normalizeMaxSubagentDepth(process.env.PI_SUBAGENT_MAX_DEPTH) ?? normalizeMaxSubagentDepth(configMaxDepth) ?? DEFAULT_SUBAGENT_MAX_DEPTH;
 }
 
 export function resolveChildMaxSubagentDepth(parentMaxDepth: number, agentMaxDepth?: number): number {
@@ -381,11 +366,7 @@ export function formatBytes(bytes: number): string {
 	return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
-export function truncateOutput(
-	output: string,
-	config: Required<MaxOutputConfig>,
-	artifactPath?: string,
-): TruncationResult {
+export function truncateOutput(output: string, config: Required<MaxOutputConfig>, artifactPath?: string): TruncationResult {
 	const lines = output.split("\n");
 	const bytes = Buffer.byteLength(output, "utf-8");
 
@@ -423,4 +404,28 @@ export function truncateOutput(
 		originalLines: lines.length,
 		artifactPath,
 	};
+}
+
+export interface TaskParam {
+	agent: string;
+	task: string;
+	cwd?: string;
+	model?: string;
+	skill?: string | string[] | boolean;
+}
+
+export interface SubagentParamsLike {
+	agent?: string;
+	task?: string;
+	tasks?: TaskParam[];
+	workflow?: WorkflowMode;
+	useTestDrivenDevelopment?: boolean;
+	worktree?: boolean;
+	sessionMode?: SessionMode;
+	cwd?: string;
+	maxOutput?: MaxOutputConfig;
+	artifacts?: boolean;
+	includeProgress?: boolean;
+	model?: string;
+	skill?: string | string[] | boolean;
 }

@@ -11,15 +11,14 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { afterEach, describe, it } from "node:test";
-import { createTempDir, removeTempDir } from "../support/helpers.ts";
-
 import {
 	createSessionLaunchResolver,
 	resolveRequestedSessionMode,
 	resolveTaskDeliveryMode,
-	seedLineageOnlySessionFile,
 	type SessionLaunchManager,
+	seedLineageOnlySessionFile,
 } from "../../src/execution/session-mode.ts";
+import { createTempDir, removeTempDir } from "../support/helpers.ts";
 
 const tempDirs: string[] = [];
 
@@ -95,32 +94,11 @@ void describe("resolveRequestedSessionMode", () => {
 		assert.equal(
 			resolveRequestedSessionMode({
 				sessionMode: "lineage-only",
-				context: "fork",
 				agentSessionMode: "fork",
 				defaultSessionMode: "standalone",
 			}),
 			"lineage-only",
 		);
-	});
-
-	void it("maps the deprecated context alias explicitly for fork and fresh launches", () => {
-		assert.equal(
-			resolveRequestedSessionMode({
-				context: "fresh",
-				agentSessionMode: "lineage-only",
-				defaultSessionMode: "fork",
-			}),
-			"standalone",
-		);
-		assert.equal(
-			resolveRequestedSessionMode({
-				context: "fork",
-				agentSessionMode: "standalone",
-				defaultSessionMode: "standalone",
-			}),
-			"fork",
-		);
-		assert.equal(resolveRequestedSessionMode({ context: "fresh" }), "standalone");
 	});
 
 	void it("falls back to the agent default and then the system default", () => {
@@ -151,14 +129,7 @@ void describe("seedLineageOnlySessionFile", () => {
 
 		const lines = readJsonl(childSessionFile);
 		assert.equal(lines.length, 1);
-		assert.deepEqual(lines[0] && typeof lines[0] === "object" ? Object.keys(lines[0] as object).sort() : [], [
-			"cwd",
-			"id",
-			"parentSession",
-			"timestamp",
-			"type",
-			"version",
-		]);
+		assert.deepEqual(lines[0] && typeof lines[0] === "object" ? Object.keys(lines[0] as object).sort() : [], ["cwd", "id", "parentSession", "timestamp", "type", "version"]);
 		assert.equal((lines[0] as { type?: string }).type, "session");
 		assert.equal((lines[0] as { version?: number }).version, 3);
 		assert.equal((lines[0] as { cwd?: string }).cwd, tempDir);

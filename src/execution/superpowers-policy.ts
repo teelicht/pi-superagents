@@ -45,9 +45,7 @@ function normalizeTierSetting(entry: unknown): ResolvedRoleModel | undefined {
 	if (!entry || typeof entry !== "object") return undefined;
 	const candidate = entry as Partial<ModelTierConfig>;
 	if (typeof candidate.model !== "string" || candidate.model.length === 0) return undefined;
-	return typeof candidate.thinking === "string"
-		? { model: candidate.model, thinking: candidate.thinking }
-		: { model: candidate.model };
+	return typeof candidate.thinking === "string" ? { model: candidate.model, thinking: candidate.thinking } : { model: candidate.model };
 }
 
 /**
@@ -57,10 +55,7 @@ function normalizeTierSetting(entry: unknown): ResolvedRoleModel | undefined {
  * @param tier Normalized tier name.
  * @returns Resolved model settings for the tier, if configured.
  */
-function resolveTierModelSetting(
-	settings: ExtensionConfig["superagents"],
-	tier: string,
-): ResolvedRoleModel | undefined {
+function resolveTierModelSetting(settings: ExtensionConfig["superagents"], tier: string): ResolvedRoleModel | undefined {
 	return normalizeTierSetting(settings?.modelTiers?.[tier]);
 }
 
@@ -90,11 +85,7 @@ export function inferExecutionRole(agentName: string): ExecutionRole {
  * Failure modes:
  * - unconfigured tier names resolve to `undefined`
  */
-export function resolveModelForAgent(input: {
-	workflow: WorkflowMode;
-	agentModel?: string;
-	config: ExtensionConfig;
-}): ResolvedRoleModel | undefined {
+export function resolveModelForAgent(input: { workflow: WorkflowMode; agentModel?: string; config: ExtensionConfig }): ResolvedRoleModel | undefined {
 	const settings = getSuperagentSettings(input.config);
 	const tier = normalizeConfiguredTier(input.agentModel);
 	if (!tier) return undefined;
@@ -148,11 +139,7 @@ export function resolveRoleSkillSet(input: {
  * Failure modes:
  * - none; missing tool declarations fall back to a safe read-only baseline
  */
-export function resolveRoleTools(input: {
-	workflow: WorkflowMode;
-	role: ExecutionRole;
-	agentTools?: string[];
-}): string[] | undefined {
+export function resolveRoleTools(input: { workflow: WorkflowMode; role: ExecutionRole; agentTools?: string[] }): string[] | undefined {
 	if (input.workflow !== "superpowers" || input.role === "root-planning") {
 		return input.agentTools;
 	}
