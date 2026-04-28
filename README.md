@@ -1,6 +1,6 @@
 # @teelicht/pi-superagents
 
-[Pi agent-harness](https://pi.dev) extension to support [superpowers](https://skills.sh/obra/superpowers) workflows using subagents. This was originally a fork of [pi-subagents](https://github.com/nicobailon/pi-subagents), but moved from a very flexible subagent implementation to an opinionated tool to integrate the superpowers skills without much need for configuration.
+[Pi agent-harness](https://pi.dev) extension to support [superpowers](https://skills.sh/obra/superpowers) workflows using subagents. 
 
 ## Features
 
@@ -74,3 +74,10 @@ On install, `pi-superagents` creates an empty user override file:
 - **[Parameters API](docs/parameters.md)** — Full parameter reference for the `subagent` tool.
 - **[Skills Reference](docs/skills.md)** — Skill locations, injection, and frontmatter.
 - **[Release Process](docs/releases.md)** — Maintainer steps for GitHub Releases and npm Trusted Publishing.
+
+## Credits
+
+- This was originally a fork of [pi-subagents](https://github.com/nicobailon/pi-subagents), so thanks for all the ground-work. This repo however moved far off the original.
+- [pi-interactive-subagents](https://github.com/hazat/pi-interactive-subagents) for the session-mode implementation.
+- [@tintinweb/pi-subagents](https://github.com/tintinweb/pi-subagents) for UI inspiration.
+- And of course [Pi](https://pi.dev) for the awesome foundation.
