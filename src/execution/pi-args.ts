@@ -14,6 +14,17 @@ export interface BuildPiArgsInput {
 	model?: string;
 	thinking?: string;
 	tools?: string[];
+	/**
+	 * Controls extension discovery behavior.
+	 *
+	 * - **undefined**: Pi default extension discovery remains enabled. Path-like
+	 *   tools (e.g. `"./tools/custom-tool.ts"`) are still emitted as `--extension`
+	 *   arguments so they are available to pi.
+	 *
+	 * - **Defined array** (including `[]`): Emits `--no-extensions` to disable Pi's
+	 *   built-in extension discovery, then emits `--extension` for each path in the
+	 *   array. Use this to provide an explicit extension allowlist.
+	 */
 	extensions?: string[];
 	skills?: string[];
 	systemPrompt?: string | null;
