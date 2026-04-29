@@ -17,6 +17,8 @@ import { describe, it } from "node:test";
 import {
 	findMissingSubagentExtensionPath,
 	getSuperagentSettings,
+	isSchemeLikeExtensionSource,
+	resolveLocalSubagentExtensionPath,
 	resolveSubagentExtensions,
 	resolveSuperagentWorktreeCreateOptions,
 	resolveSuperagentWorktreeEnabled,
@@ -141,6 +143,139 @@ void describe("resolveSubagentExtensions", () => {
 		const config = {};
 		const result = resolveSubagentExtensions(config, undefined);
 		assert.deepEqual(result, []);
+	});
+});
+
+void describe("isSchemeLikeExtensionSource", () => {
+	/**
+	 * Verifies npm: scheme sources are recognized as scheme-like.
+	 *
+	 * @returns Nothing; asserts npm: prefix returns true.
+	 */
+	void it("returns true for npm: scheme sources", () => {
+		assert.equal(isSchemeLikeExtensionSource("npm:@scope/pkg"), true);
+	});
+
+	/**
+	 * Verifies git: scheme sources are recognized as scheme-like.
+	 *
+	 * @returns Nothing; asserts git: prefix returns true.
+	 */
+	void it("returns true for git: scheme sources", () => {
+		assert.equal(isSchemeLikeExtensionSource("git:github.com/user/repo"), true);
+	});
+
+	/**
+	 * Verifies https: scheme sources are recognized as scheme-like.
+	 *
+	 * @returns Nothing; asserts https: prefix returns true.
+	 */
+	void it("returns true for https: scheme sources", () => {
+		assert.equal(isSchemeLikeExtensionSource("https://example.com/ext.ts"), true);
+	});
+
+	/**
+	 * Verifies ssh: scheme sources are recognized as scheme-like.
+	 *
+	 * @returns Nothing; asserts ssh: prefix returns true.
+	 */
+	void it("returns true for ssh: scheme sources", () => {
+		assert.equal(isSchemeLikeExtensionSource("ssh://git@example.com/user/repo.git"), true);
+	});
+
+	/**
+	 * Verifies Windows backslash drive-letter paths are not treated as scheme sources.
+	 *
+	 * @returns Nothing; asserts Windows path returns false.
+	 */
+	void it("returns false for Windows backslash drive-letter paths", () => {
+		assert.equal(isSchemeLikeExtensionSource("C:\\missing\\extension.ts"), false);
+	});
+
+	/**
+	 * Verifies Windows forward-slash drive-letter paths are not treated as scheme sources.
+	 *
+	 * @returns Nothing; asserts Windows path returns false.
+	 */
+	void it("returns false for Windows forward-slash drive-letter paths", () => {
+		assert.equal(isSchemeLikeExtensionSource("C:/missing/extension.ts"), false);
+	});
+
+	/**
+	 * Verifies relative paths are not treated as scheme sources.
+	 *
+	 * @returns Nothing; asserts relative path returns false.
+	 */
+	void it("returns false for relative paths", () => {
+		assert.equal(isSchemeLikeExtensionSource("./local.ts"), false);
+	});
+
+	/**
+	 * Verifies absolute Unix-style paths are not treated as scheme sources.
+	 *
+	 * @returns Nothing; asserts absolute path returns false.
+	 */
+	void it("returns false for absolute Unix-style paths", () => {
+		assert.equal(isSchemeLikeExtensionSource("/tmp/local.ts"), false);
+	});
+
+	/**
+	 * Verifies home-relative paths are not treated as scheme sources.
+	 *
+	 * @returns Nothing; asserts home-relative path returns false.
+	 */
+	void it("returns false for home-relative paths", () => {
+		assert.equal(isSchemeLikeExtensionSource("~/local.ts"), false);
+	});
+});
+
+void describe("resolveLocalSubagentExtensionPath", () => {
+	/**
+	 * Verifies bare tilde resolves to the user's home directory.
+	 *
+	 * @returns Nothing; asserts bare tilde returns os.homedir().
+	 */
+	void it("resolves bare tilde to os.homedir()", () => {
+		assert.equal(resolveLocalSubagentExtensionPath("/some/runtime/cwd", "~"), os.homedir());
+	});
+
+	/**
+	 * Verifies tilde-forward-slash paths expand to the user's home directory.
+	 *
+	 * @returns Nothing; asserts ~/path returns os.homedir() + path.
+	 */
+	void it("resolves tilde-forward-slash paths to os.homedir() with path", () => {
+		assert.equal(resolveLocalSubagentExtensionPath("/some/runtime/cwd", "~/local.ts"), path.join(os.homedir(), "local.ts"));
+	});
+
+	/**
+	 * Verifies tilde-backslash paths expand to the user's home directory.
+	 *
+	 * @returns Nothing; asserts ~\\path returns os.homedir() + path.
+	 */
+	void it("resolves tilde-backslash paths to os.homedir() with path", () => {
+		assert.equal(resolveLocalSubagentExtensionPath("/some/runtime/cwd", "~\\local.ts"), path.join(os.homedir(), "local.ts"));
+	});
+
+	/**
+	 * Verifies absolute paths are returned unchanged.
+	 *
+	 * @returns Nothing; asserts absolute path returned as-is.
+	 */
+	void it("returns absolute paths unchanged", () => {
+		const absPath = "/some/absolute/path/extension.ts";
+		assert.equal(resolveLocalSubagentExtensionPath("/some/runtime/cwd", absPath), absPath);
+	});
+
+	/**
+	 * Verifies relative paths are resolved against the runtime working directory.
+	 *
+	 * @returns Nothing; asserts relative path resolved against runtimeCwd.
+	 */
+	void it("resolves relative paths against runtime cwd", () => {
+		const runtimeCwd = "/some/runtime/cwd";
+		const relativePath = "./local.ts";
+		assert.equal(resolveLocalSubagentExtensionPath(runtimeCwd, relativePath), path.resolve(runtimeCwd, relativePath));
 	});
 });
 
