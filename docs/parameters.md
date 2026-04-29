@@ -24,7 +24,7 @@ Provide either `agent` plus `task` for a single delegation, or `tasks` for paral
 
 Subagent output is inline: the child Pi process streams assistant text back through the `subagent` tool result. The tool does not accept an output-file parameter and does not instruct Superpowers roles to write repo-root report files.
 
-> **Note:** The `subagent` tool does not accept ad-hoc extension paths at call time. Extension loading for child Pi processes is controlled through `superagents.extensions` in the global config and the `extensions` field in agent frontmatter (additive to the global list). Implicit Pi extension discovery is disabled by default; only configured extensions are loaded for subagents.
+> **Note:** The `subagent` tool does not accept ad-hoc extension paths at call time. Extension loading for child Pi processes is controlled through `superagents.extensions` in the global config and the `extensions` field in agent frontmatter (additive to the global list). Implicit Pi extension discovery is disabled by default; only configured extensions are loaded for subagents. If any configured global or agent extension path is missing, the subagent returns a clear error and does not spawn the child Pi process.
 
 ### TaskItem (for parallel tasks)
 

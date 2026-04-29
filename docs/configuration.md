@@ -71,6 +71,8 @@ Subagents run with implicit Pi extension discovery disabled by default. Configur
 }
 ```
 
+Configured extension entries must point to existing files or directories when the subagent starts. Relative paths resolve from the subagent runtime working directory; use absolute paths for extensions outside the project. Missing paths cause subagent launch to fail before Pi starts and include the config source in the error.
+
 Agent frontmatter can append additional extensions per-agent using the `extensions` field, which is additive to the global list. Extensions declared in agent frontmatter are appended to the global `extensions` array at session launch.
 
 ### Command Presets

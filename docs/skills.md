@@ -67,7 +67,7 @@ Role agent definitions (`agents/sp-*.md`) declare metadata in YAML frontmatter:
 |-------|----------|-------------|
 | `name` | Yes | Agent identifier used by the `subagent` tool |
 | `description` | Yes | Short description of the agent's purpose |
-| `extensions` | No | Comma-separated Pi extension entrypoints to append for this agent. Global `superagents.extensions` entries are loaded first. |
+| `extensions` | No | Comma-separated Pi extension entrypoints to append for this agent. Global `superagents.extensions` entries are loaded first. Relative entries resolve from the subagent runtime working directory; missing entries fail that agent before Pi starts. |
 | `model` | No | Default model tier or concrete model ID |
 | `tools` | No | Comma-separated list of tool names available to this agent |
 | `maxSubagentDepth` | No | Maximum subagent delegation depth (0 disables delegation) |
