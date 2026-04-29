@@ -14,10 +14,27 @@ import { fileURLToPath } from "node:url";
 import type { SessionMode } from "../shared/types.ts";
 import { parseFrontmatter } from "./frontmatter.ts";
 
-export const KNOWN_FIELDS = new Set(["name", "description", "tools", "model", "thinking", "skills", "extensions", "interactive", "maxSubagentDepth", "session-mode"]);
+export const KNOWN_FIELDS = new Set([
+	"name",
+	"description",
+	"tools",
+	"model",
+	"thinking",
+	"skills",
+	"extensions",
+	"interactive",
+	"maxSubagentDepth",
+	"session-mode",
+	"kind",
+	"execution",
+	"command",
+	"entrySkill",
+]);
 
 export type AgentSource = "builtin" | "user" | "project";
 export type AgentScope = "project" | "user" | "both";
+export type AgentKind = "entrypoint" | "role";
+export type AgentExecution = "interactive" | "headless";
 
 export interface AgentConfig {
 	name: string;
@@ -34,6 +51,10 @@ export interface AgentConfig {
 	interactive?: boolean;
 	maxSubagentDepth?: number;
 	sessionMode?: SessionMode;
+	kind?: AgentKind;
+	execution?: AgentExecution;
+	command?: string;
+	entrySkill?: string;
 	extraFields?: Record<string, string>;
 }
 
@@ -111,6 +132,8 @@ function loadAgentsFromDir(dir: string, source: AgentSource): AgentConfig[] {
 		}
 
 		const parsedMaxSubagentDepth = Number(frontmatter.maxSubagentDepth);
+		const kind = frontmatter.kind === "entrypoint" || frontmatter.kind === "role" ? frontmatter.kind : undefined;
+		const execution = frontmatter.execution === "interactive" || frontmatter.execution === "headless" ? frontmatter.execution : undefined;
 
 		agents.push({
 			name: frontmatter.name,
@@ -130,6 +153,10 @@ function loadAgentsFromDir(dir: string, source: AgentSource): AgentConfig[] {
 				frontmatter["session-mode"] === "standalone" || frontmatter["session-mode"] === "lineage-only" || frontmatter["session-mode"] === "fork"
 					? frontmatter["session-mode"]
 					: undefined,
+			kind,
+			execution,
+			command: frontmatter.command,
+			entrySkill: frontmatter.entrySkill,
 			extraFields: Object.keys(extraFields).length > 0 ? extraFields : undefined,
 		});
 	}

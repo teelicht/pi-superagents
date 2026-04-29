@@ -17,6 +17,11 @@ interface DiscoveredAgent {
 	name: string;
 	filePath?: string;
 	sessionMode?: string;
+	kind?: string;
+	execution?: string;
+	command?: string;
+	entrySkill?: string;
+	skills?: string[];
 }
 
 interface AgentDiscoveryResult {
@@ -160,6 +165,37 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 		assert.strictEqual(agent?.sessionMode, "lineage-only");
 	});
 
+	void test("should parse entrypoint agent frontmatter fields", () => {
+		assertModulesLoaded();
+
+		const agentsDir = path.join(cwdDir, ".agents");
+		fs.mkdirSync(agentsDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(agentsDir, "sp-implement.md"),
+			[
+				"---",
+				"name: sp-implement",
+				"description: Interactive implementation entrypoint",
+				"kind: entrypoint",
+				"execution: interactive",
+				"command: sp-implement",
+				"entrySkill: using-superpowers",
+				"skills: verification-before-completion, receiving-code-review",
+				"---",
+				"Entrypoint body",
+			].join("\n"),
+		);
+
+		const result = discoverAgentsAll!(cwdDir);
+		const agent = result.project.find((candidate) => candidate.name === "sp-implement");
+		assert.ok(agent);
+		assert.strictEqual(agent?.kind, "entrypoint");
+		assert.strictEqual(agent?.execution, "interactive");
+		assert.strictEqual(agent?.command, "sp-implement");
+		assert.strictEqual(agent?.entrySkill, "using-superpowers");
+		assert.deepStrictEqual(agent?.skills, ["verification-before-completion", "receiving-code-review"]);
+	});
+
 	void test("should resolve built-in bounded agents with lineage-only session-mode", () => {
 		assertModulesLoaded();
 
@@ -171,5 +207,14 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 			assert.ok(agent, `expected built-in agent ${agentName}`);
 			assert.strictEqual(agent?.sessionMode, "lineage-only");
 		}
+	});
+
+	void test("should resolve built-in sp-debug with systematic-debugging skill", () => {
+		assertModulesLoaded();
+
+		const result = discoverAgents!(cwdDir);
+		const agent = result.agents.find((candidate) => candidate.name === "sp-debug");
+		assert.ok(agent, "expected built-in sp-debug agent");
+		assert.deepStrictEqual(agent?.skills, ["systematic-debugging"]);
 	});
 });
