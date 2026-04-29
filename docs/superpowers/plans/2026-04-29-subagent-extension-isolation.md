@@ -125,7 +125,7 @@ Expected: commit succeeds. Do not include unrelated existing changes in `AGENTS.
 - Modify: `test/unit/pi-args.test.ts`
 - Modify: `src/execution/pi-args.ts`
 
-- [ ] **Step 1: Write failing unit tests for explicit extensions and tool-path extensions**
+- [x] **Step 1: Write failing unit tests for explicit extensions and tool-path extensions**
 
 Append these tests inside `void describe("buildPiArgs session wiring", () => { ... })` in `test/unit/pi-args.test.ts`:
 
@@ -160,7 +160,7 @@ Append these tests inside `void describe("buildPiArgs session wiring", () => { .
 	});
 ```
 
-- [ ] **Step 2: Run the focused unit test and verify failure**
+- [x] **Step 2: Run the focused unit test and verify failure**
 
 Run:
 
@@ -170,7 +170,7 @@ node --experimental-strip-types --test test/unit/pi-args.test.ts
 
 Expected: first new test may pass if PR #17 behavior is already present in `buildPiArgs()`. Second new test must fail before implementation because `./tools/custom-tool.ts` is not emitted when `extensions` is defined.
 
-- [ ] **Step 3: Update `buildPiArgs()` to emit tool-path extensions in both branches**
+- [x] **Step 3: Update `buildPiArgs()` to emit tool-path extensions in both branches**
 
 In `src/execution/pi-args.ts`, replace the current extension block:
 
@@ -203,7 +203,7 @@ with:
 
 This preserves legacy path-like tool extension behavior when `extensions` is undefined and also preserves it for isolated subagent launches.
 
-- [ ] **Step 4: Run the focused unit test and verify pass**
+- [x] **Step 4: Run the focused unit test and verify pass**
 
 Run:
 
@@ -213,7 +213,7 @@ node --experimental-strip-types --test test/unit/pi-args.test.ts
 
 Expected: all tests in `test/unit/pi-args.test.ts` pass.
 
-- [ ] **Step 5: Commit the CLI arg fix**
+- [x] **Step 5: Commit the CLI arg fix**
 
 Run:
 
