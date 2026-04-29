@@ -773,7 +773,7 @@ git commit -m "refactor: remove superpowers skill overlay plumbing"
 - Modify: `test/unit/config-store.test.ts`
 - Modify: `test/e2e/e2e-sandbox-install.test.ts` if it asserts empty config creation
 
-- [ ] **Step 1: Add optional entrypoint command validation**
+- [x] **Step 1: Add optional entrypoint command validation**
 
 In `src/execution/config-validation.ts`, extend function signatures:
 
@@ -812,7 +812,7 @@ export function loadEffectiveConfig(defaults: ExtensionConfig, userConfig: unkno
 
 Call `validateConfigObject(userConfig, options)`.
 
-- [ ] **Step 2: Add validation tests for stale command warnings**
+- [x] **Step 2: Add validation tests for stale command warnings**
 
 In `test/unit/config-validation.test.ts`, add:
 
@@ -836,7 +836,7 @@ void it("warns when command behavior has no matching entrypoint command", () => 
 });
 ```
 
-- [ ] **Step 3: Pass entrypoint command names through runtime config store**
+- [x] **Step 3: Pass entrypoint command names through runtime config store**
 
 In `src/extension/config-store.ts`, update signatures:
 
@@ -863,7 +863,7 @@ And reload:
 currentState = loadRuntimeConfigState(packageConfigDir, userConfigDir, getEntrypointCommands());
 ```
 
-- [ ] **Step 4: Discover entrypoint command names in extension startup**
+- [x] **Step 4: Discover entrypoint command names in extension startup**
 
 In `src/extension/index.ts`, import `discoverAgents` if not already imported there, and create a helper near config store setup:
 
@@ -884,11 +884,11 @@ const configStore = createRuntimeConfigStore(packageRoot, undefined, () => disco
 
 If current arguments differ, preserve existing package/user config directory values and add callback as the last parameter.
 
-- [ ] **Step 5: Update config-store tests**
+- [x] **Step 5: Update config-store tests**
 
 In `test/unit/config-store.test.ts`, add a case where `config.json` contains `sp-missing`, call `loadRuntimeConfigState(packageDir, userDir, ["sp-implement"])`, and assert a non-blocking warning path `superagents.commands.sp-missing`.
 
-- [ ] **Step 6: Change installer config creation**
+- [x] **Step 6: Change installer config creation**
 
 In `install.mjs`, replace `ensureUserConfig` implementation with default-copy behavior:
 
@@ -910,7 +910,7 @@ Update comments and install output from “created empty” to “created from d
 Config file: ${USER_CONFIG_PATH}${createdUserConfig ? " (created from defaults)" : ""}
 ```
 
-- [ ] **Step 7: Update installer migration helper text**
+- [x] **Step 7: Update installer migration helper text**
 
 Since a copied default is now expected on fresh install, change the legacy warning in `validateUserConfigFile` from:
 
@@ -926,7 +926,7 @@ to:
 
 Update `migrateUserConfigForInstall` text or leave the migration command as a manual legacy cleanup tool. If left, rename output to make clear it is optional cleanup, not required validity.
 
-- [ ] **Step 8: Update installer tests if needed**
+- [x] **Step 8: Update installer tests if needed**
 
 Search for empty config assertions:
 
@@ -936,7 +936,7 @@ grep -R "created empty\|{}\\n\|duplicate bundled defaults" -n test install.mjs
 
 Update tests to expect default-copy behavior and new text.
 
-- [ ] **Step 9: Run focused tests**
+- [x] **Step 9: Run focused tests**
 
 Run:
 
@@ -947,7 +947,7 @@ node --experimental-transform-types --import ./test/support/register-loader.mjs 
 
 Expected: config warnings are non-blocking and installer tests match default-copy behavior.
 
-- [ ] **Step 10: Commit validation/install changes**
+- [x] **Step 10: Commit validation/install changes**
 
 ```bash
 git add src/execution/config-validation.ts src/extension/config-store.ts src/extension/index.ts install.mjs test/unit/config-validation.test.ts test/unit/config-store.test.ts test/e2e/e2e-sandbox-install.test.ts
