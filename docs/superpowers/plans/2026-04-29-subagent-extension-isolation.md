@@ -385,7 +385,7 @@ Expected: commit succeeds.
 - Modify: `test/unit/config-validation.test.ts`
 - Modify: `src/execution/config-validation.ts`
 
-- [ ] **Step 1: Write failing config validation tests**
+- [x] **Step 1: Write failing config validation tests**
 
 Add these tests inside `void describe("config validation", () => { ... })` in `test/unit/config-validation.test.ts`, near the existing array-merge tests:
 
@@ -439,7 +439,7 @@ Add these tests inside `void describe("config validation", () => { ... })` in `t
 	});
 ```
 
-- [ ] **Step 2: Run validation tests and verify failure**
+- [x] **Step 2: Run validation tests and verify failure**
 
 Run:
 
@@ -449,7 +449,7 @@ node --experimental-strip-types --test test/unit/config-validation.test.ts
 
 Expected: tests fail because `superagents.extensions` is currently an unknown key or does not merge correctly.
 
-- [ ] **Step 3: Add `extensions` to supported Superagents keys**
+- [x] **Step 3: Add `extensions` to supported Superagents keys**
 
 In `src/execution/config-validation.ts`, update:
 
@@ -463,7 +463,7 @@ to:
 const SUPERAGENTS_KEYS = new Set(["commands", "modelTiers", "skillOverlays", "interceptSkillCommands", "extensions", "superpowersSkills"]);
 ```
 
-- [ ] **Step 4: Add a reusable non-empty string array validator**
+- [x] **Step 4: Add a reusable non-empty string array validator**
 
 Add this function near `validateSkillNameArray()` in `src/execution/config-validation.ts`:
 
@@ -497,7 +497,7 @@ function validateSkillNameArray(diagnostics: ConfigDiagnostic[], value: unknown,
 }
 ```
 
-- [ ] **Step 5: Validate `superagents.extensions`**
+- [x] **Step 5: Validate `superagents.extensions`**
 
 In `validateConfigObject()`, after the `interceptSkillCommands` validation block and before the `superpowersSkills` block, add:
 
@@ -507,7 +507,7 @@ In `validateConfigObject()`, after the `interceptSkillCommands` validation block
 			}
 ```
 
-- [ ] **Step 6: Merge `extensions` with replace semantics**
+- [x] **Step 6: Merge `extensions` with replace semantics**
 
 In `mergeConfig()`, after `mergedInterceptSkillCommands`, add:
 
@@ -524,7 +524,7 @@ In the `mergedSuperagents` object, add:
 
 near `interceptSkillCommands: mergedInterceptSkillCommands,`.
 
-- [ ] **Step 7: Run validation tests and verify pass**
+- [x] **Step 7: Run validation tests and verify pass**
 
 Run:
 
@@ -534,7 +534,7 @@ node --experimental-strip-types --test test/unit/config-validation.test.ts
 
 Expected: all validation tests pass.
 
-- [ ] **Step 8: Commit config validation and merge**
+- [x] **Step 8: Commit config validation and merge**
 
 Run:
 
