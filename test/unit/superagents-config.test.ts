@@ -5,11 +5,12 @@
  * - resolve the canonical Superagents settings root
  * - apply Superpowers-specific worktree defaults consistently
  * - scope worktree setup options to the Superpowers workflow
+ * - resolve global extension ordering for subagent execution
  */
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { getSuperagentSettings, resolveSuperagentWorktreeCreateOptions, resolveSuperagentWorktreeEnabled } from "../../src/execution/superagents-config.ts";
+import { getSuperagentSettings, resolveSubagentExtensions, resolveSuperagentWorktreeCreateOptions, resolveSuperagentWorktreeEnabled } from "../../src/execution/superagents-config.ts";
 
 void describe("superagents config helpers", () => {
 	/**
@@ -82,5 +83,53 @@ void describe("superagents config helpers", () => {
 				requireIgnoredRoot: true,
 			},
 		);
+	});
+});
+
+void describe("resolveSubagentExtensions", () => {
+	/**
+	 * Verifies global extensions from config come before agent extensions.
+	 *
+	 * @returns Nothing; asserts global extensions prepended to agent extensions.
+	 */
+	void it("prepends global extensions before agent extensions", () => {
+		const config = { superagents: { extensions: ["global-ext-a", "global-ext-b"] } };
+		const agentExtensions = ["agent-ext-1", "agent-ext-2"];
+		const result = resolveSubagentExtensions(config, agentExtensions);
+		assert.deepEqual(result, ["global-ext-a", "global-ext-b", "agent-ext-1", "agent-ext-2"]);
+	});
+
+	/**
+	 * Verifies missing config returns only agent extensions.
+	 *
+	 * @returns Nothing; asserts agent extensions returned when no global config.
+	 */
+	void it("returns agent extensions when config has no superagents", () => {
+		const config = {};
+		const agentExtensions = ["agent-ext"];
+		const result = resolveSubagentExtensions(config, agentExtensions);
+		assert.deepEqual(result, ["agent-ext"]);
+	});
+
+	/**
+	 * Verifies missing frontmatter returns only global extensions.
+	 *
+	 * @returns Nothing; asserts global extensions returned when no agent extensions.
+	 */
+	void it("returns global extensions when agent extensions are undefined", () => {
+		const config = { superagents: { extensions: ["global-ext"] } };
+		const result = resolveSubagentExtensions(config, undefined);
+		assert.deepEqual(result, ["global-ext"]);
+	});
+
+	/**
+	 * Verifies empty arrays when both are missing.
+	 *
+	 * @returns Nothing; asserts empty array when no extensions anywhere.
+	 */
+	void it("returns empty array when both config and agent extensions are missing", () => {
+		const config = {};
+		const result = resolveSubagentExtensions(config, undefined);
+		assert.deepEqual(result, []);
 	});
 });
