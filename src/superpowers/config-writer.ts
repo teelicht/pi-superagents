@@ -20,7 +20,6 @@ type MutableConfig = ExtensionConfig & {
  * Keys that represent command behavior flags (not metadata).
  */
 const BEHAVIOR_FLAG_KEYS = ["usePlannotator", "useSubagents", "useTestDrivenDevelopment", "useBranches"] as const;
-type BehaviorFlagKey = (typeof BEHAVIOR_FLAG_KEYS)[number];
 
 /**
  * Ensure a mutable Superpowers settings object exists.

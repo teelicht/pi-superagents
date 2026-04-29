@@ -46,8 +46,8 @@ function readConfig(source: ConfigSource): ExtensionConfig {
 	return typeof source === "function" ? source() : source;
 }
 
-import { discoverAgents } from "../agents/agents.ts";
 import type { AgentConfig } from "../agents/agents.ts";
+import { discoverAgents } from "../agents/agents.ts";
 import { resolveAvailableSkill, resolveSkills } from "../shared/skills.ts";
 import type { ExtensionConfig, SubagentState } from "../shared/types.ts";
 import { createSuperpowersPromptDispatcher } from "../superpowers/prompt-dispatch.ts";
@@ -222,7 +222,9 @@ export function registerSlashCommands(pi: ExtensionAPI, state: SubagentState, co
 	const dispatcher = createSuperpowersPromptDispatcher(pi);
 
 	// Register commands from discovered interactive entrypoint agents
-	const entrypointAgents = discoverAgents(state.baseCwd).agents.filter((agent) => agent.kind === "entrypoint" && agent.execution === "interactive" && (agent.command ?? agent.name));
+	const entrypointAgents = discoverAgents(state.baseCwd).agents.filter(
+		(agent) => agent.kind === "entrypoint" && agent.execution === "interactive" && (agent.command ?? agent.name),
+	);
 	for (const entrypointAgent of entrypointAgents) {
 		registerSuperpowersCommand(pi, dispatcher, state, configSource, entrypointAgent);
 	}

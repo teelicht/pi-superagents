@@ -175,14 +175,8 @@ function validateModelTier(diagnostics: ConfigDiagnostic[], value: unknown, path
  * @param diagnostics Mutable diagnostic accumulator.
  * @param value Unknown preset value.
  * @param path Dot-separated config path for the preset.
- * @param entrypointCommandSet Optional set of known entrypoint command names for warning.
  */
-function validateCommandPreset(
-	diagnostics: ConfigDiagnostic[],
-	value: unknown,
-	path: string,
-	entrypointCommandSet?: Set<string>,
-): void {
+function validateCommandPreset(diagnostics: ConfigDiagnostic[], value: unknown, path: string): void {
 	if (!isRecord(value)) {
 		addError(diagnostics, path, "must be an object.");
 		return;
@@ -312,7 +306,7 @@ export function validateConfigObject(rawConfig: unknown, options: ConfigValidati
 						if (!COMMAND_NAME_PATTERN.test(commandName)) {
 							addError(diagnostics, `superagents.commands.${commandName}`, "must match superpowers-<name> or sp-<name> (lowercase alphanumeric and hyphens).");
 						}
-						validateCommandPreset(diagnostics, commandValue, `superagents.commands.${commandName}`, entrypointCommandSet);
+						validateCommandPreset(diagnostics, commandValue, `superagents.commands.${commandName}`);
 						// Warn for commands that have no matching entrypoint agent
 						if (entrypointCommandSet && !entrypointCommandSet.has(commandName)) {
 							diagnostics.push({

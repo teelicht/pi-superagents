@@ -134,8 +134,8 @@ function _ensureAccessibleDir(dirPath: string): void {
  * @returns Array of discovered interactive entrypoint command names.
  */
 function discoverEntrypointCommandNames(cwd: string): string[] {
-	return discoverAgents(cwd).agents
-		.filter((agent) => agent.kind === "entrypoint" && agent.execution === "interactive")
+	return discoverAgents(cwd)
+		.agents.filter((agent) => agent.kind === "entrypoint" && agent.execution === "interactive")
 		.map((agent) => agent.command ?? agent.name)
 		.filter((commandName): commandName is string => Boolean(commandName));
 }
@@ -199,9 +199,7 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 	// Create runtime config store for live config at execution time
 	// Pass a callback that discovers interactive entrypoint command names for stale command warnings
 	const extensionEntryDir = path.dirname(fileURLToPath(import.meta.url));
-	const configStore = createRuntimeConfigStore(resolvePackageRoot(extensionEntryDir), resolveUserConfigDir(), () =>
-		discoverEntrypointCommandNames(process.cwd()),
-	);
+	const configStore = createRuntimeConfigStore(resolvePackageRoot(extensionEntryDir), resolveUserConfigDir(), () => discoverEntrypointCommandNames(process.cwd()));
 	const config = configStore.getConfig();
 
 	cleanupAllArtifactDirs(DEFAULT_ARTIFACT_CONFIG.cleanupDays);
