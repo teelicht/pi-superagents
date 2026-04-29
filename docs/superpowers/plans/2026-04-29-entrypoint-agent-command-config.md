@@ -175,7 +175,7 @@ git commit -m "test: expect entrypoint-driven superpowers commands"
 - Modify: `test/unit/config-validation.test.ts`
 - Modify: `test/unit/default-config.test.ts`
 
-- [ ] **Step 1: Update shared config types**
+- [x] **Step 1: Update shared config types**
 
 In `src/shared/types.ts`, replace the config types around `SkillOverlayConfig`, `SuperpowersCommandPreset`, and `SuperpowersSettings` with:
 
@@ -213,7 +213,7 @@ export interface SuperpowersSettings {
 
 This removes `SkillOverlayConfig`, `description`, `entrySkill`, and `skillOverlays` from public runtime config types.
 
-- [ ] **Step 2: Update validation key constants**
+- [x] **Step 2: Update validation key constants**
 
 In `src/execution/config-validation.ts`, change:
 
@@ -224,7 +224,7 @@ const COMMAND_PRESET_KEYS = new Set(["useBranches", "useSubagents", "useTestDriv
 
 Remove `validateSkillOverlays`, `validateSkillNameArray`, and any call to `validateSkillOverlays`.
 
-- [ ] **Step 3: Add explicit removed-key errors for metadata and overlays**
+- [x] **Step 3: Add explicit removed-key errors for metadata and overlays**
 
 In `src/execution/config-validation.ts`, add or extend removed key maps so these paths produce errors:
 
@@ -263,11 +263,11 @@ for (const key of Object.keys(value)) {
 
 Remove the old primitive validators for `description` and `entrySkill`.
 
-- [ ] **Step 4: Remove overlay merge logic**
+- [x] **Step 4: Remove overlay merge logic**
 
 In `mergeConfig`, delete `mergedSkillOverlays` and remove `skillOverlays: mergedSkillOverlays` from the merged object. Keep command deep merge, model tier merge, intercepted skill replacement, extension replacement, and `superpowersSkills` from defaults.
 
-- [ ] **Step 5: Update `default-config.json`**
+- [x] **Step 5: Update `default-config.json`**
 
 Replace command blocks and remove `skillOverlays`:
 
@@ -322,7 +322,7 @@ Replace command blocks and remove `skillOverlays`:
 }
 ```
 
-- [ ] **Step 6: Update `config.example.json`**
+- [x] **Step 6: Update `config.example.json`**
 
 Remove config-only custom command presets and `skillOverlays`. Keep behavior-only examples:
 
@@ -373,7 +373,7 @@ Remove config-only custom command presets and `skillOverlays`. Keep behavior-onl
 }
 ```
 
-- [ ] **Step 7: Update config validation tests**
+- [x] **Step 7: Update config validation tests**
 
 In `test/unit/config-validation.test.ts`:
 
@@ -425,7 +425,7 @@ void it("rejects removed skillOverlays config", () => {
 });
 ```
 
-- [ ] **Step 8: Update default config tests**
+- [x] **Step 8: Update default config tests**
 
 In `test/unit/default-config.test.ts`:
 
@@ -440,7 +440,7 @@ assert.equal("entrySkill" in spImplement, false);
 - Remove tests named “includes empty skill entry defaults”, “keeps direct skill interception opt-in by default” assertions about `skillOverlays`, “includes illustrative slash command presets”, and “includes illustrative skill overlay examples”.
 - Keep the `interceptSkillCommands` default assertion.
 
-- [ ] **Step 9: Run focused tests and confirm failure count narrows**
+- [x] **Step 9: Run focused tests and confirm failure count narrows**
 
 Run:
 
@@ -450,7 +450,7 @@ node --experimental-strip-types --test test/unit/config-validation.test.ts test/
 
 Expected: FAIL until runtime profile, slash registration, and settings UI no longer reference removed fields.
 
-- [ ] **Step 10: Commit schema/config changes**
+- [x] **Step 10: Commit schema/config changes**
 
 ```bash
 git add src/shared/types.ts src/execution/config-validation.ts default-config.json config.example.json test/unit/config-validation.test.ts test/unit/default-config.test.ts
