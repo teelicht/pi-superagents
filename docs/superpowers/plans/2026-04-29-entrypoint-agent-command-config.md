@@ -40,7 +40,7 @@
 - Modify: `test/integration/slash-commands.test.ts`
 - Modify: `test/unit/superpowers-workflow-profile.test.ts`
 
-- [ ] **Step 1: Create `agents/sp-brainstorm.md`**
+- [x] **Step 1: Create `agents/sp-brainstorm.md`**
 
 Write exactly:
 
@@ -59,7 +59,7 @@ Interactive entrypoint for Superpowers brainstorming workflows.
 This agent owns the `/sp-brainstorm` slash command metadata. Runtime behavior such as Plannotator review is configured under `superagents.commands.sp-brainstorm`.
 ```
 
-- [ ] **Step 2: Create `agents/sp-plan.md`**
+- [x] **Step 2: Create `agents/sp-plan.md`**
 
 Write exactly:
 
@@ -78,7 +78,7 @@ Interactive entrypoint for Superpowers planning workflows.
 This agent owns the `/sp-plan` slash command metadata. Runtime behavior such as Plannotator review is configured under `superagents.commands.sp-plan`.
 ```
 
-- [ ] **Step 3: Add a failing integration assertion that bundled commands register from entrypoint agents, not config-only presets**
+- [x] **Step 3: Add a failing integration assertion that bundled commands register from entrypoint agents, not config-only presets**
 
 In `test/integration/slash-commands.test.ts`, update the first registration test to remove the config-only `sp-review` preset and assert `/sp-plan` is registered from its new agent. Replace the test body with this shape:
 
@@ -110,7 +110,7 @@ void it("registers Superpowers entrypoint commands only", () => {
 });
 ```
 
-- [ ] **Step 4: Add a failing `/sp-plan` integration test**
+- [x] **Step 4: Add a failing `/sp-plan` integration test**
 
 Near the existing `/sp-brainstorm` tests, add:
 
@@ -146,7 +146,7 @@ void it("registers /sp-plan and sends a writing-plans entry prompt", async () =>
 });
 ```
 
-- [ ] **Step 5: Run the focused tests and confirm failure**
+- [x] **Step 5: Run the focused tests and confirm failure**
 
 Run:
 
@@ -156,7 +156,7 @@ node --experimental-transform-types --import ./test/support/register-loader.mjs 
 
 Expected: FAIL because `/sp-plan` does not register from entrypoint agents yet and config-only commands still register.
 
-- [ ] **Step 6: Commit failing tests and new agents**
+- [x] **Step 6: Commit failing tests and new agents**
 
 ```bash
 git add agents/sp-brainstorm.md agents/sp-plan.md test/integration/slash-commands.test.ts test/unit/superpowers-workflow-profile.test.ts
