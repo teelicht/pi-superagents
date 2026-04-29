@@ -451,4 +451,45 @@ void describe("config validation", () => {
 			["superagents.extensions"],
 		);
 	});
+
+	// ---------------------------------------------------------------------------
+	// Task 4 follow-up: partial worktree override preserves defaults; non-object
+	// worktrees rejected
+	// ---------------------------------------------------------------------------
+
+	void it("partial worktrees override preserves default root: null", () => {
+		// defaults sp-implement has worktrees: { enabled: false, root: null }
+		// override enables worktrees without specifying root
+		// → merged result must have enabled: true AND root: null (from defaults)
+		const result = loadEffectiveConfig(defaults, {
+			superagents: {
+				commands: {
+					"sp-implement": {
+						worktrees: { enabled: true },
+					},
+				},
+			},
+		});
+
+		assert.equal(result.blocked, false);
+		assert.equal(result.config.superagents?.commands?.["sp-implement"]?.worktrees?.enabled, true);
+		assert.equal(result.config.superagents?.commands?.["sp-implement"]?.worktrees?.root, null);
+	});
+
+	void it("rejects non-object worktrees value in command preset", () => {
+		// string or number worktrees value is invalid; must be an object
+		const result = validateConfigObject({
+			superagents: {
+				commands: {
+					"sp-test": {
+						worktrees: "yes",
+					},
+				},
+			},
+		});
+
+		assert.equal(result.blocked, true);
+		assert.ok(result.diagnostics.some((d) => d.path === "superagents.commands.sp-test.worktrees"), "should report path superagents.commands.sp-test.worktrees");
+		assert.ok(result.diagnostics.some((d) => d.message === "must be an object."), "message should be 'must be an object.'");
+	});
 });
