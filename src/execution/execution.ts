@@ -80,7 +80,8 @@ export async function runSync(runtimeCwd: string, agents: AgentConfig[], agentNa
 		model: effectiveModel,
 		thinking: effectiveThinking,
 		tools: effectiveTools,
-		extensions: agent.extensions,
+		// Keep child subagent processes isolated from unrelated global extensions.
+		extensions: agent.extensions ?? [],
 		skills: skillNames,
 		systemPrompt,
 		mcpDirectTools: agent.mcpDirectTools,
