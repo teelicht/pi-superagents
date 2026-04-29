@@ -53,10 +53,25 @@ Configures the Superpowers workflow.
 | Key | Description |
 |---|---|
 | `commands` | Map of command presets. Each preset has an `entrySkill` and per-command policy booleans. |
+| `extensions` | Array of extension paths or package IDs that every subagent receives. Implicit Pi extension discovery is disabled by default; add extensions here for child Pi processes. |
 | `modelTiers` | Maps abstract tier names (`cheap`, `balanced`, `max`, plus any custom tiers) to concrete model configs. |
 | `skillOverlays` | Maps entry skill names to arrays of additional skill names to load alongside them. |
 | `interceptSkillCommands` | List of skill names intercepted for Superpowers entry (`brainstorming`, `writing-plans`). |
 | `superpowersSkills` | List of Superpowers process skill names (bundled default, not user-configurable). |
+
+### Extension Allowlist
+
+Subagents run with implicit Pi extension discovery disabled by default. Configure `superagents.extensions` as a global list of extensions that every subagent should receive:
+
+```json
+{
+  "superagents": {
+    "extensions": ["./src/extension/custom-subagent-tools.ts"]
+  }
+}
+```
+
+Agent frontmatter can append additional extensions per-agent using the `extensions` field, which is additive to the global list. Extensions declared in agent frontmatter are appended to the global `extensions` array at session launch.
 
 ### Command Presets
 

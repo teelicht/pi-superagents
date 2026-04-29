@@ -13,6 +13,7 @@
         "usePlannotator": true
       }
     },
+    "extensions": ["./src/extension/custom-subagent-tools.ts"],
     "modelTiers": {
       "cheap": {
         "model": "opencode-go/minimax-m2.7",

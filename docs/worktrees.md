@@ -24,6 +24,10 @@ While parallel worktree runs are active, `/subagents-status` shows each delegate
 
 Agent reports themselves are returned inline through Pi tool results. Worktree isolation does not require `implementer-report.md`, `spec-review.md`, or `code-review.md` files in the worktree. Worktree isolation and session mode are separate concerns: packet handoff files live in the session artifact directory, not inside the worktree, and are cleaned up by the runtime.
 
+## Extension Loading
+
+Extension loading for subagents is independent of worktree isolation. Even when running inside a git worktree, child Pi processes load extensions from `superagents.extensions` (global config) and the `extensions` field in agent frontmatter (additive to global). Implicit Pi extension discovery is disabled by default; only explicitly configured extensions are loaded.
+
 ## Requirements
 
 - Must be inside a git repository.
