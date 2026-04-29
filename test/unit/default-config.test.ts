@@ -14,7 +14,7 @@ import { describe, it } from "node:test";
 
 const TOP_LEVEL_OPTION_KEYS = ["superagents"] as const;
 
-const SUPERAGENTS_OPTION_KEYS = ["commands", "modelTiers", "skillOverlays", "interceptSkillCommands", "extensions", "superpowersSkills"] as const;
+const SUPERAGENTS_OPTION_KEYS = ["commands", "modelTiers", "interceptSkillCommands", "extensions", "superpowersSkills"] as const;
 
 /**
  * Read and parse a config JSON file from the repository root.
@@ -39,7 +39,6 @@ function assertPublicConfigSurface(config: Record<string, unknown>, bundledDefau
 		[key: string]: unknown;
 		modelTiers?: Record<string, unknown>;
 		commands?: Record<string, Record<string, unknown>>;
-		skillOverlays?: unknown;
 		interceptSkillCommands?: unknown;
 		extensions?: unknown;
 		superpowersSkills?: unknown;
@@ -61,7 +60,8 @@ function assertPublicConfigSurface(config: Record<string, unknown>, bundledDefau
 
 		const spImplement = commands["sp-implement"];
 		assert.ok(spImplement, "Expected sp-implement command");
-		assert.equal(spImplement.entrySkill, "using-superpowers");
+		assert.equal("description" in spImplement, false, "sp-implement should not have description");
+		assert.equal("entrySkill" in spImplement, false, "sp-implement should not have entrySkill");
 		assert.equal(spImplement.useSubagents, true);
 		assert.equal(spImplement.useTestDrivenDevelopment, true);
 		assert.equal(spImplement.useBranches, false);
@@ -71,12 +71,14 @@ function assertPublicConfigSurface(config: Record<string, unknown>, bundledDefau
 
 		const spBrainstorm = commands["sp-brainstorm"];
 		assert.ok(spBrainstorm, "Expected sp-brainstorm command");
-		assert.equal(spBrainstorm.entrySkill, "brainstorming");
+		assert.equal("description" in spBrainstorm, false, "sp-brainstorm should not have description");
+		assert.equal("entrySkill" in spBrainstorm, false, "sp-brainstorm should not have entrySkill");
 		assert.equal(spBrainstorm.usePlannotator, true);
 
 		const spPlan = commands["sp-plan"];
 		assert.ok(spPlan, "Expected sp-plan command");
-		assert.equal(spPlan.entrySkill, "writing-plans");
+		assert.equal("description" in spPlan, false, "sp-plan should not have description");
+		assert.equal("entrySkill" in spPlan, false, "sp-plan should not have entrySkill");
 		assert.equal(spPlan.usePlannotator, true);
 	}
 
@@ -103,40 +105,10 @@ void describe("config templates", () => {
 		assertPublicConfigSurface(readConfigFile("config.example.json"), false, false);
 	});
 
-	void it("includes empty skill entry defaults", () => {
-		const config = readConfigFile("default-config.json");
-		assert.deepEqual((config.superagents as Record<string, unknown>).skillOverlays, {});
-		assert.deepEqual((config.superagents as Record<string, unknown>).interceptSkillCommands, []);
-	});
-
 	void it("keeps direct skill interception opt-in by default", () => {
 		const config = readConfigFile("default-config.json");
 		const superagents = config.superagents as Record<string, unknown>;
-		assert.deepEqual(superagents.skillOverlays, {});
 		assert.deepEqual(superagents.interceptSkillCommands, []);
-	});
-
-	void it("includes illustrative slash command presets in config.example.json", () => {
-		const config = readConfigFile("config.example.json");
-		const commands = (config.superagents as Record<string, unknown>).commands as Record<string, Record<string, unknown>>;
-		assert.deepEqual(commands["sp-lean"], {
-			description: "Run Superpowers lean: no subagents, no TDD",
-			entrySkill: "using-superpowers",
-			useSubagents: false,
-			useTestDrivenDevelopment: false,
-		});
-		assert.deepEqual(commands["sp-plannotator"], {
-			description: "Run Superpowers with Plannotator review enabled",
-			entrySkill: "using-superpowers",
-			usePlannotator: true,
-		});
-	});
-
-	void it("includes illustrative skill overlay examples in config.example.json", () => {
-		const config = readConfigFile("config.example.json");
-		const overlays = (config.superagents as Record<string, unknown>).skillOverlays as Record<string, string[]>;
-		assert.deepEqual(overlays.brainstorming, ["react-native-best-practices"]);
-		assert.deepEqual(overlays["writing-plans"], ["supabase-postgres-best-practices"]);
 	});
 
 	void it("includes superpowers skills in bundled defaults", () => {
