@@ -116,6 +116,39 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		assert.ok(args.includes("--no-extensions"), `expected --no-extensions in ${output}`);
 	});
 
+	void it("passes explicit extension through to child process with --no-extensions guard", async () => {
+		mockPi.onCall({ echoArgs: true });
+		const agents = [makeAgent("echo", { extensions: ["./my-ext.ts"] })];
+
+		const result = await runSync(tempDir, agents, "echo", "Task", {});
+
+		assert.equal(result.exitCode, 0);
+		const output = getFinalOutput(result.messages);
+		const args = JSON.parse(output) as string[];
+		assert.ok(args.includes("--no-extensions"), `expected --no-extensions guard in ${output}`);
+		assert.ok(args.includes("--extension"), `expected --extension flag in ${output}`);
+		const extIndex = args.indexOf("--extension");
+		assert.equal(args[extIndex + 1], "./my-ext.ts", `expected ./my-ext.ts, got args: ${output}`);
+	});
+
+	void it("handles agents with multiple explicit extensions", async () => {
+		mockPi.onCall({ echoArgs: true });
+		const agents = [makeAgent("echo", { extensions: ["./ext-a.ts", "./ext-b.ts"] })];
+
+		const result = await runSync(tempDir, agents, "echo", "Task", {});
+
+		assert.equal(result.exitCode, 0);
+		const output = getFinalOutput(result.messages);
+		const args = JSON.parse(output) as string[];
+		assert.ok(args.includes("--no-extensions"), "expected --no-extensions guard");
+		assert.ok(args.includes("--extension"), "expected --extension flag");
+		const extIndex = args.indexOf("--extension");
+		assert.equal(args[extIndex + 1], "./ext-a.ts");
+		assert.ok(args.includes("--extension"), "expected second --extension flag");
+		const extIndex2 = args.indexOf("--extension", extIndex + 1);
+		assert.equal(args[extIndex2 + 1], "./ext-b.ts");
+	});
+
 	void it("uses agent model config", async () => {
 		mockPi.onCall({ output: "Done" });
 		const agents = [makeAgent("echo", { model: "anthropic/claude-sonnet-4" })];
