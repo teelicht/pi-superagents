@@ -10,7 +10,7 @@
  * - none; this module is pure and safe to use from tests and extension startup
  */
 
-import type { ConfigDiagnostic, ExtensionConfig, ModelTierSetting, ThinkingLevel } from "../shared/types.ts";
+import type { ConfigDiagnostic, ExtensionConfig, ModelTierSetting, SuperpowersCommandPreset, ThinkingLevel } from "../shared/types.ts";
 
 export interface ConfigValidationResult {
 	blocked: boolean;
@@ -379,11 +379,11 @@ function mergeModelTiers(
  * @returns Deep-merged preset with worktrees inner-merged.
  */
 function mergeCommandPreset(
-	defaultPreset: Record<string, unknown>,
-	preset: Record<string, unknown>,
-): Record<string, unknown> {
-	const defaultWorktrees = defaultPreset.worktrees as Record<string, unknown> | undefined;
-	const overrideWorktrees = preset.worktrees as Record<string, unknown> | undefined;
+	defaultPreset: SuperpowersCommandPreset,
+	preset: SuperpowersCommandPreset,
+): SuperpowersCommandPreset {
+	const defaultWorktrees = defaultPreset.worktrees;
+	const overrideWorktrees = preset.worktrees;
 	const worktreesMerged =
 		defaultWorktrees || overrideWorktrees
 			? { ...(defaultWorktrees ?? {}), ...(overrideWorktrees ?? {}) }
