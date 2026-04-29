@@ -116,6 +116,18 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		assert.ok(args.includes("--no-extensions"), `expected --no-extensions in ${output}`);
 	});
 
+	void it("emits --no-extensions when extensions is explicitly undefined", async () => {
+		mockPi.onCall({ echoArgs: true });
+		const agents = [makeAgent("echo", { extensions: undefined })];
+
+		const result = await runSync(tempDir, agents, "echo", "Task", {});
+
+		assert.equal(result.exitCode, 0);
+		const output = getFinalOutput(result.messages);
+		const args = JSON.parse(output) as string[];
+		assert.ok(args.includes("--no-extensions"), `expected --no-extensions in ${output}`);
+	});
+
 	void it("passes explicit extension through to child process with --no-extensions guard", async () => {
 		mockPi.onCall({ echoArgs: true });
 		const agents = [makeAgent("echo", { extensions: ["./my-ext.ts"] })];
