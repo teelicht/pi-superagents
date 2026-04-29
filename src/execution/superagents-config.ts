@@ -5,6 +5,7 @@
  * - resolve the Superpowers settings object from extension config
  * - apply Superpowers-only worktree defaults in one shared place
  * - build scoped git-worktree options for sync and async execution paths
+ * - resolve global extension ordering for subagent execution
  */
 
 import type { ExtensionConfig, WorkflowMode } from "../shared/types.ts";
@@ -80,4 +81,18 @@ export function resolveSuperagentWorktreeCreateOptions(input: { workflow: Workfl
 		agents: input.agents,
 		...resolveSuperagentWorktreeRuntimeOptions(input.workflow, input.config),
 	};
+}
+
+/**
+ * Resolve the effective extensions for a subagent run.
+ *
+ * Combines global extensions from config with agent-specific extensions from frontmatter.
+ * Global extensions are prepended before agent extensions to ensure global policy runs first.
+ *
+ * @param config Extension config containing optional Superpowers settings with global extensions.
+ * @param agentExtensions Agent-specific extensions from frontmatter, or undefined if not specified.
+ * @returns Combined extension array with global extensions first, then agent extensions.
+ */
+export function resolveSubagentExtensions(config: ExtensionConfig, agentExtensions: string[] | undefined): string[] {
+	return [...(config.superagents?.extensions ?? []), ...(agentExtensions ?? [])];
 }

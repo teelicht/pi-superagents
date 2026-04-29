@@ -278,6 +278,8 @@ export interface SuperpowersSettings {
 	skillOverlays?: SkillOverlayConfig;
 	interceptSkillCommands?: string[];
 	superpowersSkills?: string[];
+	/** Global extensions applied to all subagent runs before agent-specific extensions. */
+	extensions?: string[];
 }
 
 export interface ExtensionConfig {

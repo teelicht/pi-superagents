@@ -14,6 +14,7 @@ import { applyThinkingSuffix, buildPiArgs, cleanupTempDir } from "./pi-args.ts";
 import { getPiSpawnCommand } from "./pi-spawn.ts";
 import { globalRunHistory } from "./run-history.ts";
 import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./superpowers-policy.ts";
+import { resolveSubagentExtensions } from "./superagents-config.ts";
 
 /**
  * Run a subagent synchronously (blocking until complete)
@@ -68,6 +69,8 @@ export async function runSync(runtimeCwd: string, agents: AgentConfig[], agentNa
 		systemPrompt = systemPrompt ? `${systemPrompt}\n\n${skillInjection}` : skillInjection;
 	}
 
+	const effectiveExtensions = resolveSubagentExtensions(config, agent.extensions);
+
 	const {
 		args,
 		env: sharedEnv,
@@ -80,8 +83,7 @@ export async function runSync(runtimeCwd: string, agents: AgentConfig[], agentNa
 		model: effectiveModel,
 		thinking: effectiveThinking,
 		tools: effectiveTools,
-		// Keep child subagent processes isolated from unrelated global extensions.
-		extensions: agent.extensions ?? [],
+		extensions: effectiveExtensions,
 		skills: skillNames,
 		systemPrompt,
 		mcpDirectTools: agent.mcpDirectTools,
