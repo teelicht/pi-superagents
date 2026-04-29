@@ -10,7 +10,7 @@ These are the parameters the **LLM agent** passes when it calls the `subagent` t
 | `task`            | string                                  | -                         | The specific task for the role agent to execute. |
 | `tasks`           | `TaskItem[]`                            | -                         | Array of tasks for parallel execution. Each item must specify `agent` and `task`. |
 | `workflow`        | `"superpowers"`                         | `"superpowers"`           | Explicitly marks the run as a Superpowers workflow. Only `superpowers` is supported. |
-| `useTestDrivenDevelopment` | boolean                        | config-derived, usually `true` | Enables test-driven development guidance for `sp-implementer` tasks. |
+| `useTestDrivenDevelopment` | boolean                        | explicit root prompt value; omitted direct tool calls default to `false` | Enables test-driven development guidance for `sp-implementer` tasks. Root Superpowers prompts instruct agents to pass the resolved command value explicitly. |
 | `sessionMode`     | `"standalone" \| "lineage-only" \| "fork"` | `"lineage-only"` (bounded roles) | Child session visibility mode. `lineage-only` links to parent session tree without inheriting conversation turns; `fork` inherits full parent history; `standalone` is fully isolated. |
 | `cwd`             | string                                  | parent cwd                | Working directory for the subagent. |
 | `skill`           | `string \| string[] \| false`           | agent default             | Skills to inject into the agent prompt. `false` disables all skills. |
@@ -18,7 +18,7 @@ These are the parameters the **LLM agent** passes when it calls the `subagent` t
 | `artifacts`       | boolean                                 | `true`                    | Whether to write debug artifacts (input/output logs). |
 | `includeProgress` | boolean                                 | `false`                   | Whether to include full internal progress metadata in the result. |
 
-Resolved skills, including per-call `skill` overrides and configured overlays, are shown in `/subagents-status` for active and recent subagent runs. Missing skills are shown as warnings there.
+Resolved skills, including per-call `skill` overrides and agent frontmatter defaults, are shown in `/subagents-status` for active and recent subagent runs. Missing skills are shown as warnings there. The bundled `sp-debug` role resolves `systematic-debugging` from its frontmatter unless a call overrides or disables skills.
 
 Provide either `agent` plus `task` for a single delegation, or `tasks` for parallel delegation. The runtime validates this selector after Pi accepts the tool call; the machine-readable schema stays intentionally simple for host compatibility.
 
@@ -70,7 +70,7 @@ These tools are registered for root Superpowers workflows and are used by the pr
 
 ## Settings Overlay
 
-`/sp-settings` opens the Superpowers settings overlay. Use it to toggle supported workflow options and edit model tiers from PI's authenticated model list. Model tier edits are persisted to `config.json` and apply to future subagents in the current session.
+`/sp-settings` opens the Superpowers settings overlay. Use `c` to select a command, then toggle supported workflow options for that command or edit model tiers from PI's authenticated model list. Model tier edits are persisted to `config.json` and apply to future subagents in the current session.
 
 ## Result Rendering
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Moved Superpowers slash-command metadata into entrypoint agent frontmatter so `config.json` only carries runtime behavior flags. Added `/sp-brainstorm` and `/sp-plan` entrypoint agents and removed skill overlay config to keep Superpowers skill selection trigger-driven.
+- Added bundled `agents/sp-implement.md` entrypoint metadata so `/sp-implement` root sessions load lifecycle skills for verification, review-feedback handling, and branch finishing.
+- Added support for future interactive command agents to define their own root-session lifecycle skills through frontmatter.
+- Assigned `systematic-debugging` to `sp-debug` so delegated debug runs start with root-cause analysis guidance.
+- Made `/sp-settings` workflow toggles command-scoped; use `c` to select a command before toggling Plannotator, subagents, TDD, or worktrees.
+- Root prompts now instruct delegated `subagent` calls to pass the resolved `useTestDrivenDevelopment` value explicitly, and omitted direct tool calls no longer inherit `/sp-implement` TDD settings.
+- Isolated subagent extension loading with global and agent-level allowlists.
+- Pi-style extension source support such as `npm:` while retaining local path validation.
+- Clear pre-spawn diagnostics for missing configured extension paths.
+
 ## [7.0.0] - 2026-04-27
 
 - **Lineage-Only Communication**
@@ -83,7 +95,8 @@
 
 ## [0.3.4] - 2026-04-12
 
-- Encourage superpowers to tick off finished tasks (now for real)
+- Hardened worktree behavoir
+- Encourage superpowers to tick off finished tasks
 
 ## [0.3.3] - 2026-04-12
 
@@ -117,7 +130,7 @@
 - Agents Manager TUI (Ctrl+Shift+A).
 - Management dispatcher branches (`list`, `get`, `create`, `update`, `delete`).
 - Generic sequential chain execution runtime.
-- Generic agents like `scout`, `planner`, `worker`, etc. (Superpowers `sp-*` roles are the new standard).
+- Generic agents like `scout`, `planner`, `worker`, reviewer, context-builder, researcher, delegate plus Superpowers `sp-*` roles are the new standard.
 - The entire `async` execution subsystem, including background polling tracking, status UI widgets, and the `--bg` slash command flag.
 - The `subagent_status` tool.
 - Dead executor fields like `share` / `shareEnabled` and `asyncByDefault` from core settings types.
@@ -158,4 +171,4 @@ Initial release of **pi-superagents**, rebranded from pi-subagents to reflect th
 - **Custom model tiers** — define cheap/balanced/max or custom tiers in config
 - **Reorganized documentation** — README trimmed to user-relevant content; detailed API, configuration, and operational docs moved to `/docs`
 
-**Prior history:** This project is a fork of [pi-subagents](https://github.com/nicobailon/pi-subagents). For changes before this fork, see the pi-subagents repository.
+**Prior history:** This project is a fork of `pi-subagents` (https://github.com/nicobailon/pi-subagents). For changes before this fork, see the pi-subagents repository.

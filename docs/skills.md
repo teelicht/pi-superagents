@@ -61,29 +61,71 @@ Skills with `scope: root` are orchestration-level skills that should never be de
 
 ## Agent Frontmatter
 
-Role agent definitions (`agents/sp-*.md`) declare metadata in YAML frontmatter:
+Agent definitions (`agents/sp-*.md`) declare metadata in YAML frontmatter. Bounded role agents use `kind: role` or omit `kind`; interactive root commands use `kind: entrypoint` with `execution: interactive`.
+
+### Entrypoint Agent Fields
+
+Interactive entrypoint agents (used for slash command registration) support these frontmatter fields:
+
+```yaml
+---
+name: sp-example
+description: Example Superpowers entrypoint
+kind: entrypoint
+execution: interactive
+command: sp-example
+entrySkill: using-superpowers
+skills: verification-before-completion
+---
+```
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `name` | Yes | Agent identifier used by the `subagent` tool |
+| `name` | Yes | Agent identifier used by the `subagent` tool or matching entrypoint name |
 | `description` | Yes | Short description of the agent's purpose |
-| `extensions` | No | Comma-separated Pi extension entrypoints to append for this agent. Use local paths for local extensions and source specs such as `npm:@scope/package` or `git:github.com/user/repo` for package/remote extensions. Global `superagents.extensions` entries are loaded first. Relative local entries resolve from the subagent runtime working directory; missing local entries fail that agent before Pi starts. |
+| `kind` | Yes | `entrypoint` for interactive root command agents |
+| `execution` | Yes | `interactive` for root entrypoints |
+| `command` | Yes | Slash command name (e.g., `sp-example`) |
+| `entrySkill` | Yes | Entry skill for the workflow (e.g., `using-superpowers`, `brainstorming`, `writing-plans`) |
+| `skills` | No | Comma-separated root lifecycle skills. For root entrypoints, these are lifecycle/root skills with explicit trigger points, not overlay replacements. |
+
+### Bounded Role Agent Fields
+
+Bounded role agents (delegated to subagents) support:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Agent identifier |
+| `description` | No | Short description |
+| `kind` | No | `role` for bounded delegated roles; omit for legacy behavior |
+| `execution` | No | `headless` for bounded delegated roles |
+| `skills` | No | Comma-separated skills injected into delegated subagent prompts |
+| `extensions` | No | Comma-separated Pi extension entrypoints to append for this agent |
 | `model` | No | Default model tier or concrete model ID |
 | `tools` | No | Comma-separated list of tool names available to this agent |
 | `maxSubagentDepth` | No | Maximum subagent delegation depth (0 disables delegation) |
 | `session-mode` | No | `standalone`, `lineage-only`, or `fork`. Built-in bounded roles default to `lineage-only`. |
 
-## Role Agents and Model Tiers
+## Entrypoint Lifecycle Skills
 
-Role agents use abstract tier names such as `cheap`, `balanced`, and `max`. You can change which concrete PI model a tier points to from `/sp-settings`; the change is saved to `config.json` and affects future delegated role agents without restarting PI.
+The `skills` field in entrypoint agents is reserved for root lifecycle skills. These are skills with explicit trigger points (e.g., `verification-before-completion`, `receiving-code-review`, `finishing-a-development-branch`) that apply to the root session only.
+
+Superpowers skill selection is trigger-driven via `using-superpowers`. Do not preload domain skills through command config. Entrypoint `skills` are not overlay replacements — they are lifecycle/root skills with explicit trigger points.
+
+Bundled entrypoint assignments:
+- `agents/sp-implement.md` assigns `verification-before-completion`, `receiving-code-review`, and `finishing-a-development-branch` as root lifecycle skills.
+- `agents/sp-brainstorm.md` and `agents/sp-plan.md` assign their respective entry skills.
+
+Bundled role assignments:
+- `agents/sp-debug.md` assigns `systematic-debugging` to the bounded debug role.
 
 ## Missing Skills
 
-For delegated subagent runs, missing skills are reported in the result summary and execution continues with the skills that were found. For root Superpowers entry-skill flows, missing required entry or overlay skills block prompt dispatch so the user can fix the configuration.
+For delegated subagent runs, missing skills are reported in the result summary and execution continues with the skills that were found. For root Superpowers entry-skill flows, missing required entry or entrypoint lifecycle skills block prompt dispatch so the user can fix the configuration.
 
 ## Status Visibility
 
-Open `/subagents-status` and select an active or recent subagent run to see the resolved skill names injected for that run. This includes default agent skills, runtime `skill` overrides, and `skillOverlays`; missing skills are shown as warnings in the selected run details.
+Open `/subagents-status` and select an active or recent subagent run to see the resolved skill names injected for that run. This includes default agent skills, runtime `skill` overrides, and TDD skill injection from the explicit `useTestDrivenDevelopment` tool parameter. Missing skills are shown as warnings in the selected run details.
 
 ## Role Output
 
