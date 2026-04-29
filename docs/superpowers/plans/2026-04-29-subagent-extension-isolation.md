@@ -234,7 +234,7 @@ Expected: commit succeeds.
 - Modify: `src/execution/superagents-config.ts`
 - Modify: `src/execution/execution.ts`
 
-- [ ] **Step 1: Write failing resolver tests**
+- [x] **Step 1: Write failing resolver tests**
 
 Update the import in `test/unit/superagents-config.test.ts` from:
 
@@ -276,7 +276,7 @@ Then add these tests inside the existing `describe` block:
 	});
 ```
 
-- [ ] **Step 2: Run resolver tests and verify failure**
+- [x] **Step 2: Run resolver tests and verify failure**
 
 Run:
 
@@ -286,7 +286,7 @@ node --experimental-strip-types --test test/unit/superagents-config.test.ts
 
 Expected: fails because `resolveSubagentExtensions` is not exported.
 
-- [ ] **Step 3: Add `extensions` to the Superagents settings type**
+- [x] **Step 3: Add `extensions` to the Superagents settings type**
 
 In `src/shared/types.ts`, update `SuperpowersSettings` to include `extensions?: string[]`:
 
@@ -301,7 +301,7 @@ export interface SuperpowersSettings {
 }
 ```
 
-- [ ] **Step 4: Implement the resolver**
+- [x] **Step 4: Implement the resolver**
 
 Add this function to `src/execution/superagents-config.ts` after `getSuperagentSettings()`:
 
@@ -323,7 +323,7 @@ export function resolveSubagentExtensions(config: ExtensionConfig, agentExtensio
 }
 ```
 
-- [ ] **Step 5: Wire the resolver into execution**
+- [x] **Step 5: Wire the resolver into execution**
 
 In `src/execution/execution.ts`, update the import:
 
@@ -355,7 +355,7 @@ with:
 		extensions: effectiveExtensions,
 ```
 
-- [ ] **Step 6: Run focused tests and verify pass**
+- [x] **Step 6: Run focused tests and verify pass**
 
 Run:
 
@@ -366,7 +366,7 @@ npm run test:integration -- test/integration/single-execution.test.ts
 
 Expected: unit tests pass; integration test passes or skips optional Pi-dependent cases.
 
-- [ ] **Step 7: Commit extension resolution wiring**
+- [x] **Step 7: Commit extension resolution wiring**
 
 Run:
 
