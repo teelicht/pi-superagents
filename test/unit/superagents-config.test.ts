@@ -9,8 +9,13 @@
  */
 
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+import { describe, it, before, after } from "node:test";
+
 import {
+	findMissingSubagentExtensionPath,
 	getSuperagentSettings,
 	resolveSubagentExtensions,
 	resolveSuperagentWorktreeCreateOptions,
@@ -136,5 +141,105 @@ void describe("resolveSubagentExtensions", () => {
 		const config = {};
 		const result = resolveSubagentExtensions(config, undefined);
 		assert.deepEqual(result, []);
+	});
+});
+
+void describe("findMissingSubagentExtensionPath", () => {
+	/**
+	 * Verifies undefined is returned when both arrays are undefined/empty.
+	 *
+	 * @returns Nothing; asserts no missing path found.
+	 */
+	void it("returns undefined when both arrays are undefined/empty", () => {
+		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-config-test-empty-"));
+		try {
+			assert.equal(findMissingSubagentExtensionPath(tempDir, undefined, undefined), undefined);
+			assert.equal(findMissingSubagentExtensionPath(tempDir, [], []), undefined);
+			assert.equal(findMissingSubagentExtensionPath(tempDir, [], undefined), undefined);
+			assert.equal(findMissingSubagentExtensionPath(tempDir, undefined, []), undefined);
+		} finally {
+			fs.rmSync(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	/**
+	 * Verifies undefined is returned for existing relative path resolved against runtime cwd.
+	 *
+	 * @returns Nothing; asserts relative path exists after resolution.
+	 */
+	void it("returns undefined for existing relative path resolved against runtime cwd", () => {
+		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-config-test-rel-"));
+		try {
+			const relativePath = "existing-subdir/extension.ts";
+			const fullPath = path.join(tempDir, relativePath);
+			fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+			fs.writeFileSync(fullPath, "// extension");
+
+			const result = findMissingSubagentExtensionPath(tempDir, [relativePath], undefined);
+			assert.equal(result, undefined);
+		} finally {
+			fs.rmSync(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	/**
+	 * Verifies undefined is returned for existing absolute path.
+	 *
+	 * @returns Nothing; asserts absolute path exists.
+	 */
+	void it("returns undefined for existing absolute path", () => {
+		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-config-test-abs-"));
+		try {
+			const absPath = path.join(tempDir, "global-ext.txt");
+			fs.writeFileSync(absPath, "extension content");
+
+			const result = findMissingSubagentExtensionPath(tempDir, [absPath], undefined);
+			assert.equal(result, undefined);
+		} finally {
+			fs.rmSync(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	/**
+	 * Verifies missing result for missing absolute path with source superagents.extensions[0].
+	 *
+	 * @returns Nothing; asserts missing path with correct source key.
+	 */
+	void it("returns missing result for missing absolute path with source superagents.extensions[0]", () => {
+		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-config-test-miss-abs-"));
+		try {
+			const missingPath = path.join(tempDir, "non-existent-global-ext.txt");
+			const result = findMissingSubagentExtensionPath(tempDir, [missingPath], undefined);
+
+			assert.ok(result !== undefined);
+			assert.equal(result!.source, "superagents.extensions[0]");
+			assert.equal(result!.configuredPath, missingPath);
+			assert.equal(result!.resolvedPath, missingPath);
+		} finally {
+			fs.rmSync(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	/**
+	 * Verifies missing result for second agent entry when first exists (source agent.extensions[1]).
+	 *
+	 * @returns Nothing; asserts second agent extension reported as missing.
+	 */
+	void it("returns missing result for second agent entry when first exists", () => {
+		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-config-test-miss-agent-"));
+		try {
+			const existingAgentPath = path.join(tempDir, "first-agent-ext.txt");
+			fs.writeFileSync(existingAgentPath, "first");
+			const missingAgentPath = path.join(tempDir, "second-agent-ext.txt");
+
+			const result = findMissingSubagentExtensionPath(tempDir, undefined, [existingAgentPath, missingAgentPath]);
+
+			assert.ok(result !== undefined);
+			assert.equal(result!.source, "agent.extensions[1]");
+			assert.equal(result!.configuredPath, missingAgentPath);
+			assert.equal(result!.resolvedPath, missingAgentPath);
+		} finally {
+			fs.rmSync(tempDir, { recursive: true, force: true });
+		}
 	});
 });
