@@ -489,7 +489,13 @@ void describe("config validation", () => {
 		});
 
 		assert.equal(result.blocked, true);
-		assert.ok(result.diagnostics.some((d) => d.path === "superagents.commands.sp-test.worktrees"), "should report path superagents.commands.sp-test.worktrees");
-		assert.ok(result.diagnostics.some((d) => d.message === "must be an object."), "message should be 'must be an object.'");
+		assert.ok(
+			result.diagnostics.some((d) => d.path === "superagents.commands.sp-test.worktrees"),
+			"should report path superagents.commands.sp-test.worktrees",
+		);
+		assert.ok(
+			result.diagnostics.some((d) => d.message === "must be an object."),
+			"message should be 'must be an object.'",
+		);
 	});
 });

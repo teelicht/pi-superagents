@@ -13,8 +13,8 @@ import { createJsonlWriter } from "./jsonl-writer.ts";
 import { applyThinkingSuffix, buildPiArgs, cleanupTempDir } from "./pi-args.ts";
 import { getPiSpawnCommand } from "./pi-spawn.ts";
 import { globalRunHistory } from "./run-history.ts";
-import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./superpowers-policy.ts";
 import { resolveSubagentExtensions } from "./superagents-config.ts";
+import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./superpowers-policy.ts";
 
 /**
  * Run a subagent synchronously (blocking until complete)
