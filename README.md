@@ -23,7 +23,7 @@ pi install npm:@teelicht/pi-superagents
 ```
 
 > [!NOTE]
-> This tool requires the `superpowers` skills to be installed. Easy installtion via [https://skills.sh/obra/superpowers](https://skills.sh/obra/superpowers).
+> This tool requires the `superpowers` skills to be installed. Easy installation via [https://skills.sh/obra/superpowers](https://skills.sh/obra/superpowers).
 
 To remove:
 
