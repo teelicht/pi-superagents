@@ -22,9 +22,18 @@
       }
     },
     "modelTiers": {
-      "cheap": { "model": "opencode-go/minimax-m2.7" },
-      "balanced": { "model": "opencode-go/glm-5.1" },
-      "max": { "model": "openai/gpt-5.4" }
+      "cheap": { 
+        "model": "opencode-go/minimax-m2.7",
+        "thinking": "low" 
+      },
+      "balanced": { 
+        "model": "opencode-go/glm-5.1",
+        "thinking": "high" 
+      },
+      "max": { 
+        "model": "openai/gpt-5.5",
+        "thinking": "medium" 
+      }
     },
     "skillOverlays": {},
     "interceptSkillCommands": [],
