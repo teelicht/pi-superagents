@@ -378,16 +378,10 @@ function mergeModelTiers(
  * @param preset Override preset for this command name.
  * @returns Deep-merged preset with worktrees inner-merged.
  */
-function mergeCommandPreset(
-	defaultPreset: SuperpowersCommandPreset,
-	preset: SuperpowersCommandPreset,
-): SuperpowersCommandPreset {
+function mergeCommandPreset(defaultPreset: SuperpowersCommandPreset, preset: SuperpowersCommandPreset): SuperpowersCommandPreset {
 	const defaultWorktrees = defaultPreset.worktrees;
 	const overrideWorktrees = preset.worktrees;
-	const worktreesMerged =
-		defaultWorktrees || overrideWorktrees
-			? { ...(defaultWorktrees ?? {}), ...(overrideWorktrees ?? {}) }
-			: undefined;
+	const worktreesMerged = defaultWorktrees || overrideWorktrees ? { ...(defaultWorktrees ?? {}), ...(overrideWorktrees ?? {}) } : undefined;
 	const mergedPreset = { ...defaultPreset, ...preset };
 	if (worktreesMerged !== undefined) {
 		mergedPreset.worktrees = worktreesMerged;
@@ -427,10 +421,7 @@ export function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfi
 					commands: {
 						...(defaultSuperagents?.commands ?? {}),
 						...Object.fromEntries(
-							Object.entries(overrideSuperagents?.commands ?? {}).map(([name, preset]) => [
-								name,
-								mergeCommandPreset(defaultSuperagents?.commands?.[name] ?? {}, preset),
-							]),
+							Object.entries(overrideSuperagents?.commands ?? {}).map(([name, preset]) => [name, mergeCommandPreset(defaultSuperagents?.commands?.[name] ?? {}, preset)]),
 						),
 					},
 					modelTiers: mergeModelTiers(defaultSuperagents?.modelTiers, overrideSuperagents?.modelTiers),
