@@ -67,11 +67,11 @@ Role agent definitions (`agents/sp-*.md`) declare metadata in YAML frontmatter:
 |-------|----------|-------------|
 | `name` | Yes | Agent identifier used by the `subagent` tool |
 | `description` | Yes | Short description of the agent's purpose |
-| `extensions` | No | Array of extension paths or package IDs to add for this agent, additive to `superagents.extensions`. |
+| `extensions` | No | Comma-separated Pi extension entrypoints to append for this agent. Global `superagents.extensions` entries are loaded first. |
 | `model` | No | Default model tier or concrete model ID |
 | `tools` | No | Comma-separated list of tool names available to this agent |
 | `maxSubagentDepth` | No | Maximum subagent delegation depth (0 disables delegation) |
-| `session-mode` | No | `standalone`, `lineage-only`, or `fork`. Built-in bounded roles default to `lineage-only` |
+| `session-mode` | No | `standalone`, `lineage-only`, or `fork`. Built-in bounded roles default to `lineage-only`. |
 
 ## Role Agents and Model Tiers
 
