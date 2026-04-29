@@ -558,7 +558,7 @@ Expected: commit succeeds.
 - Modify: `docs/parameters.md`
 - Modify: `docs/skills.md`
 
-- [ ] **Step 1: Update bundled defaults without overwriting existing local edits**
+- [x] **Step 1: Update bundled defaults without overwriting existing local edits**
 
 In `default-config.json`, add `"extensions": []` as a direct child of `superagents`. Keep the current local `modelTiers.max` value exactly as it is in the working tree.
 
@@ -584,7 +584,7 @@ Expected shape:
 
 Only add the `extensions` line; do not rewrite unrelated JSON values.
 
-- [ ] **Step 2: Update `config.example.json`**
+- [x] **Step 2: Update `config.example.json`**
 
 Add an example `extensions` array under `superagents` before `commands`:
 
@@ -596,7 +596,7 @@ Add an example `extensions` array under `superagents` before `commands`:
 
 Expected: file remains parseable JSON.
 
-- [ ] **Step 3: Update README feature list**
+- [x] **Step 3: Update README feature list**
 
 In `README.md`, add one bullet after `Skill Overlays`:
 
@@ -604,7 +604,7 @@ In `README.md`, add one bullet after `Skill Overlays`:
 - **Subagent Extension Allowlist**: Subagents run with implicit Pi extension discovery disabled by default; configure `superagents.extensions` for extensions every subagent should receive.
 ```
 
-- [ ] **Step 4: Update `docs/configuration.md` key table and example**
+- [x] **Step 4: Update `docs/configuration.md` key table and example**
 
 In the `superagents` key table, add:
 
@@ -630,7 +630,7 @@ Allow specific Pi extensions for every subagent:
 Agent frontmatter `extensions:` entries are appended after these global entries for that specific agent.
 ````
 
-- [ ] **Step 5: Update `docs/parameters.md`**
+- [x] **Step 5: Update `docs/parameters.md`**
 
 After the main tool parameter table, add:
 
@@ -638,7 +638,7 @@ After the main tool parameter table, add:
 The `subagent` tool does not accept ad-hoc Pi extension paths. Child Pi extension loading is controlled by `superagents.extensions` for global allowlisted extensions and by `extensions:` in agent frontmatter for role-specific additions. Subagents launch with implicit Pi extension discovery disabled by default.
 ```
 
-- [ ] **Step 6: Update `docs/skills.md` agent frontmatter table**
+- [x] **Step 6: Update `docs/skills.md` agent frontmatter table**
 
 Add this row to the Agent Frontmatter table:
 
@@ -646,7 +646,7 @@ Add this row to the Agent Frontmatter table:
 | `extensions` | No | Comma-separated Pi extension entrypoints to append for this agent. Global `superagents.extensions` entries are loaded first. |
 ```
 
-- [ ] **Step 7: Update `docs/worktrees.md`**
+- [x] **Step 7: Update `docs/worktrees.md`**
 
 In the Usage or Internals section, add:
 
@@ -654,7 +654,7 @@ In the Usage or Internals section, add:
 Extension loading is separate from worktree isolation. Subagents disable implicit Pi extension discovery by default in every worktree mode; use `superagents.extensions` or agent frontmatter `extensions:` to make specific Pi extensions available.
 ```
 
-- [ ] **Step 8: Validate JSON and run docs-adjacent tests**
+- [x] **Step 8: Validate JSON and run docs-adjacent tests**
 
 Run:
 
@@ -665,7 +665,7 @@ node --experimental-strip-types --test test/unit/default-config.test.ts test/uni
 
 Expected: prints `json ok`; tests pass.
 
-- [ ] **Step 9: Commit defaults and docs**
+- [x] **Step 9: Commit defaults and docs**
 
 Run:
 
