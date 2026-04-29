@@ -198,7 +198,7 @@ Expected: commit succeeds.
 - Modify: `docs/skills.md`
 - Modify: `docs/parameters.md`
 
-- [ ] **Step 1: Update configuration docs**
+- [x] **Step 1: Update configuration docs**
 
 In `docs/configuration.md`, add this note near the `superagents.extensions` example:
 
@@ -206,7 +206,7 @@ In `docs/configuration.md`, add this note near the `superagents.extensions` exam
 Configured extension entries must point to existing files or directories when the subagent starts. Relative paths are resolved from the subagent runtime working directory; use absolute paths for extensions outside the project. Missing paths fail the subagent before Pi starts and include the config source in the error message.
 ```
 
-- [ ] **Step 2: Update skills docs**
+- [x] **Step 2: Update skills docs**
 
 In `docs/skills.md`, extend the `extensions` frontmatter description with:
 
@@ -214,7 +214,7 @@ In `docs/skills.md`, extend the `extensions` frontmatter description with:
 Relative entries resolve from the subagent runtime working directory. Missing entries fail that agent before Pi starts.
 ```
 
-- [ ] **Step 3: Update parameters docs**
+- [x] **Step 3: Update parameters docs**
 
 In `docs/parameters.md`, extend the extension-loading paragraph with:
 
@@ -222,7 +222,7 @@ In `docs/parameters.md`, extend the extension-loading paragraph with:
 If any configured global or agent extension path is missing, the subagent returns a clear error and does not spawn the child Pi process.
 ```
 
-- [ ] **Step 4: Run final verification**
+- [x] **Step 4: Run final verification**
 
 Run:
 
@@ -232,7 +232,7 @@ npm run qa
 
 Expected: Biome, TypeScript, unit, integration, and e2e tests pass.
 
-- [ ] **Step 5: Commit docs and any formatter changes**
+- [x] **Step 5: Commit docs and any formatter changes**
 
 Run:
 
