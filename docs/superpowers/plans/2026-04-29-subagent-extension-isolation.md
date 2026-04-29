@@ -65,7 +65,7 @@
 - Modify: `src/execution/execution.ts`
 - Modify: `test/integration/single-execution.test.ts`
 
-- [ ] **Step 1: Fetch PR #17 without switching branches or worktrees**
+- [x] **Step 1: Fetch PR #17 without switching branches or worktrees**
 
 Run:
 
@@ -75,7 +75,7 @@ git fetch origin pull/17/head:refs/remotes/origin/pr-17
 
 Expected: command exits `0`. It may print fetch progress.
 
-- [ ] **Step 2: Inspect the PR #17 patch before applying it**
+- [x] **Step 2: Inspect the PR #17 patch before applying it**
 
 Run:
 
@@ -85,7 +85,7 @@ git diff HEAD...origin/pr-17 -- src/execution/execution.ts test/integration/sing
 
 Expected: diff shows the base change from `extensions: agent.extensions` to an isolated default equivalent, plus an integration test asserting `--no-extensions` for missing agent extensions.
 
-- [ ] **Step 3: Apply the PR #17 patch to the current working tree**
+- [x] **Step 3: Apply the PR #17 patch to the current working tree**
 
 Run:
 
@@ -96,7 +96,7 @@ git apply /tmp/pi-superagents-pr17.patch
 
 Expected: `git apply` exits `0`. If it conflicts because the PR was already merged, inspect with `git diff` and continue only if the current files already contain equivalent behavior and test coverage.
 
-- [ ] **Step 4: Verify the PR #17 integration test fails or passes for the expected reason before further changes**
+- [x] **Step 4: Verify the PR #17 integration test fails or passes for the expected reason before further changes**
 
 Run:
 
@@ -106,7 +106,7 @@ npm run test:integration -- test/integration/single-execution.test.ts
 
 Expected: If the PR patch applied cleanly, the test should pass or integration suite may skip optional Pi-dependent cases. If it fails, failure should point at argument wiring rather than syntax errors. Do not continue with global config changes until this base behavior is present.
 
-- [ ] **Step 5: Commit the PR #17 base behavior**
+- [x] **Step 5: Commit the PR #17 base behavior**
 
 Run:
 
