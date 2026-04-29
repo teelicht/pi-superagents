@@ -8,6 +8,7 @@
  * - verify migration diagnostics identify copied full-default config
  * - verify skill interception config validation
  * - verify global subagent extensions validation and merge
+ * - verify stale command behavior warnings when entrypoint commands provided
  */
 
 import assert from "node:assert/strict";
@@ -282,6 +283,98 @@ void describe("config validation", () => {
 		assert.equal(result.blocked, false);
 		assert.ok(result.diagnostics.some((d) => d.code === "legacy_full_copy"));
 		assert.ok(result.diagnostics.some((d) => d.code === "defaults_only_key"));
+	});
+
+	// -------------------------------------------------------------------------
+	// Stale command behavior warnings
+	// -------------------------------------------------------------------------
+
+	void it("warns when command behavior has no matching entrypoint command", () => {
+		const result = validateConfigObject(
+			{
+				superagents: {
+					commands: {
+						"sp-implement": { useSubagents: true },
+						"sp-missing": { useSubagents: false },
+					},
+				},
+			},
+			{ entrypointCommands: ["sp-implement"] },
+		);
+
+		assert.equal(result.blocked, false);
+		assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), ["superagents.commands.sp-missing"]);
+		assert.equal(result.diagnostics[0]?.level, "warning");
+		assert.equal(result.diagnostics[0]?.code, "unknown_entrypoint_command");
+	});
+
+	void it("warns for each stale command when multiple commands lack entrypoint matches", () => {
+		const result = validateConfigObject(
+			{
+				superagents: {
+					commands: {
+						"sp-implement": { useSubagents: true },
+						"sp-stale-1": { useSubagents: false },
+						"sp-stale-2": { usePlannotator: true },
+					},
+				},
+			},
+			{ entrypointCommands: ["sp-implement"] },
+		);
+
+		assert.equal(result.blocked, false);
+		const warningPaths = result.diagnostics.filter((d) => d.level === "warning").map((d) => d.path);
+		assert.ok(warningPaths.includes("superagents.commands.sp-stale-1"));
+		assert.ok(warningPaths.includes("superagents.commands.sp-stale-2"));
+		assert.ok(!warningPaths.includes("superagents.commands.sp-implement"));
+	});
+
+	void it("does not warn when all config commands have matching entrypoint agents", () => {
+		const result = validateConfigObject(
+			{
+				superagents: {
+					commands: {
+						"sp-implement": { useSubagents: true },
+						"sp-brainstorm": { usePlannotator: true },
+					},
+				},
+			},
+			{ entrypointCommands: ["sp-implement", "sp-brainstorm", "sp-plan"] },
+		);
+
+		assert.equal(result.blocked, false);
+		assert.ok(!result.diagnostics.some((d) => d.code === "unknown_entrypoint_command"));
+	});
+
+	void it("does not warn when no entrypointCommands are provided", () => {
+		const result = validateConfigObject({
+			superagents: {
+				commands: {
+					"sp-orphan": { useSubagents: true },
+				},
+			},
+		});
+
+		assert.equal(result.blocked, false);
+		assert.ok(!result.diagnostics.some((d) => d.code === "unknown_entrypoint_command"));
+	});
+
+	void it("passes entrypointCommands through loadEffectiveConfig to validateConfigObject", () => {
+		const result = loadEffectiveConfig(
+			defaults,
+			{
+				superagents: {
+					commands: {
+						"sp-implement": { useSubagents: true },
+						"sp-orphan": { usePlannotator: true },
+					},
+				},
+			},
+			{ entrypointCommands: ["sp-implement", "sp-plan"] },
+		);
+
+		assert.equal(result.blocked, false);
+		assert.ok(result.diagnostics.some((d) => d.path === "superagents.commands.sp-orphan" && d.level === "warning"));
 	});
 
 	// -------------------------------------------------------------------------

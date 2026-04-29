@@ -76,13 +76,17 @@ if (isMigrateConfig) {
 }
 
 /**
- * Ensure the user-owned override config exists without copying defaults.
+ * Ensure the user-owned override config exists, copying from bundled defaults on fresh install.
  *
- * @returns `true` when a new empty config file was created.
+ * @returns `true` when a new config file was created.
  */
 function ensureUserConfig() {
 	if (fs.existsSync(USER_CONFIG_PATH)) return false;
-	fs.writeFileSync(USER_CONFIG_PATH, "{}\n", "utf-8");
+	if (fs.existsSync(DEFAULT_CONFIG_PATH)) {
+		fs.copyFileSync(DEFAULT_CONFIG_PATH, USER_CONFIG_PATH);
+	} else {
+		fs.writeFileSync(USER_CONFIG_PATH, "{}\n", "utf-8");
+	}
 	return true;
 }
 
@@ -105,7 +109,7 @@ function validateUserConfigForInstall() {
 		if (fs.existsSync(DEFAULT_CONFIG_PATH)) {
 			const defaults = JSON.parse(fs.readFileSync(DEFAULT_CONFIG_PATH, "utf-8"));
 			if (JSON.stringify(parsed) === JSON.stringify(defaults)) {
-				result.warnings.push("config.json appears to duplicate bundled defaults. Replace it with {} and keep only local overrides.");
+				result.warnings.push("config.json matches bundled defaults. This is valid for fresh installs; edit only the behavior flags you want to change.");
 			}
 		}
 		return result;
@@ -183,7 +187,7 @@ The extension is now available in pi. Tools added:
   • subagent_status - Check async run status and config diagnostics
 
 Documentation: ${EXTENSION_DIR}/README.md
-Config override file: ${USER_CONFIG_PATH}${createdUserConfig ? " (created empty)" : ""}
+Config override file: ${USER_CONFIG_PATH}${createdUserConfig ? " (created from defaults)" : ""}
 Config examples:       ${EXAMPLE_CONFIG_PATH}
 `);
 

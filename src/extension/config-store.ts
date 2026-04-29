@@ -103,15 +103,20 @@ export function readJsonConfig(filePath: string): unknown {
  *
  * @param packageConfigDir Absolute path to the package directory containing bundled defaults.
  * @param userConfigDir Absolute path to the user config directory. Defaults to `packageConfigDir`.
+ * @param entrypointCommands Discovered interactive entrypoint command names for stale command warnings.
  * @returns Validated config state for runtime registration.
  */
-export function loadRuntimeConfigState(packageConfigDir: string, userConfigDir = packageConfigDir): LoadedConfigState {
+export function loadRuntimeConfigState(
+	packageConfigDir: string,
+	userConfigDir = packageConfigDir,
+	entrypointCommands: readonly string[] = [],
+): LoadedConfigState {
 	const { bundledDefaultConfigPath, userConfigPath, exampleConfigPath } = resolveRuntimeConfigPaths(packageConfigDir, userConfigDir);
 
 	try {
 		const bundledDefaults = (readJsonConfig(bundledDefaultConfigPath) ?? {}) as ExtensionConfig;
 		const userConfig = readJsonConfig(userConfigPath);
-		const result = loadEffectiveConfig(bundledDefaults, userConfig);
+		const result = loadEffectiveConfig(bundledDefaults, userConfig, { entrypointCommands });
 		const message = result.diagnostics.length ? formatConfigDiagnostics(result.diagnostics, { configPath: userConfigPath, examplePath: exampleConfigPath }) : "";
 
 		return {
@@ -197,10 +202,15 @@ export function assignGate(state: LoadedConfigState, target?: ConfigGateState): 
  *
  * @param packageConfigDir Absolute path to the package directory containing bundled defaults.
  * @param userConfigDir Absolute path to the user config directory. Defaults to `packageConfigDir`.
+ * @param getEntrypointCommands Callback that returns discovered interactive entrypoint command names.
  * @returns Runtime config store with getConfig, getGateState, and reloadConfig.
  */
-export function createRuntimeConfigStore(packageConfigDir: string, userConfigDir = packageConfigDir): RuntimeConfigStore {
-	let currentState = loadRuntimeConfigState(packageConfigDir, userConfigDir);
+export function createRuntimeConfigStore(
+	packageConfigDir: string,
+	userConfigDir = packageConfigDir,
+	getEntrypointCommands: () => readonly string[] = () => [],
+): RuntimeConfigStore {
+	let currentState = loadRuntimeConfigState(packageConfigDir, userConfigDir, getEntrypointCommands());
 	// Store a single gate object that gets mutated on reload
 	const gate = assignGate(currentState);
 
@@ -212,7 +222,7 @@ export function createRuntimeConfigStore(packageConfigDir: string, userConfigDir
 			return gate;
 		},
 		reloadConfig(): void {
-			currentState = loadRuntimeConfigState(packageConfigDir, userConfigDir);
+			currentState = loadRuntimeConfigState(packageConfigDir, userConfigDir, getEntrypointCommands());
 			assignGate(currentState, gate);
 		},
 	};

@@ -6,6 +6,7 @@
  * - verify reload produces fresh config state without restarting
  * - verify diagnostics capture validation outcome
  * - verify ConfigGateState maintains stable object identity across operations
+ * - verify stale command warnings propagate through config store
  */
 
 import assert from "node:assert/strict";
@@ -39,7 +40,7 @@ function createTempConfigDir(files: Record<string, string>): string {
 function createMinimalConfigDir(): string {
 	const defaults = {
 		superagents: {
-			commands: { "sp-test": { entrySkill: "using-superpowers" } },
+			commands: { "sp-test": { useSubagents: true } },
 			modelTiers: { cheap: { model: "test/model" } },
 			superpowersSkills: ["using-superpowers"],
 		},
@@ -63,7 +64,7 @@ void describe("createRuntimeConfigStore", () => {
 		const configDir = createMinimalConfigDir();
 		const store = createRuntimeConfigStore(configDir);
 		const config = store.getConfig();
-		assert.deepEqual(config?.superagents?.commands?.["sp-test"]?.entrySkill, "using-superpowers");
+		assert.ok(config?.superagents?.commands?.["sp-test"]);
 	});
 
 	it("produces a ConfigGateState with diagnostics and paths at startup", () => {
@@ -80,6 +81,36 @@ void describe("createRuntimeConfigStore", () => {
 		const store = createRuntimeConfigStore(configDir);
 		const gateState = store.getGateState();
 		assert.equal(gateState.blocked, false);
+	});
+
+	it("accepts a getEntrypointCommands callback for stale command warnings", () => {
+		const configDir = createTempConfigDir({
+			"default-config.json": JSON.stringify({
+				superagents: {
+					commands: {
+						"sp-implement": { useSubagents: true },
+					},
+				},
+			}),
+			"config.json": JSON.stringify({
+				superagents: {
+					commands: {
+						"sp-implement": { useSubagents: false },
+						"sp-missing": { useSubagents: false },
+					},
+				},
+			}),
+		});
+
+		const store = createRuntimeConfigStore(configDir, configDir, () => ["sp-implement", "sp-plan"]);
+		const gateState = store.getGateState();
+
+		// sp-missing is not in entrypointCommands so should produce a warning
+		assert.equal(gateState.blocked, false, "Expected config NOT to be blocked by warning");
+		assert.ok(
+			gateState.diagnostics.some((d) => d.path === "superagents.commands.sp-missing" && d.level === "warning"),
+			"Expected warning for sp-missing command not in entrypointCommands",
+		);
 	});
 });
 
@@ -109,6 +140,40 @@ void describe("RuntimeConfigStore", () => {
 		const updatedModel = typeof updatedTier === "object" ? updatedTier?.model : updatedTier;
 		assert.equal(updatedModel, "updated");
 	});
+
+	it("reloads config with fresh entrypoint commands after reload", () => {
+		const configDir = createTempConfigDir({
+			"default-config.json": JSON.stringify({
+				superagents: {
+					commands: {
+						"sp-implement": { useSubagents: true },
+					},
+				},
+			}),
+			"config.json": JSON.stringify({
+				superagents: {
+					commands: {
+						"sp-implement": { useSubagents: false },
+						"sp-stale": { useSubagents: false },
+					},
+				},
+			}),
+		});
+
+		// Create store that initially knows only sp-implement
+		const store = createRuntimeConfigStore(configDir, configDir, () => ["sp-implement"]);
+
+		const initialGate = store.getGateState();
+		assert.ok(initialGate.diagnostics.some((d) => d.path === "superagents.commands.sp-stale"), "sp-stale should warn on initial load");
+
+		// Simulate adding a new entrypoint agent by changing the callback
+		// (In real usage this would be a new discoverAgents result)
+		store.reloadConfig();
+
+		// After reload, same warnings should still be present if callback unchanged
+		const reloadedGate = store.getGateState();
+		assert.ok(reloadedGate.diagnostics.some((d) => d.path === "superagents.commands.sp-stale"), "sp-stale should still warn after reload");
+	});
 });
 
 void describe("loadRuntimeConfigState", () => {
@@ -126,7 +191,6 @@ void describe("loadRuntimeConfigState", () => {
 				superagents: {
 					commands: {
 						"sp-plan": {
-							entrySkill: "writing-plans",
 							usePlannotator: false,
 						},
 					},
@@ -147,7 +211,6 @@ void describe("loadRuntimeConfigState", () => {
 
 		const state = loadRuntimeConfigState(defaultConfigDir, userConfigDir);
 
-		assert.equal(state.config.superagents?.commands?.["sp-plan"]?.entrySkill, "writing-plans");
 		assert.equal(state.config.superagents?.commands?.["sp-plan"]?.usePlannotator, true);
 		assert.equal(state.configPath, path.join(userConfigDir, "config.json"));
 		assert.equal(state.examplePath, path.join(userConfigDir, "config.example.json"));
@@ -226,6 +289,68 @@ void describe("loadRuntimeConfigState", () => {
 		// Check for diagnostic with the specific path
 		const tierDiagnostic = state.diagnostics.find((d) => d.path === "superagents.modelTiers.balanced" || d.path === "superagents.modelTiers.balanced.model");
 		assert.ok(tierDiagnostic, "Expected diagnostic for invalid model tier");
+	});
+
+	it("warns for stale commands when entrypointCommands are provided", () => {
+		const configDir = createTempConfigDir({
+			"default-config.json": JSON.stringify({
+				superagents: {
+					commands: {
+						"sp-implement": { useSubagents: true },
+					},
+				},
+			}),
+			"config.json": JSON.stringify({
+				superagents: {
+					commands: {
+						"sp-implement": { useSubagents: false },
+						"sp-missing": { useSubagents: false },
+					},
+				},
+			}),
+		});
+
+		const state = loadRuntimeConfigState(configDir, configDir, ["sp-implement"]);
+
+		// sp-missing is not in entrypointCommands so should produce a warning
+		assert.equal(state.blocked, false, "Expected config NOT to be blocked by warning");
+		assert.ok(
+			state.diagnostics.some((d) => d.path === "superagents.commands.sp-missing" && d.level === "warning"),
+			"Expected warning for sp-missing command not in entrypointCommands",
+		);
+		assert.ok(
+			state.diagnostics.some((d) => d.code === "unknown_entrypoint_command"),
+			"Expected unknown_entrypoint_command diagnostic code",
+		);
+		// sp-implement should NOT warn
+		assert.ok(
+			!state.diagnostics.some((d) => d.path === "superagents.commands.sp-implement" && d.level === "warning"),
+			"sp-implement should NOT produce warning since it matches entrypointCommands",
+		);
+	});
+
+	it("does not warn when entrypointCommands includes all config commands", () => {
+		const configDir = createTempConfigDir({
+			"default-config.json": JSON.stringify({
+				superagents: {
+					commands: {
+						"sp-implement": { useSubagents: true },
+					},
+				},
+			}),
+			"config.json": JSON.stringify({
+				superagents: {
+					commands: {
+						"sp-implement": { useSubagents: false },
+					},
+				},
+			}),
+		});
+
+		const state = loadRuntimeConfigState(configDir, configDir, ["sp-implement", "sp-plan"]);
+
+		assert.equal(state.blocked, false);
+		assert.ok(!state.diagnostics.some((d) => d.code === "unknown_entrypoint_command"), "Should not warn when all commands match");
 	});
 });
 
