@@ -163,6 +163,61 @@ void describe("findMissingSubagentExtensionPath", () => {
 	});
 
 	/**
+	 * Verifies Pi package and remote extension sources are passed through without local path checks.
+	 *
+	 * @returns Nothing; asserts scheme-like sources do not produce missing path diagnostics.
+	 */
+	void it("does not path-check Pi package and remote extension sources", () => {
+		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-config-test-scheme-"));
+		try {
+			assert.equal(
+				findMissingSubagentExtensionPath(
+					tempDir,
+					["npm:@sting8k/pi-vcc", "git:github.com/user/repo"],
+					["https://example.com/ext.ts", "ssh://git@example.com/user/repo.git"],
+				),
+				undefined,
+			);
+		} finally {
+			fs.rmSync(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	/**
+	 * Verifies Windows drive-letter paths are not mistaken for URI-scheme sources.
+	 *
+	 * @returns Nothing; asserts a drive-letter path is still validated as a local path.
+	 */
+	void it("treats Windows drive-letter entries as local paths, not scheme sources", () => {
+		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-config-test-drive-"));
+		try {
+			const result = findMissingSubagentExtensionPath(tempDir, ["C:\\missing\\extension.ts"], undefined);
+
+			assert.ok(result !== undefined);
+			assert.equal(result!.source, "superagents.extensions[0]");
+			assert.equal(result!.configuredPath, "C:\\missing\\extension.ts");
+		} finally {
+			fs.rmSync(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	/**
+	 * Verifies home-relative local paths are expanded before validation.
+	 *
+	 * @returns Nothing; asserts an existing home-relative path passes validation.
+	 */
+	void it("expands home-relative local extension paths before validation", () => {
+		const homeExtensionPath = path.join(os.homedir(), `.pi-superagents-test-${process.pid}.ts`);
+		try {
+			fs.writeFileSync(homeExtensionPath, "// extension");
+
+			assert.equal(findMissingSubagentExtensionPath(process.cwd(), [`~/${path.basename(homeExtensionPath)}`], undefined), undefined);
+		} finally {
+			fs.rmSync(homeExtensionPath, { force: true });
+		}
+	});
+
+	/**
 	 * Verifies undefined is returned for existing relative path resolved against runtime cwd.
 	 *
 	 * @returns Nothing; asserts relative path exists after resolution.

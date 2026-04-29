@@ -10,6 +10,7 @@
  */
 
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 
 import type { ExtensionConfig, WorkflowMode } from "../shared/types.ts";
@@ -102,6 +103,39 @@ export function resolveSubagentExtensions(config: ExtensionConfig, agentExtensio
 }
 
 /**
+ * Determine whether an extension source starts with a URI-style scheme.
+ *
+ * Inputs/outputs:
+ * - returns true for Pi source specs such as `npm:pkg`, `git:repo`, `https://...`, and `ssh://...`
+ * - returns false for Windows drive-letter paths such as `C:\\ext.ts`
+ *
+ * @param value Configured extension source string.
+ * @returns True when Pi should resolve the source as a scheme-like extension source.
+ */
+export function isSchemeLikeExtensionSource(value: string): boolean {
+	return /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value) && !/^[a-zA-Z]:[\\/]/.test(value);
+}
+
+/**
+ * Resolve a local subagent extension path against runtime context.
+ *
+ * Inputs/outputs:
+ * - expands `~`, `~/...`, and `~\\...` against the current user's home directory
+ * - returns absolute paths unchanged
+ * - resolves relative paths from the subagent runtime working directory
+ *
+ * @param runtimeCwd Runtime working directory used to resolve relative paths.
+ * @param configuredPath Local path as written in config or agent frontmatter.
+ * @returns Absolute local filesystem path used for existence checks.
+ */
+export function resolveLocalSubagentExtensionPath(runtimeCwd: string, configuredPath: string): string {
+	if (configuredPath === "~") return os.homedir();
+	if (configuredPath.startsWith("~/")) return path.join(os.homedir(), configuredPath.slice(2));
+	if (configuredPath.startsWith("~\\")) return path.join(os.homedir(), configuredPath.slice(2));
+	return path.isAbsolute(configuredPath) ? configuredPath : path.resolve(runtimeCwd, configuredPath);
+}
+
+/**
  * Describes a configured subagent extension path that could not be found.
  *
  * @property source  - The config key referencing the missing path (e.g. `superagents.extensions[0]`).
@@ -135,7 +169,8 @@ export function findMissingSubagentExtensionPath(
 		...(agentExtensions ?? []).map((configuredPath, index) => ({ source: `agent.extensions[${index}]`, configuredPath })),
 	];
 	for (const entry of entries) {
-		const resolvedPath = path.isAbsolute(entry.configuredPath) ? entry.configuredPath : path.resolve(runtimeCwd, entry.configuredPath);
+		if (isSchemeLikeExtensionSource(entry.configuredPath)) continue;
+		const resolvedPath = resolveLocalSubagentExtensionPath(runtimeCwd, entry.configuredPath);
 		if (!fs.existsSync(resolvedPath)) {
 			return { ...entry, resolvedPath };
 		}
