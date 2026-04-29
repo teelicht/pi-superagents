@@ -5,12 +5,13 @@
  * - parse leading workflow tokens from slash command arguments
  * - preserve supported execution flags
  * - merge command preset settings and inline overrides
- * - carry entry skill name and overlay skill names for skill-entry flows
+ * - carry entry skill name and lifecycle skill names for skill-entry flows
  *
  * Important side effects:
  * - none; this module is pure and safe to unit test
  */
 
+import type { AgentConfig } from "../agents/agents.ts";
 import type { ExtensionConfig } from "../shared/types.ts";
 
 export interface SuperpowersWorkflowOverrides {
@@ -34,7 +35,7 @@ export interface ResolvedSuperpowersRunProfile {
 	usePlannotatorReview?: boolean;
 	worktrees?: { enabled: boolean; root?: string | null };
 	fork: boolean;
-	overlaySkillNames: string[];
+	rootLifecycleSkillNames: string[];
 }
 
 /**
@@ -125,6 +126,17 @@ function resolveCommandPreset(config: ExtensionConfig, commandName: string) {
 }
 
 /**
+ * Find an interactive entrypoint agent that configures the current slash command.
+ *
+ * @param agents Discovered agent frontmatter definitions.
+ * @param commandName Slash command name without leading slash.
+ * @returns Matching entrypoint agent, if present.
+ */
+export function resolveEntrypointAgent(agents: readonly AgentConfig[] | undefined, commandName: string): AgentConfig | undefined {
+	return agents?.find((agent) => agent.kind === "entrypoint" && agent.execution === "interactive" && (agent.command === commandName || agent.name === commandName));
+}
+
+/**
  * Merge command preset, inline overrides, and entry skill into one run profile.
  *
  * @param input Effective config, command name, parsed arguments, and optional entry skill name.
@@ -135,21 +147,18 @@ export function resolveSuperpowersRunProfile(input: {
 	commandName: string;
 	parsed: ParsedSuperpowersWorkflowArgs;
 	entrySkill?: string;
+	entrypointAgent?: AgentConfig;
 }): ResolvedSuperpowersRunProfile {
-	const settings = input.config.superagents ?? {};
 	const preset = resolveCommandPreset(input.config, input.commandName);
-	const entrySkill = input.entrySkill ?? preset.entrySkill ?? "using-superpowers";
-	const superpowersSkills: readonly string[] = settings.superpowersSkills ?? [];
-	const invocationOverlayNames = superpowersSkills.flatMap((skillName) => settings.skillOverlays?.[skillName] ?? []);
-	const entryOverlayNames = settings.skillOverlays?.[entrySkill] ?? [];
-	const overlaySkillNames = [...new Set([...entryOverlayNames, ...invocationOverlayNames])];
+	const entrypointAgent = input.entrypointAgent;
+	const entrySkill = input.entrySkill ?? entrypointAgent?.entrySkill ?? "using-superpowers";
 
 	const profile: ResolvedSuperpowersRunProfile = {
 		commandName: input.commandName,
 		task: input.parsed.task,
 		entrySkill,
 		fork: input.parsed.fork,
-		overlaySkillNames,
+		rootLifecycleSkillNames: entrypointAgent?.skills ?? [],
 	};
 
 	// Only include policy fields when the preset or overrides declare them

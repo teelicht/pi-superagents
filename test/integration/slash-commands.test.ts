@@ -332,7 +332,7 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 				superagents: {
 					commands: {
 						"sp-custom": {
-							entrySkill: "using-superpowers",
+							useSubagents: true,
 						},
 					},
 				},
@@ -459,11 +459,28 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 			},
 		};
 
+		const agentsDir = path.join(cwd, ".agents");
+		fs.mkdirSync(agentsDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(agentsDir, "sp-review.md"),
+			[
+				"---",
+				"name: sp-review",
+				"description: Run code review",
+				"kind: entrypoint",
+				"execution: interactive",
+				"command: sp-review",
+				"entrySkill: using-superpowers",
+				"---",
+				"Custom review entrypoint.",
+			].join("\n"),
+			"utf-8",
+		);
+
 		const config = createEffectiveConfig({
 			superagents: {
 				commands: {
 					"sp-review": {
-						description: "Run code review",
 						useSubagents: false,
 						useTestDrivenDevelopment: false,
 						worktrees: { enabled: false },
