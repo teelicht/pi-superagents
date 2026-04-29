@@ -98,6 +98,45 @@ void test("SuperpowersSettingsComponent renders settings in a framed panel", () 
 	assert.match(rendered, /useTestDrivenDevelopment: true/);
 });
 
+void test("SuperpowersSettingsComponent writes setting toggles to selected command", () => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-settings-"));
+	const configPath = path.join(dir, "config.json");
+	fs.writeFileSync(configPath, '{\n  "superagents": { "commands": { "sp-implement": { "useSubagents": true }, "sp-plan": { "usePlannotator": true } } }\n}\n', "utf-8");
+
+	let config: ExtensionConfig = {
+		superagents: {
+			commands: {
+				"sp-implement": { useSubagents: true },
+				"sp-plan": { usePlannotator: true },
+			},
+		},
+	};
+
+	const tuiMock = createTuiMock();
+	const component = new SuperpowersSettingsComponent(tuiMock as never, createThemeMock() as never, createState(configPath) as never, () => config, {
+		models: [],
+		reloadConfig: () => {
+			config = JSON.parse(fs.readFileSync(configPath, "utf-8")) as ExtensionConfig;
+		},
+	});
+
+	component.handleInput("c");
+	component.handleInput("p");
+
+	assert.deepStrictEqual(JSON.parse(fs.readFileSync(configPath, "utf-8")), {
+		superagents: {
+			commands: {
+				"sp-implement": { useSubagents: true },
+				"sp-plan": { usePlannotator: false },
+			},
+		},
+	});
+	const rendered = component.render(100).join("\n");
+	assert.match(rendered, /Selected command: sp-plan/);
+	assert.match(rendered, /usePlannotator: false/);
+	fs.rmSync(dir, { recursive: true, force: true });
+});
+
 void test("SuperpowersSettingsComponent writes setting toggles to config", () => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-settings-"));
 	const configPath = path.join(dir, "config.json");

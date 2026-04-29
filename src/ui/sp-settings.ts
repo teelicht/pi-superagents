@@ -67,6 +67,7 @@ export class SuperpowersSettingsComponent implements Component {
 	private lastWriteMessage = "";
 	private selectedTier: string | undefined;
 	private selectedModelIndex = 0;
+	private selectedCommand: string | undefined;
 	private mode: SettingsMode = "settings";
 	private readonly tui: TUI;
 	private readonly theme: Theme;
@@ -102,7 +103,7 @@ export class SuperpowersSettingsComponent implements Component {
 		const title = mode === "settings" ? "Superpowers Settings" : mode === "tier-picker" ? "Select Model Tier" : "Select Model";
 		const footer =
 			mode === "settings"
-				? "p plannotator | s subagents | t tdd | m model tiers | w worktrees | q close"
+				? "c command | p plannotator | s subagents | t tdd | m model tiers | w worktrees | q close"
 				: mode === "tier-picker"
 					? "↑↓ navigate | enter select | q back"
 					: "↑↓ navigate | enter confirm | q back";
@@ -120,6 +121,11 @@ export class SuperpowersSettingsComponent implements Component {
 		// Settings mode input handling
 		if (matchesKey(data, "escape") || matchesKey(data, "q") || matchesKey(data, "ctrl+c")) {
 			this.done();
+			return;
+		}
+		if (matchesKey(data, "c")) {
+			this.selectNextCommand();
+			this.tui.requestRender();
 			return;
 		}
 		if (matchesKey(data, "p")) {
@@ -152,19 +158,19 @@ export class SuperpowersSettingsComponent implements Component {
 	invalidate(): void {}
 
 	toggleUsePlannotator(): void {
-		this.writeConfig((config) => toggleSuperpowersBoolean(config, "usePlannotator"));
+		this.writeConfig((config) => toggleSuperpowersBoolean(config, this.currentCommandName(), "usePlannotator"));
 	}
 
 	toggleUseSubagents(): void {
-		this.writeConfig((config) => toggleSuperpowersBoolean(config, "useSubagents"));
+		this.writeConfig((config) => toggleSuperpowersBoolean(config, this.currentCommandName(), "useSubagents"));
 	}
 
 	toggleUseTestDrivenDevelopment(): void {
-		this.writeConfig((config) => toggleSuperpowersBoolean(config, "useTestDrivenDevelopment"));
+		this.writeConfig((config) => toggleSuperpowersBoolean(config, this.currentCommandName(), "useTestDrivenDevelopment"));
 	}
 
 	toggleWorktrees(): void {
-		this.writeConfig((config) => toggleSuperpowersWorktrees(config));
+		this.writeConfig((config) => toggleSuperpowersWorktrees(config, this.currentCommandName()));
 	}
 
 	/**
@@ -256,11 +262,43 @@ export class SuperpowersSettingsComponent implements Component {
 	}
 
 	/**
+	 * Resolve command names displayed by the settings overlay.
+	 *
+	 * @returns Configured command names, or the built-in implementation command fallback.
+	 */
+	private commandNames(): string[] {
+		const names = Object.keys(this.getConfig().superagents?.commands ?? {});
+		return names.length > 0 ? names : ["sp-implement"];
+	}
+
+	/**
+	 * Resolve the currently selected command, keeping it valid after config changes.
+	 *
+	 * @returns Selected command name used for command-scoped settings writes.
+	 */
+	private currentCommandName(): string {
+		const names = this.commandNames();
+		if (!this.selectedCommand || !names.includes(this.selectedCommand)) {
+			this.selectedCommand = names[0];
+		}
+		return this.selectedCommand;
+	}
+
+	/**
+	 * Advance the settings selection to the next configured command.
+	 */
+	private selectNextCommand(): void {
+		const names = this.commandNames();
+		const current = this.currentCommandName();
+		const currentIndex = names.indexOf(current);
+		this.selectedCommand = names[(currentIndex + 1) % names.length];
+	}
+
+	/**
 	 * Write a model tier selection to config and trigger reload.
 	 */
 	private writeModelTier(tierName: string, model: string): void {
 		this.writeConfig((config) => setSuperpowersModelTierModel(config, tierName, model));
-		this.reloadConfig();
 	}
 
 	/**
@@ -284,11 +322,13 @@ export class SuperpowersSettingsComponent implements Component {
 		const settings = config.superagents ?? {};
 		const commands = Object.entries(settings.commands ?? {});
 		const modelTiers = Object.entries(settings.modelTiers ?? {});
+		const selectedCommand = this.currentCommandName();
 
 		const lines: string[] = [
 			`configStatus: ${this.state.configGate.blocked ? "blocked" : "valid"}`,
+			`Selected command: ${selectedCommand}`,
 			"",
-			"Commands:",
+			"Command behavior flags:",
 			...(commands.length
 				? commands.flatMap(([name, preset]) => {
 						const configuredSettings: string[] = [];
@@ -299,7 +339,8 @@ export class SuperpowersSettingsComponent implements Component {
 						if (preset.worktrees && "enabled" in preset.worktrees) configuredSettings.push(`    worktrees.enabled: ${preset.worktrees.enabled}`);
 						if (preset.worktrees && "root" in preset.worktrees) configuredSettings.push(`    worktrees.root: ${preset.worktrees.root ?? "default"}`);
 
-						return [`  ${name}:`, ...(configuredSettings.length ? configuredSettings : ["    (default settings)"])];
+						const marker = name === selectedCommand ? "▸" : " ";
+						return [` ${marker} ${name}:`, ...(configuredSettings.length ? configuredSettings : ["    (default settings)"])];
 					})
 				: ["  none"]),
 			"",
@@ -386,6 +427,7 @@ export class SuperpowersSettingsComponent implements Component {
 			const current = fs.existsSync(configPath) ? fs.readFileSync(configPath, "utf-8") : "{}\n";
 			const next = updateSuperpowersConfigText(current, update);
 			fs.writeFileSync(configPath, next, "utf-8");
+			this.reloadConfig();
 			this.lastWriteMessage = `Wrote ${configPath}. Restart or reload Pi to apply command registration changes.`;
 		} catch (error) {
 			this.lastWriteMessage = error instanceof Error ? error.message : String(error);

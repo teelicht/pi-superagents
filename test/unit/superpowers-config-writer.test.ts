@@ -1,5 +1,12 @@
 /**
  * Unit tests for safe Superpowers config text updates.
+ *
+ * Responsibilities:
+ * - verify config text parsing and serialization
+ * - verify boolean toggles write only behavior flags
+ * - verify worktree toggles write only worktrees settings
+ * - verify model tier updates
+ * - verify behavior-only command block output (no description/entrySkill/skillOverlays)
  */
 
 import assert from "node:assert/strict";
@@ -19,6 +26,36 @@ void describe("Superpowers config writer", () => {
 						useSubagents: false,
 						useTestDrivenDevelopment: true,
 					},
+				},
+			},
+		});
+	});
+
+	void it("toggles a boolean setting on a selected command", () => {
+		const updated = updateSuperpowersConfigText(
+			'{\n  "superagents": {\n    "commands": {\n      "sp-plan": {\n        "usePlannotator": true\n      },\n      "sp-implement": {\n        "useSubagents": true\n      }\n    }\n  }\n}\n',
+			(config) => toggleSuperpowersBoolean(config, "sp-plan", "usePlannotator"),
+		);
+		assert.deepEqual(JSON.parse(updated), {
+			superagents: {
+				commands: {
+					"sp-plan": { usePlannotator: false },
+					"sp-implement": { useSubagents: true },
+				},
+			},
+		});
+	});
+
+	void it("toggles worktrees on a selected command", () => {
+		const updated = updateSuperpowersConfigText(
+			'{\n  "superagents": {\n    "commands": {\n      "sp-custom": {\n        "worktrees": { "enabled": false }\n      },\n      "sp-implement": {\n        "worktrees": { "enabled": false }\n      }\n    }\n  }\n}\n',
+			(config) => toggleSuperpowersWorktrees(config, "sp-custom"),
+		);
+		assert.deepEqual(JSON.parse(updated), {
+			superagents: {
+				commands: {
+					"sp-custom": { worktrees: { enabled: true } },
+					"sp-implement": { worktrees: { enabled: false } },
 				},
 			},
 		});
@@ -111,5 +148,29 @@ void describe("Superpowers config writer", () => {
 				},
 			},
 		});
+	});
+
+	void it("toggles write behavior-only command blocks, never description", () => {
+		const updated = updateSuperpowersConfigText(
+			'{"superagents":{"commands":{"sp-implement":{"description":"Implement tasks via superagents","entrySkill":"implement","skillOverlays":["test"],"useSubagents":true}}}}',
+			(config) => toggleSuperpowersBoolean(config, "sp-implement", "useSubagents"),
+		);
+		const parsed = JSON.parse(updated);
+		assert.ok(!("description" in parsed.superagents.commands["sp-implement"]), "toggle must not write description");
+		assert.ok(!("entrySkill" in parsed.superagents.commands["sp-implement"]), "toggle must not write entrySkill");
+		assert.ok(!("skillOverlays" in parsed.superagents.commands["sp-implement"]), "toggle must not write skillOverlays");
+		assert.strictEqual(parsed.superagents.commands["sp-implement"].useSubagents, false);
+	});
+
+	void it("toggles worktrees writes behavior-only command blocks, never description", () => {
+		const updated = updateSuperpowersConfigText(
+			'{"superagents":{"commands":{"sp-implement":{"description":"Implement tasks","entrySkill":"implement","skillOverlays":["test"]}}}}',
+			(config) => toggleSuperpowersWorktrees(config, "sp-implement"),
+		);
+		const parsed = JSON.parse(updated);
+		assert.ok(!("description" in parsed.superagents.commands["sp-implement"]), "worktrees toggle must not write description");
+		assert.ok(!("entrySkill" in parsed.superagents.commands["sp-implement"]), "worktrees toggle must not write entrySkill");
+		assert.ok(!("skillOverlays" in parsed.superagents.commands["sp-implement"]), "worktrees toggle must not write skillOverlays");
+		assert.ok("worktrees" in parsed.superagents.commands["sp-implement"]);
 	});
 });
