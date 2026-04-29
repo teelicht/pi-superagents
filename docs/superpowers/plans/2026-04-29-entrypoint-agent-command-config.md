@@ -964,7 +964,7 @@ git commit -m "feat: warn on stale superpowers command behavior config"
 - Modify: `test/unit/sp-settings.test.ts`
 - Modify: `test/unit/superpowers-config-writer.test.ts`
 
-- [ ] **Step 1: Inspect current settings UI assumptions**
+- [x] **Step 1: Inspect current settings UI assumptions**
 
 Open `src/ui/sp-settings.ts` and find:
 
@@ -977,11 +977,11 @@ private commandNames(): string[] {
 
 This can stay behavior-config-driven for toggles, but labels must not imply config defines commands. If there is text showing `description` or `entrySkill`, remove it.
 
-- [ ] **Step 2: Ensure config writer creates behavior-only blocks**
+- [x] **Step 2: Ensure config writer creates behavior-only blocks**
 
 In `src/superpowers/config-writer.ts`, no metadata should be created. Verify `toggleSuperpowersCommandSetting` and `toggleSuperpowersWorktrees` only write behavior keys. If any helper writes `description`, `entrySkill`, or `skillOverlays`, delete that code and add tests.
 
-- [ ] **Step 3: Update settings UI copy**
+- [x] **Step 3: Update settings UI copy**
 
 In `src/ui/sp-settings.ts`, change “Commands:” section copy to “Command behavior flags:” or equivalent. Ensure listed settings are only:
 
@@ -994,7 +994,7 @@ worktrees.enabled
 worktrees.root
 ```
 
-- [ ] **Step 4: Update settings tests**
+- [x] **Step 4: Update settings tests**
 
 In `test/unit/sp-settings.test.ts`, remove any expected display of command metadata and add assertions that behavior flags still render and toggle. In `test/unit/superpowers-config-writer.test.ts`, assert toggles produce objects like:
 
@@ -1010,7 +1010,7 @@ In `test/unit/sp-settings.test.ts`, remove any expected display of command metad
 
 and never add `description`, `entrySkill`, or `skillOverlays`.
 
-- [ ] **Step 5: Run focused tests**
+- [x] **Step 5: Run focused tests**
 
 Run:
 
@@ -1020,7 +1020,7 @@ node --experimental-strip-types --test test/unit/sp-settings.test.ts test/unit/s
 
 Expected: settings and config-writer tests pass.
 
-- [ ] **Step 6: Commit settings changes**
+- [x] **Step 6: Commit settings changes**
 
 ```bash
 git add src/ui/sp-settings.ts src/superpowers/config-writer.ts test/unit/sp-settings.test.ts test/unit/superpowers-config-writer.test.ts
