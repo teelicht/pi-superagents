@@ -20,6 +20,9 @@ At runtime, user overrides merge on top of the bundled defaults — you only nee
 ~/.pi/agent/extensions/subagent/config.example.json
 ```
 
+> [!NOTE]
+> `config.example.json` is illustrative only. Copy only the settings you want to change into `config.json`; unspecified fields are filled in from the bundled defaults.
+
 ## Validation
 
 `pi-superagents` fails closed when `config.json` cannot be trusted. If the file has invalid JSON, unknown keys, or wrong value types, subagent execution is disabled until the file is fixed.
@@ -42,7 +45,7 @@ The bundled defaults define three built-in commands:
 | `sp-brainstorm` | `brainstorming` | `usePlannotator: true` |
 | `sp-plan` | `writing-plans` | `usePlannotator: true` |
 
-Built-in commands cannot be overridden by user config. Create a custom command with a different name instead.
+Built-in command presets can be augmented or overridden by user config. Settings in your `config.json` are deep-merged on top of the bundled defaults: any fields you specify replace the corresponding built-in values, while unspecified fields remain at their built-in defaults. To create a variant, reference the built-in command name in your `commands` map and override only the fields you need. Use a different command name only if you want a fully independent preset.
 
 ## Configuration Keys
 
@@ -109,6 +112,23 @@ The compact renderer is active for all `subagent` tool results produced by `pi-s
 
 ## Common Override Examples
 
+Augment the built-in `sp-implement` with custom worktree settings:
+
+```json
+{
+  "superagents": {
+    "commands": {
+      "sp-implement": {
+        "worktrees": {
+          "enabled": true,
+          "root": ".worktrees"
+        }
+      }
+    }
+  }
+}
+```
+
 Create a custom command with lean settings:
 
 ```json
@@ -136,23 +156,6 @@ Enable Plannotator for a custom planning command:
         "description": "Planning with browser review",
         "entrySkill": "writing-plans",
         "usePlannotator": true
-      }
-    }
-  }
-}
-```
-
-Override worktree settings for the built-in `sp-implement`:
-
-```json
-{
-  "superagents": {
-    "commands": {
-      "sp-implement": {
-        "worktrees": {
-          "enabled": true,
-          "root": ".worktrees"
-        }
       }
     }
   }
@@ -204,7 +207,10 @@ Superpowers agents use abstract model tiers. Define tiers in your configuration:
 }
 ```
 
-**Supported thinking levels:** `off`, `minimal`, `low`, `medium`, `high`, `xhigh`.
+**Supported thinking levels:** `off`, `minimal`, `low`, `medium`, `high`, `xhigh`. The `thinking` key is optional.
+
+> [!NOTE]
+> In `config.example.json`, `creative` and `legacy` are illustrative custom tiers added to demonstrate the surface; they are not built-in tiers. `thinking` is optional in any tier definition.
 
 You can edit model tier mappings during an active PI session with `/sp-settings`. The model picker reads PI's authenticated model registry and writes the selected `provider/model` value back to `config.json`. Successful tier edits apply to future Superpowers subagents immediately; already-running subagents keep the model they were launched with.
 
