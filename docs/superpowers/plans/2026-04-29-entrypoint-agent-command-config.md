@@ -467,7 +467,7 @@ git commit -m "refactor: make superpowers command config behavior-only"
 - Modify: `test/integration/slash-commands.test.ts`
 - Modify: `test/unit/superpowers-workflow-profile.test.ts`
 
-- [ ] **Step 1: Update workflow profile types and docs**
+- [x] **Step 1: Update workflow profile types and docs**
 
 In `src/superpowers/workflow-profile.ts`, update the file header bullet from “entry skill name and overlay skill names” to “entry skill name and lifecycle skill names”.
 
@@ -488,7 +488,7 @@ export interface ResolvedSuperpowersRunProfile {
 }
 ```
 
-- [ ] **Step 2: Remove overlay resolution from `resolveSuperpowersRunProfile`**
+- [x] **Step 2: Remove overlay resolution from `resolveSuperpowersRunProfile`**
 
 Replace the top of the function after `preset` with:
 
@@ -509,7 +509,7 @@ const overlaySkillNames = [...new Set([...entryOverlayNames, ...invocationOverla
 
 Remove `overlaySkillNames` from the returned profile object.
 
-- [ ] **Step 3: Change slash command registration signature**
+- [x] **Step 3: Change slash command registration signature**
 
 In `src/slash/slash-commands.ts`, import `AgentConfig`:
 
@@ -553,7 +553,7 @@ function registerSuperpowersCommand(
 }
 ```
 
-- [ ] **Step 4: Register only discovered entrypoint agents**
+- [x] **Step 4: Register only discovered entrypoint agents**
 
 In `registerSlashCommands`, replace the config loop with:
 
@@ -566,7 +566,7 @@ for (const entrypointAgent of entrypointAgents) {
 
 Do not register config-only commands.
 
-- [ ] **Step 5: Remove stale imports and config preset wording**
+- [x] **Step 5: Remove stale imports and config preset wording**
 
 In `src/slash/slash-commands.ts`:
 
@@ -574,7 +574,7 @@ In `src/slash/slash-commands.ts`:
 - Update file header from “configured custom commands” to “interactive entrypoint agent commands”.
 - Update the `registerSlashCommands` docblock to say custom commands require entrypoint agent files.
 
-- [ ] **Step 6: Update workflow profile tests**
+- [x] **Step 6: Update workflow profile tests**
 
 In `test/unit/superpowers-workflow-profile.test.ts`:
 
@@ -614,7 +614,7 @@ void it("resolves entry skill from the interactive entrypoint agent", () => {
 });
 ```
 
-- [ ] **Step 7: Update integration tests that used config-only custom commands**
+- [x] **Step 7: Update integration tests that used config-only custom commands**
 
 In `test/integration/slash-commands.test.ts`:
 
@@ -663,7 +663,7 @@ node --experimental-strip-types --test test/unit/superpowers-workflow-profile.te
 
 Expected: slash registration and workflow profile tests pass after implementation.
 
-- [ ] **Step 9: Commit slash/profile changes**
+- [x] **Step 9: Commit slash/profile changes**
 
 ```bash
 git add src/slash/slash-commands.ts src/superpowers/workflow-profile.ts test/integration/slash-commands.test.ts test/unit/superpowers-workflow-profile.test.ts
