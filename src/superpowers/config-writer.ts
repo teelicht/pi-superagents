@@ -39,15 +39,16 @@ function ensureSuperagents(config: MutableConfig): NonNullable<ExtensionConfig["
  * @param command - Existing command preset (may include metadata).
  * @returns Behavior-only command object with only the valid behavior flags.
  */
-function extractBehaviorFlags(command: Record<string, unknown>): Record<string, unknown> {
+function extractBehaviorFlags(command: unknown): Record<string, unknown> {
+	const source = command && typeof command === "object" && !Array.isArray(command) ? (command as Record<string, unknown>) : {};
 	const result: Record<string, unknown> = {};
 	for (const key of BEHAVIOR_FLAG_KEYS) {
-		if (key in command) {
-			result[key] = command[key];
+		if (key in source) {
+			result[key] = source[key];
 		}
 	}
-	if ("worktrees" in command && command.worktrees && typeof command.worktrees === "object") {
-		result.worktrees = { ...(command.worktrees as Record<string, unknown>) };
+	if ("worktrees" in source && source.worktrees && typeof source.worktrees === "object" && !Array.isArray(source.worktrees)) {
+		result.worktrees = { ...(source.worktrees as Record<string, unknown>) };
 	}
 	return result;
 }
