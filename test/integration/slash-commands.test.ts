@@ -89,7 +89,6 @@ const fixtureSkillNames = [
 	"dispatching-parallel-agents",
 	"using-git-worktrees",
 	"finishing-a-development-branch",
-	"react-native-best-practices",
 ];
 
 afterEach(() => {
@@ -180,7 +179,7 @@ function createEffectiveConfig(override: ExtensionConfig = {}): ExtensionConfig 
 /**
  * Create a temporary workspace with the Superpowers skills needed by slash-command tests.
  *
- * @returns Temporary cwd that can resolve built-in Superpowers entry and overlay skills.
+ * @returns Temporary cwd that can resolve built-in Superpowers entry and lifecycle skills.
  */
 function createSkillFixtureCwd(): string {
 	const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "pi-slash-skills-"));
@@ -345,6 +344,7 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.match(prompt, /Root lifecycle skills:/);
 		assert.match(prompt, /verification-before-completion/);
 		assert.doesNotMatch(prompt, /receiving-code-review/);
+		assert.doesNotMatch(prompt, /Overlay skills:/);
 	});
 
 	void it("/sp-implement sends a root-session prompt with resolved defaults and lifecycle triggers", async () => {
@@ -378,6 +378,7 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.match(prompt, /verification-before-completion/);
 		assert.match(prompt, /receiving-code-review/);
 		assert.match(prompt, /finishing-a-development-branch/);
+		assert.doesNotMatch(prompt, /Overlay skills:/);
 		// No options means it was sent directly (isIdle === true)
 		assert.equal(userMessages[0].options, undefined);
 	});
@@ -855,6 +856,7 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.match(prompt, /design onboarding/);
 		assert.match(prompt, /superpowers_spec_review/);
 		assert.doesNotMatch(prompt, /Root lifecycle skills:/);
+		assert.doesNotMatch(prompt, /Overlay skills:/);
 	});
 
 	void it("/sp-brainstorm shows usage when no task is provided", async () => {
@@ -923,48 +925,7 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.match(prompt, /useSubagents:\s*false/);
 		assert.match(prompt, /useTestDrivenDevelopment:\s*false/);
 		assert.match(prompt, /worktrees\.enabled:\s*false/);
-	});
-
-	void it("/sp-brainstorm reports unresolved overlay skills without sending a prompt", async () => {
-		const cwd = createSkillFixtureCwd();
-		const notifications: string[] = [];
-		const userMessages: string[] = [];
-		const commands = new Map<string, CommandSpec>();
-		const pi = {
-			events: createEventBus(),
-			registerCommand(name: string, spec: CommandSpec) {
-				commands.set(name, spec);
-			},
-			registerShortcut() {},
-			sendMessage() {},
-			sendUserMessage(content: string | unknown[]) {
-				userMessages.push(String(content));
-			},
-		};
-
-		registerSlashCommands!(
-			pi,
-			createState(cwd),
-			createEffectiveConfig({
-				superagents: {
-					skillOverlays: {
-						brainstorming: ["definitely-missing-skill"],
-					},
-				} as never,
-			}),
-		);
-
-		await commands.get("sp-brainstorm")!.handler("design onboarding", {
-			...createCommandContext({ cwd, hasUI: true }),
-			ui: {
-				notify(message: string) {
-					notifications.push(message);
-				},
-			},
-		});
-
-		assert.deepEqual(userMessages, []);
-		assert.deepEqual(notifications, ["Superpowers overlay skills could not be resolved: definitely-missing-skill"]);
+		assert.doesNotMatch(prompt, /Overlay skills:/);
 	});
 
 	// ─────────────────────────────────────────────────────────────────────────────

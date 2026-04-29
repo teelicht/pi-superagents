@@ -4,7 +4,7 @@
  * Responsibilities:
  * - parse direct Pi `/skill:<name>` input before native skill expansion
  * - decide whether a configured skill command should be intercepted
- * - shape resolved entry and overlay skills for root prompt construction
+ * - shape resolved entry and lifecycle skills for root prompt construction
  *
  * Important side effects:
  * - none; callers perform prompt dispatch and skill file resolution
@@ -19,13 +19,13 @@ import type { ResolvedSuperpowersRunProfile } from "./workflow-profile.ts";
  * Extended root prompt input including skill-entry metadata.
  *
  * This type extends SuperpowersRootPromptInput with fields required for
- * skill-entry flows (entry skill and overlay skills).
+ * skill-entry flows (entry skill and root lifecycle skills).
  */
 export interface SkillEntryPromptInput extends SuperpowersRootPromptInput {
 	/** Resolved entry skill content. */
 	entrySkill?: ResolvedSkill;
-	/** Resolved overlay skill contents. */
-	overlaySkills?: ResolvedSkill[];
+	/** Resolved root lifecycle skills from interactive entrypoint agent frontmatter. */
+	rootLifecycleSkills?: ResolvedSkill[];
 }
 
 /**
@@ -43,7 +43,7 @@ export interface BuildSkillEntryPromptInputParams {
 	profile: ResolvedSuperpowersRunProfile;
 	usingSuperpowersSkill?: ResolvedSkill;
 	entrySkill?: ResolvedSkill;
-	overlaySkills: ResolvedSkill[];
+	rootLifecycleSkills?: ResolvedSkill[];
 }
 
 /**
@@ -106,7 +106,7 @@ export function buildSkillEntryPromptInput(params: BuildSkillEntryPromptInputPar
 		fork: params.profile.fork,
 		usingSuperpowersSkill: params.usingSuperpowersSkill,
 		entrySkill: params.entrySkill,
-		overlaySkills: params.overlaySkills,
+		rootLifecycleSkills: params.rootLifecycleSkills,
 	};
 }
 
@@ -120,13 +120,13 @@ export function buildResolvedSkillEntryPrompt(input: BuildResolvedSkillEntryProm
 	const usingSuperpowersSkill = input.resolveSkill(input.cwd, "using-superpowers");
 	const entrySkillName = input.profile.entrySkill;
 	const entrySkill = entrySkillName ? input.resolveSkill(input.cwd, entrySkillName) : undefined;
-	const overlayResolution = input.resolveSkillNames(input.profile.overlaySkillNames, input.cwd);
+	const rootLifecycleResolution = input.resolveSkillNames(input.profile.rootLifecycleSkillNames ?? [], input.cwd);
 
 	if (!entrySkill) {
 		return { error: `Superpowers entry skill could not be resolved: ${entrySkillName ?? "unknown"}` };
 	}
-	if (overlayResolution.missing.length > 0) {
-		return { error: `Superpowers overlay skills could not be resolved: ${overlayResolution.missing.join(", ")}` };
+	if (rootLifecycleResolution.missing.length > 0) {
+		return { error: `Superpowers root lifecycle skills could not be resolved: ${rootLifecycleResolution.missing.join(", ")}` };
 	}
 
 	return {
@@ -135,7 +135,7 @@ export function buildResolvedSkillEntryPrompt(input: BuildResolvedSkillEntryProm
 				profile: input.profile,
 				usingSuperpowersSkill,
 				entrySkill,
-				overlaySkills: overlayResolution.resolved,
+				rootLifecycleSkills: rootLifecycleResolution.resolved,
 			}),
 		),
 	};

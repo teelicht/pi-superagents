@@ -5,7 +5,7 @@
  * - verify using-superpowers bootstrap wording
  * - verify delegation-enabled and delegation-disabled contracts
  * - verify presence-based contract emission
- * - verify skill entry and overlay rendering for brainstorming flows
+ * - verify skill entry and lifecycle skill rendering
  * - verify generic Plannotator contract
  */
 
@@ -49,6 +49,7 @@ void describe("Superpowers root prompt", () => {
 		assert.match(prompt, /If the tool returns unavailable, show one concise warning/);
 		assert.doesNotMatch(prompt, /exactly once/);
 		assert.match(prompt, /must use the `subagent` tool/);
+		assert.match(prompt, /pass `useTestDrivenDevelopment: true` in every `subagent` call/);
 		assert.match(prompt, /Worktree isolation is ENABLED/);
 		assert.match(prompt, /Task tracking is the responsibility of the root session/);
 	});
@@ -112,9 +113,10 @@ void describe("Superpowers root prompt", () => {
 		assert.match(prompt, /Plannotator browser review is ENABLED/);
 		assert.match(prompt, /superpowers_spec_review/);
 		assert.match(prompt, /superpowers_plan_review/);
+		assert.doesNotMatch(prompt, /Overlay skills:/);
 	});
 
-	void it("includes entry skill and overlay skill content for brainstorming", () => {
+	void it("includes entry skill content for brainstorming", () => {
 		const prompt = buildSuperpowersRootPrompt({
 			task: "design onboarding",
 			useBranches: true,
@@ -133,24 +135,81 @@ void describe("Superpowers root prompt", () => {
 				path: "/skills/brainstorming/SKILL.md",
 				content: "BRAINSTORM BODY",
 			},
-			overlaySkills: [
-				{
-					name: "react-native-best-practices",
-					path: "/skills/react-native-best-practices/SKILL.md",
-					content: "RN BODY",
-				},
-			],
 		});
 
 		assert.match(prompt, /Entry skill:/);
 		assert.match(prompt, /Name: brainstorming/);
 		assert.match(prompt, /BRAINSTORM BODY/);
-		assert.match(prompt, /Overlay skills:/);
-		assert.match(prompt, /react-native-best-practices/);
-		assert.match(prompt, /RN BODY/);
 		assert.match(prompt, /superpowers_spec_review/);
 		assert.match(prompt, /superpowers_plan_review/);
+		assert.doesNotMatch(prompt, /Overlay skills:/);
 		assert.doesNotMatch(prompt, /saved brainstorming spec/);
+	});
+
+	void it("includes lifecycle skill triggers for root implementation entrypoints", () => {
+		const prompt = buildSuperpowersRootPrompt({
+			task: "implement auth fix",
+			useBranches: false,
+			useSubagents: true,
+			useTestDrivenDevelopment: true,
+			worktrees: { enabled: false },
+			fork: false,
+			usingSuperpowersSkill: {
+				name: "using-superpowers",
+				path: "/skills/using-superpowers/SKILL.md",
+				content: "USING BODY",
+			},
+			rootLifecycleSkills: [
+				{
+					name: "verification-before-completion",
+					path: "/skills/verification-before-completion/SKILL.md",
+					content: "VERIFY BODY",
+				},
+				{
+					name: "receiving-code-review",
+					path: "/skills/receiving-code-review/SKILL.md",
+					content: "REVIEW BODY",
+				},
+				{
+					name: "finishing-a-development-branch",
+					path: "/skills/finishing-a-development-branch/SKILL.md",
+					content: "FINISH BODY",
+				},
+			],
+		});
+
+		assert.match(prompt, /Root lifecycle skills:/);
+		assert.match(prompt, /Before claiming complete, fixed, passing, or ready: invoke `verification-before-completion`/);
+		assert.match(prompt, /When receiving or acting on review feedback: invoke `receiving-code-review`/);
+		assert.match(prompt, /After implementation is complete and verification passes: invoke `finishing-a-development-branch`/);
+		assert.match(prompt, /VERIFY BODY/);
+		assert.match(prompt, /REVIEW BODY/);
+		assert.match(prompt, /FINISH BODY/);
+		assert.doesNotMatch(prompt, /Overlay skills:/);
+	});
+
+	void it("omits trigger hints for lifecycle skills that are not assigned", () => {
+		const prompt = buildSuperpowersRootPrompt({
+			task: "implement auth fix",
+			fork: false,
+			usingSuperpowersSkill: {
+				name: "using-superpowers",
+				path: "/skills/using-superpowers/SKILL.md",
+				content: "USING BODY",
+			},
+			rootLifecycleSkills: [
+				{
+					name: "verification-before-completion",
+					path: "/skills/verification-before-completion/SKILL.md",
+					content: "VERIFY BODY",
+				},
+			],
+		});
+
+		assert.match(prompt, /Before claiming complete, fixed, passing, or ready: invoke `verification-before-completion`/);
+		assert.doesNotMatch(prompt, /receiving-code-review/);
+		assert.doesNotMatch(prompt, /finishing-a-development-branch/);
+		assert.doesNotMatch(prompt, /Overlay skills:/);
 	});
 
 	void it("builds a concise visible prompt summary without leaking the strict contract", () => {
