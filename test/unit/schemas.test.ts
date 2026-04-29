@@ -297,6 +297,9 @@ void describe("SubagentParams schema", { skip: !available ? "typebox not availab
 	});
 });
 
+let savedDepth: string | undefined;
+let savedMaxDepth: string | undefined;
+
 void describe("sessionMode runtime compatibility", { skip: !executorAvailable ? "subagent executor not importable" : undefined }, () => {
 	let tempDir: string;
 	let mockPi: MockPi;
@@ -311,6 +314,13 @@ void describe("sessionMode runtime compatibility", { skip: !executorAvailable ? 
 	});
 
 	beforeEach(() => {
+		// Hermetic: save and clear recursion env vars so the executor doesn't block.
+		// Tests intentionally exercise subagent depth 0 → the executor runs normally.
+		savedDepth = process.env.PI_SUBAGENT_DEPTH;
+		savedMaxDepth = process.env.PI_SUBAGENT_MAX_DEPTH;
+		delete process.env.PI_SUBAGENT_DEPTH;
+		delete process.env.PI_SUBAGENT_MAX_DEPTH;
+
 		tempDir = createTempDir("pi-session-mode-test-");
 		mockPi.reset();
 		mockPi.onCall({ output: "ok" });
@@ -318,6 +328,11 @@ void describe("sessionMode runtime compatibility", { skip: !executorAvailable ? 
 
 	afterEach(() => {
 		removeTempDir(tempDir);
+		// Restore recursion env vars
+		if (savedDepth === undefined) delete process.env.PI_SUBAGENT_DEPTH;
+		else process.env.PI_SUBAGENT_DEPTH = savedDepth;
+		if (savedMaxDepth === undefined) delete process.env.PI_SUBAGENT_MAX_DEPTH;
+		else process.env.PI_SUBAGENT_MAX_DEPTH = savedMaxDepth;
 	});
 
 	void it("accepts sessionMode=fork as the current fork behavior", async () => {
