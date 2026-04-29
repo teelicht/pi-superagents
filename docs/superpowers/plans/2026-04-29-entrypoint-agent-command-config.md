@@ -1039,11 +1039,11 @@ git commit -m "refactor: show behavior-only superpowers command settings"
 - Modify: `docs/skills.md`
 - Modify: `CHANGELOG.md` if this branch keeps unreleased notes
 
-- [ ] **Step 1: Update README feature bullets**
+- [x] **Step 1: Update README feature bullets**
 
 In `README.md`, replace the “Skill Overlays” feature bullet with text that says skills are selected by Superpowers trigger logic, while entrypoint lifecycle skills live in agent frontmatter. Update “Custom Commands” to say custom slash commands are created by adding interactive entrypoint agent markdown files, with optional behavior flags in `config.json`.
 
-- [ ] **Step 2: Update README installation config wording**
+- [x] **Step 2: Update README installation config wording**
 
 Change:
 
@@ -1057,7 +1057,7 @@ to:
 On install, `pi-superagents` creates `config.json` from the bundled defaults:
 ```
 
-- [ ] **Step 3: Rewrite `docs/configuration.md` command section**
+- [x] **Step 3: Rewrite `docs/configuration.md` command section**
 
 Document this boundary:
 
@@ -1099,7 +1099,7 @@ Review code and produce actionable findings.
 ```
 ```
 
-- [ ] **Step 4: Remove overlay docs**
+- [x] **Step 4: Remove overlay docs**
 
 In `README.md`, `docs/configuration.md`, and `docs/skills.md`, remove `skillOverlays` examples and replace with guidance:
 
@@ -1107,7 +1107,7 @@ In `README.md`, `docs/configuration.md`, and `docs/skills.md`, remove `skillOver
 Do not preload domain skills through command config. Superpowers starts with `using-superpowers`, which selects relevant skills based on the task and each skill's trigger. Entrypoint `skills` are reserved for lifecycle/root skills with explicit trigger points.
 ```
 
-- [ ] **Step 5: Update worktree docs**
+- [x] **Step 5: Update worktree docs**
 
 In `docs/worktrees.md`, ensure worktree examples show behavior-only config:
 
@@ -1123,11 +1123,11 @@ In `docs/worktrees.md`, ensure worktree examples show behavior-only config:
 }
 ```
 
-- [ ] **Step 6: Update parameters docs**
+- [x] **Step 6: Update parameters docs**
 
 In `docs/parameters.md`, update any slash-command/config examples to remove `description`, `entrySkill`, and `skillOverlays`. Keep subagent tool parameter docs unchanged unless they reference overlays.
 
-- [ ] **Step 7: Update skills docs**
+- [x] **Step 7: Update skills docs**
 
 In `docs/skills.md`, document supported entrypoint frontmatter fields:
 
@@ -1145,7 +1145,7 @@ skills: verification-before-completion
 
 Explain that `skills` is lifecycle-only for root entrypoints and not a replacement for overlays.
 
-- [ ] **Step 8: Search docs for removed keys**
+- [x] **Step 8: Search docs for removed keys**
 
 Run:
 
@@ -1155,7 +1155,7 @@ grep -R "skillOverlays\|entrySkill\|description.*commands\|custom command.*confi
 
 Expected: `entrySkill` only appears in entrypoint-agent documentation, not config examples. `skillOverlays` has no active config examples.
 
-- [ ] **Step 9: Add a brief changelog entry**
+- [x] **Step 9: Add a brief changelog entry**
 
 Update `CHANGELOG.md` with a short entry that emphasizes intent, not implementation detail. Use concise wording like:
 
@@ -1163,7 +1163,7 @@ Update `CHANGELOG.md` with a short entry that emphasizes intent, not implementat
 - Moved Superpowers slash-command metadata into entrypoint agent frontmatter so `config.json` only carries runtime behavior flags. Added `/sp-brainstorm` and `/sp-plan` entrypoint agents and removed skill overlay config to keep Superpowers skill selection trigger-driven.
 ```
 
-- [ ] **Step 10: Commit docs and changelog changes**
+- [x] **Step 10: Commit docs and changelog changes**
 
 ```bash
 git add README.md docs/configuration.md docs/worktrees.md docs/parameters.md docs/skills.md CHANGELOG.md
