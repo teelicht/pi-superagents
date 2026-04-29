@@ -26,4 +26,33 @@ void describe("buildPiArgs session wiring", () => {
 
 		assert.ok(!args.includes("--session"));
 	});
+
+	void it("emits --no-extensions when an explicit empty extension list is provided", () => {
+		const { args } = buildPiArgs({
+			baseArgs: ["--mode", "json", "-p"],
+			task: "hello",
+			sessionEnabled: false,
+			extensions: [],
+		});
+
+		assert.ok(args.includes("--no-extensions"));
+		assert.equal(args.includes("--extension"), false);
+	});
+
+	void it("keeps path-like tool extensions when explicit extensions are provided", () => {
+		const { args } = buildPiArgs({
+			baseArgs: ["--mode", "json", "-p"],
+			task: "hello",
+			sessionEnabled: false,
+			tools: ["read", "./tools/custom-tool.ts"],
+			extensions: ["./extensions/global.ts"],
+		});
+
+		assert.ok(args.includes("--no-extensions"));
+		assert.deepEqual(args.slice(args.indexOf("--tools"), args.indexOf("--tools") + 2), ["--tools", "read"]);
+		assert.deepEqual(
+			args.filter((arg, index) => arg === "--extension" || args[index - 1] === "--extension"),
+			["--extension", "./extensions/global.ts", "--extension", "./tools/custom-tool.ts"],
+		);
+	});
 });
