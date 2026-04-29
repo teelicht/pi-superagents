@@ -14,13 +14,25 @@ Worktree isolation is optional. Enable it globally for Superpowers parallel task
 ], workflow: "superpowers" }
 ```
 
-You can also override worktree behavior for a custom Superpowers command with `superagents.commands.<name>.worktrees.enabled`.
+You can also override worktree behavior for a specific command with `superagents.commands.<name>.worktrees.enabled`:
+
+```json
+{
+  "superagents": {
+    "commands": {
+      "sp-implement": {
+        "worktrees": { "enabled": true, "root": "../worktrees" }
+      }
+    }
+  }
+}
+```
 
 When resolved worktree config is `enabled: false`, Superpowers treats that as a hard off switch. Root prompts must not ask for worktrees, and Superpowers subagent runs ignore `worktree: true` requests.
 
 After parallel completion, per-agent diff stats are appended to the output. Full patch files are written to the artifacts directory.
 
-While parallel worktree runs are active, `/subagents-status` shows each delegated subagent separately, including its resolved skills and any missing-skill warnings.
+While parallel worktree runs are active, `/subagents-status` shows each delegated subagent separately, including its resolved skills and any missing-skill warnings. Worktree isolation does not change entrypoint or role skill resolution; for example, `/sp-implement` root lifecycle skills and `sp-debug`'s `systematic-debugging` assignment are resolved before any child process runs in a worktree.
 
 Agent reports themselves are returned inline through Pi tool results. Worktree isolation does not require `implementer-report.md`, `spec-review.md`, or `code-review.md` files in the worktree. Worktree isolation and session mode are separate concerns: packet handoff files live in the session artifact directory, not inside the worktree, and are cleaned up by the runtime.
 
@@ -48,9 +60,9 @@ Extension loading for subagents is independent of worktree isolation. Even when 
 
 ## Configuration
 
-See [Configuration Reference](configuration.md) for `superagents.worktrees.*` config keys.
+See [Configuration Reference](configuration.md) for `superagents.commands.<name>.worktrees.*` config keys.
 
-The `/sp-settings` overlay also shows Superpowers model tiers; tier edits apply immediately to future subagents, while worktree command registration changes may still require a PI reload.
+The `/sp-settings` overlay also shows Superpowers model tiers and command-scoped workflow toggles. Use `c` to select a command before pressing `w`; worktree toggles are written to the selected command preset. Tier edits apply immediately to future subagents, while worktree command registration changes may still require a PI reload.
 
 ## Release Notes
 

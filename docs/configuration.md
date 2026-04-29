@@ -8,10 +8,10 @@ Bundled defaults ship inside the package and provide sensible baseline values. U
 ~/.pi/agent/extensions/subagent/config.json
 ```
 
-This file is user-owned. A fresh install creates it as an empty override:
+This file is user-owned. A fresh install creates it from the bundled defaults:
 
 ```json
-{}
+{ /* behavior flags only */ }
 ```
 
 At runtime, user overrides merge on top of the bundled defaults — you only need to specify the settings you want to change. Full parseable examples are available in:
@@ -27,7 +27,7 @@ At runtime, user overrides merge on top of the bundled defaults — you only nee
 
 `pi-superagents` fails closed when `config.json` cannot be trusted. If the file has invalid JSON, unknown keys, or wrong value types, subagent execution is disabled until the file is fixed.
 
-If `config.json` duplicates the entire bundled default, the extension warns and offers a one-click migration to replace it with an empty override. This avoids drifted copies that mask changing defaults.
+If `config.json` duplicates the entire bundled default, the extension warns and offers a one-click migration to replace it with a minimal override. This avoids drifted copies that mask changing defaults.
 
 When Pi starts, the extension shows a notification with the config path and exact diagnostics. You can also inspect diagnostics with:
 
@@ -37,13 +37,15 @@ When Pi starts, the extension shows a notification with the config path and exac
 
 ## Built-in Commands
 
-The bundled defaults define three built-in commands:
+The bundled defaults include behavior flags for three built-in commands:
 
-| Command | Entry Skill | Policy Settings |
-|---|---|---|
-| `sp-implement` | `using-superpowers` | `useSubagents: true`, `useTestDrivenDevelopment: true`, `useBranches: false`, `worktrees: { enabled: false }` |
-| `sp-brainstorm` | `brainstorming` | `usePlannotator: true` |
-| `sp-plan` | `writing-plans` | `usePlannotator: true` |
+| Command | Policy Settings |
+|---|---|
+| `sp-implement` | `useSubagents: true`, `useTestDrivenDevelopment: true`, `useBranches: false`, `worktrees: { enabled: false }` |
+| `sp-brainstorm` | `usePlannotator: true` |
+| `sp-plan` | `usePlannotator: true` |
+
+Each built-in command has a corresponding bundled interactive entrypoint agent file (`agents/sp-implement.md`, `agents/sp-brainstorm.md`, `agents/sp-plan.md`). The entrypoint agent file provides command metadata (name, description, command name, entry skill) and root lifecycle skills. The command preset in `config.json` only controls runtime behavior flags.
 
 Built-in command presets can be augmented or overridden by user config. Settings in your `config.json` are deep-merged on top of the bundled defaults: any fields you specify replace the corresponding built-in values, while unspecified fields remain at their built-in defaults. To create a variant, reference the built-in command name in your `commands` map and override only the fields you need. Use a different command name only if you want a fully independent preset.
 
@@ -55,10 +57,9 @@ Configures the Superpowers workflow.
 
 | Key | Description |
 |---|---|
-| `commands` | Map of command presets. Each preset has an `entrySkill` and per-command policy booleans. |
+| `commands` | Map of command behavior presets. Each preset has per-command policy booleans. Slash commands are registered from interactive entrypoint agents; `config.json` only controls behavior flags for existing entrypoint commands. |
 | `extensions` | Array of local extension paths or Pi extension source specs that every subagent receives. Implicit Pi extension discovery is disabled by default; add extensions here for child Pi processes. |
 | `modelTiers` | Maps abstract tier names (`cheap`, `balanced`, `max`, plus any custom tiers) to concrete model configs. |
-| `skillOverlays` | Maps entry skill names to arrays of additional skill names to load alongside them. |
 | `interceptSkillCommands` | List of skill names intercepted for Superpowers entry (`brainstorming`, `writing-plans`). |
 | `superpowersSkills` | List of Superpowers process skill names (bundled default, not user-configurable). |
 
@@ -83,20 +84,57 @@ Package and remote entries should use normal Pi `-e` source prefixes such as `np
 
 Agent frontmatter can append additional extensions per-agent using the `extensions` field, which is additive to the global list. Extensions declared in agent frontmatter are appended to the global `extensions` array at session launch.
 
-### Command Presets
+### Entrypoint Agent Frontmatter
 
-Each command preset supports these keys:
+Interactive entrypoint agent files own the slash command metadata (name, description, command name, entry skill) and define root lifecycle skills. `config.json` only controls behavior flags.
+
+Create a custom command by adding an entrypoint agent file. Example:
+
+`~/.pi/agent/agents/sp-review.md`
+
+```yaml
+---
+name: sp-review
+description: Review code through the Superpowers workflow
+kind: entrypoint
+execution: interactive
+command: sp-review
+entrySkill: using-superpowers
+skills: verification-before-completion, receiving-code-review
+---
+
+Review code and produce actionable findings.
+```
+
+Matching behavior flags in `config.json`:
+
+```json
+{
+  "superagents": {
+    "commands": {
+      "sp-review": {
+        "useSubagents": false,
+        "useTestDrivenDevelopment": false
+      }
+    }
+  }
+}
+```
+
+### Command Behavior Presets
+
+Each command preset in `config.json` supports these behavior keys:
 
 | Key | Description |
 |---|---|
-| `description` | Command description shown in help. |
-| `entrySkill` | Entry skill name (e.g., `using-superpowers`, `brainstorming`, `writing-plans`). |
 | `useBranches` | Require dedicated git branch for plans/specs. |
 | `useSubagents` | Allow delegation through `subagent` tool. |
 | `useTestDrivenDevelopment` | Enable TDD guidance. |
 | `usePlannotator` | Enable Plannotator browser review at approval points. |
 | `worktrees.enabled` | Use git worktree isolation for parallel tasks. |
 | `worktrees.root` | Directory for worktrees (default: system temp). |
+
+Command metadata (`description`, `entrySkill`) was moved to entrypoint agent frontmatter. Adding or editing command metadata requires adding or editing an `agents/*.md` entrypoint file.
 
 ## Inline Role Output
 
@@ -129,32 +167,13 @@ Augment the built-in `sp-implement` with custom worktree settings:
 }
 ```
 
-Create a custom command with lean settings:
+Enable Plannotator for the built-in brainstorm command:
 
 ```json
 {
   "superagents": {
     "commands": {
-      "sp-lean": {
-        "description": "Lean: no subagents, no TDD",
-        "entrySkill": "using-superpowers",
-        "useSubagents": false,
-        "useTestDrivenDevelopment": false
-      }
-    }
-  }
-}
-```
-
-Enable Plannotator for a custom planning command:
-
-```json
-{
-  "superagents": {
-    "commands": {
-      "sp-review": {
-        "description": "Planning with browser review",
-        "entrySkill": "writing-plans",
+      "sp-brainstorm": {
         "usePlannotator": true
       }
     }
@@ -166,18 +185,30 @@ If `root` is inside your repository, it must be ignored by git.
 
 ## Custom Commands
 
-Define preset slash commands in your `config.json`:
+Create a custom slash command by adding an interactive entrypoint agent markdown file:
+
+```yaml
+---
+name: sp-lean
+description: Lean Superpowers without subagents
+kind: entrypoint
+execution: interactive
+command: sp-lean
+entrySkill: using-superpowers
+---
+
+Lean entrypoint for Superpowers workflows.
+```
+
+Optional behavior flags in `config.json`:
 
 ```json
 {
   "superagents": {
     "commands": {
-      "sp-custom": {
-        "description": "Custom workflow",
-        "entrySkill": "using-superpowers",
-        "useSubagents": true,
-        "useTestDrivenDevelopment": true,
-        "useBranches": true,
+      "sp-lean": {
+        "useSubagents": false,
+        "useTestDrivenDevelopment": false,
         "worktrees": {
           "enabled": false
         }
@@ -214,26 +245,7 @@ Superpowers agents use abstract model tiers. Define tiers in your configuration:
 
 You can edit model tier mappings during an active PI session with `/sp-settings`. The model picker reads PI's authenticated model registry and writes the selected `provider/model` value back to `config.json`. Successful tier edits apply to future Superpowers subagents immediately; already-running subagents keep the model they were launched with.
 
-Command registration still happens when the extension loads. If you add or rename slash commands in `config.json`, reload PI before using those new command names.
-
-## Skill Overlays
-
-Skill overlays load additional skills alongside the entry skill:
-
-```json
-{
-  "superagents": {
-    "skillOverlays": {
-      "brainstorming": ["react-native-best-practices"],
-      "writing-plans": ["supabase-postgres-best-practices"]
-    }
-  }
-}
-```
-
-Overlay resolution happens at session start for skills in `superpowersSkills` (invocation overlays) and for the entry skill (entry overlays).
-
-Open `/subagents-status` and select a run to verify which overlay skills were resolved for each delegated subagent. Missing overlay skills appear as warning text in the same details pane.
+`/sp-settings` also edits command-scoped workflow toggles. Use `c` to select a command, then toggle `p` for Plannotator, `s` for subagents, `t` for TDD, or `w` for worktrees on that selected command preset. This avoids writing Plannotator or TDD settings into unrelated command presets.
 
 ## Direct Skill Interception
 
@@ -293,11 +305,13 @@ The bundled `superpowersSkills` list defines process skills. Current list:
 ]
 ```
 
+Skill selection is trigger-driven via `using-superpowers`. Do not preload domain skills through command config. Entrypoint `skills` are reserved for lifecycle/root skills with explicit trigger points.
+
 ## Status and Settings
 
 Use `/subagents-status` to inspect active and recent subagent runs (`Ctrl+Alt+S`).
 
-Use `/sp-settings` to inspect workflow settings and config diagnostics.
+Use `/sp-settings` to inspect workflow settings and config diagnostics. In the settings overlay, `c` cycles the selected command; boolean toggles apply to that command only.
 
 ## Superpowers Workflow Commands
 
@@ -312,6 +326,8 @@ Run implementation through the Superpowers workflow:
 ```
 
 **Inline tokens:** `lean`, `full`, `tdd`, `direct`, `subagents`, `no-subagents`, `--fork`
+
+Root prompts now instruct delegated Superpowers calls to pass the resolved `useTestDrivenDevelopment` value explicitly. This prevents custom commands such as `sp-lean` from accidentally inheriting another command's TDD setting when they delegate to `sp-implementer`. If a direct `subagent` tool call omits the parameter entirely, the runtime does not inject TDD by default.
 
 ### `/sp-brainstorm`
 
@@ -340,4 +356,4 @@ Run planning with Plannotator plan review:
 | Implementer | `sp-implementer` | Planned code changes with verification |
 | Code Review | `sp-code-review` | Quality reviewer for implementation |
 | Spec Review | `sp-spec-review` | Verification against design specs |
-| Debug | `sp-debug` | Failure investigation and root-cause analysis |
+| Debug | `sp-debug` | Failure investigation and root-cause analysis; injects `systematic-debugging` |
