@@ -152,12 +152,19 @@ export interface MissingSubagentExtensionPath {
 }
 
 /**
- * Find the first configured subagent extension path that does not exist.
+ * Find the first configured local subagent extension path that does not exist.
+ *
+ * This function skips scheme-like extension sources (e.g. `npm:pkg`, `git:repo`, `https://...`)
+ * and only validates local filesystem paths.
+ *
+ * Inputs/outputs:
+ * - returns the first missing local path found
+ * - skips scheme-like extension sources without path validation
  *
  * @param runtimeCwd      - Runtime working directory used to resolve relative paths.
  * @param globalExtensions - Extensions from `superagents.extensions`.
  * @param agentExtensions  - Extensions from agent frontmatter.
- * @returns The first missing extension path, or undefined when all configured paths exist.
+ * @returns The first missing local extension path, or undefined when all local paths exist.
  */
 export function findMissingSubagentExtensionPath(
 	runtimeCwd: string,
