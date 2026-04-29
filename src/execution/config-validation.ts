@@ -30,7 +30,7 @@ const TOP_LEVEL_KEYS = new Set(["superagents"]);
 
 const SUPERAGENTS_KEYS = new Set(["commands", "modelTiers", "skillOverlays", "interceptSkillCommands", "extensions", "superpowersSkills"]);
 
-/** Skills that can be intercepted for direct command interception. */
+/** Skills that can be intercepted for direct skill command interception. */
 const SUPPORTED_INTERCEPTED_SKILLS = new Set(["brainstorming", "writing-plans"]);
 
 const COMMAND_PRESET_KEYS = new Set(["description", "entrySkill", "useBranches", "useSubagents", "useTestDrivenDevelopment", "usePlannotator", "worktrees"]);
@@ -182,7 +182,9 @@ function validateCommandPreset(diagnostics: ConfigDiagnostic[], value: unknown, 
 	if ("usePlannotator" in value && typeof value.usePlannotator !== "boolean") {
 		addError(diagnostics, `${path}.usePlannotator`, "must be a boolean.");
 	}
-	if ("worktrees" in value && isRecord(value.worktrees)) {
+	if ("worktrees" in value && !isRecord(value.worktrees)) {
+		addError(diagnostics, `${path}.worktrees`, "must be an object.");
+	} else if ("worktrees" in value && isRecord(value.worktrees)) {
 		const worktreeKeys = Object.keys(value.worktrees);
 		for (const wtKey of worktreeKeys) {
 			if (!WORKTREE_KEYS.has(wtKey)) {
@@ -370,6 +372,30 @@ function mergeModelTiers(
 }
 
 /**
+ * Deep-merge one command preset, preserving nested worktrees defaults.
+ *
+ * @param defaultPreset Default preset for this command name.
+ * @param preset Override preset for this command name.
+ * @returns Deep-merged preset with worktrees inner-merged.
+ */
+function mergeCommandPreset(
+	defaultPreset: Record<string, unknown>,
+	preset: Record<string, unknown>,
+): Record<string, unknown> {
+	const defaultWorktrees = defaultPreset.worktrees as Record<string, unknown> | undefined;
+	const overrideWorktrees = preset.worktrees as Record<string, unknown> | undefined;
+	const worktreesMerged =
+		defaultWorktrees || overrideWorktrees
+			? { ...(defaultWorktrees ?? {}), ...(overrideWorktrees ?? {}) }
+			: undefined;
+	const mergedPreset = { ...defaultPreset, ...preset };
+	if (worktreesMerged !== undefined) {
+		mergedPreset.worktrees = worktreesMerged;
+	}
+	return mergedPreset;
+}
+
+/**
  * Merge user config over bundled defaults.
  *
  * @param defaults Bundled defaults.
@@ -397,16 +423,13 @@ export function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfi
 			? {
 					...(defaultSuperagents ?? {}),
 					...(overrideSuperagents ?? {}),
-					// Deep merge command presets: each preset is individually merged
+					// Deep merge command presets, with worktrees nested-merged
 					commands: {
 						...(defaultSuperagents?.commands ?? {}),
 						...Object.fromEntries(
 							Object.entries(overrideSuperagents?.commands ?? {}).map(([name, preset]) => [
 								name,
-								{
-									...(defaultSuperagents?.commands?.[name] ?? {}),
-									...preset,
-								},
+								mergeCommandPreset(defaultSuperagents?.commands?.[name] ?? {}, preset),
 							]),
 						),
 					},
