@@ -5,12 +5,18 @@
  * - validate user-authored config overrides before runtime use
  * - merge validated overrides over bundled defaults without losing nested defaults
  * - format diagnostics for Pi startup notifications and tool results
+ * - warn when command behavior blocks reference non-existent entrypoint agents
  *
  * Important side effects:
  * - none; this module is pure and safe to use from tests and extension startup
  */
 
 import type { ConfigDiagnostic, ExtensionConfig, ModelTierSetting, SuperpowersCommandPreset, ThinkingLevel } from "../shared/types.ts";
+
+export interface ConfigValidationOptions {
+	/** Interactive entrypoint command names discovered at startup. Commands in config but not in this list produce warnings. */
+	entrypointCommands?: readonly string[];
+}
 
 export interface ConfigValidationResult {
 	blocked: boolean;
@@ -169,8 +175,14 @@ function validateModelTier(diagnostics: ConfigDiagnostic[], value: unknown, path
  * @param diagnostics Mutable diagnostic accumulator.
  * @param value Unknown preset value.
  * @param path Dot-separated config path for the preset.
+ * @param entrypointCommandSet Optional set of known entrypoint command names for warning.
  */
-function validateCommandPreset(diagnostics: ConfigDiagnostic[], value: unknown, path: string): void {
+function validateCommandPreset(
+	diagnostics: ConfigDiagnostic[],
+	value: unknown,
+	path: string,
+	entrypointCommandSet?: Set<string>,
+): void {
 	if (!isRecord(value)) {
 		addError(diagnostics, path, "must be an object.");
 		return;
@@ -257,9 +269,10 @@ function validateInterceptSkillCommands(diagnostics: ConfigDiagnostic[], value: 
  * Validate user-authored config shape and values.
  *
  * @param rawConfig Parsed user config value.
+ * @param options Validation options including discovered entrypoint command names.
  * @returns Validation diagnostics plus a blocked flag.
  */
-export function validateConfigObject(rawConfig: unknown): ConfigValidationResult {
+export function validateConfigObject(rawConfig: unknown, options: ConfigValidationOptions = {}): ConfigValidationResult {
 	const diagnostics: ConfigDiagnostic[] = [];
 	if (!isRecord(rawConfig)) {
 		addError(diagnostics, "$", "must be a JSON object.");
@@ -294,11 +307,21 @@ export function validateConfigObject(rawConfig: unknown): ConfigValidationResult
 				if (!isRecord(commands)) {
 					addError(diagnostics, "superagents.commands", "must be an object.");
 				} else {
+					const entrypointCommandSet = options.entrypointCommands ? new Set(options.entrypointCommands) : undefined;
 					for (const [commandName, commandValue] of Object.entries(commands)) {
 						if (!COMMAND_NAME_PATTERN.test(commandName)) {
 							addError(diagnostics, `superagents.commands.${commandName}`, "must match superpowers-<name> or sp-<name> (lowercase alphanumeric and hyphens).");
 						}
-						validateCommandPreset(diagnostics, commandValue, `superagents.commands.${commandName}`);
+						validateCommandPreset(diagnostics, commandValue, `superagents.commands.${commandName}`, entrypointCommandSet);
+						// Warn for commands that have no matching entrypoint agent
+						if (entrypointCommandSet && !entrypointCommandSet.has(commandName)) {
+							diagnostics.push({
+								level: "warning",
+								code: "unknown_entrypoint_command",
+								path: `superagents.commands.${commandName}`,
+								message: "does not match any discovered interactive entrypoint agent command. Add an entrypoint agent markdown file or remove this behavior block.",
+							});
+						}
 					}
 				}
 			}
@@ -416,13 +439,14 @@ export function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfi
  *
  * @param defaults Bundled default config.
  * @param userConfig Parsed user override config, if present.
+ * @param options Validation options including discovered entrypoint command names.
  * @returns Effective config plus diagnostics.
  */
-export function loadEffectiveConfig(defaults: ExtensionConfig, userConfig: unknown): EffectiveConfigResult {
+export function loadEffectiveConfig(defaults: ExtensionConfig, userConfig: unknown, options: ConfigValidationOptions = {}): EffectiveConfigResult {
 	if (userConfig === undefined) {
 		return { blocked: false, diagnostics: [], config: defaults };
 	}
-	const validation = validateConfigObject(userConfig);
+	const validation = validateConfigObject(userConfig, options);
 	if (validation.blocked) {
 		return { ...validation, config: defaults };
 	}

@@ -119,6 +119,27 @@ function _ensureAccessibleDir(dirPath: string): void {
 	}
 }
 
+/**
+ * Discover interactive entrypoint command names from agent markdown files.
+ *
+ * Inputs/outputs:
+ * - discovers agents via discoverAgents(cwd)
+ * - filters for kind=entrypoint, execution=interactive
+ * - extracts command name from agent.command ?? agent.name
+ *
+ * Invariants:
+ * - only returns command names for agents that have a command field
+ *
+ * @param cwd Current working directory for agent discovery.
+ * @returns Array of discovered interactive entrypoint command names.
+ */
+function discoverEntrypointCommandNames(cwd: string): string[] {
+	return discoverAgents(cwd).agents
+		.filter((agent) => agent.kind === "entrypoint" && agent.execution === "interactive")
+		.map((agent) => agent.command ?? agent.name)
+		.filter((commandName): commandName is string => Boolean(commandName));
+}
+
 const SuperpowersPlanReviewParams = Type.Object({
 	planContent: Type.String({ description: "Final Superpowers implementation plan content to review." }),
 	planFilePath: Type.Optional(Type.String({ description: "Saved plan file path for the final Superpowers plan when available." })),
@@ -176,8 +197,11 @@ function commandNameForInterceptedSkill(skillName: string): string | undefined {
  */
 export default function registerSubagentExtension(pi: ExtensionAPI): void {
 	// Create runtime config store for live config at execution time
+	// Pass a callback that discovers interactive entrypoint command names for stale command warnings
 	const extensionEntryDir = path.dirname(fileURLToPath(import.meta.url));
-	const configStore = createRuntimeConfigStore(resolvePackageRoot(extensionEntryDir), resolveUserConfigDir());
+	const configStore = createRuntimeConfigStore(resolvePackageRoot(extensionEntryDir), resolveUserConfigDir(), () =>
+		discoverEntrypointCommandNames(process.cwd()),
+	);
 	const config = configStore.getConfig();
 
 	cleanupAllArtifactDirs(DEFAULT_ARTIFACT_CONFIG.cleanupDays);
