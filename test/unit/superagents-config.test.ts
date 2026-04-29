@@ -33,9 +33,9 @@ void describe("superagents config helpers", () => {
 	void it("returns only the configured superagents settings", () => {
 		assert.deepEqual(
 			getSuperagentSettings({
-				superagents: { commands: { "sp-implement": { entrySkill: "using-superpowers" } } },
+				superagents: { commands: { "sp-implement": { useSubagents: true } } },
 			}),
-			{ commands: { "sp-implement": { entrySkill: "using-superpowers" } } },
+			{ commands: { "sp-implement": { useSubagents: true } } },
 		);
 		assert.equal(getSuperagentSettings({}), undefined);
 		assert.equal(
@@ -306,11 +306,7 @@ void describe("findMissingSubagentExtensionPath", () => {
 		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-config-test-scheme-"));
 		try {
 			assert.equal(
-				findMissingSubagentExtensionPath(
-					tempDir,
-					["npm:@sting8k/pi-vcc", "git:github.com/user/repo"],
-					["https://example.com/ext.ts", "ssh://git@example.com/user/repo.git"],
-				),
+				findMissingSubagentExtensionPath(tempDir, ["npm:@sting8k/pi-vcc", "git:github.com/user/repo"], ["https://example.com/ext.ts", "ssh://git@example.com/user/repo.git"]),
 				undefined,
 			);
 		} finally {
