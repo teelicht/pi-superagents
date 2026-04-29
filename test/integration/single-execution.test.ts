@@ -26,6 +26,10 @@ const runSync = execution?.runSync;
 const globalRunHistory = runHistory?.globalRunHistory;
 const getFinalOutput = utils?.getFinalOutput;
 
+// Saved env vars for hermetic test isolation
+let savedDepth: string | undefined;
+let savedMaxDepth: string | undefined;
+
 /**
  * Write a test skill into the workspace-local skill directory.
  *
@@ -52,11 +56,24 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 	});
 
 	beforeEach(() => {
+		// Hermetic: save and clear recursion env vars so the executor doesn't block.
+		// Tests intentionally exercise subagent depth 0 → the executor runs normally.
+		savedDepth = process.env.PI_SUBAGENT_DEPTH;
+		savedMaxDepth = process.env.PI_SUBAGENT_MAX_DEPTH;
+		delete process.env.PI_SUBAGENT_DEPTH;
+		delete process.env.PI_SUBAGENT_MAX_DEPTH;
+
 		tempDir = createTempDir();
 		mockPi.reset();
 	});
 
 	afterEach(() => {
+		// Restore recursion env vars
+		if (savedDepth === undefined) delete process.env.PI_SUBAGENT_DEPTH;
+		else process.env.PI_SUBAGENT_DEPTH = savedDepth;
+		if (savedMaxDepth === undefined) delete process.env.PI_SUBAGENT_MAX_DEPTH;
+		else process.env.PI_SUBAGENT_MAX_DEPTH = savedMaxDepth;
+
 		removeTempDir(tempDir);
 	});
 
