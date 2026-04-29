@@ -652,7 +652,7 @@ fs.writeFileSync(
 
 - Remove any `entrySkill` or `description` config entries.
 
-- [ ] **Step 8: Run focused tests**
+- [x] **Step 8: Run focused tests**
 
 Run:
 
@@ -681,7 +681,7 @@ git commit -m "feat: register superpowers commands from entrypoint agents"
 - Modify: `test/unit/superpowers-root-prompt.test.ts`
 - Modify: `test/integration/slash-commands.test.ts`
 
-- [ ] **Step 1: Simplify skill-entry prompt input**
+- [x] **Step 1: Simplify skill-entry prompt input**
 
 In `src/superpowers/skill-entry.ts`:
 
@@ -707,7 +707,7 @@ if (rootLifecycleResolution.missing.length > 0) {
 }
 ```
 
-- [ ] **Step 2: Remove overlay prompt block**
+- [x] **Step 2: Remove overlay prompt block**
 
 In `src/superpowers/root-prompt.ts`:
 
@@ -717,7 +717,7 @@ In `src/superpowers/root-prompt.ts`:
 
 Keep entry skill and root lifecycle skill blocks intact.
 
-- [ ] **Step 3: Update skill-entry tests**
+- [x] **Step 3: Update skill-entry tests**
 
 In `test/unit/superpowers-skill-entry.test.ts`:
 
@@ -726,7 +726,7 @@ In `test/unit/superpowers-skill-entry.test.ts`:
 - Remove assertions about `input.overlaySkills`.
 - Delete the test “returns error when overlay skills cannot be resolved”.
 
-- [ ] **Step 4: Update root prompt tests**
+- [x] **Step 4: Update root prompt tests**
 
 In `test/unit/superpowers-root-prompt.test.ts`:
 
@@ -734,7 +734,7 @@ In `test/unit/superpowers-root-prompt.test.ts`:
 - Remove assertions that prompt contains “Overlay skills:” or overlay skill content.
 - Add/assert `assert.doesNotMatch(prompt, /Overlay skills:/);` in entry-skill tests.
 
-- [ ] **Step 5: Update slash integration tests**
+- [x] **Step 5: Update slash integration tests**
 
 In `test/integration/slash-commands.test.ts`:
 
@@ -742,7 +742,7 @@ In `test/integration/slash-commands.test.ts`:
 - Remove any `skillOverlays` config setup.
 - Keep `assert.doesNotMatch(prompt, /Overlay skills:/)` for `/sp-brainstorm` and `/sp-plan` prompt tests.
 
-- [ ] **Step 6: Run focused tests**
+- [x] **Step 6: Run focused tests**
 
 Run:
 
@@ -753,7 +753,7 @@ node --experimental-transform-types --import ./test/support/register-loader.mjs 
 
 Expected: overlay-specific tests are gone and root prompt tests pass.
 
-- [ ] **Step 7: Commit overlay removal**
+- [x] **Step 7: Commit overlay removal**
 
 ```bash
 git add src/superpowers/skill-entry.ts src/superpowers/root-prompt.ts test/unit/superpowers-skill-entry.test.ts test/unit/superpowers-root-prompt.test.ts test/integration/slash-commands.test.ts
