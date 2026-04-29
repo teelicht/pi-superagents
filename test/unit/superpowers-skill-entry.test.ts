@@ -4,10 +4,7 @@
  * Responsibilities:
  * - verify direct Pi skill command parsing
  * - verify interception opt-in decisions
- * - verify prompt inputs include entry and overlay skills
- *
- * Note: Integration with buildSuperpowersRootPrompt (entry/overlay content rendering)
- * is tested after Task 4 extends root-prompt.ts with entry skill and overlay blocks.
+ * - verify prompt inputs include entry and lifecycle skills
  */
 
 import assert from "node:assert/strict";
@@ -64,7 +61,7 @@ void describe("Superpowers skill entry helpers", () => {
 		);
 	});
 
-	void it("builds prompt input with resolved entry and overlay skills", () => {
+	void it("builds prompt input with resolved entry and lifecycle skills", () => {
 		const input = buildSkillEntryPromptInput({
 			profile: {
 				commandName: "sp-brainstorm",
@@ -76,7 +73,7 @@ void describe("Superpowers skill entry helpers", () => {
 				usePlannotatorReview: true,
 				worktrees: { enabled: false },
 				fork: false,
-				overlaySkillNames: ["react-native-best-practices"],
+				rootLifecycleSkillNames: ["verification-before-completion"],
 			},
 			usingSuperpowersSkill: {
 				name: "using-superpowers",
@@ -90,11 +87,11 @@ void describe("Superpowers skill entry helpers", () => {
 				content: "BRAINSTORM BODY",
 				source: "user",
 			},
-			overlaySkills: [
+			rootLifecycleSkills: [
 				{
-					name: "react-native-best-practices",
-					path: "/skills/react-native-best-practices/SKILL.md",
-					content: "RN BODY",
+					name: "verification-before-completion",
+					path: "/skills/verification-before-completion/SKILL.md",
+					content: "VERIFY BODY",
 					source: "user",
 				},
 			],
@@ -102,12 +99,12 @@ void describe("Superpowers skill entry helpers", () => {
 
 		assert.equal(input.task, "design onboarding");
 		assert.equal(input.entrySkill?.name, "brainstorming");
-		assert.equal(input.overlaySkills?.[0]?.name, "react-native-best-practices");
+		assert.equal(input.rootLifecycleSkills?.[0]?.name, "verification-before-completion");
 		assert.equal(input.useSubagents, true);
 		assert.equal(input.usePlannotatorReview, true);
 	});
 
-	void it("builds a prompt or reports missing overlay skills", () => {
+	void it("builds a prompt or reports missing lifecycle skills", () => {
 		const profile = {
 			commandName: "sp-brainstorm",
 			task: "design onboarding",
@@ -118,7 +115,7 @@ void describe("Superpowers skill entry helpers", () => {
 			usePlannotatorReview: false,
 			worktrees: { enabled: false },
 			fork: false,
-			overlaySkillNames: ["react-native-best-practices"],
+			rootLifecycleSkillNames: [],
 		};
 		const skills = new Map([
 			[
@@ -136,15 +133,6 @@ void describe("Superpowers skill entry helpers", () => {
 					name: "brainstorming",
 					path: "/skills/brainstorming/SKILL.md",
 					content: "BRAINSTORM BODY",
-					source: "user" as const,
-				},
-			],
-			[
-				"react-native-best-practices",
-				{
-					name: "react-native-best-practices",
-					path: "/skills/react-native-best-practices/SKILL.md",
-					content: "RN BODY",
 					source: "user" as const,
 				},
 			],
@@ -166,7 +154,6 @@ void describe("Superpowers skill entry helpers", () => {
 		// Verify basic Superpowers prompt structure is present
 		assert.match((result as { prompt: string }).prompt, /Superpowers session/);
 		assert.match((result as { prompt: string }).prompt, /design onboarding/);
-		// Note: Entry skill and overlay content in prompt are rendered by root-prompt.ts
 	});
 
 	void it("returns error when entry skill cannot be resolved", () => {
@@ -180,7 +167,7 @@ void describe("Superpowers skill entry helpers", () => {
 			usePlannotatorReview: false,
 			worktrees: { enabled: false },
 			fork: false,
-			overlaySkillNames: [],
+			rootLifecycleSkillNames: [],
 		};
 		const skills = new Map([
 			[
@@ -205,18 +192,18 @@ void describe("Superpowers skill entry helpers", () => {
 		assert.match((result as { error: string }).error, /entry skill could not be resolved/i);
 	});
 
-	void it("returns error when overlay skills cannot be resolved", () => {
+	void it("returns error when root lifecycle skills cannot be resolved", () => {
 		const profile = {
-			commandName: "sp-brainstorm",
-			task: "design onboarding",
-			entrySkill: "brainstorming",
+			commandName: "sp-implement",
+			task: "implement auth fix",
+			entrySkill: "using-superpowers",
 			useBranches: false,
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
 			usePlannotatorReview: false,
 			worktrees: { enabled: false },
 			fork: false,
-			overlaySkillNames: ["definitely-missing-skill"],
+			rootLifecycleSkillNames: ["definitely-missing-skill"],
 		};
 		const skills = new Map([
 			[
@@ -225,15 +212,6 @@ void describe("Superpowers skill entry helpers", () => {
 					name: "using-superpowers",
 					path: "/skills/using-superpowers/SKILL.md",
 					content: "USING BODY",
-					source: "user" as const,
-				},
-			],
-			[
-				"brainstorming",
-				{
-					name: "brainstorming",
-					path: "/skills/brainstorming/SKILL.md",
-					content: "BRAINSTORM BODY",
 					source: "user" as const,
 				},
 			],
@@ -247,7 +225,7 @@ void describe("Superpowers skill entry helpers", () => {
 		});
 
 		assert.ok("error" in result);
-		assert.match((result as { error: string }).error, /overlay skills could not be resolved/i);
+		assert.match((result as { error: string }).error, /root lifecycle skills could not be resolved/i);
 		assert.match((result as { error: string }).error, /definitely-missing-skill/);
 	});
 
@@ -263,9 +241,8 @@ void describe("Superpowers skill entry helpers", () => {
 				usePlannotatorReview: false,
 				worktrees: { enabled: false },
 				fork: false,
-				overlaySkillNames: [],
+				rootLifecycleSkillNames: [],
 			},
-			overlaySkills: [],
 		});
 
 		assert.equal(input.useBranches, false);

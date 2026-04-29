@@ -6,7 +6,7 @@
  * - express resolved workflow settings in model-readable form
  * - constrain subagent, plan-review, and worktree behavior from resolved config
  * - keep Superpowers skill selection authoritative instead of forcing recon first
- * - render entry skill and overlay skill content for brainstorming flows
+ * - render entry skill content for brainstorming flows
  * - provide generic Plannotator contract for applicable workflows
  *
  * Important side effects:
@@ -29,7 +29,7 @@ export interface SuperpowersRootPromptInput {
 	fork: boolean;
 	usingSuperpowersSkill?: SuperpowersRootPromptSkill;
 	entrySkill?: SuperpowersRootPromptSkill;
-	overlaySkills?: SuperpowersRootPromptSkill[];
+	rootLifecycleSkills?: SuperpowersRootPromptSkill[];
 }
 
 /**
@@ -88,14 +88,29 @@ function buildEntrySkillBlock(input: SuperpowersRootPromptInput): string {
 }
 
 /**
- * Build additional overlay skill content for root skill-entry runs.
+ * Build root lifecycle skill content and trigger hints for implementation entrypoints.
  *
- * @param overlaySkills Resolved overlay skills.
- * @returns Prompt block, or an empty string when no overlays are configured.
+ * @param rootLifecycleSkills Resolved root lifecycle skills from entrypoint agent frontmatter.
+ * @returns Prompt block, or an empty string when no lifecycle skills are configured.
  */
-function buildOverlaySkillsBlock(overlaySkills: SuperpowersRootPromptSkill[] | undefined): string {
-	if (!overlaySkills || overlaySkills.length === 0) return "";
-	return ["Overlay skills:", ...overlaySkills.flatMap((skill) => ["", `Name: ${skill.name}`, `Path: ${skill.path}`, "```markdown", skill.content, "```"])].join("\n");
+function buildRootLifecycleSkillsBlock(rootLifecycleSkills: SuperpowersRootPromptSkill[] | undefined): string {
+	if (!rootLifecycleSkills || rootLifecycleSkills.length === 0) return "";
+
+	const triggerBySkillName: Record<string, string> = {
+		"verification-before-completion": "Before claiming complete, fixed, passing, or ready: invoke `verification-before-completion`.",
+		"receiving-code-review": "When receiving or acting on review feedback: invoke `receiving-code-review`.",
+		"finishing-a-development-branch": "After implementation is complete and verification passes: invoke `finishing-a-development-branch`.",
+	};
+	const triggerLines = rootLifecycleSkills.map((skill) => `- ${triggerBySkillName[skill.name] ?? `Invoke \`${skill.name}\` at the trigger point described in its skill content.`}`);
+
+	return [
+		"Root lifecycle skills:",
+		"These skills are assigned by the current interactive entrypoint agent. Invoke them at their trigger points; do not treat them as optional background context.",
+		"",
+		"Required lifecycle triggers:",
+		...triggerLines,
+		...rootLifecycleSkills.flatMap((skill) => ["", `Name: ${skill.name}`, `Path: ${skill.path}`, "```markdown", skill.content, "```"]),
+	].join("\n");
 }
 
 /**
@@ -124,12 +139,17 @@ function buildBranchContract(useBranches: boolean): string {
  * @param useSubagents Whether subagent delegation is enabled.
  * @returns Prompt block for delegation policy.
  */
-function buildDelegationContract(useSubagents: boolean): string {
+function buildDelegationContract(useSubagents: boolean, useTestDrivenDevelopment?: boolean): string {
 	if (useSubagents) {
 		return [
 			"Subagent delegation is ENABLED by config.",
 			"When a selected Superpowers skill calls for delegated work, you must use the `subagent` tool rather than doing that delegated work inline.",
 			"This applies especially to implementation-plan execution, independent parallel investigations, bounded implementation, review, focused research, and debugging workflows.",
+			...(useTestDrivenDevelopment !== undefined
+				? [
+						`When delegating, pass \`useTestDrivenDevelopment: ${useTestDrivenDevelopment}\` in every \`subagent\` call so child agents inherit the active command profile explicitly.`,
+					]
+				: []),
 			"Do not skip subagent delegation merely because you can do the work yourself.",
 			"Stay inline only for clarification, tiny answer-only tasks, unavailable tools, or when delegation is genuinely inappropriate.",
 			"If you do not use a subagent for a non-trivial workflow step, state the concrete reason.",
@@ -226,7 +246,7 @@ export function buildSuperpowersRootPrompt(input: SuperpowersRootPromptInput): s
 		"",
 		buildEntrySkillBlock(input),
 		"",
-		buildOverlaySkillsBlock(input.overlaySkills),
+		buildRootLifecycleSkillsBlock(input.rootLifecycleSkills),
 		"",
 		"## Runtime Policy",
 	];
@@ -236,7 +256,7 @@ export function buildSuperpowersRootPrompt(input: SuperpowersRootPromptInput): s
 		sections.push("");
 	}
 	if (input.useSubagents !== undefined) {
-		sections.push(buildDelegationContract(input.useSubagents));
+		sections.push(buildDelegationContract(input.useSubagents, input.useTestDrivenDevelopment));
 		sections.push("");
 	}
 	if (input.worktrees !== undefined) {
