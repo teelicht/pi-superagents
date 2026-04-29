@@ -48,7 +48,7 @@
 - Modify: `src/execution/execution.ts`
 - Modify: `test/integration/single-execution.test.ts`
 
-- [ ] **Step 1: Write failing integration tests**
+- [x] **Step 1: Write failing integration tests**
 
 Add tests near the existing extension tests in `test/integration/single-execution.test.ts`:
 
@@ -99,7 +99,7 @@ Add tests near the existing extension tests in `test/integration/single-executio
 	});
 ```
 
-- [ ] **Step 2: Run tests and verify red**
+- [x] **Step 2: Run tests and verify red**
 
 Run:
 
@@ -109,7 +109,7 @@ npm run test:integration -- test/integration/single-execution.test.ts
 
 Expected: missing-path tests fail because `runSync()` currently spawns Pi and the mock call count is not zero, or error text lacks the source-specific diagnostic.
 
-- [ ] **Step 3: Add validation helper**
+- [x] **Step 3: Add validation helper**
 
 Add this to `src/execution/superagents-config.ts` with `node:fs` and `node:path` imports:
 
@@ -147,7 +147,7 @@ export function findMissingSubagentExtensionPath(
 }
 ```
 
-- [ ] **Step 4: Wire validation into `runSync()`**
+- [x] **Step 4: Wire validation into `runSync()`**
 
 In `src/execution/execution.ts`, import `findMissingSubagentExtensionPath` with `resolveSubagentExtensions`. After `const config = options.config ?? {};` and after the agent is known, before `buildPiArgs()`, add:
 
@@ -167,7 +167,7 @@ In `src/execution/execution.ts`, import `findMissingSubagentExtensionPath` with 
 
 Keep `effectiveExtensions = resolveSubagentExtensions(config, agent.extensions)` after this validation.
 
-- [ ] **Step 5: Run tests and verify green**
+- [x] **Step 5: Run tests and verify green**
 
 Run:
 
@@ -178,7 +178,7 @@ npm run typecheck
 
 Expected: integration tests pass and TypeScript passes.
 
-- [ ] **Step 6: Commit runtime validation**
+- [x] **Step 6: Commit runtime validation**
 
 Run:
 
