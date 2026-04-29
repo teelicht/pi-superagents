@@ -73,10 +73,9 @@ export function buildPiArgs(input: BuildPiArgsInput): BuildPiArgsResult {
 		for (const extPath of input.extensions) {
 			args.push("--extension", extPath);
 		}
-	} else {
-		for (const extPath of toolExtensionPaths) {
-			args.push("--extension", extPath);
-		}
+	}
+	for (const extPath of toolExtensionPaths) {
+		args.push("--extension", extPath);
 	}
 
 	if ((input.skills?.length ?? 0) > 0) {
