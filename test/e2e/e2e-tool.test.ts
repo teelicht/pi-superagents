@@ -11,8 +11,9 @@
 
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
-import { afterEach, describe, it } from "node:test";
+import { afterEach, beforeEach, describe, it } from "node:test";
 import type { MockPi } from "../support/helpers.ts";
 import { createMockPi, tryImport } from "../support/helpers.ts";
 
@@ -28,6 +29,38 @@ if (available) {
 }
 
 const EXTENSION = path.resolve("src/extension/index.ts");
+const USER_CONFIG_PATH = path.join(os.homedir(), ".pi", "agent", "extensions", "subagent", "config.json");
+
+interface UserConfigSnapshot {
+	exists: boolean;
+	content?: string;
+}
+
+/**
+ * Replace the user-owned extension config with a valid override for E2E sessions.
+ *
+ * @returns Snapshot that can restore the previous user config after the test.
+ */
+function installValidUserConfigForTest(): UserConfigSnapshot {
+	const snapshot: UserConfigSnapshot = fs.existsSync(USER_CONFIG_PATH) ? { exists: true, content: fs.readFileSync(USER_CONFIG_PATH, "utf-8") } : { exists: false };
+	fs.mkdirSync(path.dirname(USER_CONFIG_PATH), { recursive: true });
+	fs.writeFileSync(USER_CONFIG_PATH, "{}\n", "utf-8");
+	return snapshot;
+}
+
+/**
+ * Restore the user-owned extension config after an E2E session.
+ *
+ * @param snapshot - Previous config state captured before the test.
+ */
+function restoreUserConfigAfterTest(snapshot: UserConfigSnapshot | undefined): void {
+	if (!snapshot) return;
+	if (snapshot.exists) {
+		fs.writeFileSync(USER_CONFIG_PATH, snapshot.content ?? "", "utf-8");
+		return;
+	}
+	fs.rmSync(USER_CONFIG_PATH, { force: true });
+}
 
 interface SubagentToolDetails {
 	mode?: string;
@@ -56,10 +89,17 @@ function writeTestAgents(cwd: string, agents: Array<{ name: string; description?
 void describe("subagent tool — validation", { skip: !available ? "pi-test-harness not available" : undefined }, () => {
 	const { createTestSession, when, calls, says } = harness;
 	let t: any;
+	let userConfigSnapshot: UserConfigSnapshot | undefined;
+
+	beforeEach(() => {
+		userConfigSnapshot = installValidUserConfigForTest();
+	});
 
 	afterEach(() => {
 		t?.dispose();
 		mockPi?.reset();
+		restoreUserConfigAfterTest(userConfigSnapshot);
+		userConfigSnapshot = undefined;
 	});
 
 	void it("rejects unknown agent in single mode", async () => {
@@ -82,10 +122,17 @@ void describe("subagent tool — validation", { skip: !available ? "pi-test-harn
 void describe("subagent tool — single execution", { skip: !available ? "pi-test-harness not available" : undefined }, () => {
 	const { createTestSession, when, calls, says } = harness;
 	let t: any;
+	let userConfigSnapshot: UserConfigSnapshot | undefined;
+
+	beforeEach(() => {
+		userConfigSnapshot = installValidUserConfigForTest();
+	});
 
 	afterEach(() => {
 		t?.dispose();
 		mockPi?.reset();
+		restoreUserConfigAfterTest(userConfigSnapshot);
+		userConfigSnapshot = undefined;
 	});
 
 	void it("executes single agent and returns output", async () => {
