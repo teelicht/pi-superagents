@@ -13,6 +13,7 @@
 - **Inline Agent Handoffs**: Role outputs are returned through Pi tool results and session artefacts.
 - **Worktree Isolation**: Optional git worktree creation for parallel tasks to prevent filesystem conflicts (setting).
 - **Skill Overlays**: Configure additional skills to load alongside superpowers process skills. Entry overlays resolve for the active entry skill; see [Configuration](docs/configuration.md#skill-overlays).
+- **Subagent Extension Allowlist**: Subagents run with implicit Pi extension discovery disabled by default; configure `superagents.extensions` for extensions every subagent should receive.
 - **Plannotator Integration**: Optional event bridge to [Plannotator](https://plannotator.ai/) for browser-based spec/plan review and approval (setting).
 
 ## Installation

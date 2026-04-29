@@ -1,5 +1,6 @@
 {
   "superagents": {
+    "extensions": [],
     "commands": {
       "sp-implement": {
         "description": "Run a Superpowers implementation workflow",

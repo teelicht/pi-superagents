@@ -67,6 +67,7 @@ Role agent definitions (`agents/sp-*.md`) declare metadata in YAML frontmatter:
 |-------|----------|-------------|
 | `name` | Yes | Agent identifier used by the `subagent` tool |
 | `description` | Yes | Short description of the agent's purpose |
+| `extensions` | No | Array of extension paths or package IDs to add for this agent, additive to `superagents.extensions`. |
 | `model` | No | Default model tier or concrete model ID |
 | `tools` | No | Comma-separated list of tool names available to this agent |
 | `maxSubagentDepth` | No | Maximum subagent delegation depth (0 disables delegation) |
