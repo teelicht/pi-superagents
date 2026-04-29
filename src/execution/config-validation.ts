@@ -28,7 +28,7 @@ export interface FormatConfigDiagnosticsOptions {
 
 const TOP_LEVEL_KEYS = new Set(["superagents"]);
 
-const SUPERAGENTS_KEYS = new Set(["commands", "modelTiers", "skillOverlays", "interceptSkillCommands", "superpowersSkills"]);
+const SUPERAGENTS_KEYS = new Set(["commands", "modelTiers", "skillOverlays", "interceptSkillCommands", "extensions", "superpowersSkills"]);
 
 /** Skills that can be intercepted for direct command interception. */
 const SUPPORTED_INTERCEPTED_SKILLS = new Set(["brainstorming", "writing-plans"]);
@@ -197,6 +197,26 @@ function validateCommandPreset(diagnostics: ConfigDiagnostic[], value: unknown, 
 }
 
 /**
+ * Validate an array whose entries must all be non-empty strings.
+ *
+ * @param diagnostics Mutable diagnostic accumulator.
+ * @param value Unknown array value.
+ * @param path Dot-separated path for diagnostics.
+ * @param label Human-readable value label used in diagnostics.
+ */
+function validateNonEmptyStringArray(diagnostics: ConfigDiagnostic[], value: unknown, path: string, label: string): void {
+	if (!Array.isArray(value)) {
+		addError(diagnostics, path, `must be an array of non-empty ${label}.`);
+		return;
+	}
+	value.forEach((entry, index) => {
+		if (typeof entry !== "string" || !entry.trim()) {
+			addError(diagnostics, `${path}[${index}]`, `must be a non-empty ${label}.`);
+		}
+	});
+}
+
+/**
  * Validate a list of skill names.
  *
  * @param diagnostics Mutable diagnostic accumulator.
@@ -204,15 +224,7 @@ function validateCommandPreset(diagnostics: ConfigDiagnostic[], value: unknown, 
  * @param path Dot-separated path for diagnostics.
  */
 function validateSkillNameArray(diagnostics: ConfigDiagnostic[], value: unknown, path: string): void {
-	if (!Array.isArray(value)) {
-		addError(diagnostics, path, "must be an array of non-empty skill names.");
-		return;
-	}
-	value.forEach((entry, index) => {
-		if (typeof entry !== "string" || !entry.trim()) {
-			addError(diagnostics, `${path}[${index}]`, "must be a non-empty skill name.");
-		}
-	});
+	validateNonEmptyStringArray(diagnostics, value, path, "skill name");
 }
 
 /**
@@ -322,6 +334,9 @@ export function validateConfigObject(rawConfig: unknown): ConfigValidationResult
 			if ("interceptSkillCommands" in superagents) {
 				validateInterceptSkillCommands(diagnostics, superagents.interceptSkillCommands);
 			}
+			if ("extensions" in superagents) {
+				validateNonEmptyStringArray(diagnostics, superagents.extensions, "superagents.extensions", "extension path");
+			}
 			if ("superpowersSkills" in superagents) {
 				diagnostics.push({
 					level: "warning",
@@ -374,6 +389,9 @@ export function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfi
 	// Replace-not-merge for interceptSkillCommands
 	const mergedInterceptSkillCommands = overrideSuperagents?.interceptSkillCommands ?? defaultSuperagents?.interceptSkillCommands ?? [];
 
+	// Replace-not-merge for globally allowlisted child Pi extensions.
+	const mergedExtensions = overrideSuperagents?.extensions ?? defaultSuperagents?.extensions ?? [];
+
 	const mergedSuperagents =
 		defaultSuperagents || overrideSuperagents
 			? {
@@ -395,6 +413,7 @@ export function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfi
 					modelTiers: mergeModelTiers(defaultSuperagents?.modelTiers, overrideSuperagents?.modelTiers),
 					skillOverlays: mergedSkillOverlays,
 					interceptSkillCommands: mergedInterceptSkillCommands,
+					extensions: mergedExtensions,
 					superpowersSkills: defaultSuperagents?.superpowersSkills ?? [],
 				}
 			: undefined;

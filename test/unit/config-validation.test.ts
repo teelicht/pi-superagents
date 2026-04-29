@@ -7,6 +7,7 @@
  * - verify diagnostics are precise enough to show directly to users
  * - verify migration diagnostics identify copied full-default config
  * - verify skill overlays and interception config validation
+ * - verify global subagent extensions validation and merge
  */
 
 import assert from "node:assert/strict";
@@ -44,6 +45,7 @@ const defaults: ExtensionConfig = {
 		skillOverlays: {},
 		interceptSkillCommands: [],
 		superpowersSkills: [],
+		extensions: [],
 	},
 };
 
@@ -396,5 +398,57 @@ void describe("config validation", () => {
 		});
 		assert.equal(result.blocked, false);
 		assert.ok(result.diagnostics.some((d) => d.path === "superagents.superpowersSkills"));
+	});
+
+	// ---------------------------------------------------------------------------
+	// superagents.extensions validation and merge (Task 4)
+	// ---------------------------------------------------------------------------
+
+	void it("accepts and merges global subagent extensions with replace semantics", () => {
+		const result = loadEffectiveConfig(
+			{
+				superagents: {
+					...defaults.superagents,
+					extensions: ["./default-extension.ts"],
+				},
+			},
+			{
+				superagents: {
+					extensions: ["./user-extension.ts"],
+				},
+			},
+		);
+
+		assert.equal(result.blocked, false);
+		assert.deepEqual(result.diagnostics, []);
+		assert.deepEqual(result.config.superagents?.extensions, ["./user-extension.ts"]);
+	});
+
+	void it("rejects malformed global subagent extensions", () => {
+		const result = validateConfigObject({
+			superagents: {
+				extensions: ["./ok.ts", "", 42],
+			},
+		});
+
+		assert.equal(result.blocked, true);
+		assert.deepEqual(
+			result.diagnostics.map((diagnostic) => diagnostic.path),
+			["superagents.extensions[1]", "superagents.extensions[2]"],
+		);
+	});
+
+	void it("rejects non-array global subagent extensions", () => {
+		const result = validateConfigObject({
+			superagents: {
+				extensions: "./not-an-array.ts",
+			},
+		});
+
+		assert.equal(result.blocked, true);
+		assert.deepEqual(
+			result.diagnostics.map((diagnostic) => diagnostic.path),
+			["superagents.extensions"],
+		);
 	});
 });
