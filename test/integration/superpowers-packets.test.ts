@@ -299,6 +299,53 @@ void describe("superpowers packets in real execution paths", {
 		assert.equal(fs.existsSync(path.join(tempDir, "implementer-report.md")), false);
 	});
 
+	void it("does not inject TDD when a subagent call omits TDD", async () => {
+		mockPi.onCall({ output: "Implemented without implicit TDD" });
+		const skillDir = path.join(tempDir, ".agents", "skills", "test-driven-development");
+		fs.mkdirSync(skillDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(skillDir, "SKILL.md"),
+			`---
+name: test-driven-development
+description: Test TDD skill
+---
+# Test TDD Skill`,
+			"utf-8",
+		);
+		const agents = [
+			{
+				name: "sp-implementer",
+				description: "Test agent: sp-implementer",
+				systemPrompt: "Implement the task.",
+				source: "builtin",
+				filePath: "/tmp/sp-implementer.md",
+			},
+		];
+		const executor = makeExecutor(agents, {
+			superagents: {
+				commands: {
+					"sp-implement": { useTestDrivenDevelopment: false },
+				},
+			},
+		});
+
+		const result = await executor.execute(
+			"packet-single-no-implicit-tdd",
+			{
+				agent: "sp-implementer",
+				task: "Implement the selected task.",
+				workflow: "superpowers",
+			},
+			new AbortController().signal,
+			undefined,
+			makeExecutorCtx(),
+		);
+
+		assert.ok(!result.isError, JSON.stringify(result.content));
+		assert.equal(result.details.mode, "single");
+		assert.ok(!result.details.results[0].skills?.includes("test-driven-development"), "omitted parameter should not silently enable TDD");
+	});
+
 	void it("resolves single-task skills from the effective child cwd", async () => {
 		mockPi.onCall({ output: "Implemented with child cwd skill" });
 		const childCwd = path.join(tempDir, "packages", "single-implementer");

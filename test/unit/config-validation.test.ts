@@ -195,7 +195,10 @@ void describe("config validation", () => {
 		});
 
 		assert.equal(result.blocked, true);
-		assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), ["superagents.skillOverlays"]);
+		assert.deepEqual(
+			result.diagnostics.map((diagnostic) => diagnostic.path),
+			["superagents.skillOverlays"],
+		);
 	});
 
 	void it("accepts nullable path settings inside command presets", () => {
@@ -303,7 +306,10 @@ void describe("config validation", () => {
 		);
 
 		assert.equal(result.blocked, false);
-		assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), ["superagents.commands.sp-missing"]);
+		assert.deepEqual(
+			result.diagnostics.map((diagnostic) => diagnostic.path),
+			["superagents.commands.sp-missing"],
+		);
 		assert.equal(result.diagnostics[0]?.level, "warning");
 		assert.equal(result.diagnostics[0]?.code, "unknown_entrypoint_command");
 	});
@@ -402,11 +408,7 @@ void describe("config validation", () => {
 		assert.equal(result.blocked, true);
 		assert.deepEqual(
 			result.diagnostics.map((diagnostic) => diagnostic.path),
-			[
-				"superagents.interceptSkillCommands[0]",
-				"superagents.interceptSkillCommands[1]",
-				"superagents.interceptSkillCommands[2]",
-			],
+			["superagents.interceptSkillCommands[0]", "superagents.interceptSkillCommands[1]", "superagents.interceptSkillCommands[2]"],
 		);
 	});
 

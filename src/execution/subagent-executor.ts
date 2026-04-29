@@ -796,7 +796,7 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			artifactConfig,
 			artifactsDir,
 			workflow: params.workflow ?? "superpowers",
-			useTestDrivenDevelopment: params.useTestDrivenDevelopment ?? config.superagents?.commands?.["sp-implement"]?.useTestDrivenDevelopment ?? true,
+			useTestDrivenDevelopment: params.useTestDrivenDevelopment ?? false,
 		};
 
 		try {

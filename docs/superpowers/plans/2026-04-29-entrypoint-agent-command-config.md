@@ -1177,7 +1177,7 @@ git commit -m "docs: document entrypoint-owned superpowers commands"
 **Files:**
 - Modify as needed based on test failures.
 
-- [ ] **Step 1: Run repository-wide removed-key search**
+- [x] **Step 1: Run repository-wide removed-key search**
 
 Run:
 
@@ -1191,7 +1191,7 @@ Expected:
 - `entrySkill` remains in agent frontmatter docs and agent parsing code only.
 - `description` remains for agent frontmatter and normal command registration descriptions, not command config schema.
 
-- [ ] **Step 2: Run typecheck**
+- [x] **Step 2: Run typecheck**
 
 Run:
 
@@ -1201,7 +1201,7 @@ npm run typecheck
 
 Expected: PASS.
 
-- [ ] **Step 3: Run unit tests**
+- [x] **Step 3: Run unit tests**
 
 Run:
 
@@ -1211,7 +1211,7 @@ npm run test:unit
 
 Expected: PASS.
 
-- [ ] **Step 4: Run integration tests**
+- [x] **Step 4: Run integration tests**
 
 Run:
 
@@ -1221,7 +1221,7 @@ npm run test:integration
 
 Expected: PASS.
 
-- [ ] **Step 5: Run e2e tests**
+- [x] **Step 5: Run e2e tests**
 
 Run:
 
@@ -1231,7 +1231,7 @@ npm run test:e2e
 
 Expected: PASS.
 
-- [ ] **Step 6: Run full QA**
+- [x] **Step 6: Run full QA**
 
 Run:
 
@@ -1241,7 +1241,7 @@ npm run qa
 
 Expected: PASS. Note that `npm run qa` may format files via `biome check --write`; inspect the diff afterward.
 
-- [ ] **Step 7: Inspect final diff**
+- [x] **Step 7: Inspect final diff**
 
 Run:
 
@@ -1253,7 +1253,7 @@ git diff -- README.md docs/configuration.md docs/worktrees.md docs/parameters.md
 
 Expected: only intended implementation, tests, config templates, and docs changed.
 
-- [ ] **Step 8: Final commit**
+- [x] **Step 8: Final commit**
 
 If QA changed formatting or final fixes were needed, commit them:
 

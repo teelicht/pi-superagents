@@ -35,7 +35,7 @@ export async function runSync(runtimeCwd: string, agents: AgentConfig[], agentNa
 
 	const sessionEnabled = Boolean(options.sessionFile);
 	const workflow = options.workflow ?? "superpowers";
-	const useTestDrivenDevelopment = options.useTestDrivenDevelopment ?? true;
+	const useTestDrivenDevelopment = options.useTestDrivenDevelopment ?? false;
 	const config = options.config ?? {};
 	const role = inferExecutionRole(agent.name);
 	const tierModel = resolveModelForAgent({

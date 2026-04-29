@@ -259,6 +259,19 @@ void describe("superpowers policy", () => {
 		assert.deepEqual(skills, ["test-driven-development"]);
 	});
 
+	void it("injects systematic-debugging when sp-debug declares it in agent frontmatter", () => {
+		const skills = resolveRoleSkillSet({
+			workflow: "superpowers",
+			role: "sp-debug",
+			config: {},
+			agentSkills: ["systematic-debugging"],
+			stepSkills: [],
+			availableSkills: new Set(["systematic-debugging"]),
+			rootOnlySkills: new Set(),
+		});
+		assert.deepEqual(skills, ["systematic-debugging"]);
+	});
+
 	void it("infers sp-roles from sp- prefix convention", () => {
 		assert.equal(inferExecutionRole("sp-recon"), "sp-recon");
 		assert.equal(inferExecutionRole("sp-research"), "sp-research");

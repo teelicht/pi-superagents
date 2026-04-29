@@ -106,11 +106,7 @@ export function readJsonConfig(filePath: string): unknown {
  * @param entrypointCommands Discovered interactive entrypoint command names for stale command warnings.
  * @returns Validated config state for runtime registration.
  */
-export function loadRuntimeConfigState(
-	packageConfigDir: string,
-	userConfigDir = packageConfigDir,
-	entrypointCommands: readonly string[] = [],
-): LoadedConfigState {
+export function loadRuntimeConfigState(packageConfigDir: string, userConfigDir = packageConfigDir, entrypointCommands: readonly string[] = []): LoadedConfigState {
 	const { bundledDefaultConfigPath, userConfigPath, exampleConfigPath } = resolveRuntimeConfigPaths(packageConfigDir, userConfigDir);
 
 	try {

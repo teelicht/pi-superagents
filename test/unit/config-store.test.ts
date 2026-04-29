@@ -164,7 +164,10 @@ void describe("RuntimeConfigStore", () => {
 		const store = createRuntimeConfigStore(configDir, configDir, () => ["sp-implement"]);
 
 		const initialGate = store.getGateState();
-		assert.ok(initialGate.diagnostics.some((d) => d.path === "superagents.commands.sp-stale"), "sp-stale should warn on initial load");
+		assert.ok(
+			initialGate.diagnostics.some((d) => d.path === "superagents.commands.sp-stale"),
+			"sp-stale should warn on initial load",
+		);
 
 		// Simulate adding a new entrypoint agent by changing the callback
 		// (In real usage this would be a new discoverAgents result)
@@ -172,7 +175,10 @@ void describe("RuntimeConfigStore", () => {
 
 		// After reload, same warnings should still be present if callback unchanged
 		const reloadedGate = store.getGateState();
-		assert.ok(reloadedGate.diagnostics.some((d) => d.path === "superagents.commands.sp-stale"), "sp-stale should still warn after reload");
+		assert.ok(
+			reloadedGate.diagnostics.some((d) => d.path === "superagents.commands.sp-stale"),
+			"sp-stale should still warn after reload",
+		);
 	});
 });
 
