@@ -6,7 +6,11 @@
  * - apply Superpowers-only worktree defaults in one shared place
  * - build scoped git-worktree options for sync and async execution paths
  * - resolve global extension ordering for subagent execution
+ * - validate that configured subagent extension paths exist at runtime
  */
+
+import * as fs from "node:fs";
+import * as path from "node:path";
 
 import type { ExtensionConfig, WorkflowMode } from "../shared/types.ts";
 import type { CreateWorktreesOptions } from "./worktree.ts";
@@ -95,4 +99,46 @@ export function resolveSuperagentWorktreeCreateOptions(input: { workflow: Workfl
  */
 export function resolveSubagentExtensions(config: ExtensionConfig, agentExtensions: string[] | undefined): string[] {
 	return [...(config.superagents?.extensions ?? []), ...(agentExtensions ?? [])];
+}
+
+/**
+ * Describes a configured subagent extension path that could not be found.
+ *
+ * @property source  - The config key referencing the missing path (e.g. `superagents.extensions[0]`).
+ * @property configuredPath - The path as written in config (may be relative).
+ * @property resolvedPath   - The path after resolution against the runtime working directory.
+ */
+export interface MissingSubagentExtensionPath {
+	/** The config source key referencing this path, e.g. `superagents.extensions[0]`. */
+	source: string;
+	/** The path as written in the configuration (may be relative). */
+	configuredPath: string;
+	/** The resolved absolute path that was found to be missing. */
+	resolvedPath: string;
+}
+
+/**
+ * Find the first configured subagent extension path that does not exist.
+ *
+ * @param runtimeCwd      - Runtime working directory used to resolve relative paths.
+ * @param globalExtensions - Extensions from `superagents.extensions`.
+ * @param agentExtensions  - Extensions from agent frontmatter.
+ * @returns The first missing extension path, or undefined when all configured paths exist.
+ */
+export function findMissingSubagentExtensionPath(
+	runtimeCwd: string,
+	globalExtensions: string[] | undefined,
+	agentExtensions: string[] | undefined,
+): MissingSubagentExtensionPath | undefined {
+	const entries = [
+		...(globalExtensions ?? []).map((configuredPath, index) => ({ source: `superagents.extensions[${index}]`, configuredPath })),
+		...(agentExtensions ?? []).map((configuredPath, index) => ({ source: `agent.extensions[${index}]`, configuredPath })),
+	];
+	for (const entry of entries) {
+		const resolvedPath = path.isAbsolute(entry.configuredPath) ? entry.configuredPath : path.resolve(runtimeCwd, entry.configuredPath);
+		if (!fs.existsSync(resolvedPath)) {
+			return { ...entry, resolvedPath };
+		}
+	}
+	return undefined;
 }
