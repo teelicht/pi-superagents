@@ -8,6 +8,7 @@
  * - verify /subagents-status, ctrl+alt+s, and /sp-settings open their respective overlays
  * - verify config-gated refusal blocks execution
  * - verify /sp-brainstorm sends a skill-entry prompt for brainstorming flows
+ * - verify /sp-plan sends a skill-entry prompt for planning flows
  */
 
 import assert from "node:assert/strict";
@@ -228,21 +229,22 @@ function createCommandContext(
 }
 
 void describe("lean superpowers slash commands", { skip: !available ? "slash-commands.ts not importable" : undefined }, () => {
-	void it("registers only Superpowers commands and configured custom commands", () => {
+	void it("registers Superpowers entrypoint commands only", () => {
 		const { commands, shortcuts, pi } = createPiHarness();
 		const config = createEffectiveConfig({
 			superagents: {
 				commands: {
-					"sp-review": { description: "Run code review", useSubagents: false },
+					"sp-review": { useSubagents: false },
 				},
 			},
 		});
 		registerSlashCommands!(pi, createState(process.cwd()), config);
 		assert.ok(commands.has("sp-implement"), "expected /sp-implement to be registered");
 		assert.ok(commands.has("sp-brainstorm"), "expected /sp-brainstorm to be registered");
+		assert.ok(commands.has("sp-plan"), "expected /sp-plan to be registered");
 		assert.ok(commands.has("subagents-status"), "expected /subagents-status to be registered");
 		assert.ok(commands.has("sp-settings"), "expected /sp-settings to be registered");
-		assert.ok(commands.has("sp-review"), "expected /sp-review preset to be registered");
+		assert.ok(!commands.has("sp-review"), "expected config-only /sp-review to NOT be registered");
 		assert.ok(shortcuts.has("ctrl+alt+s"), "expected ctrl+alt+s shortcut to be registered");
 		assert.ok(!commands.has("superpowers"), "expected /superpowers to NOT be registered");
 		assert.ok(!commands.has("superpowers-status"), "expected /superpowers-status to NOT be registered");
@@ -250,7 +252,6 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.ok(!commands.has("chain"), "expected /chain to NOT be registered");
 		assert.ok(!commands.has("parallel"), "expected /parallel to NOT be registered");
 		assert.ok(!commands.has("agents"), "expected /agents to NOT be registered");
-		assert.equal(commands.get("sp-review")!.description, "Run code review");
 		assert.match(shortcuts.get("ctrl+alt+s")!.description ?? "", /subagents status/i);
 	});
 
@@ -291,7 +292,62 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.match(prompt, /superpowers_plan_review/);
 	});
 
-	void it("/sp-implement sends a root-session prompt with resolved defaults", async () => {
+	void it("custom commands resolve matching interactive entrypoint agent lifecycle skills", async () => {
+		const cwd = createSkillFixtureCwd();
+		const agentsDir = path.join(cwd, ".agents");
+		fs.mkdirSync(agentsDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(agentsDir, "sp-custom.md"),
+			[
+				"---",
+				"name: sp-custom",
+				"description: Custom interactive entrypoint",
+				"kind: entrypoint",
+				"execution: interactive",
+				"command: sp-custom",
+				"entrySkill: using-superpowers",
+				"skills: verification-before-completion",
+				"---",
+				"Custom body",
+			].join("\n"),
+		);
+		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
+		const commands = new Map<string, CommandSpec>();
+		const pi = {
+			events: createEventBus(),
+			registerCommand(name: string, spec: CommandSpec) {
+				commands.set(name, spec);
+			},
+			registerShortcut() {},
+			sendMessage() {},
+			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
+				userMessages.push({ content, options });
+			},
+		};
+
+		registerSlashCommands!(
+			pi,
+			createState(cwd),
+			createEffectiveConfig({
+				superagents: {
+					commands: {
+						"sp-custom": {
+							entrySkill: "using-superpowers",
+						},
+					},
+				},
+			}),
+		);
+		await commands.get("sp-custom")!.handler("check release readiness", createCommandContext({ cwd }));
+
+		assert.equal(userMessages.length, 1);
+		const prompt = String(userMessages[0].content);
+		assert.match(prompt, /Root lifecycle skills:/);
+		assert.match(prompt, /verification-before-completion/);
+		assert.doesNotMatch(prompt, /receiving-code-review/);
+	});
+
+	void it("/sp-implement sends a root-session prompt with resolved defaults and lifecycle triggers", async () => {
 		const cwd = createSkillFixtureCwd();
 		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
 		const commands = new Map<string, CommandSpec>();
@@ -318,6 +374,10 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.match(prompt, /worktrees\.enabled:\s*false/);
 		assert.match(prompt, /implement auth fix/);
 		assert.match(prompt, /Required bootstrap skill/);
+		assert.match(prompt, /Root lifecycle skills:/);
+		assert.match(prompt, /verification-before-completion/);
+		assert.match(prompt, /receiving-code-review/);
+		assert.match(prompt, /finishing-a-development-branch/);
 		// No options means it was sent directly (isIdle === true)
 		assert.equal(userMessages[0].options, undefined);
 	});
@@ -764,10 +824,7 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 							usePlannotator: true,
 						},
 					},
-					skillOverlays: {
-						brainstorming: ["react-native-best-practices"],
-					},
-				} as never,
+				},
 			}),
 		);
 
@@ -780,6 +837,7 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.match(prompt, /Name: brainstorming/);
 		assert.match(prompt, /design onboarding/);
 		assert.match(prompt, /superpowers_spec_review/);
+		assert.doesNotMatch(prompt, /Root lifecycle skills:/);
 	});
 
 	void it("/sp-brainstorm shows usage when no task is provided", async () => {
@@ -890,5 +948,39 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 
 		assert.deepEqual(userMessages, []);
 		assert.deepEqual(notifications, ["Superpowers overlay skills could not be resolved: definitely-missing-skill"]);
+	});
+
+	// ─────────────────────────────────────────────────────────────────────────────
+	// /sp-plan slash command tests
+	// ─────────────────────────────────────────────────────────────────────────────
+
+	void it("registers /sp-plan and sends a writing-plans entry prompt", async () => {
+		const cwd = createSkillFixtureCwd();
+		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
+		const commands = new Map<string, CommandSpec>();
+		const pi = {
+			events: createEventBus(),
+			registerCommand(name: string, spec: CommandSpec) {
+				commands.set(name, spec);
+			},
+			registerShortcut() {},
+			sendMessage() {},
+			sendUserMessage(content: string | unknown[], options?: { deliverAs?: "steer" | "followUp" }) {
+				userMessages.push({ content, options });
+			},
+		};
+
+		registerSlashCommands!(pi, createState(cwd), createEffectiveConfig());
+
+		assert.ok(commands.has("sp-plan"), "expected /sp-plan to be registered");
+		await commands.get("sp-plan")!.handler("plan auth refactor", createCommandContext({ cwd }));
+
+		assert.equal(userMessages.length, 1);
+		const prompt = String(userMessages[0].content);
+		assert.match(prompt, /Entry skill:/);
+		assert.match(prompt, /Name: writing-plans/);
+		assert.match(prompt, /plan auth refactor/);
+		assert.match(prompt, /superpowers_plan_review/);
+		assert.doesNotMatch(prompt, /Overlay skills:/);
 	});
 });
