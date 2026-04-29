@@ -129,6 +129,8 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 	});
 
 	void it("passes explicit extension through to child process with --no-extensions guard", async () => {
+		const extPath = path.join(tempDir, "my-ext.ts");
+		fs.writeFileSync(extPath, "export default function () {}\n", "utf-8");
 		mockPi.onCall({ echoArgs: true });
 		const agents = [makeAgent("echo", { extensions: ["./my-ext.ts"] })];
 
@@ -144,6 +146,10 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 	});
 
 	void it("handles agents with multiple explicit extensions", async () => {
+		const extA = path.join(tempDir, "ext-a.ts");
+		const extB = path.join(tempDir, "ext-b.ts");
+		fs.writeFileSync(extA, "export default function () {}\n", "utf-8");
+		fs.writeFileSync(extB, "export default function () {}\n", "utf-8");
 		mockPi.onCall({ echoArgs: true });
 		const agents = [makeAgent("echo", { extensions: ["./ext-a.ts", "./ext-b.ts"] })];
 
@@ -420,5 +426,50 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		const result = await runSync(tempDir, agents, "echo", "Task", {});
 
 		assert.equal(result.exitCode, 0);
+	});
+
+	void it("fails before spawning when a global subagent extension path is missing", async () => {
+		const agents = makeAgentConfigs(["echo"]);
+
+		const result = await runSync(tempDir, agents, "echo", "Task", {
+			config: { superagents: { extensions: ["./missing-global-extension.ts"] } },
+		});
+
+		assert.equal(result.exitCode, 1);
+		assert.equal(mockPi.callCount(), 0);
+		assert.match(result.error ?? "", /superagents\.extensions\[0\]/);
+		assert.match(result.error ?? "", /missing-global-extension\.ts/);
+	});
+
+	void it("fails before spawning when an agent extension path is missing", async () => {
+		const agents = [makeAgent("echo", { extensions: ["./missing-agent-extension.ts"] })];
+
+		const result = await runSync(tempDir, agents, "echo", "Task", {});
+
+		assert.equal(result.exitCode, 1);
+		assert.equal(mockPi.callCount(), 0);
+		assert.match(result.error ?? "", /agent\.extensions\[0\]/);
+		assert.match(result.error ?? "", /missing-agent-extension\.ts/);
+	});
+
+	void it("passes existing global and agent extensions through in order", async () => {
+		const globalExtensionPath = path.join(tempDir, "global-extension.ts");
+		const agentExtensionPath = path.join(tempDir, "agent-extension.ts");
+		fs.writeFileSync(globalExtensionPath, "export default function () {}\n", "utf-8");
+		fs.writeFileSync(agentExtensionPath, "export default function () {}\n", "utf-8");
+		mockPi.onCall({ echoArgs: true });
+		const agents = [makeAgent("echo", { extensions: [agentExtensionPath] })];
+
+		const result = await runSync(tempDir, agents, "echo", "Task", {
+			config: { superagents: { extensions: [globalExtensionPath] } },
+		});
+
+		assert.equal(result.exitCode, 0);
+		const output = getFinalOutput(result.messages);
+		const args = JSON.parse(output) as string[];
+		const firstExtension = args.indexOf("--extension");
+		const secondExtension = args.indexOf("--extension", firstExtension + 1);
+		assert.equal(args[firstExtension + 1], globalExtensionPath);
+		assert.equal(args[secondExtension + 1], agentExtensionPath);
 	});
 });
