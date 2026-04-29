@@ -53,7 +53,7 @@ Configures the Superpowers workflow.
 | Key | Description |
 |---|---|
 | `commands` | Map of command presets. Each preset has an `entrySkill` and per-command policy booleans. |
-| `extensions` | Array of extension paths or package IDs that every subagent receives. Implicit Pi extension discovery is disabled by default; add extensions here for child Pi processes. |
+| `extensions` | Array of local extension paths or Pi extension source specs that every subagent receives. Implicit Pi extension discovery is disabled by default; add extensions here for child Pi processes. |
 | `modelTiers` | Maps abstract tier names (`cheap`, `balanced`, `max`, plus any custom tiers) to concrete model configs. |
 | `skillOverlays` | Maps entry skill names to arrays of additional skill names to load alongside them. |
 | `interceptSkillCommands` | List of skill names intercepted for Superpowers entry (`brainstorming`, `writing-plans`). |
@@ -66,12 +66,17 @@ Subagents run with implicit Pi extension discovery disabled by default. Configur
 ```json
 {
   "superagents": {
-    "extensions": ["./src/extension/custom-subagent-tools.ts"]
+    "extensions": [
+      "./src/extension/custom-subagent-tools.ts",
+      "npm:@sting8k/pi-vcc"
+    ]
   }
 }
 ```
 
-Configured extension entries must point to existing files or directories when the subagent starts. Relative paths resolve from the subagent runtime working directory; use absolute paths for extensions outside the project. Missing paths cause subagent launch to fail before Pi starts and include the config source in the error.
+Local extension entries must point to existing files or directories when the subagent starts. Relative paths resolve from the subagent runtime working directory; use absolute paths for local extensions outside the project. Missing local paths cause subagent launch to fail before Pi starts and include the config source in the error.
+
+Package and remote entries should use normal Pi `-e` source prefixes such as `npm:`, `git:`, `https:`, or `ssh:`. These sources pass through to child Pi unchanged, and child Pi resolves, installs, and loads them through its normal extension resolver. Bare package names such as `@scope/package` are treated as local paths; use `npm:@scope/package` for npm packages.
 
 Agent frontmatter can append additional extensions per-agent using the `extensions` field, which is additive to the global list. Extensions declared in agent frontmatter are appended to the global `extensions` array at session launch.
 

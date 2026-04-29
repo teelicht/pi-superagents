@@ -13,7 +13,11 @@
         "usePlannotator": true
       }
     },
-    "extensions": ["./src/extension/custom-subagent-tools.ts"],
+    "extensions": [
+      "npm:@sting8k/pi-vcc",
+      "npm:@tomooshi/caveman-milk-pi",
+      "npm:@tomooshi/condensed-milk-pi"
+    ],
     "modelTiers": {
       "cheap": {
         "model": "opencode-go/minimax-m2.7",
