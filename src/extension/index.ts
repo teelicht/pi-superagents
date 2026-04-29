@@ -208,11 +208,7 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 
 	// Create runtime config store with callback that uses live session baseCwd
 	// for stale command detection (avoids reliance on process.cwd() which may be wrong)
-	const configStore = createRuntimeConfigStore(
-		resolvePackageRoot(extensionEntryDir),
-		resolveUserConfigDir(),
-		() => discoverEntrypointCommandNames(state.baseCwd),
-	);
+	const configStore = createRuntimeConfigStore(resolvePackageRoot(extensionEntryDir), resolveUserConfigDir(), () => discoverEntrypointCommandNames(state.baseCwd));
 
 	// Trigger initial load so gate state reflects the session cwd
 	configStore.reloadConfig();
