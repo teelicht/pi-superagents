@@ -28,12 +28,12 @@ export interface FormatConfigDiagnosticsOptions {
 
 const TOP_LEVEL_KEYS = new Set(["superagents"]);
 
-const SUPERAGENTS_KEYS = new Set(["commands", "modelTiers", "skillOverlays", "interceptSkillCommands", "extensions", "superpowersSkills"]);
+const SUPERAGENTS_KEYS = new Set(["commands", "modelTiers", "interceptSkillCommands", "extensions", "superpowersSkills"]);
 
 /** Skills that can be intercepted for direct skill command interception. */
 const SUPPORTED_INTERCEPTED_SKILLS = new Set(["brainstorming", "writing-plans"]);
 
-const COMMAND_PRESET_KEYS = new Set(["description", "entrySkill", "useBranches", "useSubagents", "useTestDrivenDevelopment", "usePlannotator", "worktrees"]);
+const COMMAND_PRESET_KEYS = new Set(["useBranches", "useSubagents", "useTestDrivenDevelopment", "usePlannotator", "worktrees"]);
 
 const COMMAND_NAME_PATTERN = /^(?:superpowers-[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|sp-[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)$/;
 
@@ -64,6 +64,22 @@ const REMOVED_SUPERAGENTS_KEYS: Record<string, { code: string; message: string }
 	defaultImplementerMode: {
 		code: "removed_key",
 		message: "has been removed. Use superagents.useTestDrivenDevelopment instead.",
+	},
+	skillOverlays: {
+		code: "removed_key",
+		message: "was removed. Superpowers now selects relevant skills through using-superpowers; entrypoint overlays are not supported.",
+	},
+};
+
+/** Removed command preset keys with migration guidance. */
+const REMOVED_COMMAND_PRESET_KEYS: Record<string, { code: string; message: string }> = {
+	description: {
+		code: "removed_key",
+		message: "was moved to entrypoint agent frontmatter. Add or edit an agents/*.md entrypoint instead.",
+	},
+	entrySkill: {
+		code: "removed_key",
+		message: "was moved to entrypoint agent frontmatter. Add or edit an agents/*.md entrypoint instead.",
 	},
 };
 
@@ -160,15 +176,12 @@ function validateCommandPreset(diagnostics: ConfigDiagnostic[], value: unknown, 
 		return;
 	}
 	for (const key of Object.keys(value)) {
-		if (!COMMAND_PRESET_KEYS.has(key)) {
-			addError(diagnostics, `${path}.${key}`, "is not a supported config key.", "unknown_key");
+		if (key in REMOVED_COMMAND_PRESET_KEYS) {
+			const { code, message } = REMOVED_COMMAND_PRESET_KEYS[key];
+			addError(diagnostics, `${path}.${key}`, message, code);
+		} else if (!COMMAND_PRESET_KEYS.has(key)) {
+			addError(diagnostics, `${path}.${key}`, "is not a supported command behavior key.", "unknown_key");
 		}
-	}
-	if ("description" in value && typeof value.description !== "string") {
-		addError(diagnostics, `${path}.description`, "must be a string.");
-	}
-	if ("entrySkill" in value && (typeof value.entrySkill !== "string" || !value.entrySkill.trim())) {
-		addError(diagnostics, `${path}.entrySkill`, "must be a non-empty string.");
 	}
 	if ("useBranches" in value && typeof value.useBranches !== "boolean") {
 		addError(diagnostics, `${path}.useBranches`, "must be a boolean.");
@@ -216,37 +229,6 @@ function validateNonEmptyStringArray(diagnostics: ConfigDiagnostic[], value: unk
 			addError(diagnostics, `${path}[${index}]`, `must be a non-empty ${label}.`);
 		}
 	});
-}
-
-/**
- * Validate a list of skill names.
- *
- * @param diagnostics Mutable diagnostic accumulator.
- * @param value Unknown skill-list value.
- * @param path Dot-separated path for diagnostics.
- */
-function validateSkillNameArray(diagnostics: ConfigDiagnostic[], value: unknown, path: string): void {
-	validateNonEmptyStringArray(diagnostics, value, path, "skill name");
-}
-
-/**
- * Validate the root-skill overlay map.
- *
- * @param diagnostics Mutable diagnostic accumulator.
- * @param value Unknown overlay map value.
- */
-function validateSkillOverlays(diagnostics: ConfigDiagnostic[], value: unknown): void {
-	if (!isRecord(value)) {
-		addError(diagnostics, "superagents.skillOverlays", "must be an object mapping skill names to skill-name arrays.");
-		return;
-	}
-	for (const [skillName, overlayNames] of Object.entries(value)) {
-		if (!skillName.trim()) {
-			addError(diagnostics, "superagents.skillOverlays.", "must use non-empty skill names as keys.");
-			continue;
-		}
-		validateSkillNameArray(diagnostics, overlayNames, `superagents.skillOverlays.${skillName}`);
-	}
 }
 
 /**
@@ -330,9 +312,6 @@ export function validateConfigObject(rawConfig: unknown): ConfigValidationResult
 					}
 				}
 			}
-			if ("skillOverlays" in superagents) {
-				validateSkillOverlays(diagnostics, superagents.skillOverlays);
-			}
 			if ("interceptSkillCommands" in superagents) {
 				validateInterceptSkillCommands(diagnostics, superagents.interceptSkillCommands);
 			}
@@ -400,12 +379,6 @@ export function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfi
 	const defaultSuperagents = defaults.superagents;
 	const overrideSuperagents = overrides.superagents;
 
-	// Shallow merge for skill overlays (maps over defaults)
-	const mergedSkillOverlays: Record<string, string[]> = {
-		...(defaultSuperagents?.skillOverlays ?? {}),
-		...(overrideSuperagents?.skillOverlays ?? {}),
-	};
-
 	// Replace-not-merge for interceptSkillCommands
 	const mergedInterceptSkillCommands = overrideSuperagents?.interceptSkillCommands ?? defaultSuperagents?.interceptSkillCommands ?? [];
 
@@ -425,7 +398,6 @@ export function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfi
 						),
 					},
 					modelTiers: mergeModelTiers(defaultSuperagents?.modelTiers, overrideSuperagents?.modelTiers),
-					skillOverlays: mergedSkillOverlays,
 					interceptSkillCommands: mergedInterceptSkillCommands,
 					extensions: mergedExtensions,
 					superpowersSkills: defaultSuperagents?.superpowersSkills ?? [],

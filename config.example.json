@@ -1,15 +1,15 @@
 {
   "superagents": {
     "commands": {
-      "sp-lean": {
-        "description": "Run Superpowers lean: no subagents, no TDD",
-        "entrySkill": "using-superpowers",
-        "useSubagents": false,
-        "useTestDrivenDevelopment": false
+      "sp-implement": {
+        "useSubagents": true,
+        "useTestDrivenDevelopment": true,
+        "worktrees": { "enabled": false, "root": null }
       },
-      "sp-plannotator": {
-        "description": "Run Superpowers with Plannotator review enabled",
-        "entrySkill": "using-superpowers",
+      "sp-brainstorm": {
+        "usePlannotator": true
+      },
+      "sp-plan": {
         "usePlannotator": true
       }
     },
@@ -38,14 +38,6 @@
       "legacy": {
         "model": "openai/gpt-4o"
       }
-    },
-    "skillOverlays": {
-      "brainstorming": [
-        "react-native-best-practices"
-      ],
-      "writing-plans": [
-        "supabase-postgres-best-practices"
-      ]
     },
     "interceptSkillCommands": []
   }

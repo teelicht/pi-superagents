@@ -6,7 +6,7 @@
  * - verify unknown and malformed config blocks execution
  * - verify diagnostics are precise enough to show directly to users
  * - verify migration diagnostics identify copied full-default config
- * - verify skill overlays and interception config validation
+ * - verify skill interception config validation
  * - verify global subagent extensions validation and merge
  */
 
@@ -19,21 +19,15 @@ const defaults: ExtensionConfig = {
 	superagents: {
 		commands: {
 			"sp-implement": {
-				description: "Run a Superpowers implementation workflow",
-				entrySkill: "using-superpowers",
 				useSubagents: true,
 				useTestDrivenDevelopment: true,
 				useBranches: false,
 				worktrees: { enabled: false, root: null },
 			},
 			"sp-brainstorm": {
-				description: "Run brainstorming through the Superpowers workflow profile",
-				entrySkill: "brainstorming",
 				usePlannotator: true,
 			},
 			"sp-plan": {
-				description: "Run planning through the Superpowers workflow profile",
-				entrySkill: "writing-plans",
 				usePlannotator: true,
 			},
 		},
@@ -42,7 +36,6 @@ const defaults: ExtensionConfig = {
 			balanced: { model: "opencode-go/glm-5.1" },
 			max: { model: "openai/gpt-5.4" },
 		},
-		skillOverlays: {},
 		interceptSkillCommands: [],
 		superpowersSkills: [],
 		extensions: [],
@@ -60,7 +53,7 @@ void describe("config validation", () => {
 		const result = loadEffectiveConfig(defaults, {
 			superagents: {
 				commands: {
-					"sp-quick": { description: "Quick run", useSubagents: false },
+					"sp-quick": { useSubagents: false },
 					"superpowers-review": { useTestDrivenDevelopment: false },
 				},
 			},
@@ -68,11 +61,9 @@ void describe("config validation", () => {
 
 		assert.equal(result.blocked, false);
 		assert.ok(result.config.superagents?.commands?.["sp-implement"]);
-		assert.equal(result.config.superagents?.commands?.["sp-implement"]?.entrySkill, "using-superpowers");
 		assert.ok(result.config.superagents?.commands?.["sp-brainstorm"]);
 		assert.ok(result.config.superagents?.commands?.["sp-plan"]);
 		assert.deepEqual(result.config.superagents?.commands?.["sp-quick"], {
-			description: "Quick run",
 			useSubagents: false,
 		});
 		assert.deepEqual(result.config.superagents?.commands?.["superpowers-review"], {
@@ -173,7 +164,7 @@ void describe("config validation", () => {
 		);
 	});
 
-	void it("accepts custom commands with entrySkill", () => {
+	void it("rejects command metadata keys moved to entrypoint agents", () => {
 		const result = validateConfigObject({
 			superagents: {
 				commands: {
@@ -186,26 +177,24 @@ void describe("config validation", () => {
 			},
 		});
 
-		assert.equal(result.blocked, false);
-		assert.deepEqual(result.diagnostics, []);
+		assert.equal(result.blocked, true);
+		assert.deepEqual(
+			result.diagnostics.map((diagnostic) => diagnostic.path),
+			["superagents.commands.sp-custom.description", "superagents.commands.sp-custom.entrySkill"],
+		);
 	});
 
-	void it("rejects non-string entrySkill on command presets", () => {
+	void it("rejects removed skillOverlays config", () => {
 		const result = validateConfigObject({
 			superagents: {
-				commands: {
-					"sp-test": {
-						entrySkill: 123,
-					},
+				skillOverlays: {
+					brainstorming: ["react-native-best-practices"],
 				},
 			},
 		});
 
 		assert.equal(result.blocked, true);
-		assert.deepEqual(
-			result.diagnostics.map((diagnostic) => diagnostic.path),
-			["superagents.commands.sp-test.entrySkill"],
-		);
+		assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), ["superagents.skillOverlays"]);
 	});
 
 	void it("accepts nullable path settings inside command presets", () => {
@@ -240,9 +229,9 @@ void describe("config validation", () => {
 		const result = validateConfigObject({
 			superagents: {
 				commands: {
-					"SP-UPPER": { description: "Bad name" },
+					"SP-UPPER": {},
 					"bad command": { useSubagents: true },
-					"sp-": { description: "No trailing hyphen" },
+					"sp-": {},
 					"sp-valid": { badField: true },
 					"sp-also-valid": { useSubagents: "yes" },
 				},
@@ -296,16 +285,12 @@ void describe("config validation", () => {
 	});
 
 	// -------------------------------------------------------------------------
-	// Skill overlays and interception config (Task 1)
+	// Skill command interception config
 	// -------------------------------------------------------------------------
 
-	void it("accepts skill overlays and skill command interception", () => {
+	void it("accepts skill command interception", () => {
 		const result = validateConfigObject({
 			superagents: {
-				skillOverlays: {
-					brainstorming: ["react-native-best-practices"],
-					"writing-plans": ["supabase-postgres-best-practices"],
-				},
 				interceptSkillCommands: ["brainstorming"],
 			},
 		});
@@ -314,14 +299,9 @@ void describe("config validation", () => {
 		assert.deepEqual(result.diagnostics, []);
 	});
 
-	void it("rejects malformed skill overlay and interception config", () => {
+	void it("rejects malformed interception config", () => {
 		const result = validateConfigObject({
 			superagents: {
-				skillOverlays: {
-					brainstorming: "react-native-best-practices",
-					"": ["react-native-best-practices"],
-					"writing-plans": ["", 42],
-				},
 				interceptSkillCommands: ["", 7, "unsupported-skill"],
 			},
 		});
@@ -330,10 +310,6 @@ void describe("config validation", () => {
 		assert.deepEqual(
 			result.diagnostics.map((diagnostic) => diagnostic.path),
 			[
-				"superagents.skillOverlays.brainstorming",
-				"superagents.skillOverlays.",
-				"superagents.skillOverlays.writing-plans[0]",
-				"superagents.skillOverlays.writing-plans[1]",
 				"superagents.interceptSkillCommands[0]",
 				"superagents.interceptSkillCommands[1]",
 				"superagents.interceptSkillCommands[2]",
@@ -341,37 +317,27 @@ void describe("config validation", () => {
 		);
 	});
 
-	void it("deep merges skill overlays while replacing intercepted skill commands", () => {
+	void it("replaces intercepted skill commands in merge", () => {
 		const result = loadEffectiveConfig(
 			{
 				superagents: {
 					...defaults.superagents,
-					skillOverlays: {
-						brainstorming: ["react-native-best-practices"],
-					},
 					interceptSkillCommands: [],
 				},
 			},
 			{
 				superagents: {
-					skillOverlays: {
-						"writing-plans": ["supabase-postgres-best-practices"],
-					},
 					interceptSkillCommands: ["brainstorming"],
 				},
 			},
 		);
 
 		assert.equal(result.blocked, false);
-		assert.deepEqual(result.config.superagents?.skillOverlays, {
-			brainstorming: ["react-native-best-practices"],
-			"writing-plans": ["supabase-postgres-best-practices"],
-		});
 		assert.deepEqual(result.config.superagents?.interceptSkillCommands, ["brainstorming"]);
 	});
 
 	// ---------------------------------------------------------------------------
-	// superpowersSkills validation and merge (Task 2)
+	// superpowersSkills validation and merge
 	// ---------------------------------------------------------------------------
 
 	void it("warns about superpowersSkills in user overrides as not user-configurable", () => {
@@ -401,7 +367,7 @@ void describe("config validation", () => {
 	});
 
 	// ---------------------------------------------------------------------------
-	// superagents.extensions validation and merge (Task 4)
+	// superagents.extensions validation and merge
 	// ---------------------------------------------------------------------------
 
 	void it("accepts and merges global subagent extensions with replace semantics", () => {
@@ -453,8 +419,7 @@ void describe("config validation", () => {
 	});
 
 	// ---------------------------------------------------------------------------
-	// Task 4 follow-up: partial worktree override preserves defaults; non-object
-	// worktrees rejected
+	// partial worktree override preserves defaults; non-object worktrees rejected
 	// ---------------------------------------------------------------------------
 
 	void it("partial worktrees override preserves default root: null", () => {
