@@ -196,20 +196,29 @@ function commandNameForInterceptedSkill(skillName: string): string | undefined {
  * @returns Nothing. Registration mutates Pi's runtime extension registry.
  */
 export default function registerSubagentExtension(pi: ExtensionAPI): void {
-	// Create runtime config store for live config at execution time
-	// Pass a callback that discovers interactive entrypoint command names for stale command warnings
 	const extensionEntryDir = path.dirname(fileURLToPath(import.meta.url));
-	const configStore = createRuntimeConfigStore(resolvePackageRoot(extensionEntryDir), resolveUserConfigDir(), () => discoverEntrypointCommandNames(process.cwd()));
-	const config = configStore.getConfig();
 
-	cleanupAllArtifactDirs(DEFAULT_ARTIFACT_CONFIG.cleanupDays);
-
+	// Create state first so config store can reference live session cwd
 	const state: SubagentState = {
 		baseCwd: process.cwd(),
 		currentSessionId: null,
 		lastUiContext: null,
-		configGate: configStore.getGateState(),
+		configGate: { blocked: false, diagnostics: [], message: "", configPath: undefined, examplePath: undefined },
 	};
+
+	// Create runtime config store with callback that uses live session baseCwd
+	// for stale command detection (avoids reliance on process.cwd() which may be wrong)
+	const configStore = createRuntimeConfigStore(
+		resolvePackageRoot(extensionEntryDir),
+		resolveUserConfigDir(),
+		() => discoverEntrypointCommandNames(state.baseCwd),
+	);
+
+	// Trigger initial load so gate state reflects the session cwd
+	configStore.reloadConfig();
+	state.configGate = configStore.getGateState();
+
+	cleanupAllArtifactDirs(DEFAULT_ARTIFACT_CONFIG.cleanupDays);
 
 	const executor = createSubagentExecutor({
 		state,
@@ -250,7 +259,8 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 	 * @returns Fail-soft review status text for the Superpowers root prompt contract.
 	 */
 	async function executeSuperpowersPlanReview(params: { planContent: string; planFilePath?: string }, ctx: ExtensionContext): Promise<AgentToolResult<Details>> {
-		if (config.superagents?.commands?.["sp-plan"]?.usePlannotator !== true) {
+		// Read live config at execution time to respect runtime changes
+		if (configStore.getConfig().superagents?.commands?.["sp-plan"]?.usePlannotator !== true) {
 			return createTextToolResult("Plannotator review is disabled in config. Continue with the normal text-based Superpowers approval flow.");
 		}
 
@@ -301,7 +311,8 @@ Continue with the normal text-based Superpowers approval flow.`,
 	 * @returns Fail-soft saved-spec review status text.
 	 */
 	async function executeSuperpowersSpecReview(params: { specContent: string; specFilePath?: string }, ctx: ExtensionContext): Promise<AgentToolResult<Details>> {
-		if (config.superagents?.commands?.["sp-brainstorm"]?.usePlannotator !== true) {
+		// Read live config at execution time to respect runtime changes
+		if (configStore.getConfig().superagents?.commands?.["sp-brainstorm"]?.usePlannotator !== true) {
 			return createTextToolResult("Plannotator saved spec review is disabled in config. Continue with the normal text-based Superpowers review flow.");
 		}
 
@@ -425,8 +436,8 @@ Bounded role agents are not allowed to call subagents.`,
 		const parsedSkillCommand = parseSkillCommandInput(event.text);
 		if (!parsedSkillCommand) return { action: "continue" as const };
 
-		// Check if this skill is opted-in for interception
-		if (!shouldInterceptSkillCommand(parsedSkillCommand.skillName, config)) {
+		// Check if this skill is opted-in for interception (read live config at execution time)
+		if (!shouldInterceptSkillCommand(parsedSkillCommand.skillName, configStore.getConfig())) {
 			return { action: "continue" as const };
 		}
 
@@ -439,7 +450,7 @@ Bounded role agents are not allowed to call subagents.`,
 
 		// Resolve the Superpowers run profile with intercepted-skill entry
 		const profile = resolveSuperpowersRunProfile({
-			config,
+			config: configStore.getConfig(),
 			commandName: commandNameForInterceptedSkill(parsedSkillCommand.skillName) ?? `skill:${parsedSkillCommand.skillName}`,
 			parsed: parsedWorkflowArgs,
 			entrySkill: parsedSkillCommand.skillName,
