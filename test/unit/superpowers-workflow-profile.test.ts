@@ -5,7 +5,7 @@
  * - verify inline workflow token parsing
  * - verify command presets are resolved correctly
  * - verify inline tokens override command presets
- * - verify entry skill name and overlay skill names are resolved
+ * - verify entry skill name is resolved from entrypoint agent or parameter
  */
 
 import assert from "node:assert/strict";
@@ -17,22 +17,17 @@ const config: ExtensionConfig = {
 	superagents: {
 		commands: {
 			"sp-implement": {
-				entrySkill: "using-superpowers",
 				useSubagents: true,
 				useTestDrivenDevelopment: true,
 				useBranches: false,
 				worktrees: { enabled: false },
 			},
 			"superpowers-lean": {
-				description: "Lean mode",
-				entrySkill: "using-superpowers",
 				useBranches: true,
 				useSubagents: false,
 				useTestDrivenDevelopment: false,
 			},
 			"superpowers-direct": {
-				description: "Direct mode",
-				entrySkill: "using-superpowers",
 				useSubagents: true,
 				useTestDrivenDevelopment: false,
 			},
@@ -53,6 +48,18 @@ void describe("Superpowers workflow profile", () => {
 				config,
 				commandName: "sp-implement",
 				parsed,
+				entrypointAgent: {
+					name: "sp-implement",
+					description: "Implementation entrypoint",
+					kind: "entrypoint",
+					execution: "interactive",
+					command: "sp-implement",
+					entrySkill: "using-superpowers",
+					skills: ["verification-before-completion", "receiving-code-review", "finishing-a-development-branch"],
+					systemPrompt: "Body",
+					source: "builtin",
+					filePath: "/agents/sp-implement.md",
+				},
 			}),
 			{
 				commandName: "sp-implement",
@@ -63,7 +70,7 @@ void describe("Superpowers workflow profile", () => {
 				useBranches: false,
 				worktrees: { enabled: false },
 				fork: false,
-				overlaySkillNames: [],
+				rootLifecycleSkillNames: ["verification-before-completion", "receiving-code-review", "finishing-a-development-branch"],
 			},
 		);
 	});
@@ -75,6 +82,17 @@ void describe("Superpowers workflow profile", () => {
 				config,
 				commandName: "superpowers-lean",
 				parsed,
+				entrypointAgent: {
+					name: "superpowers-lean",
+					description: "Lean mode",
+					kind: "entrypoint",
+					execution: "interactive",
+					entrySkill: "using-superpowers",
+					skills: [],
+					systemPrompt: "Body",
+					source: "builtin",
+					filePath: "/agents/superpowers-lean.md",
+				},
 			}),
 			{
 				commandName: "superpowers-lean",
@@ -84,7 +102,7 @@ void describe("Superpowers workflow profile", () => {
 				useSubagents: false, // from preset
 				useTestDrivenDevelopment: true, // from inline token
 				fork: false,
-				overlaySkillNames: [],
+				rootLifecycleSkillNames: [],
 			},
 		);
 	});
@@ -125,39 +143,126 @@ void describe("Superpowers workflow profile", () => {
 		assert.equal(parseSuperpowersWorkflowArgs(""), null);
 	});
 
-	void it("resolves entry skill from sp-implement preset", () => {
+	void it("resolves entry skill from the interactive entrypoint agent", () => {
+		const parsed = parseSuperpowersWorkflowArgs("design onboarding")!;
+		const profile = resolveSuperpowersRunProfile({
+			config: {
+				superagents: {
+					commands: {
+						"sp-brainstorm": { usePlannotator: true },
+					},
+				},
+			},
+			commandName: "sp-brainstorm",
+			parsed,
+			entrypointAgent: {
+				name: "sp-brainstorm",
+				description: "Brainstorm",
+				kind: "entrypoint",
+				execution: "interactive",
+				command: "sp-brainstorm",
+				entrySkill: "brainstorming",
+				systemPrompt: "Body",
+				source: "builtin",
+				filePath: "/agents/sp-brainstorm.md",
+			},
+		});
+
+		assert.equal(profile.entrySkill, "brainstorming");
+		assert.equal(profile.usePlannotatorReview, true);
+	});
+
+	void it("resolves entry skill from explicit parameter over entrypoint agent", () => {
 		const parsed = parseSuperpowersWorkflowArgs("fix auth")!;
 		const profile = resolveSuperpowersRunProfile({
 			config,
 			commandName: "sp-implement",
 			parsed,
+			entrySkill: "brainstorming",
+			entrypointAgent: {
+				name: "sp-implement",
+				description: "Implementation entrypoint",
+				kind: "entrypoint",
+				execution: "interactive",
+				command: "sp-implement",
+				entrySkill: "using-superpowers",
+				skills: ["verification-before-completion"],
+				systemPrompt: "Body",
+				source: "builtin",
+				filePath: "/agents/sp-implement.md",
+			},
 		});
-		assert.equal(profile.entrySkill, "using-superpowers");
-		assert.deepEqual(profile.overlaySkillNames, []);
+
+		assert.equal(profile.entrySkill, "brainstorming"); // explicit param wins
 	});
 
-	void it("resolves brainstorming entry skill with overlays", () => {
+	void it("defaults to using-superpowers when no entrypoint agent and no explicit entry skill", () => {
+		const parsed = parseSuperpowersWorkflowArgs("fix auth")!;
+		const profile = resolveSuperpowersRunProfile({
+			config: {
+				superagents: {
+					commands: {
+						"sp-custom": { useSubagents: true },
+					},
+				},
+			},
+			commandName: "sp-custom",
+			parsed,
+		});
+
+		assert.equal(profile.entrySkill, "using-superpowers");
+	});
+
+	void it("resolves root lifecycle skills from matching interactive entrypoint agents", () => {
+		const parsed = parseSuperpowersWorkflowArgs("fix auth")!;
+		const profile = resolveSuperpowersRunProfile({
+			config,
+			commandName: "sp-implement",
+			parsed,
+			entrypointAgent: {
+				name: "sp-implement",
+				description: "Implementation entrypoint",
+				kind: "entrypoint",
+				execution: "interactive",
+				command: "sp-implement",
+				entrySkill: "using-superpowers",
+				skills: ["verification-before-completion", "receiving-code-review"],
+				systemPrompt: "Body",
+				source: "builtin",
+				filePath: "/agents/sp-implement.md",
+			},
+		});
+		assert.deepEqual(profile.rootLifecycleSkillNames, ["verification-before-completion", "receiving-code-review"]);
+	});
+
+	void it("resolves brainstorming entry skill with usePlannotator from config", () => {
 		const parsed = parseSuperpowersWorkflowArgs("design onboarding")!;
 		const profile = resolveSuperpowersRunProfile({
 			config: {
 				superagents: {
 					commands: {
 						"sp-brainstorm": {
-							entrySkill: "brainstorming",
 							usePlannotator: true,
 						},
-					},
-					skillOverlays: {
-						brainstorming: ["react-native-best-practices"],
 					},
 				},
 			},
 			commandName: "sp-brainstorm",
 			parsed,
+			entrypointAgent: {
+				name: "sp-brainstorm",
+				description: "Brainstorm",
+				kind: "entrypoint",
+				execution: "interactive",
+				command: "sp-brainstorm",
+				entrySkill: "brainstorming",
+				systemPrompt: "Body",
+				source: "builtin",
+				filePath: "/agents/sp-brainstorm.md",
+			},
 		});
 
 		assert.equal(profile.entrySkill, "brainstorming");
-		assert.deepEqual(profile.overlaySkillNames, ["react-native-best-practices"]);
 		assert.equal(profile.usePlannotatorReview, true);
 	});
 
@@ -166,9 +271,7 @@ void describe("Superpowers workflow profile", () => {
 		const profile = resolveSuperpowersRunProfile({
 			config: {
 				superagents: {
-					skillOverlays: {
-						brainstorming: ["react-native-best-practices"],
-					},
+					commands: {},
 				},
 			},
 			commandName: "skill:brainstorming",
@@ -176,124 +279,6 @@ void describe("Superpowers workflow profile", () => {
 			entrySkill: "brainstorming",
 		});
 
-		assert.equal(profile.entrySkill, "brainstorming");
-		assert.deepEqual(profile.overlaySkillNames, ["react-native-best-practices"]);
-	});
-
-	void it("resolves invocation overlays from superpowersSkills without entry skill", () => {
-		const parsed = parseSuperpowersWorkflowArgs("fix auth")!;
-		const profile = resolveSuperpowersRunProfile({
-			config: {
-				superagents: {
-					commands: {
-						"sp-implement": {
-							entrySkill: "using-superpowers",
-						},
-					},
-					skillOverlays: {
-						"writing-plans": ["supabase-postgres-best-practices"],
-					},
-					superpowersSkills: ["writing-plans", "executing-plans"],
-				},
-			},
-			commandName: "sp-implement",
-			parsed,
-		});
-		assert.deepEqual(profile.overlaySkillNames, ["supabase-postgres-best-practices"]);
-	});
-
-	void it("merges entry overlays with invocation overlays from superpowersSkills", () => {
-		const parsed = parseSuperpowersWorkflowArgs("design onboarding")!;
-		const profile = resolveSuperpowersRunProfile({
-			config: {
-				superagents: {
-					commands: {
-						"sp-brainstorm": {
-							entrySkill: "brainstorming",
-						},
-					},
-					skillOverlays: {
-						brainstorming: ["react-native-best-practices"],
-						"writing-plans": ["supabase-postgres-best-practices"],
-					},
-					superpowersSkills: ["writing-plans", "executing-plans"],
-				},
-			},
-			commandName: "sp-brainstorm",
-			parsed,
-		});
-		assert.deepEqual(profile.overlaySkillNames, ["react-native-best-practices", "supabase-postgres-best-practices"]);
-	});
-
-	void it("deduplicates overlays when entry skill overlaps with superpowersSkills", () => {
-		const parsed = parseSuperpowersWorkflowArgs("design onboarding")!;
-		const profile = resolveSuperpowersRunProfile({
-			config: {
-				superagents: {
-					commands: {
-						"sp-brainstorm": {
-							entrySkill: "brainstorming",
-						},
-					},
-					skillOverlays: {
-						brainstorming: ["react-native-best-practices"],
-					},
-					superpowersSkills: ["brainstorming", "writing-plans"],
-				},
-			},
-			commandName: "sp-brainstorm",
-			parsed,
-		});
-		assert.deepEqual(profile.overlaySkillNames, ["react-native-best-practices"]);
-	});
-
-	void it("returns empty overlays when superpowersSkills and skillOverlays are absent", () => {
-		const parsed = parseSuperpowersWorkflowArgs("fix auth")!;
-		const profile = resolveSuperpowersRunProfile({
-			config: {
-				superagents: {
-					commands: {
-						"sp-implement": {
-							entrySkill: "using-superpowers",
-						},
-					},
-				},
-			},
-			commandName: "sp-implement",
-			parsed,
-		});
-		assert.deepEqual(profile.overlaySkillNames, []);
-	});
-
-	void it("defaults to using-superpowers entry skill for unknown commands", () => {
-		const parsed = parseSuperpowersWorkflowArgs("fix auth")!;
-		const profile = resolveSuperpowersRunProfile({
-			config: {
-				superagents: {
-					commands: {},
-				},
-			},
-			commandName: "sp-custom",
-			parsed,
-		});
-		assert.equal(profile.entrySkill, "using-superpowers");
-	});
-
-	void it("uses entry skill from preset for unknown command", () => {
-		const parsed = parseSuperpowersWorkflowArgs("fix auth")!;
-		const profile = resolveSuperpowersRunProfile({
-			config: {
-				superagents: {
-					commands: {
-						"sp-custom": {
-							entrySkill: "brainstorming",
-						},
-					},
-				},
-			},
-			commandName: "sp-custom",
-			parsed,
-		});
 		assert.equal(profile.entrySkill, "brainstorming");
 	});
 });

@@ -2,16 +2,18 @@
  * Lean slash command registration for Superpowers workflows.
  *
  * Responsibilities:
- * - register `/sp-implement`, `/sp-brainstorm`, `/sp-plan`, `/subagents-status`, `/sp-settings`, and configured custom commands
+ * - register Superpowers entrypoint commands from interactive entrypoint agent files
  * - parse workflow arguments and resolve run profiles from config defaults
  * - send root-session prompts via `sendUserMessage`
  * - send skill-entry prompts for supported entry skills (e.g. brainstorming)
+ *
+ * Custom commands require entrypoint agent markdown files (not config-only definitions).
  *
  * Important dependencies:
  * - `superpowers/workflow-profile` for argument parsing and profile resolution
  * - `superpowers/root-prompt` for prompt construction
  * - `superpowers/skill-entry` for skill-entry prompt building
- * - `shared/types` for `ExtensionConfig`, `SubagentState`, `SuperpowersCommandPreset`
+ * - `shared/types` for `ExtensionConfig`, `SubagentState`
  * - `shared/skills` for `resolveAvailableSkill` and `resolveSkills`
  * - `ui/subagents-status` for the run status overlay
  * - `ui/sp-settings` for the settings overlay
@@ -44,8 +46,10 @@ function readConfig(source: ConfigSource): ExtensionConfig {
 	return typeof source === "function" ? source() : source;
 }
 
+import { discoverAgents } from "../agents/agents.ts";
+import type { AgentConfig } from "../agents/agents.ts";
 import { resolveAvailableSkill, resolveSkills } from "../shared/skills.ts";
-import type { ExtensionConfig, SubagentState, SuperpowersCommandPreset } from "../shared/types.ts";
+import type { ExtensionConfig, SubagentState } from "../shared/types.ts";
 import { createSuperpowersPromptDispatcher } from "../superpowers/prompt-dispatch.ts";
 import { buildSuperpowersVisiblePromptSummary } from "../superpowers/root-prompt.ts";
 import { buildResolvedSkillEntryPrompt } from "../superpowers/skill-entry.ts";
@@ -158,25 +162,24 @@ async function openSuperpowersSettingsOverlay(ctx: ExtensionContext, state: Suba
 }
 
 /**
- * Register a single Superpowers slash command with argument parsing and prompt dispatch.
+ * Register a single Superpowers slash command from an interactive entrypoint agent.
  *
  * @param pi Extension API for command registration and message sending.
  * @param dispatcher Prompt dispatcher used to hide strict contracts from chat.
  * @param state Shared extension state for config gate checks.
  * @param configSource Effective extension config for default resolution.
- * @param commandName Slash command name without leading slash.
- * @param preset Command preset containing entrySkill and policy options.
+ * @param entrypointAgent The interactive entrypoint agent providing command metadata.
  */
 function registerSuperpowersCommand(
 	pi: ExtensionAPI,
 	dispatcher: ReturnType<typeof createSuperpowersPromptDispatcher>,
 	state: SubagentState,
 	configSource: ConfigSource,
-	commandName: string,
-	preset: SuperpowersCommandPreset,
+	entrypointAgent: AgentConfig,
 ): void {
+	const commandName = entrypointAgent.command ?? entrypointAgent.name;
 	pi.registerCommand(commandName, {
-		description: preset.description ?? `Run Superpowers using the ${commandName} preset`,
+		description: entrypointAgent.description,
 		handler: (rawArgs, ctx) => {
 			if (notifyIfConfigBlocked(state, ctx)) return Promise.resolve();
 			const config = readConfig(configSource);
@@ -191,7 +194,7 @@ function registerSuperpowersCommand(
 				config,
 				commandName,
 				parsed,
-				entrySkill: preset.entrySkill,
+				entrypointAgent,
 			});
 			sendSkillEntryPrompt(dispatcher, ctx, profile);
 			return Promise.resolve();
@@ -203,13 +206,12 @@ function registerSuperpowersCommand(
  * Register all Superpowers slash commands with the Pi extension API.
  *
  * Registers:
- * - `/sp-implement` — primary implementation workflow command
- * - `/sp-brainstorm` — Superpowers-backed brainstorming entry command
- * - `/sp-plan` — Superpowers-backed planning entry command
+ * - Superpowers entrypoint commands from discovered interactive entrypoint agent files
  * - `/subagents-status` — subagent run status overlay
  * - `/sp-settings` — Superpowers and subagent workflow settings overlay
  * - `Ctrl+Alt+S` — keyboard shortcut for subagents status
- * - Any configured custom command presets from `config.superagents.commands`
+ *
+ * Custom commands require entrypoint agent markdown files (not config-only definitions).
  *
  * @param pi Extension API for command registration.
  * @param state Shared extension state for config gate checks.
@@ -217,12 +219,12 @@ function registerSuperpowersCommand(
  * @param reloadConfig Optional callback to reload config after settings changes.
  */
 export function registerSlashCommands(pi: ExtensionAPI, state: SubagentState, configSource: ConfigSource, reloadConfig?: () => void): void {
-	const config = readConfig(configSource);
 	const dispatcher = createSuperpowersPromptDispatcher(pi);
 
-	// Register all commands (built-in + custom) from current config
-	for (const [commandName, preset] of Object.entries(config.superagents?.commands ?? {})) {
-		registerSuperpowersCommand(pi, dispatcher, state, configSource, commandName, preset);
+	// Register commands from discovered interactive entrypoint agents
+	const entrypointAgents = discoverAgents(state.baseCwd).agents.filter((agent) => agent.kind === "entrypoint" && agent.execution === "interactive" && (agent.command ?? agent.name));
+	for (const entrypointAgent of entrypointAgents) {
+		registerSuperpowersCommand(pi, dispatcher, state, configSource, entrypointAgent);
 	}
 
 	pi.registerCommand("subagents-status", {
