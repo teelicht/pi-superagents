@@ -683,7 +683,7 @@ Expected: commit succeeds. Confirm `AGENTS.md` is not included unless the user s
 **Files:**
 - Read-only verification across the repository.
 
-- [ ] **Step 1: Run full quality gate**
+- [x] **Step 1: Run full quality gate**
 
 Run:
 
@@ -693,7 +693,7 @@ npm run qa
 
 Expected: Biome check/write completes, TypeScript passes, unit/integration/e2e tests pass or documented optional harness skips appear as existing behavior.
 
-- [ ] **Step 2: Inspect final diff**
+- [x] **Step 2: Inspect final diff**
 
 Run:
 
@@ -705,7 +705,7 @@ git diff HEAD~5..HEAD -- src/execution/execution.ts src/execution/pi-args.ts src
 
 Expected: changes match this plan. No unrelated `AGENTS.md` changes are staged or committed by these tasks.
 
-- [ ] **Step 3: Confirm PR #17 behavior is represented**
+- [x] **Step 3: Confirm PR #17 behavior is represented**
 
 Run:
 
@@ -715,7 +715,7 @@ grep -R "--no-extensions" -n src test | cat
 
 Expected: output includes `src/execution/pi-args.ts`, unit tests, and the PR #17 integration test in `test/integration/single-execution.test.ts`.
 
-- [ ] **Step 4: Summarize implementation for review**
+- [x] **Step 4: Summarize implementation for review**
 
 Prepare a review summary with these bullets:
 
@@ -733,7 +733,7 @@ Tests:
 - `npm run qa`
 ```
 
-- [ ] **Step 5: Commit any formatter-only changes if `npm run qa` produced them**
+- [x] **Step 5: Commit any formatter-only changes if `npm run qa` produced them**
 
 Run:
 
