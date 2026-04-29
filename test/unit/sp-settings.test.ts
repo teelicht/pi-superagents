@@ -78,7 +78,7 @@ void test("SuperpowersSettingsComponent renders settings in a framed panel", () 
 					useTestDrivenDevelopment: true,
 					worktrees: { enabled: true, root: "/tmp/superpowers-worktrees" },
 				},
-				"sp-review": { description: "Review", useSubagents: false },
+				"sp-review": { useSubagents: false },
 			},
 			modelTiers: { cheap: { model: "test-model" } },
 		},
