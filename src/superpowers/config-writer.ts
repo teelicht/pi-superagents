@@ -17,6 +17,12 @@ type MutableConfig = ExtensionConfig & {
 };
 
 /**
+ * Keys that represent command behavior flags (not metadata).
+ */
+const BEHAVIOR_FLAG_KEYS = ["usePlannotator", "useSubagents", "useTestDrivenDevelopment", "useBranches"] as const;
+type BehaviorFlagKey = (typeof BEHAVIOR_FLAG_KEYS)[number];
+
+/**
  * Ensure a mutable Superpowers settings object exists.
  *
  * @param config - Mutable config object to ensure superagents on.
@@ -25,6 +31,25 @@ type MutableConfig = ExtensionConfig & {
 function ensureSuperagents(config: MutableConfig): NonNullable<ExtensionConfig["superagents"]> {
 	config.superagents ??= {};
 	return config.superagents;
+}
+
+/**
+ * Extract only the behavior flags from a command preset, excluding metadata fields.
+ *
+ * @param command - Existing command preset (may include metadata).
+ * @returns Behavior-only command object with only the valid behavior flags.
+ */
+function extractBehaviorFlags(command: Record<string, unknown>): Record<string, unknown> {
+	const result: Record<string, unknown> = {};
+	for (const key of BEHAVIOR_FLAG_KEYS) {
+		if (key in command) {
+			result[key] = command[key];
+		}
+	}
+	if ("worktrees" in command && command.worktrees && typeof command.worktrees === "object") {
+		result.worktrees = { ...(command.worktrees as Record<string, unknown>) };
+	}
+	return result;
 }
 
 /**
@@ -51,36 +76,61 @@ export function updateSuperpowersConfigText(rawText: string, update: (config: Mu
 }
 
 /**
- * Toggle one boolean Superpowers setting in a config object.
+ * Toggle one boolean Superpowers setting in a command preset.
  *
- * Settings are toggled inside the `sp-implement` command preset.
+ * Legacy two-argument calls still target `sp-implement` for compatibility. New
+ * callers should pass an explicit command name so settings edits are scoped to
+ * the selected command preset.
+ *
+ * Writes only behavior flags to the command block. Never writes description,
+ * entrySkill, or skillOverlays.
  *
  * @param config - Mutable config object to modify in place.
- * @param key - Boolean setting key to toggle.
+ * @param commandNameOrKey - Command preset name, or legacy boolean setting key.
+ * @param maybeKey - Boolean setting key to toggle when commandNameOrKey is a command name.
  * @returns The same config reference, modified.
  */
-export function toggleSuperpowersBoolean(config: MutableConfig, key: "useSubagents" | "useTestDrivenDevelopment" | "usePlannotator"): MutableConfig {
+export function toggleSuperpowersBoolean(config: MutableConfig, key: "useSubagents" | "useTestDrivenDevelopment" | "usePlannotator"): MutableConfig;
+export function toggleSuperpowersBoolean(config: MutableConfig, commandName: string, key: "useSubagents" | "useTestDrivenDevelopment" | "usePlannotator"): MutableConfig;
+export function toggleSuperpowersBoolean(
+	config: MutableConfig,
+	commandNameOrKey: string,
+	maybeKey?: "useSubagents" | "useTestDrivenDevelopment" | "usePlannotator",
+): MutableConfig {
+	const commandName = maybeKey ? commandNameOrKey : "sp-implement";
+	const key = maybeKey ?? (commandNameOrKey as "useSubagents" | "useTestDrivenDevelopment" | "usePlannotator");
 	const settings = ensureSuperagents(config);
 	settings.commands ??= {};
-	settings.commands["sp-implement"] ??= {};
-	settings.commands["sp-implement"][key] = !(settings.commands["sp-implement"][key] ?? true);
+	const existingCommand = settings.commands[commandName] ?? {};
+	const behaviorOnly = extractBehaviorFlags(existingCommand);
+	behaviorOnly[key] = !(behaviorOnly[key] ?? true);
+	settings.commands[commandName] = behaviorOnly;
 	return config;
 }
 
 /**
- * Toggle Superpowers worktree isolation in a config object.
+ * Toggle Superpowers worktree isolation in a command preset.
  *
- * Settings are toggled inside the `sp-implement` command preset.
+ * Legacy one-argument calls still target `sp-implement` for compatibility. New
+ * callers should pass an explicit command name so settings edits are scoped to
+ * the selected command preset.
+ *
+ * Writes only behavior flags to the command block. Never writes description,
+ * entrySkill, or skillOverlays.
  *
  * @param config - Mutable config object to modify in place.
+ * @param commandName - Command preset name to update. Defaults to `sp-implement`.
  * @returns The same config reference, modified.
  */
-export function toggleSuperpowersWorktrees(config: MutableConfig): MutableConfig {
+export function toggleSuperpowersWorktrees(config: MutableConfig, commandName = "sp-implement"): MutableConfig {
 	const settings = ensureSuperagents(config);
 	settings.commands ??= {};
-	settings.commands["sp-implement"] ??= {};
-	settings.commands["sp-implement"].worktrees ??= {};
-	settings.commands["sp-implement"].worktrees.enabled = !(settings.commands["sp-implement"].worktrees.enabled ?? false);
+	const existingCommand = settings.commands[commandName] ?? {};
+	const behaviorOnly = extractBehaviorFlags(existingCommand);
+	behaviorOnly.worktrees ??= {};
+	behaviorOnly.worktrees = { ...(behaviorOnly.worktrees as Record<string, unknown>) };
+	(behaviorOnly.worktrees as Record<string, unknown>).enabled = !((behaviorOnly.worktrees as Record<string, unknown>).enabled ?? false);
+	settings.commands[commandName] = behaviorOnly;
 	return config;
 }
 
