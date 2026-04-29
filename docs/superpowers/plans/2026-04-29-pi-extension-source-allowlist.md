@@ -30,7 +30,7 @@
 **Files:**
 - Modify: `test/unit/superagents-config.test.ts`
 
-- [ ] **Step 1: Add scheme-source tests**
+- [x] **Step 1: Add scheme-source tests**
 
 Add these test cases inside the existing `void describe("findMissingSubagentExtensionPath", () => { ... })` block, after the empty-array test:
 
@@ -91,7 +91,7 @@ Add these test cases inside the existing `void describe("findMissingSubagentExte
 	});
 ```
 
-- [ ] **Step 2: Run tests and verify failure**
+- [x] **Step 2: Run tests and verify failure**
 
 Run:
 
@@ -101,7 +101,7 @@ node --experimental-strip-types --test test/unit/superagents-config.test.ts
 
 Expected: the first new test fails because `npm:@sting8k/pi-vcc` is resolved as a missing local path.
 
-- [ ] **Step 3: Commit failing tests**
+- [x] **Step 3: Commit failing tests**
 
 Do not commit failing tests separately. Keep this step unchecked until Task 2 passes.
 
@@ -113,7 +113,7 @@ Do not commit failing tests separately. Keep this step unchecked until Task 2 pa
 - Modify: `src/execution/superagents-config.ts`
 - Test: `test/unit/superagents-config.test.ts`
 
-- [ ] **Step 1: Replace missing-path validation helpers**
+- [x] **Step 1: Replace missing-path validation helpers**
 
 In `src/execution/superagents-config.ts`, add these functions above `findMissingSubagentExtensionPath`:
 
@@ -158,7 +158,7 @@ Also add this import at the top:
 import * as os from "node:os";
 ```
 
-- [ ] **Step 2: Update `findMissingSubagentExtensionPath`**
+- [x] **Step 2: Update `findMissingSubagentExtensionPath`**
 
 Replace the loop body in `findMissingSubagentExtensionPath` with:
 
@@ -172,7 +172,7 @@ Replace the loop body in `findMissingSubagentExtensionPath` with:
 	}
 ```
 
-- [ ] **Step 3: Run focused tests**
+- [x] **Step 3: Run focused tests**
 
 Run:
 
@@ -182,7 +182,7 @@ node --experimental-strip-types --test test/unit/superagents-config.test.ts
 
 Expected: all `superagents-config` tests pass.
 
-- [ ] **Step 4: Commit implementation and tests**
+- [x] **Step 4: Commit implementation and tests**
 
 Run:
 
@@ -203,7 +203,7 @@ git commit -m "feat: allow pi extension source specs for subagents"
 - Modify: `docs/parameters.md`
 - Modify: `README.md`
 
-- [ ] **Step 1: Update config example package source specs**
+- [x] **Step 1: Update config example package source specs**
 
 In `config.example.json`, replace:
 
@@ -225,7 +225,7 @@ with:
     ],
 ```
 
-- [ ] **Step 2: Update `docs/configuration.md` extension section**
+- [x] **Step 2: Update `docs/configuration.md` extension section**
 
 Replace the `extensions` table description with:
 
@@ -256,7 +256,7 @@ Local extension entries must point to existing files or directories when the sub
 Package and remote entries should use normal Pi `-e` source prefixes such as `npm:`, `git:`, `https:`, or `ssh:`. These sources pass through to child Pi unchanged, and child Pi resolves, installs, and loads them through its normal extension resolver. Bare package names such as `@scope/package` are treated as local paths; use `npm:@scope/package` for npm packages.
 ```
 
-- [ ] **Step 3: Update `docs/skills.md` frontmatter description**
+- [x] **Step 3: Update `docs/skills.md` frontmatter description**
 
 Replace the `extensions` row with:
 
@@ -264,7 +264,7 @@ Replace the `extensions` row with:
 | `extensions` | No | Comma-separated Pi extension entrypoints to append for this agent. Use local paths for local extensions and source specs such as `npm:@scope/package` or `git:github.com/user/repo` for package/remote extensions. Global `superagents.extensions` entries are loaded first. Relative local entries resolve from the subagent runtime working directory; missing local entries fail that agent before Pi starts. |
 ```
 
-- [ ] **Step 4: Update `docs/worktrees.md` extension loading paragraph**
+- [x] **Step 4: Update `docs/worktrees.md` extension loading paragraph**
 
 Replace the paragraph under `## Extension Loading` with:
 
@@ -272,7 +272,7 @@ Replace the paragraph under `## Extension Loading` with:
 Extension loading for subagents is independent of worktree isolation. Even when running inside a git worktree, child Pi processes load extensions from `superagents.extensions` (global config) and the `extensions` field in agent frontmatter (additive to global). Implicit Pi extension discovery is disabled by default; only explicitly configured extensions are loaded. Configured entries may be local paths or normal Pi `-e` source specs such as `npm:@scope/package`; relative local paths resolve from the subagent runtime working directory.
 ```
 
-- [ ] **Step 5: Update `docs/parameters.md` note**
+- [x] **Step 5: Update `docs/parameters.md` note**
 
 Replace the extension note with:
 
@@ -280,7 +280,7 @@ Replace the extension note with:
 > **Note:** The `subagent` tool does not accept ad-hoc extension paths at call time. Extension loading for child Pi processes is controlled through `superagents.extensions` in the global config and the `extensions` field in agent frontmatter (additive to the global list). Implicit Pi extension discovery is disabled by default; only configured extensions are loaded for subagents. Configured entries may be local paths or normal Pi `-e` source specs such as `npm:@scope/package`, `git:github.com/user/repo`, `https://...`, or `ssh://...`. Missing local paths return a clear error and do not spawn the child Pi process; package and remote specs are resolved by child Pi.
 ```
 
-- [ ] **Step 6: Update `README.md` feature bullet**
+- [x] **Step 6: Update `README.md` feature bullet**
 
 Replace the `Subagent Extension Allowlist` bullet with:
 
@@ -288,7 +288,7 @@ Replace the `Subagent Extension Allowlist` bullet with:
 - **Subagent Extension Allowlist**: Subagents run with implicit Pi extension discovery disabled by default; configure `superagents.extensions` with local paths or Pi `-e` source specs such as `npm:@scope/package` for extensions every subagent should receive.
 ```
 
-- [ ] **Step 7: Validate JSON and docs-adjacent tests**
+- [x] **Step 7: Validate JSON and docs-adjacent tests**
 
 Run:
 
@@ -299,7 +299,7 @@ node --experimental-strip-types --test test/unit/default-config.test.ts
 
 Expected: JSON parses and default-config tests pass.
 
-- [ ] **Step 8: Commit docs and example**
+- [x] **Step 8: Commit docs and example**
 
 Run:
 
@@ -317,7 +317,7 @@ git commit -m "docs: document pi extension source specs"
 - Test: `test/unit/config-validation.test.ts`
 - Test: `test/unit/default-config.test.ts`
 
-- [ ] **Step 1: Run relevant unit tests**
+- [x] **Step 1: Run relevant unit tests**
 
 Run:
 
@@ -327,7 +327,7 @@ node --experimental-strip-types --test test/unit/superagents-config.test.ts test
 
 Expected: all tests pass.
 
-- [ ] **Step 2: Check final diff**
+- [x] **Step 2: Check final diff**
 
 Run:
 
@@ -338,7 +338,7 @@ git diff --stat
 
 Expected: no unintended files changed beyond this feature. Existing pre-plan changes may remain if they were present before execution; do not revert unrelated user work.
 
-- [ ] **Step 3: Commit any missed verification-only fixes**
+- [x] **Step 3: Commit any missed verification-only fixes**
 
 If Task 4 required any fixes, commit them:
 

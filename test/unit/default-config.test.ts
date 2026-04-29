@@ -14,7 +14,7 @@ import { describe, it } from "node:test";
 
 const TOP_LEVEL_OPTION_KEYS = ["superagents"] as const;
 
-const SUPERAGENTS_OPTION_KEYS = ["commands", "modelTiers", "skillOverlays", "interceptSkillCommands", "superpowersSkills"] as const;
+const SUPERAGENTS_OPTION_KEYS = ["commands", "modelTiers", "skillOverlays", "interceptSkillCommands", "extensions", "superpowersSkills"] as const;
 
 /**
  * Read and parse a config JSON file from the repository root.
@@ -41,6 +41,7 @@ function assertPublicConfigSurface(config: Record<string, unknown>, bundledDefau
 		commands?: Record<string, Record<string, unknown>>;
 		skillOverlays?: unknown;
 		interceptSkillCommands?: unknown;
+		extensions?: unknown;
 		superpowersSkills?: unknown;
 	};
 	const metadataKeys = Object.keys(config).filter((key) => key.startsWith("_"));
