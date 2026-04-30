@@ -8,13 +8,9 @@ Bundled defaults ship inside the package and provide sensible baseline values. U
 ~/.pi/agent/extensions/subagent/config.json
 ```
 
-This file is user-owned. A fresh install creates it from the bundled defaults:
+This file is user-owned. A fresh install creates it by copying the bundled defaults, including behavior flags for the built-in Superpowers entrypoint commands.
 
-```json
-{ /* behavior flags only */ }
-```
-
-At runtime, user overrides merge on top of the bundled defaults — you only need to specify the settings you want to change. Full parseable examples are available in:
+At runtime, user config merges on top of the bundled defaults. You only need to edit the settings you want to change. Full parseable examples are available in:
 
 ```text
 ~/.pi/agent/extensions/subagent/config.example.json
@@ -27,7 +23,7 @@ At runtime, user overrides merge on top of the bundled defaults — you only nee
 
 `pi-superagents` fails closed when `config.json` cannot be trusted. If the file has invalid JSON, unknown keys, or wrong value types, subagent execution is disabled until the file is fixed.
 
-If `config.json` duplicates the entire bundled default, the extension warns and offers a one-click migration to replace it with a minimal override. This avoids drifted copies that mask changing defaults.
+If `config.json` matches the bundled default, the extension may show a non-blocking notice. This is valid for fresh installs; edit only the behavior flags you want to change.
 
 When Pi starts, the extension shows a notification with the config path and exact diagnostics. You can also inspect diagnostics with:
 
@@ -37,7 +33,7 @@ When Pi starts, the extension shows a notification with the config path and exac
 
 ## Built-in Commands
 
-The bundled defaults include behavior flags for three built-in commands:
+Slash commands are registered from interactive entrypoint agent frontmatter, not generated from `config.json`. The bundled defaults include behavior flags for three built-in commands:
 
 | Command | Policy Settings |
 |---|---|
@@ -47,7 +43,7 @@ The bundled defaults include behavior flags for three built-in commands:
 
 Each built-in command has a corresponding bundled interactive entrypoint agent file (`agents/sp-implement.md`, `agents/sp-brainstorm.md`, `agents/sp-plan.md`). The entrypoint agent file provides command metadata (name, description, command name, entry skill) and root lifecycle skills. The command preset in `config.json` only controls runtime behavior flags.
 
-Built-in command presets can be augmented or overridden by user config. Settings in your `config.json` are deep-merged on top of the bundled defaults: any fields you specify replace the corresponding built-in values, while unspecified fields remain at their built-in defaults. To create a variant, reference the built-in command name in your `commands` map and override only the fields you need. Use a different command name only if you want a fully independent preset.
+Built-in command behavior can be augmented or overridden by user config. Settings in your `config.json` are deep-merged on top of the bundled defaults: any fields you specify replace the corresponding built-in values, while unspecified fields remain at their built-in defaults. To create a variant of a built-in command, reference the built-in command name in your `commands` map and override only the fields you need. Use a different command name only when you also create a matching interactive entrypoint agent.
 
 ## Configuration Keys
 
@@ -218,7 +214,7 @@ Optional behavior flags in `config.json`:
 }
 ```
 
-Command names must match `superpowers-<name>` or `sp-<name>` (lowercase alphanumeric and hyphens).
+Command names must match `superpowers-<name>` or `sp-<name>` (lowercase alphanumeric and hyphens), and each behavior block must have a matching interactive entrypoint agent to register a slash command.
 
 Agent frontmatter may declare `session-mode: standalone | lineage-only | fork`. Built-in bounded roles ship with `lineage-only`.
 

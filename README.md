@@ -6,7 +6,7 @@
 
 - **Superpowers Workflow**: Proven pipeline for robust AI-assisted development.
 - **Role-Specific Agents**: Thin agents-layer for every phase of the development lifecycle.
-- **Model Tiers & Command Settings**: Abstract model selection (cheap, balanced, max) for each agent. One model can be configured per tier. Custom tiers are possible. Models and command-scoped workflow toggles can be changed through the `/sp-settings` TUI.
+- **Model Tiers & Command Settings**: Abstract model selection (cheap, balanced, max) for each agent. One model can be configured per tier. Custom tiers are possible. Models and command-scoped behavior toggles can be changed through the `/sp-settings` TUI; slash-command metadata lives in entrypoint agent frontmatter.
 - **Compact Inline Subagent Results**: Subagent tool results render as collapsed single-line summaries with an expandable details view, keeping the Pi conversation readable during multi-step Superpowers workflows.
 - **Lineage-Only Sessions**: Bounded Superpowers roles default to `sessionMode: lineage-only`. Child sessions stay linked to the parent for session tree visibility, but do not inherit parent conversation turns.
 - **Packet Handoffs**: Work briefs are delivered through runtime-managed packet artifacts in the session artifact directory, automatically cleaned up after the child exits.
@@ -39,6 +39,8 @@ pi remove npm:@teelicht/pi-superagents
 
 ## Integrated Slash Commands
 
+Superpowers slash commands are registered from interactive entrypoint agent frontmatter, not generated from `config.json`. `config.json` only changes runtime behavior for commands that already have a matching entrypoint agent.
+
 | Command                 | Description                                                                 |
 | ----------------------- | --------------------------------------------------------------------------- |
 | `/sp-brainstorm <task>` | Brainstorm a task and save a spec, optionally review it with Plannotator UI |
@@ -49,7 +51,7 @@ pi remove npm:@teelicht/pi-superagents
 
 ### Custom Commands
 
-Create custom slash commands by adding an interactive entrypoint agent markdown file (e.g., `~/.pi/agent/agents/sp-mycommand.md`) with the appropriate frontmatter. Optional behavior flags (e.g., `useSubagents`, `usePlannotator`) can be set in `config.json` under `superagents.commands.<name>`.
+Create custom slash commands by adding an interactive entrypoint agent markdown file (e.g., `~/.pi/agent/agents/sp-mycommand.md`) with the appropriate frontmatter. Optional behavior flags (e.g., `useSubagents`, `usePlannotator`) can be set in `config.json` under `superagents.commands.<name>`. Config blocks alone do not register commands.
 
 See [Configuration](docs/configuration.md#custom-commands) for the agent frontmatter schema and behavior flag reference.
 
