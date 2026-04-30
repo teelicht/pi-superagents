@@ -56,8 +56,10 @@ When the GitHub Release is published, `.github/workflows/release.yml` runs these
 - install dependencies with `npm install`
 - verify the tag matches `package.json`
 - run typecheck, lint, all tests, and package-content verification
-- publish normal releases to npm with the `latest` dist-tag
-- publish GitHub prereleases to npm with the `next` dist-tag
+- publish normal releases to npm with the explicit `latest` dist-tag
+- publish GitHub prereleases to npm with the explicit `next` dist-tag
+
+The explicit `latest` tag is intentional: npm refuses an implicit `latest` tag when recovering from an accidental higher semver publish, even if the corrected release is the intended latest version.
 
 ## Recovery Notes
 
