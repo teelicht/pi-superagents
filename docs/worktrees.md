@@ -4,17 +4,17 @@ When multiple agents run in parallel against the same repository, they can clobb
 
 ## Usage
 
-Worktree isolation is optional. Enable it globally for Superpowers parallel tasks with `superagents.worktrees.enabled`:
+Worktree isolation is optional. Enable it for the entrypoint command that launches the Superpowers workflow with `superagents.commands.<name>.worktrees.enabled`:
 
 ```typescript
-// Parallel with worktree isolation when superagents.worktrees.enabled is true
+// Parallel with worktree isolation when the launching command resolves worktrees.enabled: true
 { tasks: [
   { agent: "sp-implementer", task: "Implement auth" },
   { agent: "sp-implementer", task: "Implement API" }
 ], workflow: "superpowers" }
 ```
 
-You can also override worktree behavior for a specific command with `superagents.commands.<name>.worktrees.enabled`:
+Example behavior-only config for `/sp-implement`:
 
 ```json
 {
@@ -51,7 +51,7 @@ Extension loading for subagents is independent of worktree isolation. Even when 
 ## Internals
 
 1. `git worktree add` creates a temporary worktree per agent in the system temp directory.
-2. If `superagents.worktrees.root` is set, worktrees are created under that directory instead of the system temp directory.
+2. If the resolved command behavior sets `worktrees.root`, worktrees are created under that directory instead of the system temp directory.
 3. Each agent runs in its worktree's cwd.
 4. Before diff capture, synthetic helper paths created by Pi Superagents, such as a safe `node_modules` symlink, are removed.
 5. After execution, `git add -A && git diff --cached` captures all changes.
