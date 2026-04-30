@@ -76,5 +76,5 @@ jobs:
           if [ "$IS_PRERELEASE" = "true" ]; then
             npm publish --access public --tag next
           else
-            npm publish --access public
+            npm publish --access public --tag latest
           fi
