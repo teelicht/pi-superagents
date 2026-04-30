@@ -1,18 +1,23 @@
 # Changelog
 
-## Unreleased
+## [0.8.0] - 2026-04-30
 
-- Moved Superpowers slash-command metadata into entrypoint agent frontmatter so `config.json` only carries runtime behavior flags. Added `/sp-brainstorm` and `/sp-plan` entrypoint agents and removed skill overlay config to keep Superpowers skill selection trigger-driven.
-- Added bundled `agents/sp-implement.md` entrypoint metadata so `/sp-implement` root sessions load lifecycle skills for verification, review-feedback handling, and branch finishing.
-- Added support for future interactive command agents to define their own root-session lifecycle skills through frontmatter.
-- Assigned `systematic-debugging` to `sp-debug` so delegated debug runs start with root-cause analysis guidance.
-- Made `/sp-settings` workflow toggles command-scoped; use `c` to select a command before toggling Plannotator, subagents, TDD, or worktrees.
-- Root prompts now instruct delegated `subagent` calls to pass the resolved `useTestDrivenDevelopment` value explicitly, and omitted direct tool calls no longer inherit `/sp-implement` TDD settings.
-- Isolated subagent extension loading with global and agent-level allowlists.
-- Pi-style extension source support such as `npm:` while retaining local path validation.
-- Clear pre-spawn diagnostics for missing configured extension paths.
+- **Breaking: Agent Configuration**
+  - Moved Superpowers slash-command metadata into entrypoint agent frontmatter so `config.json` only carries runtime behavior flags. 
+  - Slash-commands are now registered from discovered agents that declare `kind: entrypoint` and `execution: interactive`.
+  - Added `/sp-brainstorm` and `/sp-plan` entrypoint agents and removed skill overlay config to keep Superpowers skill selection trigger-driven.
+  - Added bundled `agents/sp-implement.md` entrypoint metadata so `/sp-implement` root sessions load lifecycle skills for verification, review-feedback handling, and branch finishing.
+  - Added support for future interactive command agents to define their own root-session lifecycle skills through frontmatter.
+  - Assigned `systematic-debugging` to `sp-debug` so delegated debug runs start with root-cause analysis guidance.
+  - Made `/sp-settings` workflow toggles command-scoped; use `c` to select a command before toggling Plannotator, subagents, TDD, or worktrees.
+  - Root prompts now instruct delegated `subagent` calls to pass the resolved `useTestDrivenDevelopment` value explicitly, and omitted direct tool calls no longer inherit `/sp-implement` TDD settings.
 
-## [7.0.0] - 2026-04-27
+- **Breaking: Extension Loading**
+  - Isolated subagent extension loading with global and agent-level allowlists.
+  - Pi-style extension source support such as `npm:` while retaining local path validation.
+  - Clear pre-spawn diagnostics for missing configured extension paths.
+
+## [0.7.0] - 2026-04-27
 
 - **Lineage-Only Communication**
   - Bounded Superpowers roles now default to `session-mode: lineage-only`. Child sessions stay linked to the parent for `/tree`, but they do not inherit parent conversation turns.
