@@ -21,11 +21,13 @@ interface RenderSubagentResultLinesOptions {
 	width: number;
 }
 
+type SubagentDisplayStatus = AgentProgress["status"] | "needs_parent";
+
 interface SubagentDisplayRow {
 	index: number;
 	agent: string;
 	task: string;
-	status: AgentProgress["status"];
+	status: SubagentDisplayStatus;
 	result?: SingleResult;
 	progress?: AgentProgress;
 	summary?: ProgressSummary;
@@ -113,7 +115,8 @@ function buildDisplayRows(details: Details): SubagentDisplayRow[] {
  * @param progress Optional live progress data for the same task.
  * @returns Display status for the row.
  */
-function inferStatus(result: SingleResult, progress: AgentProgress | undefined): AgentProgress["status"] {
+function inferStatus(result: SingleResult, progress: AgentProgress | undefined): SubagentDisplayStatus {
+	if (result.completion?.status === "needs_parent") return "needs_parent";
 	if (progress?.status) return progress.status;
 	if (result.exitCode === 0) return "completed";
 	return "failed";
@@ -130,6 +133,7 @@ function summarizeDetails(details: Details, rows: SubagentDisplayRow[]): Subagen
 	const totalCount = Math.max(rows.length, details.results.length);
 	const okCount = rows.filter((row) => row.status === "completed" && row.result?.exitCode !== 1).length;
 	const hasRunning = rows.some((row) => row.status === "running" || row.status === "pending");
+	const hasNeedsParent = rows.some((row) => row.status === "needs_parent");
 	const hasFailure = rows.some((row) => row.status === "failed" || (row.result !== undefined && row.result.exitCode !== 0));
 	const hasEmptyOutput = rows.some((row) => row.result?.exitCode === 0 && !getSingleResultOutput(row.result).trim());
 	const fallbackSummary = rows.reduce(
@@ -148,11 +152,13 @@ function summarizeDetails(details: Details, rows: SubagentDisplayRow[]): Subagen
 		? details.mode === "single"
 			? "running"
 			: `${okCount}/${totalCount} complete`
-		: hasFailure
-			? `${okCount}/${totalCount} complete error`
-			: hasEmptyOutput
-				? `${okCount}/${totalCount} complete empty output`
-				: `${okCount}/${totalCount} complete ok`;
+		: hasNeedsParent
+			? `${okCount}/${totalCount} complete; needs parent input`
+			: hasFailure
+				? `${okCount}/${totalCount} complete error`
+				: hasEmptyOutput
+					? `${okCount}/${totalCount} complete empty output`
+					: `${okCount}/${totalCount} complete ok`;
 
 	return {
 		modeLabel: details.mode === "single" ? "Subagent" : "Subagents",

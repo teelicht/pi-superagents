@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 
 const queueDir = process.env.MOCK_PI_QUEUE_DIR;
 
@@ -62,6 +63,17 @@ function writeJsonlLine(entry) {
 	process.stdout.write(`${line}\n`);
 }
 
+/**
+ * Write a lifecycle signal atomically using temp-file-then-rename.
+ */
+function writeLifecycleSignalAtomic(sessionFile, signal) {
+	const sidecar = `${sessionFile}.exit`;
+	fs.mkdirSync(path.dirname(sidecar), { recursive: true });
+	const tmp = `${sidecar}.tmp-${process.pid}-${crypto.randomUUID()}`;
+	fs.writeFileSync(tmp, JSON.stringify(signal), "utf-8");
+	fs.renameSync(tmp, sidecar);
+}
+
 async function main() {
 	if (!queueDir) fail("MOCK_PI_QUEUE_DIR is required.");
 	if (!fs.existsSync(queueDir)) fail(`Mock queue dir does not exist: ${queueDir}`);
@@ -71,6 +83,12 @@ async function main() {
 
 	if (typeof response.delay === "number" && response.delay > 0) {
 		await new Promise((resolve) => setTimeout(resolve, response.delay));
+	}
+
+	// Write lifecycle sidecar before outputting JSONL
+	if (response.writeLifecycleSignal) {
+		const { sessionFile, signal } = response.writeLifecycleSignal;
+		writeLifecycleSignalAtomic(sessionFile, signal);
 	}
 
 	if (Array.isArray(response.jsonl) && response.jsonl.length > 0) {

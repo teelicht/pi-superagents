@@ -278,6 +278,17 @@ function buildSingleDetails(input: {
 	};
 }
 
+/**
+ * Format a needs_parent help-request line for inclusion in tool-result text.
+ *
+ * @param result Child result with a needs_parent completion envelope.
+ * @returns Single-line text to append to the child's answer body, or undefined.
+ */
+function formatNeedsParentHelp(result: SingleResult): string | undefined {
+	if (result.completion?.status !== "needs_parent" || !result.completion.parentRequest) return undefined;
+	return `Subagent ${result.agent} needs parent input: ${result.completion.parentRequest}`;
+}
+
 // ---------------------------------------------------------------------------
 // Execution paths
 // ---------------------------------------------------------------------------
@@ -476,12 +487,18 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		const worktreeSuffix = buildParallelWorktreeSuffix(worktreeSetup, artifactsDir, tasks);
 		const ok = results.filter((result) => result.exitCode === 0).length;
 		const aggregatedOutput = aggregateParallelOutputs(
-			results.map((result) => ({
-				agent: result.agent,
-				output: result.truncation?.text || getSingleResultOutput(result),
-				exitCode: result.exitCode,
-				error: result.error,
-			})),
+			results.map((result, index) => {
+				const baseOutput = result.truncation?.text || getSingleResultOutput(result);
+				const helpLine = formatNeedsParentHelp(result);
+				const output = helpLine ? `${baseOutput}\n${helpLine}` : baseOutput;
+				return {
+					agent: result.agent,
+					taskIndex: index,
+					output,
+					exitCode: result.exitCode,
+					error: result.error,
+				};
+			}),
 			(i, agent) => `=== Task ${i + 1}: ${agent} ===`,
 		);
 
@@ -593,6 +610,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 
 	const fullOutput = getSingleResultOutput(r);
 	const displayOutput = r.truncation?.text || fullOutput;
+	const needsParentHelp = formatNeedsParentHelp(r);
 
 	if (r.exitCode !== 0)
 		return {
@@ -605,8 +623,10 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 				includeProgress: params.includeProgress,
 			}),
 		};
+
+	const successText = needsParentHelp ? `${displayOutput || "(no output)"}\n${needsParentHelp}` : displayOutput || "(no output)";
 	return {
-		content: [{ type: "text", text: displayOutput || "(no output)" }],
+		content: [{ type: "text", text: successText }],
 		details: buildSingleDetails({
 			result: r,
 			progress: allProgress,
@@ -741,7 +761,6 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 				return withSessionModeDetails(await runSinglePath(execData, deps), detailsSessionMode);
 			}
 		} catch (error) {
-			return toExecutionErrorResult(params, error);
 		}
 
 		return withSessionModeDetails(

@@ -13,6 +13,7 @@
  * - writes JSONL and metadata artifacts to disk
  * - updates global run history for monitoring
  * - consumes lifecycle sidecars via consumeLifecycleSignal
+ * - derives completion envelopes via deriveCompletionEnvelope
  */
 
 import { spawn } from "node:child_process";
@@ -29,21 +30,20 @@ import { globalRunHistory } from "./run-history.ts";
 import { findMissingSubagentExtensionPath, resolveSubagentExtensions } from "./superagents-config.ts";
 import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./superpowers-policy.ts";
 import { consumeLifecycleSignal } from "./lifecycle-signals.ts";
+import { deriveCompletionEnvelope } from "./result-delivery.ts";
 
 /**
- * Attach lifecycle sidecar result to a SingleResult when available.
+ * Attach lifecycle sidecar result and derive completion envelope.
  *
- * Only attaches when the lifecycle status is not "missing" (e.g., consumed,
- * malformed, unreadable, or stale diagnostics). Missing sidecars leave the
- * original result unchanged.
+ * Consumes the lifecycle sidecar when available and derives a completion
+ * envelope from the result. Missing sidecars leave lifecycle undefined
+ * but still derive a standard completion envelope.
  */
 function attachLifecycle(result: SingleResult, options: RunSyncOptions): ChildRunResult {
 	const sessionFile = result.sessionFile ?? options.sessionFile;
 	const lifecycle = consumeLifecycleSignal(sessionFile);
-	if (lifecycle.status !== "missing") {
-		result.lifecycle = lifecycle;
-	}
-	return result;
+	const withLifecycle = lifecycle.status === "missing" ? result : { ...result, lifecycle };
+	return { ...withLifecycle, completion: deriveCompletionEnvelope(withLifecycle) };
 }
 
 /**
@@ -447,7 +447,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 	});
 	globalRunHistory.finishRun(historyId, result.exitCode === 0 ? "ok" : "error", result.error);
 
-	// Attach lifecycle sidecar for completed subprocess runs (not for pre-spawn validation errors)
+	// Attach lifecycle sidecar and derive completion envelope for completed subprocess runs
 	return attachLifecycle(result, options);
 }
 
