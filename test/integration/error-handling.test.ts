@@ -14,7 +14,7 @@ import { createMockPi, createTempDir, events, makeAgentConfigs, removeTempDir, t
 
 // Top-level await
 const utils = await tryImport<any>("./src/shared/utils.ts");
-const execution = await tryImport<any>("./src/execution/execution.ts");
+const execution = await tryImport<any>("./src/execution/child-runner.ts");
 
 const piAvailable = !!(execution && utils);
 

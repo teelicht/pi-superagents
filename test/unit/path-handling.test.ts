@@ -7,23 +7,23 @@ import { describe, it } from "node:test";
  * These tests document the correct patterns after fixes were applied.
  *
  * Fixed locations:
- * - chain-execution.ts — uses path.isAbsolute() for absolute path detection
- * - settings.ts — uses path.join() for path construction
+ * - path-handling callers should use path.isAbsolute() for absolute path detection
+ * - settings/worktree path construction should use path.join() where native separators matter
  */
 
 void describe("path.isAbsolute vs startsWith('/')", () => {
-	// chain-execution.ts:496 uses startsWith("/") to detect absolute paths.
+	// A startsWith("/") absolute-path check is POSIX-only.
 	// On Windows, absolute paths look like "C:\\..." or "C:/..." — neither starts with "/".
 
 	void it("startsWith('/') misses Windows absolute paths", () => {
 		const windowsAbsolute = "C:\\dev\\pi-superagents\\output.md";
 		const windowsAbsoluteForward = "C:/dev/pi-superagents/output.md";
 
-		// This is what the current code does (chain-execution.ts:496):
+		// This demonstrates the legacy anti-pattern:
 		assert.equal(windowsAbsolute.startsWith("/"), false, "Windows backslash absolute path not detected by startsWith('/')");
 		assert.equal(windowsAbsoluteForward.startsWith("/"), false, "Windows forward-slash absolute path not detected by startsWith('/')");
 
-		// This is what the code SHOULD do:
+		// This is what production code should do:
 		assert.equal(path.isAbsolute(windowsAbsolute), process.platform === "win32", "path.isAbsolute correctly identifies Windows paths on Windows");
 		assert.equal(path.isAbsolute(windowsAbsoluteForward), process.platform === "win32", "path.isAbsolute correctly identifies forward-slash Windows paths on Windows");
 
@@ -52,11 +52,10 @@ void describe("path.isAbsolute vs startsWith('/')", () => {
 });
 
 void describe("path.join vs template string concatenation", () => {
-	// settings.ts uses `${chainDir}/${file}` in several places.
-	// This works but produces inconsistent separators on Windows.
+	// Template string path concatenation works for many POSIX-style paths but
+	// produces inconsistent separators on Windows.
 
 	void it("template concatenation produces forward slashes regardless of platform", () => {
-		// chain-execution.ts:496 uses startsWith("/") to detect absolute paths.
 		const chainDir = "C:\\Users\\marc\\temp\\chain-abc";
 		const file = "progress.md";
 
@@ -72,7 +71,7 @@ void describe("path.join vs template string concatenation", () => {
 	});
 
 	void it("resolveChainPath pattern should use path.join for relative paths", () => {
-		// settings.ts:216: `${chainDir}/${filePath}` for relative paths
+		// Relative paths should be appended with path.join, not string concatenation.
 		const chainDir = "C:\\temp\\chain-runs\\abc123";
 		const relative = "synthesis.md";
 
@@ -89,7 +88,7 @@ void describe("path.join vs template string concatenation", () => {
 	});
 
 	void it("parallel subdir naming should use path.join", () => {
-		// settings.ts:302,306 pattern: `${subdir}/${task.output}`
+		// Nested subpaths should preserve the platform separator chosen by path.join.
 		const subdir = "parallel-0/0-_code-reviewer";
 		const output = "review.md";
 

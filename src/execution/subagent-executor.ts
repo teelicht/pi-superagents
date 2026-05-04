@@ -5,10 +5,10 @@
  * - normalize slash/tool parameters into concrete execution modes
  * - route single and parallel execution requests
  * - prepare launch artifacts (packets or fork wrappers)
- * - execute child sessions via `runSync` and aggregate results
+ * - execute child sessions via `runPreparedChild` and aggregate results
  *
  * Important dependencies or side effects:
- * - launches child Pi processes through `runSync`
+ * - launches child Pi processes through `runPreparedChild`
  * - writes and removes temporary Superpowers packet artifacts
  * - creates and cleans up parallel worktrees when configured
  * - seeds or forks child session files through the session launch resolver
@@ -43,7 +43,7 @@ import {
 	wrapForkTask,
 } from "../shared/types.ts";
 import { getSingleResultOutput, mapConcurrent } from "../shared/utils.ts";
-import { runSync } from "./execution.ts";
+import { runPreparedChild } from "./child-runner.ts";
 import {
 	buildParallelModeError,
 	resolveAgentSessionMode,
@@ -136,7 +136,7 @@ interface PreparedLaunch {
  * Prepare the task text, session metadata, and temporary packet artifacts for a child launch.
  *
  * @param input Child agent, task, session, and artifact metadata.
- * @returns Launch metadata consumed by `runSync`, plus a cleanup hook for packet files.
+ * @returns Launch metadata consumed by `runPreparedChild`, plus a cleanup hook for packet files.
  *
  * Invariants:
  * - fork launches receive the task directly and never create packet files
@@ -219,13 +219,13 @@ interface RunChildInput {
 }
 
 /**
- * Execute one child subagent task: prepare launch, run sync, cleanup, annotate.
+ * Execute one child subagent task: prepare launch, run prepared child, cleanup, annotate.
  *
  * @param input Fully resolved child execution metadata and shared runtime context.
  * @returns Child result annotated with the effective session mode.
  *
  * Invariants:
- * - temporary launch packets are cleaned up even when `runSync` fails
+ * - temporary launch packets are cleaned up even when `runPreparedChild` fails
  * - child results always carry the session mode used for the launch
  *
  * Failure modes:
@@ -248,7 +248,7 @@ async function runChild(input: RunChildInput): Promise<SingleResult> {
 		useTestDrivenDevelopment: input.useTestDrivenDevelopment,
 	});
 	try {
-		const result = await runSync(input.taskRuntimeCwd, input.agents, input.agentName, prepared.taskText, {
+		const result = await runPreparedChild(input.taskRuntimeCwd, input.agents, input.agentName, prepared.taskText, {
 			cwd: input.taskCwd,
 			signal: input.signal,
 			runId: input.runId,
