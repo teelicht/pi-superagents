@@ -121,22 +121,23 @@ void describe("execution planner", () => {
 	void it("throws for unknown agent names", () => {
 		const cwd = tempDir();
 		assert.throws(
-			() => planChildRun({
-				id: "child-1",
-				index: 0,
-				runtimeCwd: cwd,
-				childCwd: cwd,
-				agents: makeAgentConfigs(["sp-research"]),
-				agentName: "sp-missing",
-				task: "Inspect auth",
-				runId: "run-1",
-				artifactsDir: path.join(cwd, "artifacts"),
-				sessionMode: "lineage-only",
-				workflow: "superpowers",
-				useTestDrivenDevelopment: false,
-				includeProgress: false,
-				config: {},
-			}),
+			() =>
+				planChildRun({
+					id: "child-1",
+					index: 0,
+					runtimeCwd: cwd,
+					childCwd: cwd,
+					agents: makeAgentConfigs(["sp-research"]),
+					agentName: "sp-missing",
+					task: "Inspect auth",
+					runId: "run-1",
+					artifactsDir: path.join(cwd, "artifacts"),
+					sessionMode: "lineage-only",
+					workflow: "superpowers",
+					useTestDrivenDevelopment: false,
+					includeProgress: false,
+					config: {},
+				}),
 			/Unknown agent: sp-missing/,
 		);
 	});

@@ -6,12 +6,17 @@
  * - expose module exports without hard-coding the import path
  */
 
-import type { childRunnerExports } from "./child-runner-exports.ts";
+import type { ChildRunnerExports } from "./child-runner-exports.ts";
 
-let _cache: childRunnerExports | null = null;
+let _cache: ChildRunnerExports | null = null;
 
-export async function getChildRunnerExports(): Promise<childRunnerExports> {
+/**
+ * Dynamically import and cache child-runner exports for tests.
+ *
+ * @returns Typed child-runner module exports.
+ */
+export async function getChildRunnerExports(): Promise<ChildRunnerExports> {
 	if (_cache) return _cache;
-	_cache = await import("../../src/execution/child-runner.ts") as childRunnerExports;
+	_cache = (await import("../../src/execution/child-runner.ts")) as ChildRunnerExports;
 	return _cache;
 }

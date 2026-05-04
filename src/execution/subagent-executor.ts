@@ -43,6 +43,7 @@ import {
 } from "../shared/types.ts";
 import { getSingleResultOutput, mapConcurrent } from "../shared/utils.ts";
 import { runPreparedChild } from "./child-runner.ts";
+import { type PlanChildRunInput, planChildRun } from "./execution-planner.ts";
 import {
 	buildParallelModeError,
 	resolveAgentSessionMode,
@@ -54,6 +55,7 @@ import {
 	withSingleResultSessionMode,
 } from "./executor-validation.ts";
 import { aggregateParallelOutputs } from "./parallel-utils.ts";
+import { createResultDeliveryStore } from "./result-delivery.ts";
 import { createSessionLaunchResolver, resolveRequestedSessionMode, type SessionLaunchManager } from "./session-mode.ts";
 import { resolveStepBehavior } from "./settings.ts";
 import { resolveSuperagentWorktreeEnabled } from "./superagents-config.ts";
@@ -65,10 +67,7 @@ import {
 	createParallelWorktreeSetup,
 	resolveParallelTaskCwd,
 	resolveParallelTaskRuntimeCwd,
-	type WorktreeSetup,
 } from "./worktree.ts";
-import { planChildRun, type PlanChildRunInput } from "./execution-planner.ts";
-import { createResultDeliveryStore } from "./result-delivery.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -761,6 +760,7 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 				return withSessionModeDetails(await runSinglePath(execData, deps), detailsSessionMode);
 			}
 		} catch (error) {
+			return withSessionModeDetails(toExecutionErrorResult(params, error), detailsSessionMode);
 		}
 
 		return withSessionModeDetails(

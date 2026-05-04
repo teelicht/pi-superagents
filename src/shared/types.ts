@@ -237,15 +237,7 @@ export type CompletedDelivery = "steer" | "wait" | "join";
 /**
  * Error codes for result delivery operations.
  */
-export type ResultDeliveryErrorCode =
-	| "not_found"
-	| "already_delivered"
-	| "already_owned"
-	| "not_owned"
-	| "duplicate_id"
-	| "empty_id_list"
-	| "timeout"
-	| "interrupted";
+export type ResultDeliveryErrorCode = "not_found" | "already_delivered" | "already_owned" | "not_owned" | "duplicate_id" | "empty_id_list" | "timeout" | "interrupted";
 
 /**
  * Error returned when a result delivery operation fails.

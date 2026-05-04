@@ -11,9 +11,9 @@
  * - removes consumed, malformed, and stale sidecars on a best-effort basis
  */
 
+import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { randomUUID } from "node:crypto";
 import type { LifecycleReadResult, LifecycleSignal } from "../shared/types.ts";
 
 export interface ConsumeLifecycleSignalOptions {

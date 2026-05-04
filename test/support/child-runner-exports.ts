@@ -3,10 +3,10 @@
  * Used by test support helpers to type dynamic imports.
  */
 
-import type { SingleResult } from "../../src/shared/types.ts";
 import type { AgentConfig } from "../../src/agents/agents.ts";
+import type { SingleResult } from "../../src/shared/types.ts";
 
-export interface RunSyncOptions {
+export interface RunPreparedChildOptions {
 	cwd?: string;
 	signal?: AbortSignal;
 	onUpdate?: (r: unknown) => void;
@@ -27,7 +27,6 @@ export interface RunSyncOptions {
 	useTestDrivenDevelopment?: boolean;
 }
 
-export interface childRunnerExports {
-	runPreparedChild: (runtimeCwd: string, agents: AgentConfig[], agentName: string, task: string, options: RunSyncOptions) => Promise<SingleResult>;
-	runSync: (runtimeCwd: string, agents: AgentConfig[], agentName: string, task: string, options: RunSyncOptions) => Promise<SingleResult>;
+export interface ChildRunnerExports {
+	runPreparedChild: (runtimeCwd: string, agents: AgentConfig[], agentName: string, task: string, options: RunPreparedChildOptions) => Promise<SingleResult>;
 }

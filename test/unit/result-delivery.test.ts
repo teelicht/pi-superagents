@@ -9,8 +9,8 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { ChildRunResult } from "../../src/shared/types.ts";
 import { createResultDeliveryStore, deriveCompletionEnvelope } from "../../src/execution/result-delivery.ts";
+import type { ChildRunResult } from "../../src/shared/types.ts";
 
 function result(agent = "sp-research", task = "Task", output = "Done", exitCode = 0, errorMsg?: string): ChildRunResult {
 	return {
@@ -66,14 +66,17 @@ describe("result delivery store", () => {
 		const joined = await store.join(["b", "a"]);
 		assert.equal("error" in joined, false);
 		if ("error" in joined) return;
-		assert.deepEqual(joined.results.map((item) => item.agent), ["sp-debug", "sp-recon"]);
-		assert.equal((await store.wait("a") as any).error.code, "already_delivered");
+		assert.deepEqual(
+			joined.results.map((item) => item.agent),
+			["sp-debug", "sp-recon"],
+		);
+		assert.equal(((await store.wait("a")) as any).error.code, "already_delivered");
 	});
 
 	it("rejects duplicate and empty joins", async () => {
 		const store = createResultDeliveryStore();
-		assert.equal((await store.join([]) as any).error.code, "empty_id_list");
-		assert.equal((await store.join(["x", "x"]) as any).error.code, "duplicate_id");
+		assert.equal(((await store.join([])) as any).error.code, "empty_id_list");
+		assert.equal(((await store.join(["x", "x"])) as any).error.code, "duplicate_id");
 	});
 
 	it("rejects already owned records", async () => {
@@ -281,10 +284,7 @@ describe("result delivery store", () => {
 	it("register throws on duplicate id", () => {
 		const store = createResultDeliveryStore();
 		store.register({ id: "child-1", agent: "sp-research", task: "Inspect", completion: Promise.resolve(result()) });
-		assert.throws(
-			() => store.register({ id: "child-1", agent: "sp-research", task: "Inspect", completion: Promise.resolve(result()) }),
-			/duplicate/i,
-		);
+		assert.throws(() => store.register({ id: "child-1", agent: "sp-research", task: "Inspect", completion: Promise.resolve(result()) }), /duplicate/i);
 	});
 
 	// --- Task 3: completion promise rejection becomes failed ChildRunResult ---
@@ -330,9 +330,15 @@ describe("result delivery store", () => {
 		const inspected = store.inspect("child-1");
 		assert.ok(inspected);
 		// Frozen object: attempts to mutate should throw
-		assert.throws(() => { (inspected as any).state = "awaited"; }, TypeError);
-		assert.throws(() => { (inspected as any).ownerToken = Symbol("hacker"); }, TypeError);
-		assert.throws(() => { (inspected as any).deliveredTo = "wait"; }, TypeError);
+		assert.throws(() => {
+			(inspected as any).state = "awaited";
+		}, TypeError);
+		assert.throws(() => {
+			(inspected as any).ownerToken = Symbol("hacker");
+		}, TypeError);
+		assert.throws(() => {
+			(inspected as any).deliveredTo = "wait";
+		}, TypeError);
 	});
 
 	it("mutating inspect result does not affect store ownership", async () => {
@@ -344,7 +350,9 @@ describe("result delivery store", () => {
 		assert.ok(inspected);
 		// The returned object is frozen at the top level; nested refs (completion promise)
 		// are still the original objects but cannot be reassigned.
-		assert.throws(() => { (inspected as any).state = "awaited"; }, TypeError);
+		assert.throws(() => {
+			(inspected as any).state = "awaited";
+		}, TypeError);
 
 		// Store state is preserved
 		const reInspected = store.inspect("child-1");
@@ -525,7 +533,10 @@ describe("result delivery store", () => {
 		assert.equal("error" in joined, false);
 		if ("error" in joined) return;
 		// Results must match requested order
-		assert.deepEqual(joined.results.map((item) => item.agent), ["sp-debug", "sp-research", "sp-recon"]);
+		assert.deepEqual(
+			joined.results.map((item) => item.agent),
+			["sp-debug", "sp-research", "sp-recon"],
+		);
 	});
 
 	it("join releases owned records on error (not_owned from detach)", async () => {

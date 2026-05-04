@@ -1,11 +1,11 @@
 /**
  * Integration tests for parallel execution.
  *
- * Tests the mapConcurrent utility and parallel agent spawning via runSync.
+ * Tests the mapConcurrent utility and parallel agent spawning via runPreparedChild.
  * The top-level parallel mode (params.tasks) lives in index.ts and uses
- * mapConcurrent + runSync — we test both pieces here.
+ * mapConcurrent + runPreparedChild — we test both pieces here.
  *
- * mapConcurrent tests always run. runSync tests require pi packages.
+ * mapConcurrent tests always run. runPreparedChild tests require pi packages.
  */
 
 import assert from "node:assert/strict";
@@ -19,7 +19,7 @@ const execution = await tryImport<any>("./src/execution/child-runner.ts");
 const resultDelivery = await tryImport<any>("./src/execution/result-delivery.ts");
 const piAvailable = !!(execution && utils);
 
-const runSync = execution?.runSync;
+const runPreparedChild = execution?.runPreparedChild;
 const mapConcurrent = utils?.mapConcurrent;
 const createResultDeliveryStore = resultDelivery?.createResultDeliveryStore;
 
@@ -108,7 +108,10 @@ void describe("mapConcurrent", { skip: !mapConcurrent ? "utils not importable" :
 		const joined = await store.join(items);
 		assert.equal("error" in joined, false);
 		if ("error" in joined) return;
-		assert.deepEqual(joined.results.map((result: any) => result.exitCode), [0, 1, 0]);
+		assert.deepEqual(
+			joined.results.map((result: any) => result.exitCode),
+			[0, 1, 0],
+		);
 		assert.equal(joined.results[0].error, undefined);
 		assert.match(joined.results[1].error, /launch failed for b/);
 		assert.equal(joined.results[2].error, undefined);
@@ -116,7 +119,7 @@ void describe("mapConcurrent", { skip: !mapConcurrent ? "utils not importable" :
 });
 
 // ---------------------------------------------------------------------------
-// Parallel agent execution via runSync
+// Parallel agent execution via runPreparedChild
 // ---------------------------------------------------------------------------
 
 void describe("parallel agent execution", { skip: !piAvailable ? "pi packages not available" : undefined }, () => {
@@ -141,7 +144,7 @@ void describe("parallel agent execution", { skip: !piAvailable ? "pi packages no
 		removeTempDir(tempDir);
 	});
 
-	void it("runs multiple agents concurrently via mapConcurrent + runSync", async () => {
+	void it("runs multiple agents concurrently via mapConcurrent + runPreparedChild", async () => {
 		mockPi.onCall({ output: "Done" });
 		const agents = makeAgentConfigs(["agent-a", "agent-b", "agent-c"]);
 		const tasks = ["Task A", "Task B", "Task C"];
@@ -150,7 +153,7 @@ void describe("parallel agent execution", { skip: !piAvailable ? "pi packages no
 			tasks.map((task, i) => ({ agent: agents[i].name, task, index: i })),
 			3,
 			async ({ agent, task, index }: any) => {
-				return runSync(tempDir, agents, agent, task, { index });
+				return runPreparedChild(tempDir, agents, agent, task, { index });
 			},
 		);
 
@@ -171,7 +174,7 @@ void describe("parallel agent execution", { skip: !piAvailable ? "pi packages no
 				{ agent: "b", task: "Task B" },
 			],
 			2,
-			async ({ agent, task }: any, i: number) => runSync(tempDir, agents, agent, task, { index: i }),
+			async ({ agent, task }: any, i: number) => runPreparedChild(tempDir, agents, agent, task, { index: i }),
 		);
 
 		assert.equal(results.length, 2);
