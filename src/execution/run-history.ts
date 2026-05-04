@@ -34,9 +34,19 @@ export interface RunEntry {
 	}>;
 }
 
-const HISTORY_PATH = path.join(os.homedir(), ".pi", "agent", "run-history.jsonl");
+const HISTORY_PATH_ENV = "PI_SUPERAGENTS_RUN_HISTORY_PATH";
+const DEFAULT_HISTORY_PATH = path.join(os.homedir(), ".pi", "agent", "run-history.jsonl");
 const ROTATE_READ_THRESHOLD = 1200;
 const ROTATE_KEEP = 1000;
+
+/**
+ * Resolve the run-history JSONL path for the current process.
+ *
+ * @returns The configured test/runtime override path or the default user history path.
+ */
+function getHistoryPath(): string {
+	return process.env[HISTORY_PATH_ENV] || DEFAULT_HISTORY_PATH;
+}
 
 /**
  * Record a completed run entry to the history file.
@@ -45,18 +55,20 @@ const ROTATE_KEEP = 1000;
  */
 export function recordRun(entry: RunEntry): void {
 	try {
-		fs.mkdirSync(path.dirname(HISTORY_PATH), { recursive: true });
-		fs.appendFileSync(HISTORY_PATH, `${JSON.stringify(entry)}\n`);
+		const historyPath = getHistoryPath();
+		fs.mkdirSync(path.dirname(historyPath), { recursive: true });
+		fs.appendFileSync(historyPath, `${JSON.stringify(entry)}\n`);
 	} catch {
 		// Best-effort — never crash the execution flow for history recording
 	}
 }
 
 export function loadRunsForAgent(agent: string): RunEntry[] {
-	if (!fs.existsSync(HISTORY_PATH)) return [];
+	const historyPath = getHistoryPath();
+	if (!fs.existsSync(historyPath)) return [];
 	let raw: string;
 	try {
-		raw = fs.readFileSync(HISTORY_PATH, "utf-8");
+		raw = fs.readFileSync(historyPath, "utf-8");
 	} catch {
 		return [];
 	}
@@ -69,7 +81,7 @@ export function loadRunsForAgent(agent: string): RunEntry[] {
 	if (lines.length > ROTATE_READ_THRESHOLD) {
 		lines = lines.slice(-ROTATE_KEEP);
 		try {
-			fs.writeFileSync(HISTORY_PATH, `${lines.join("\n")}\n`, "utf-8");
+			fs.writeFileSync(historyPath, `${lines.join("\n")}\n`, "utf-8");
 		} catch {
 			/* empty */
 		}
@@ -93,10 +105,11 @@ export function loadRunsForAgent(agent: string): RunEntry[] {
  * @returns Array of run entries, newest first.
  */
 export function loadAllRuns(): RunEntry[] {
-	if (!fs.existsSync(HISTORY_PATH)) return [];
+	const historyPath = getHistoryPath();
+	if (!fs.existsSync(historyPath)) return [];
 	let raw: string;
 	try {
-		raw = fs.readFileSync(HISTORY_PATH, "utf-8");
+		raw = fs.readFileSync(historyPath, "utf-8");
 	} catch {
 		return [];
 	}

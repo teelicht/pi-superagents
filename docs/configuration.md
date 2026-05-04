@@ -144,6 +144,10 @@ Subagent tool results are rendered inline in the Pi conversation as compact, wid
 
 The compact renderer is active for all `subagent` tool results produced by `pi-superagents`. `/subagents-status` remains available for inspecting active or recently completed runs in a dedicated overlay.
 
+## Run History
+
+Completed subagent runs are stored as JSONL at `~/.pi/agent/run-history.jsonl` so `/subagents-status` can show recent runs across sessions. Set `PI_SUPERAGENTS_RUN_HISTORY_PATH` to an absolute file path when you need to isolate run history, for example in tests or sandboxed PI sessions.
+
 ## Common Override Examples
 
 Augment the built-in `sp-implement` with custom worktree settings:

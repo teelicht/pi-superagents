@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.8.2] - 2026-05-04
+
+- **Fixed**
+  - Record the actual child Pi model emitted by assistant messages in subagent run results while preserving the requested model label for child Pi error events.
+  - Isolate run-history storage during tests with `PI_SUPERAGENTS_RUN_HISTORY_PATH`.
+
 ## [0.8.1] - 2026-05-04
 
 - **Compatibility**

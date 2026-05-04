@@ -67,6 +67,8 @@ The `/sp-implement` command activates a structured workflow for task execution w
 
 Subagent-driven development keeps implementer and reviewer reports inline in the Pi conversation. Bounded roles default to `lineage-only` — they see a curated work brief rather than the full parent conversation history. The runtime does not create repo-root packet files such as `implementer-report.md`, `spec-review.md`, `code-review.md`, `debug-brief.md`, or `task-brief.md`; those names are ignored if an older prompt or manual run creates them.
 
+Run history is persisted at `~/.pi/agent/run-history.jsonl` for `/subagents-status`. Set `PI_SUPERAGENTS_RUN_HISTORY_PATH` to isolate that file for tests or sandboxed sessions.
+
 ## Configuration & Documentation
 
 - **[Configuration](docs/configuration.md)** — Workflow, settings, model tiers, custom tiers, commands, and agent overrides.
