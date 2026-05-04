@@ -4,8 +4,8 @@ These are the parameters the **LLM agent** passes when it calls the `subagent` t
 
 ## Tool Parameters
 
-| Param             | Type                                    | Default                   | Description                                                                                                                                                        |
-| ----------------- | --------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Param             | Type                                    | Default                   | Description |
+| ----------------- | --------------------------------------- | ------------------------- | ----------- |
 | `agent`           | string                                  | -                         | Name of the role agent (e.g., `sp-recon`, `sp-implementer`). Used for single-agent delegation. |
 | `task`            | string                                  | -                         | The specific task for the role agent to execute. |
 | `tasks`           | `TaskItem[]`                            | -                         | Array of tasks for parallel execution. Each item must specify `agent` and `task`. |
@@ -17,6 +17,12 @@ These are the parameters the **LLM agent** passes when it calls the `subagent` t
 | `model`           | string                                  | agent default             | Override the model for this specific run. Can be a concrete ID or a tier name (`cheap`, `balanced`, `max`). |
 | `artifacts`       | boolean                                 | `true`                    | Whether to write debug artifacts (input/output logs). |
 | `includeProgress` | boolean                                 | `false`                   | Whether to include full internal progress metadata in the result. |
+
+### No Async, Wait, Collect, or Cancel Parameters
+
+Execution is strictly synchronous and blocking. The `subagent` tool does not accept `async`, `wait`, `collect`, or `cancel` parameters. The tool does not return until the child Pi process completes.
+
+The runtime may attach additive completion metadata to results. The child's normal answer remains available as text; the envelope only adds `status`, `summary`, optional `parentRequest`, and optional artifact references for parent orchestration.
 
 Resolved skills, including per-call `skill` overrides and agent frontmatter defaults, are shown in `/subagents-status` for active and recent subagent runs. Missing skills are shown as warnings there. The bundled `sp-debug` role resolves `systematic-debugging` from its frontmatter unless a call overrides or disables skills.
 
@@ -43,6 +49,10 @@ Subagent output is inline: the child Pi process streams assistant text back thro
 - **`lineage-only`** (default for bounded roles): The child session is linked to the parent for `/tree` visibility, but it does not inherit parent conversation turns. The child receives a curated work-brief packet instead. This is the recommended default for bounded Superpowers roles.
 - **`fork`**: The child inherits the full parent conversation history as read-only context, working in its own isolated branch. Useful when the subagent genuinely needs the full session background.
 - **`standalone`**: Fully isolated session with no parent linkage or inherited context.
+
+## Lifecycle Signals (Internal)
+
+Child processes can emit lifecycle signals (`subagent_done`, `caller_ping`) through internal tools registered through the tool policy. These tools are for bounded role completion signaling and parent request handling; they are not general-purpose delegation tools. Lifecycle signals are consumed by the parent after the child exits.
 
 ## Artifacts
 
