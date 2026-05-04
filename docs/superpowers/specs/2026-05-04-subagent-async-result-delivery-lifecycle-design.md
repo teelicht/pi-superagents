@@ -1,119 +1,216 @@
-# Subagent Async Result Delivery and Lifecycle Design
+# Subagent Result Ownership and Lifecycle Design
 
 ## Purpose
 
-Bring selected runtime patterns from `/Users/thomas/Documents/Dev/pi-subagents_edxeth` into `pi-superagents` so Superpowers role agents can run asynchronously when their frontmatter opts in, while preserving safe synchronous behavior for implementation-critical agents.
+Improve subagent coordination in `pi-superagents` by separating execution planning, child process execution, result ownership, and lifecycle interpretation.
 
-This design covers three related improvements:
+The goal is structural depth, not an async-first product surface. Current synchronous single and parallel execution remains the compatibility baseline. The design introduces the internal capabilities needed for future side-channel coordination, but does not expose `async: true | false` in agent frontmatter, tool parameters, or ordinary user prompts.
 
-1. explicit result ownership with `subagent_wait`, `subagent_join`, and `subagent_detach`
-2. async result delivery with a delegation ownership rule
-3. child lifecycle signals with `caller_ping`, `subagent_done`, `.exit` sidecars, and process-close fallback
+Selected runtime ideas from `/Users/thomas/Documents/Dev/pi-subagents_edxeth` remain useful as protocol references:
 
-The implementation should stay close to the edxeth runtime protocol where practical, but must not copy edxeth UI, mux, pane, widget, or tab-title behavior.
+1. explicit result ownership with wait/join/detach semantics
+2. child lifecycle signals with `caller_ping`, `subagent_done`, `.exit` sidecars, and process-close fallback
+3. completion delivery states that prevent duplicate result delivery
+
+This spec adapts those structural patterns without copying edxeth UI, mux, pane, widget, or tab-title behavior.
+
+## Product Principle
+
+Ordinary users should not have to decide whether a subagent is async or sync.
+
+Users ask for delegation in natural language. Superpowers workflows should remain conservative: implementation, debugging, review-response, plan execution, and code-review loops usually need the child result before selecting the next step. Those workflows continue to behave synchronously.
+
+This spec therefore removes user-facing and author-facing async controls from the initial design:
+
+- no `async: true | false` agent frontmatter
+- no `blocking` compatibility field
+- no call-time `async` parameter
+- no built-in async role defaults
+
+The runtime may later use the deeper seams from this design to support safe side-channel work, but that future capability should be implemented behind explicit runtime policy, not through user-facing async switches.
 
 ## Goals
 
-- Add `async: true | false` as the agent frontmatter setting for default subagent launch policy.
-- Let async-capable Superpowers role agents return immediately and deliver results later.
-- Preserve sync/blocking execution for agents whose results are required before the parent can safely continue.
+- Keep current synchronous single and parallel execution behavior as the baseline.
+- Add an execution-planning seam that resolves child run shape before launch.
 - Add explicit result ownership so each child result is delivered at most once.
-- Add wait/join/detach sync gates for async launches.
+- Add wait/join/detach ownership semantics as internal capabilities and future tool seams.
 - Add child lifecycle signals that distinguish intentional completion, help requests, and fallback process exits.
-- Reuse or closely adapt non-UI code and semantics from `pi-subagents_edxeth` where package boundaries allow.
-- Keep existing `pi-superagents` worktree, session mode, artifact, progress, and Superpowers role behavior intact.
+- Split process spawning/event parsing from result delivery ownership.
+- Improve testability by making execution planning, result delivery, child running, and lifecycle interpretation independently testable.
+- Keep existing worktree, session mode, artifact, progress, and Superpowers role behavior intact.
+- Reuse or closely adapt non-UI protocol semantics from `pi-subagents_edxeth` where package boundaries allow.
 
 ## Non-goals
 
-- Do not copy edxeth UI elements, widgets, mux panes, tab-title tools, or interactive subagent surfaces.
+- Do not make subagent execution async by default.
+- Do not expose `async: true | false` in frontmatter.
+- Do not add call-time async options.
+- Do not add `blocking` as a compatibility alias.
+- Do not require normal users or custom agent authors to choose async versus sync.
+- Do not make `sp-implement` or the normal implementation loop side-channel/background work.
 - Do not replace the existing `subagent` tool with edxeth's full tool surface.
-- Do not make every agent async by default.
-- Do not allow `async: true` call-time options to weaken an agent that explicitly requires sync.
+- Do not copy edxeth UI elements, widgets, mux panes, tab-title tools, or interactive subagent surfaces.
 - Do not remove current synchronous single/parallel execution support.
 
 ## Current State
 
-`pi-superagents` currently executes subagents synchronously through `src/execution/execution.ts` and orchestrates parallel calls in `src/execution/subagent-executor.ts`.
+`pi-superagents` currently executes subagents synchronously through `src/execution/execution.ts` and orchestrates single/parallel calls in `src/execution/subagent-executor.ts`.
 
-The important current behavior is:
+Important current behavior:
 
-- `runSync()` spawns a child Pi process and resolves when the process closes.
-- `runParallelPath()` calls `runForegroundParallelTasks()`, waits for all children, aggregates results, and returns one response.
+- `runSync()` resolves model/tools/skills, builds Pi args, spawns a child Pi process, parses JSONL events, updates progress, writes artifacts, updates run history, detects errors, and resolves when the process closes.
+- `runSinglePath()` resolves per-child behavior, runs one child, and formats a single result.
+- `runParallelPath()` resolves per-task behavior, optionally creates worktrees, waits for all foreground children, aggregates outputs, and returns one response.
 - progress and artifacts are tied to the foreground execution path.
 - process close is the primary child lifecycle signal.
 
-This is reliable for blocking execution but makes long-running research/review agents less useful because the parent turn cannot continue or yield cleanly until all delegated work finishes.
+This works for current Superpowers behavior, but three architectural frictions make lifecycle improvements risky if implemented in place:
+
+1. `subagent-executor.ts` mixes request validation, child planning, launch preparation, session handling, worktree handling, progress aggregation, and response formatting.
+2. `runSync()` mixes child process execution with policy resolution, event reduction, progress mutation, artifact writing, run-history updates, truncation, and error detection.
+3. Superpowers runtime policy is spread across config validation, config accessors, command settings, role policy, config writing, and UI settings.
+
+The design below addresses these structural seams before adding broader lifecycle capabilities.
 
 ## Reference Behavior from edxeth
 
 The edxeth implementation provides useful protocol-level behavior:
 
-- frontmatter `async: true | false`
-- legacy `blocking: true` as an alias for sync behavior
 - result delivery states: `detached`, `awaited`, `joined`
 - completed delivery markers: `steer`, `wait`, `join`
 - `subagent_wait`, `subagent_join`, and `subagent_detach`
-- async completion delivery through a parent steer message
+- completion delivery through parent-visible messages where supported
 - `caller_ping`, `subagent_done`, `.exit` sidecar files, and auto-exit
 
-The implementation should port or adapt these runtime semantics closely, especially from:
+The implementation should port or adapt structural semantics from:
 
 - `/Users/thomas/Documents/Dev/pi-subagents_edxeth/src/subagents/sync.ts`
 - `/Users/thomas/Documents/Dev/pi-subagents_edxeth/src/subagents/runtime-types.ts`
 - `/Users/thomas/Documents/Dev/pi-subagents_edxeth/src/subagents/subagent-done.ts`
 - `/Users/thomas/Documents/Dev/pi-subagents_edxeth/src/subagents/auto-exit.ts`
 
-The implementation should avoid edxeth-specific UI/mux files except as conceptual references for lifecycle polling.
+The implementation must not port edxeth-specific UI/mux behavior.
 
-## Frontmatter Launch Policy
+## Architecture Overview
 
-Add an optional `async` frontmatter field to `AgentConfig` parsing in `src/agents/agents.ts`:
-
-```yaml
-async: true
-```
-
-or:
-
-```yaml
-async: false
-```
-
-Meaning:
-
-- `async: true` — launch the child, return a started result immediately, and deliver the final result later.
-- `async: false` — launch the child and wait for its result before returning.
-- missing `async` — preserve current synchronous behavior unless the built-in agent file explicitly opts in.
-
-Recommended built-in role defaults:
-
-```yaml
-# advisory / investigative agents
-sp-recon: async: true
-sp-research: async: true
-sp-code-review: async: true
-sp-spec-review: async: true
-
-# execution-critical agents
-sp-implementer: async: false
-sp-debug: async: false
-```
-
-Entrypoint agents such as `sp-brainstorm`, `sp-plan`, and `sp-implement` should remain outside the delegated role-agent async policy unless they become launchable role agents later.
-
-### Effective Policy Rule
-
-Sync is the conservative override:
+Introduce deeper modules around four concepts:
 
 ```txt
-agent async:false wins
-call async:false wins
-otherwise async only when the agent/default policy says async:true
+raw tool params
+  -> execution-planner
+  -> child-runner
+  -> result-delivery
+  -> response aggregation/rendering
+
+child-runner
+  -> lifecycle-signals
 ```
 
-If call-time `async` is added to the tool schema, `async: true` must not override an agent whose frontmatter says `async: false`.
+Suggested modules:
 
-The first implementation may omit call-time `async` if unnecessary; frontmatter is the required control surface.
+```txt
+src/execution/execution-planner.ts
+src/execution/child-runner.ts
+src/execution/result-delivery.ts
+src/execution/lifecycle-signals.ts
+```
+
+Existing modules remain useful but should become narrower:
+
+```txt
+src/execution/subagent-executor.ts      // orchestration facade
+src/execution/execution.ts              // compatibility wrapper or gradual extraction source
+src/execution/session-mode.ts           // session file resolution and seeding
+src/execution/worktree.ts               // worktree lifecycle and cwd mapping
+src/execution/superpowers-policy.ts     // role/model/tool/skill/runtime policy
+src/execution/superagents-config.ts     // config accessors until config policy is consolidated
+```
+
+## Execution Planning
+
+Add an execution-planning module that turns validated tool params into resolved child plans before any child process launches.
+
+The planner should own decisions currently scattered between `runSinglePath()`, `runParallelPath()`, `runForegroundParallelTasks()`, and `prepareLaunch()`:
+
+- agent config lookup
+- effective workflow
+- effective session mode
+- task delivery mode
+- task text after Superpowers packet instruction injection
+- task file/packet requirement
+- runtime cwd and task cwd
+- model override
+- skill override and planned effective skills
+- max subagent depth
+- artifact eligibility
+- progress seed metadata
+- worktree assignment for parallel tasks
+- conservative launch/wait behavior for current sync baseline
+
+The initial planner should produce plans that preserve current behavior:
+
+```txt
+single call    -> one child plan, join before returning
+parallel call  -> N child plans, launch foreground pool, join all before returning
+```
+
+The planner should not expose or consume async frontmatter. If future side-channel behavior is added, it should extend the planner's internal launch policy without changing ordinary user-facing params.
+
+### Planning Benefits
+
+- `subagent-executor.ts` becomes a smaller orchestration facade.
+- single and parallel paths share one child planning path.
+- tests can assert planning outcomes without spawning child processes.
+- future lifecycle behavior attaches to plans instead of being threaded through large parameter bags.
+
+## Child Launch Preparation
+
+Move launch preparation out of `subagent-executor.ts` and behind the planning/runner seam.
+
+Launch preparation includes:
+
+- fork task wrapping
+- non-fork packet content creation
+- packet artifact path selection
+- packet cleanup responsibility
+- child session file resolution
+- task delivery metadata
+
+Current invariants must remain:
+
+- fork launches receive direct task text and never create packet files
+- non-fork launches receive a scoped packet artifact
+- temporary packet files are removed after the child no longer needs them
+- lineage-only session files continue to link to the parent without copying turns
+
+This can be part of `execution-planner.ts` or a small internal helper used by it. The key requirement is that callers consume a prepared child plan rather than rebuilding launch rules.
+
+## Child Runner
+
+Extract a child-runner module from `runSync()`.
+
+The child runner should own process-level execution:
+
+- build final Pi process args from a prepared child plan
+- spawn the child process
+- parse structured JSONL events
+- reduce events into messages, usage, progress, and recent output
+- handle abort/kill behavior
+- capture stderr and spawn errors
+- close JSONL writers and temporary process resources
+- return a completed `SingleResult`-compatible result
+
+The child runner should not own result delivery state. It produces a result; `result-delivery.ts` owns who can receive it.
+
+The child runner should also not be the long-term home for all policy resolution. Model/tool/skill/session/worktree decisions should arrive through the child plan.
+
+### Child Runner Benefits
+
+- process execution can be tested with stubbed spawn/event streams
+- progress event reduction can be tested without real Pi children
+- artifact flushing and abort behavior become localized
+- result delivery ownership does not bloat `runSync()`
 
 ## Result Delivery and Ownership
 
@@ -125,7 +222,7 @@ Suggested module:
 src/execution/result-delivery.ts
 ```
 
-Suggested core states should mirror edxeth:
+Core states should mirror edxeth semantics where useful:
 
 ```ts
 type DeliveryState = "detached" | "awaited" | "joined";
@@ -134,60 +231,52 @@ type CompletedDelivery = "steer" | "wait" | "join";
 
 The module should track:
 
-- running subagent id
+- child id
 - agent name and task
 - session mode
-- async/blocking policy
+- child plan metadata needed for result retrieval
 - progress and artifacts
 - completion promise
 - completed result cache
 - current result owner, if any
 - final delivery path, if already delivered
 
-### Started Async Result
+### Current Sync Mapping
 
-An async launch should return a tool result similar to:
+The current behavior should be represented through result ownership instead of special-cased blocking logic:
 
 ```txt
-Sub-agent "sp-research" launched async with id <id>. Results will be delivered automatically when it finishes. Use this id with subagent_wait/subagent_join when you need an explicit sync gate.
+single sync:
+  plan child -> register child -> run child -> join one -> return result
+
+parallel sync:
+  plan children -> register children -> run children -> join all -> aggregate results
 ```
 
-The result details should include enough structured data for renderers and tests:
+This preserves existing user-visible behavior while giving the runtime explicit duplicate-delivery prevention.
 
-```ts
-{
-  id: string;
-  agent: string;
-  status: "started";
-  async: true;
-  deliveryState: "detached";
-  sessionFile?: string;
-}
-```
+### Ownership Operations
 
-### `subagent_wait`
+The module should support these operations even if public tools are staged later:
 
-Add a tool that waits for one running or completed child by id.
+- wait for one child id
+- join a fixed set of child ids
+- detach/release ownership before delivery
+- mark completed result delivered once
+- reject duplicate result delivery
+- report already-owned and already-delivered states
 
-Behavior:
+Suggested behavior:
+
+#### Wait
 
 - If the result is completed and undelivered, return it immediately and mark `deliveredTo: "wait"`.
 - If the child is running and unowned, claim ownership as `awaited` and wait for completion.
 - If the result is already delivered, return an `already_delivered` error.
 - If another wait/join owns it, return `already_owned`.
-- If interrupted or timed out, release ownership back to `detached` unless the result was delivered.
+- If interrupted or timed out, release ownership back to `detached` unless delivery completed.
 
-A timeout option can be added in the initial implementation or staged. If included, match edxeth names where possible:
-
-```ts
-onTimeout?: "error" | "return_pending" | "detach" | "return";
-```
-
-### `subagent_join`
-
-Add a tool that waits for a fixed set of child ids.
-
-Behavior:
+#### Join
 
 - Reject empty or duplicate id lists.
 - Claim every pending child before waiting.
@@ -195,51 +284,27 @@ Behavior:
 - Mark delivered children as `deliveredTo: "join"`.
 - On interruption or timeout, release pending ownership and prevent duplicate delivery.
 
-A timeout option can be added in the initial implementation or staged. If included, match edxeth names where possible:
+#### Detach
 
-```ts
-onTimeout?: "error" | "return_partial" | "detach" | "return";
-```
+- Release explicit wait/join ownership and return a child to detached ownership.
+- Work for running or completed-but-undelivered results currently owned by wait/join.
+- Return `not_owned` when the child is already detached or delivered.
 
-### `subagent_detach`
+## Public Wait/Join/Detach Tools
 
-Add a tool that releases explicit wait/join ownership and returns a child to detached async behavior.
+Public `subagent_wait`, `subagent_join`, and `subagent_detach` tools may be implemented once the ownership module exists, but they are not required to expose async launch controls.
 
-Behavior:
+Their initial value is precise result ownership and retrieval, not broad background execution. They should operate only on child ids that the runtime has registered. If no side-channel launch path exists yet, tests can still exercise these tools through controlled runtime records or synchronous join behavior.
 
-- Works for running or completed-but-undelivered results currently owned by wait/join.
-- Returns `not_owned` when the child is already detached or delivered.
-- For completed detached results, normal async delivery may proceed.
+Errors should be stable and testable:
 
-### Current Sync Behavior as Join-All
-
-Represent today's parallel behavior as a policy choice:
-
-```txt
-launch children -> join all -> aggregate outputs -> return
-```
-
-This keeps the new delivery model compatible with current single and parallel sync execution.
-
-## Async Delivery Policy
-
-Async results should be delivered back to the parent session when supported by the Pi extension API. Use an edxeth-like steer delivery message if available in this extension context.
-
-Delivery must follow one ownership rule:
-
-> After launching async subagents, the parent may continue only with explicitly non-overlapping parent-owned work. It must not redo delegated work. If no safe independent work is clear, it should yield and let async results arrive.
-
-Update the `subagent` tool description or prompt snippet to include this rule once async launches are supported.
-
-### Same-Turn Completion
-
-If a child finishes while the parent is still unwinding the launch tool batch, avoid provoking an immediate autonomous continuation that causes duplicate reasoning. Use the closest available equivalent to edxeth's deferred delivery behavior:
-
-```txt
-same-turn async completion -> queue/deliver on next turn when possible
-```
-
-If the current Pi API does not support this exact delivery mode, document the limitation and choose the safest available behavior that prevents duplicate delivery.
+- `not_found`
+- `already_delivered`
+- `already_owned`
+- `not_owned`
+- `duplicate_id`
+- `empty_id_list`
+- timeout/interrupted ownership release
 
 ## Child Lifecycle Protocol
 
@@ -257,7 +322,7 @@ The implementation can be adapted from edxeth `subagent-done.ts`, but must omit 
 
 ### Environment
 
-Parent-launched children should receive environment values such as:
+Parent-launched children should receive minimized environment values required by the lifecycle protocol, such as:
 
 ```txt
 PI_SUBAGENT_SESSION=<child session file>
@@ -266,7 +331,7 @@ PI_SUBAGENT_AGENT=<agent name>
 PI_SUBAGENT_AUTO_EXIT=1|0
 ```
 
-The exact set should be minimized to what the protocol requires.
+Exact names may be adjusted during implementation if Pi runtime constraints require it, but they should be documented and tested.
 
 ### `.exit` Sidecar
 
@@ -288,7 +353,7 @@ When a child needs parent help, `caller_ping` writes:
 {
   "type": "ping",
   "name": "sp-research",
-  "message": "I need clarification on the target API boundary.",
+  "message": "I need clarification on the target module.",
   "outputTokens": 1234
 }
 ```
@@ -297,84 +362,168 @@ The parent consumes and removes this file once observed.
 
 ### Parent Interpretation
 
-Parent execution should distinguish:
+Add a lifecycle-signal module:
+
+```txt
+src/execution/lifecycle-signals.ts
+```
+
+It should distinguish:
 
 - `done` — intentional child completion
 - `ping` — child needs parent help
 - process close without sidecar — fallback completion/failure path
 - abort/kill/timeout — interrupted or failed execution
+- malformed/stale sidecar — ignored or surfaced as a controlled diagnostic
 
-Process close remains necessary, but it should no longer be the only lifecycle signal.
+Process close remains necessary, but should no longer be the only lifecycle signal.
+
+## Superpowers Policy and Config Impact
+
+The spec removes async policy from frontmatter and call params, but it still benefits from consolidating Superpowers policy.
+
+High-value policy work:
+
+- keep role model/tool/skill resolution in `superpowers-policy.ts`
+- keep launch behavior conservative for all Superpowers roles in this spec
+- ensure future launch-policy decisions go through one runtime policy function rather than executor branches
+- avoid adding config keys for async/side-channel behavior in this spec
+- update docs to state that async controls are intentionally not user-facing
+
+A broader config-policy consolidation can happen separately, but this design should avoid making the current config scattering worse.
+
+## Worktree Lifecycle Impact
+
+Current sync worktree behavior must remain unchanged:
+
+- worktree setup happens before parallel child launch
+- task cwd mapping remains per child
+- cleanup happens after joined foreground children complete
+- worktree suffix/reporting still appears in parallel output
+
+Future side-channel execution would complicate cleanup because a child may outlive the foreground tool call. This spec should not implement that behavior until worktree lifecycle ownership is deepened enough to keep resources alive safely.
+
+Initial rule:
+
+```txt
+worktree-backed children are joined before cleanup
+```
 
 ## Data Flow
 
-### Async Launch
+### Default Single Launch
 
 ```txt
 parent calls subagent
-  -> resolve agent and async frontmatter
-  -> create child id/session/artifacts/progress
-  -> register running child in result delivery store
-  -> spawn child without awaiting final result
-  -> return started result with id
-  -> child completes or pings
-  -> lifecycle/result code caches completed result
-  -> detached result is delivered asynchronously unless wait/join owns it
+  -> validate params
+  -> plan one child
+  -> register child in result delivery store
+  -> run child through child runner
+  -> join child result
+  -> return normal single result
 ```
 
-### Sync Launch
+### Default Parallel Launch
 
 ```txt
-parent calls subagent
-  -> resolve agent and async frontmatter
-  -> spawn/register child
-  -> wait/join immediately
-  -> return normal result
+parent calls subagent with several tasks
+  -> validate params
+  -> create worktree setup if requested
+  -> plan all children
+  -> register children in result delivery store
+  -> run foreground child pool
+  -> join all child results
+  -> aggregate outputs
+  -> cleanup worktrees
+  -> return normal parallel result
 ```
 
-### Parallel Mixed Launch
+### Child Done Signal
 
-For parallel calls, each task uses its own agent's effective `async` policy.
+```txt
+child calls subagent_done
+  -> child extension writes <sessionFile>.exit
+  -> parent lifecycle-signal module consumes sidecar
+  -> child runner/result delivery record marks intentional completion metadata
+  -> process close still finalizes result if needed
+```
 
-Rules:
+### Child Ping Signal
 
-- all independent children should be launched before waiting where possible.
-- sync children are joined before the tool returns.
-- async children return started details and continue in the background.
-- final tool output should clearly distinguish completed sync results from started async results.
+```txt
+child calls caller_ping
+  -> child extension writes ping sidecar
+  -> parent lifecycle-signal module consumes sidecar
+  -> result delivery record marks parent-help-needed state
+  -> parent-visible response surfaces ping as a help request
+```
 
 ## Error Handling
 
 - Unknown child id returns `not_found`.
 - Already delivered result returns `already_delivered`.
 - A result owned by another wait/join returns `already_owned`.
+- Duplicate join ids return `duplicate_id`.
+- Empty join lists return `empty_id_list`.
+- Detach on detached or delivered records returns `not_owned`.
 - Timeout/interruption releases ownership unless delivery completed.
 - Child process errors continue to populate `SingleResult.error` and non-zero `exitCode`.
-- Ping results should be surfaced as a parent-visible help request rather than as ordinary success.
-- If async delivery cannot be sent, completed results must remain cached and retrievable by `subagent_wait` or `subagent_join`.
+- Ping results should be surfaced as a parent-visible help request rather than ordinary success.
+- Malformed sidecars should not crash parent execution.
+- Process close remains a fallback when no `.exit` sidecar exists.
 
 ## Testing
 
 Add or update tests for:
 
-- parsing `async: true` and `async: false` from agent frontmatter
-- unknown frontmatter compatibility remains intact
-- built-in async defaults for selected role agents
-- `async: false` agents force sync behavior
-- call-time `async: false`, if added, forces sync
-- call-time `async: true`, if added, does not weaken `async: false` agents
-- single async launch returns started result before child completion
-- parallel mixed async/sync execution launches all eligible children and waits only where required
-- `subagent_wait` returns one completed result and prevents duplicate delivery
-- `subagent_join` returns grouped results and prevents duplicate delivery
-- `subagent_detach` releases wait/join ownership
-- completed detached result can be delivered asynchronously
+### Execution Planning
+
+- single params produce one conservative join-before-return child plan
+- parallel params produce ordered child plans
+- session mode resolution is preserved
+- packet task delivery is preserved for non-fork sessions
+- fork task wrapping is preserved
+- skill/model/max-depth/workflow behavior is preserved
+- worktree task cwd mapping is represented in plans
+- no `async` or `blocking` frontmatter is parsed or required
+
+### Child Runner
+
+- JSONL message events reduce into messages and usage
+- tool start/end events update progress
+- stderr becomes result error on non-zero exit
+- abort sends SIGTERM and then SIGKILL fallback
+- JSONL writer closes on success and failure
+- temp resources are cleaned up
+- final output/truncation behavior matches current `runSync()` behavior
+
+### Result Delivery
+
+- current single sync behavior maps to register/run/join one
+- current parallel sync behavior maps to register/run/join all
+- wait returns one completed result and prevents duplicate delivery
+- join returns grouped results and prevents duplicate delivery
+- detach releases wait/join ownership
+- completed detached result can be delivered later only once
 - completed delivered result cannot be waited/joined again
+- ownership releases correctly on interruption/timeout
+- stable errors for `not_found`, `already_delivered`, `already_owned`, `not_owned`, duplicate ids, and empty id lists
+
+### Lifecycle Signals
+
 - `.exit` done sidecar is consumed and mapped to intentional completion
 - `.exit` ping sidecar is consumed and mapped to a parent help request
+- malformed sidecar is handled without crashing
+- stale/missing sidecar falls back to process-close behavior
 - process close remains a fallback when no `.exit` sidecar exists
+
+### Regression Coverage
+
+- existing synchronous single execution still passes
+- existing synchronous parallel execution still passes
 - artifacts and progress still work for sync children
-- async children retain enough metadata for later result retrieval
+- worktree setup/cleanup remains joined-foreground behavior
+- Superpowers roles remain conservative and synchronous in user-visible behavior
 
 ## Documentation
 
@@ -388,31 +537,62 @@ Update user-facing documentation during implementation:
 
 Docs should explain:
 
-- which built-in Superpowers agents run async by default
-- how to set `async: true | false` in custom agent frontmatter
-- when to use async versus sync
-- how `subagent_wait`, `subagent_join`, and `subagent_detach` work
-- how `caller_ping` and `subagent_done` affect child lifecycle
+- normal users do not choose async versus sync
+- this design adds internal result ownership and lifecycle capabilities
+- current Superpowers workflows remain synchronous by default
+- `subagent_wait`, `subagent_join`, and `subagent_detach`, if exposed, are result ownership tools rather than async launch switches
+- `caller_ping` and `subagent_done` improve child lifecycle semantics
+- there is intentionally no `async` frontmatter or config key in this spec
 
 ## Migration and Compatibility
 
-- Existing custom agents without `async` keep current synchronous behavior unless a later release intentionally changes the default.
-- Built-in agents may opt into async by adding explicit frontmatter.
-- Existing sync result shapes should remain supported for single and parallel calls.
-- New async result details are additive.
-- If legacy `blocking` support is added for edxeth parity, document `async` as preferred and `blocking` as compatibility-only.
+- Existing custom agents keep current synchronous behavior.
+- Existing frontmatter remains valid without adding async fields.
+- Existing sync result shapes remain supported for single and parallel calls.
+- New result delivery metadata is additive.
+- Current worktree/session/artifact/progress behavior remains compatible.
+- No migration is needed for ordinary users or custom agent authors.
 
 ## Risks
 
-- Async delivery can cause parent agents to duplicate delegated work unless the prompt-level ownership rule is clear.
+- Implementing lifecycle signals without first adding execution planning may make `subagent-executor.ts` harder to maintain.
+- Adding result ownership inside `runSync()` would bloat an already wide module.
+- Public wait/join/detach tools can confuse users if documented as async controls rather than ownership/retrieval controls.
 - Result ownership bugs can cause duplicate delivery or stranded completed results.
-- Background execution may complicate artifact cleanup and worktree cleanup; async children must not lose resources they still need.
+- Background execution, if added later, may complicate artifact cleanup and worktree cleanup; this spec intentionally avoids that behavior.
 - Child lifecycle sidecars can become stale if not consumed carefully.
 - Pi extension API differences may prevent exact edxeth steer semantics; implementation must verify available APIs before porting delivery code.
 
+## Implementation Staging
+
+1. **Execution planning seam**
+   - Add child plan generation and route current single/parallel sync execution through it.
+   - Preserve behavior first.
+
+2. **Result delivery store for sync behavior**
+   - Register child records and use join semantics for current single/parallel results.
+   - Prove duplicate-delivery prevention in tests.
+
+3. **Child runner extraction**
+   - Extract process spawning/event parsing/progress reduction from `runSync()`.
+   - Keep `runSync()` as a compatibility wrapper if useful during migration.
+
+4. **Lifecycle signal module and child extension**
+   - Add `subagent_done`, `caller_ping`, sidecar parsing, and process-close fallback.
+
+5. **Optional public ownership tools**
+   - Add `subagent_wait`, `subagent_join`, and `subagent_detach` only after the ownership module is stable.
+   - Do not add async launch controls.
+
+6. **Policy/config cleanup where touched**
+   - Keep launch behavior conservative.
+   - Avoid new config keys.
+   - Route any future launch-policy decisions through one policy seam.
+
 ## Open Implementation Notes
 
-- Prefer adapting edxeth protocol modules over reimplementing behavior from scratch.
+- Prefer adapting edxeth protocol modules over reimplementing behavior from scratch, but only for non-UI semantics.
 - Keep UI concerns in existing `pi-superagents` renderers only; do not port edxeth UI.
-- Split process spawning from result delivery so future lifecycle changes do not bloat `src/execution/execution.ts` or `src/execution/subagent-executor.ts`.
+- Split process spawning from result delivery so lifecycle changes do not bloat `src/execution/execution.ts` or `src/execution/subagent-executor.ts`.
+- Treat current sync behavior as the compatibility baseline and test it first.
 - Keep every new source file TypeScript and include file/function documentation headers per project rules.
