@@ -4,12 +4,13 @@
  * Responsibilities:
  * - normalize slash/tool parameters into concrete execution modes
  * - route single and parallel execution requests
- * - prepare launch artifacts (packets or fork wrappers)
- * - execute child sessions via `runPreparedChild` and aggregate results
+ * - prepare launch artifacts (packets or fork wrappers) via execution planner
+ * - execute child sessions via result delivery store and child runner
+ * - aggregate results for parallel execution
  *
  * Important dependencies or side effects:
  * - launches child Pi processes through `runPreparedChild`
- * - writes and removes temporary Superpowers packet artifacts
+ * - writes and removes temporary Superpowers packet artifacts via planner
  * - creates and cleans up parallel worktrees when configured
  * - seeds or forks child session files through the session launch resolver
  */
@@ -19,7 +20,7 @@ import * as path from "node:path";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import type { AgentConfig, AgentScope } from "../agents/agents.ts";
-import { ensureArtifactsDir, getArtifactsDir, getPacketPath, removeArtifactFile, writeArtifact } from "../shared/artifacts.ts";
+import { getArtifactsDir } from "../shared/artifacts.ts";
 import { getPublishedExecutionSkills, normalizeSkillInput, resolveExecutionSkills } from "../shared/skills.ts";
 import {
 	type AgentProgress,
@@ -30,17 +31,15 @@ import {
 	type Details,
 	type ExecutionRole,
 	type ExtensionConfig,
-	MAX_CONCURRENCY,
 	MAX_PARALLEL,
 	type MaxOutputConfig,
+	type PlannedChildRun,
 	resolveChildMaxSubagentDepth,
 	resolveCurrentMaxSubagentDepth,
 	type SessionMode,
 	type SingleResult,
 	type SubagentState,
-	type TaskDeliveryMode,
 	type WorkflowMode,
-	wrapForkTask,
 } from "../shared/types.ts";
 import { getSingleResultOutput, mapConcurrent } from "../shared/utils.ts";
 import { runPreparedChild } from "./child-runner.ts";
@@ -55,10 +54,10 @@ import {
 	withSingleResultSessionMode,
 } from "./executor-validation.ts";
 import { aggregateParallelOutputs } from "./parallel-utils.ts";
-import { createSessionLaunchResolver, resolveRequestedSessionMode, resolveTaskDeliveryMode, type SessionLaunchManager } from "./session-mode.ts";
+import { createSessionLaunchResolver, resolveRequestedSessionMode, type SessionLaunchManager } from "./session-mode.ts";
 import { resolveStepBehavior } from "./settings.ts";
 import { resolveSuperagentWorktreeEnabled } from "./superagents-config.ts";
-import { buildSuperpowersPacketContent, buildSuperpowersPacketPlan, injectSuperpowersPacketInstructions } from "./superpowers-packets.ts";
+import { buildSuperpowersPacketPlan, injectSuperpowersPacketInstructions } from "./superpowers-packets.ts";
 import {
 	buildParallelWorktreeSuffix,
 	buildParallelWorktreeTaskCwdError,
@@ -68,6 +67,8 @@ import {
 	resolveParallelTaskRuntimeCwd,
 	type WorktreeSetup,
 } from "./worktree.ts";
+import { planChildRun, type PlanChildRunInput } from "./execution-planner.ts";
+import { createResultDeliveryStore } from "./result-delivery.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -119,191 +120,85 @@ interface ExecutionContextData {
 }
 
 // ---------------------------------------------------------------------------
-// Launch preparation
+// Per-task execution helpers
 // ---------------------------------------------------------------------------
 
-interface PreparedLaunch {
-	sessionMode: SessionMode;
-	taskDelivery: TaskDeliveryMode;
-	sessionFile?: string;
-	taskText: string;
-	taskFilePath?: string;
-	packetFile?: string;
-	cleanup(): void;
-}
-
-/**
- * Prepare the task text, session metadata, and temporary packet artifacts for a child launch.
- *
- * @param input Child agent, task, session, and artifact metadata.
- * @returns Launch metadata consumed by `runPreparedChild`, plus a cleanup hook for packet files.
- *
- * Invariants:
- * - fork launches receive the task directly and never create packet files
- * - non-fork launches receive a scoped packet file that is removed by `cleanup`
- */
-function prepareLaunch(input: {
-	agentConfig: AgentConfig;
-	rawTask: string;
-	sessionMode: SessionMode;
-	artifactsDir: string;
-	runId: string;
-	index: number;
-	sessionFile: string | undefined;
-	useTestDrivenDevelopment: boolean;
-}): PreparedLaunch {
-	const taskDelivery = resolveTaskDeliveryMode(input.sessionMode);
-
-	if (input.sessionMode === "fork") {
-		return {
-			sessionMode: input.sessionMode,
-			taskDelivery,
-			sessionFile: input.sessionFile,
-			taskText: wrapForkTask(input.rawTask),
-			cleanup() {},
-		};
-	}
-
-	const packetFile = getPacketPath(input.artifactsDir, input.runId, input.agentConfig.name, input.index);
-	ensureArtifactsDir(path.dirname(packetFile));
-	writeArtifact(
-		packetFile,
-		buildSuperpowersPacketContent({
-			agent: input.agentConfig.name,
-			sessionMode: input.sessionMode,
-			task: input.rawTask,
-			useTestDrivenDevelopment: input.useTestDrivenDevelopment,
-		}),
-	);
-
-	return {
-		sessionMode: input.sessionMode,
-		taskDelivery,
-		sessionFile: input.sessionFile,
-		taskText: input.rawTask,
-		taskFilePath: packetFile,
-		packetFile,
-		cleanup() {
-			removeArtifactFile(packetFile);
-		},
-	};
-}
-
-// ---------------------------------------------------------------------------
-// Per-task execution (shared by single and parallel paths)
-// ---------------------------------------------------------------------------
-
-interface RunChildInput {
-	agentConfig: AgentConfig;
-	agentName: string;
-	preparedTaskText: string;
-	sessionMode: SessionMode;
-	index: number;
-	taskCwd: string | undefined;
-	taskRuntimeCwd: string;
-	skills: string[] | false | undefined;
-	modelOverride: string | undefined;
-	maxSubagentDepth: number;
-	// shared execution context
-	runId: string;
-	artifactsDir: string;
-	artifactConfig: ArtifactConfig;
-	maxOutput?: MaxOutputConfig;
-	sessionFileForIndex: (input: { index?: number; childCwd: string; sessionMode: SessionMode }) => string | undefined;
-	signal: AbortSignal;
+interface RunPlannedChildInput {
+	plan: PlannedChildRun;
 	agents: AgentConfig[];
-	config: ExtensionConfig;
-	workflow: WorkflowMode;
-	useTestDrivenDevelopment: boolean;
+	signal: AbortSignal;
 	onUpdate?: (r: AgentToolResult<Details>) => void;
+	runId: string;
+	config: ExtensionConfig;
 }
 
 /**
- * Execute one child subagent task: prepare launch, run prepared child, cleanup, annotate.
+ * Execute a prepared child run: launch child, then clean up launch artifacts.
  *
- * @param input Fully resolved child execution metadata and shared runtime context.
- * @returns Child result annotated with the effective session mode.
+ * @param input Planned child run, shared execution context, and abort signal.
+ * @returns Child run result with session mode from the plan.
  *
  * Invariants:
- * - temporary launch packets are cleaned up even when `runPreparedChild` fails
- * - child results always carry the session mode used for the launch
+ * - launch artifacts (packets) are cleaned up in `finally` even on failure
+ * - child results always carry the session mode from the plan
  *
  * Failure modes:
- * - propagates unexpected launch/session errors to the caller
- * - normal child process failures are represented in the returned `SingleResult`
+ * - propagates unexpected launch/session errors
+ * - normal child process failures are represented in the returned result
  */
-async function runChild(input: RunChildInput): Promise<SingleResult> {
-	const prepared = prepareLaunch({
-		agentConfig: input.agentConfig,
-		rawTask: input.preparedTaskText,
-		sessionMode: input.sessionMode,
-		artifactsDir: input.artifactsDir,
-		runId: input.runId,
-		index: input.index,
-		sessionFile: input.sessionFileForIndex({
-			index: input.index,
-			childCwd: input.taskRuntimeCwd,
-			sessionMode: input.sessionMode,
-		}),
-		useTestDrivenDevelopment: input.useTestDrivenDevelopment,
-	});
+/**
+ * Convert an unexpected child launch exception into an isolated child result.
+ *
+ * @param plan Child plan whose launch failed unexpectedly.
+ * @param error Unknown thrown value from child launch orchestration.
+ * @returns Failed child result scoped to the affected child only.
+ */
+function toUnexpectedChildFailure(plan: PlannedChildRun, error: unknown): SingleResult {
+	const message = error instanceof Error ? error.message : String(error);
+	return withSingleResultSessionMode(
+		{
+			agent: plan.agentName,
+			task: plan.task,
+			exitCode: 1,
+			messages: [],
+			usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
+			error: message,
+		},
+		plan.sessionMode,
+	);
+}
+
+async function runPlannedChild(input: RunPlannedChildInput): Promise<SingleResult> {
 	try {
-		const result = await runPreparedChild(input.taskRuntimeCwd, input.agents, input.agentName, prepared.taskText, {
-			cwd: input.taskCwd,
+		const result = await runPreparedChild(input.plan.runtimeCwd, input.agents, input.plan.agentName, input.plan.taskText, {
+			cwd: input.plan.childCwd,
 			signal: input.signal,
 			runId: input.runId,
-			index: input.index,
-			sessionFile: prepared.sessionFile,
-			sessionMode: prepared.sessionMode,
-			taskDelivery: prepared.taskDelivery,
-			taskFilePath: prepared.taskFilePath,
-			artifactsDir: input.artifactConfig.enabled ? input.artifactsDir : undefined,
-			artifactConfig: input.artifactConfig,
-			maxOutput: input.maxOutput,
-			maxSubagentDepth: input.maxSubagentDepth,
-			modelOverride: input.modelOverride,
-			skills: input.skills,
-			config: input.config,
-			workflow: input.workflow,
-			useTestDrivenDevelopment: input.useTestDrivenDevelopment,
+			index: input.plan.index,
+			sessionFile: input.plan.sessionFile,
+			sessionMode: input.plan.sessionMode,
+			taskDelivery: input.plan.taskDelivery,
+			taskFilePath: input.plan.taskFilePath,
+			artifactsDir: input.plan.artifactsDir,
+			artifactConfig: input.plan.artifactConfig,
+			maxOutput: input.plan.maxOutput,
+			maxSubagentDepth: input.plan.maxSubagentDepth,
+			modelOverride: input.plan.modelOverride,
+			skills: input.plan.skills,
+			config: input.plan.config,
+			workflow: input.plan.workflow,
+			useTestDrivenDevelopment: input.plan.useTestDrivenDevelopment,
 			onUpdate: input.onUpdate,
 		});
-		return withSingleResultSessionMode(result, input.sessionMode);
+		return withSingleResultSessionMode(result, input.plan.sessionMode);
 	} finally {
-		prepared.cleanup();
+		input.plan.cleanupLaunchArtifacts();
 	}
 }
 
 // ---------------------------------------------------------------------------
 // Parallel helpers
 // ---------------------------------------------------------------------------
-
-interface ForegroundParallelRunInput {
-	tasks: TaskParam[];
-	taskTexts: string[];
-	agentConfigs: AgentConfig[];
-	agents: AgentConfig[];
-	ctx: ExtensionContext;
-	signal: AbortSignal;
-	runId: string;
-	sessionFileForIndex: (input: { index?: number; childCwd: string; sessionMode: SessionMode }) => string | undefined;
-	artifactConfig: ArtifactConfig;
-	artifactsDir: string;
-	maxOutput?: MaxOutputConfig;
-	paramsCwd?: string;
-	maxSubagentDepths: number[];
-	modelOverrides: (string | undefined)[];
-	skillOverrides: (string[] | false | undefined)[];
-	sessionModes: SessionMode[];
-	behaviors: Array<ReturnType<typeof resolveStepBehavior>>;
-	liveResults: (SingleResult | undefined)[];
-	liveProgress: (AgentProgress | undefined)[];
-	onUpdate?: (r: AgentToolResult<Details>) => void;
-	worktreeSetup?: WorktreeSetup;
-	config: ExtensionConfig;
-	workflow: WorkflowMode;
-	useTestDrivenDevelopment: boolean;
-}
 
 /**
  * Merge one child progress update into the aggregate parallel progress state.
@@ -336,67 +231,6 @@ function publishParallelProgressUpdate(input: {
 			results: mergedResults,
 			progress: mergedProgress,
 		},
-	});
-}
-
-/**
- * Execute all parallel child tasks in the foreground concurrency pool.
- *
- * @param input Resolved task text, agent config, cwd, session, skill, and progress state.
- * @returns Ordered child results matching the input task order.
- *
- * Invariants:
- * - progress updates are merged into stable task-index order for the parent renderer
- * - per-task cwd/session/skill settings are resolved before calling the shared child runner
- *
- * Failure modes:
- * - propagates child execution failures as `SingleResult` values from `runChild`
- * - propagates unexpected setup errors from cwd/session resolution
- */
-async function runForegroundParallelTasks(input: ForegroundParallelRunInput): Promise<SingleResult[]> {
-	return mapConcurrent(input.tasks, MAX_CONCURRENCY, async (task, index) => {
-		const overrideSkills = input.skillOverrides[index];
-		const effectiveSkills = overrideSkills === undefined ? input.behaviors[index]?.skills : overrideSkills;
-		const taskCwd = resolveParallelTaskCwd(task, input.paramsCwd, input.worktreeSetup, index);
-		const taskRuntimeCwd = resolveParallelTaskRuntimeCwd(task, input.paramsCwd, input.worktreeSetup, index, input.ctx.cwd);
-		const publishProgress = input.onUpdate;
-
-		const parallelOnUpdate = publishProgress
-			? (progressUpdate: AgentToolResult<Details>) => {
-					publishParallelProgressUpdate({
-						progressUpdate,
-						index,
-						sessionMode: input.sessionModes[index],
-						liveResults: input.liveResults,
-						liveProgress: input.liveProgress,
-						onUpdate: publishProgress,
-					});
-				}
-			: undefined;
-
-		return runChild({
-			agentConfig: input.agentConfigs[index],
-			agentName: task.agent,
-			preparedTaskText: input.taskTexts[index],
-			sessionMode: input.sessionModes[index],
-			index,
-			taskCwd,
-			taskRuntimeCwd,
-			skills: effectiveSkills,
-			modelOverride: input.modelOverrides[index],
-			maxSubagentDepth: input.maxSubagentDepths[index],
-			runId: input.runId,
-			artifactsDir: input.artifactsDir,
-			artifactConfig: input.artifactConfig,
-			maxOutput: input.maxOutput,
-			sessionFileForIndex: input.sessionFileForIndex,
-			signal: input.signal,
-			agents: input.agents,
-			config: input.config,
-			workflow: input.workflow,
-			useTestDrivenDevelopment: input.useTestDrivenDevelopment,
-			onUpdate: parallelOnUpdate,
-		});
 	});
 }
 
@@ -534,32 +368,98 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 		});
 		const liveProgress: (AgentProgress | undefined)[] = pendingProgress.map((progress) => ({ ...progress }));
 
-		const results = await runForegroundParallelTasks({
-			tasks,
-			taskTexts,
-			agentConfigs,
-			agents,
-			ctx,
-			signal,
-			runId,
-			sessionFileForIndex,
-			artifactConfig,
-			artifactsDir,
-			maxOutput: params.maxOutput,
-			paramsCwd: params.cwd,
-			modelOverrides,
-			skillOverrides,
-			sessionModes,
-			behaviors,
-			maxSubagentDepths,
-			liveResults,
-			liveProgress,
-			onUpdate,
-			worktreeSetup,
-			config,
-			workflow,
-			useTestDrivenDevelopment,
+		// Create delivery store for parallel execution
+		const deliveryStore = createResultDeliveryStore();
+
+		// Build all plans upfront respecting worktree cwd/session mapping
+		const plans: PlannedChildRun[] = [];
+		for (let i = 0; i < tasks.length; i++) {
+			const taskCwd = resolveParallelTaskCwd(tasks[i], params.cwd, worktreeSetup, i);
+			const taskRuntimeCwd = resolveParallelTaskRuntimeCwd(tasks[i], params.cwd, worktreeSetup, i, ctx.cwd);
+			const childId = `${runId}:${i}:${tasks[i].agent}`;
+
+			const planInput: PlanChildRunInput = {
+				id: childId,
+				index: i,
+				runtimeCwd: taskRuntimeCwd,
+				childCwd: taskCwd ?? taskRuntimeCwd,
+				agents,
+				agentName: tasks[i].agent,
+				task: taskTexts[i],
+				runId,
+				artifactsDir,
+				sessionMode: sessionModes[i],
+				sessionFile: sessionFileForIndex({
+					index: i,
+					childCwd: taskRuntimeCwd,
+					sessionMode: sessionModes[i],
+				}),
+				workflow,
+				modelOverride: modelOverrides[i],
+				skills: skillOverrides[i],
+				useTestDrivenDevelopment,
+				includeProgress: true,
+				config,
+				artifactConfig,
+				maxOutput: params.maxOutput,
+				maxSubagentDepth: maxSubagentDepths[i],
+			};
+
+			plans.push(planChildRun(planInput));
+		}
+
+		// Launch through mapConcurrent to preserve the pre-refactor concurrency
+		// contract and task-order startup behavior while deliveryStore owns result
+		// ownership/join semantics.
+		const launchResults = mapConcurrent(plans, MAX_PARALLEL, async (plan, i) => {
+			const parallelOnUpdate = onUpdate
+				? (progressUpdate: AgentToolResult<Details>) => {
+						publishParallelProgressUpdate({
+							progressUpdate,
+							index: i,
+							sessionMode: sessionModes[i],
+							liveResults,
+							liveProgress,
+							onUpdate,
+						});
+					}
+				: undefined;
+
+			try {
+				return await runPlannedChild({
+					plan,
+					agents,
+					signal,
+					onUpdate: parallelOnUpdate,
+					runId,
+					config,
+				});
+			} catch (error) {
+				return toUnexpectedChildFailure(plan, error);
+			}
 		});
+
+		for (let i = 0; i < plans.length; i++) {
+			const plan = plans[i];
+			deliveryStore.register({
+				id: plan.id,
+				agent: plan.agentName,
+				task: plan.task,
+				completion: launchResults.then((results) => results[i]),
+			});
+		}
+
+		// Join children in task order through result store
+		const childIds = plans.map((plan) => plan.id);
+		const joined = await deliveryStore.join(childIds);
+
+		if ("error" in joined) {
+			const errorMessage = joined.error.message + (joined.error.ids ? ` [${joined.error.ids.join(", ")}]` : "");
+			return toExecutionErrorResult(params, new Error(errorMessage));
+		}
+
+		const results: SingleResult[] = joined.results;
+
 		for (const result of results) {
 			if (result.progress) allProgress.push(result.progress);
 			if (result.artifactPaths) allArtifactPaths.push(result.artifactPaths);
@@ -631,30 +531,63 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	const behavior = resolveChildBehavior(agentConfig, skillOverride, modelOverride);
 	const taskText = injectSuperpowersPacketInstructions(params.task!, behavior);
 	const runtimeCwd = params.cwd ?? ctx.cwd;
+	const childId = `${runId}:0:${params.agent}`;
 
-	const r = await runChild({
-		agentConfig,
-		agentName: params.agent!,
-		preparedTaskText: taskText,
-		sessionMode,
+	// Create delivery store for single execution
+	const deliveryStore = createResultDeliveryStore();
+
+	// Plan one child with current variables
+	const plan = planChildRun({
+		id: childId,
 		index: 0,
-		taskCwd: params.cwd,
-		taskRuntimeCwd: runtimeCwd,
-		skills: skillOverride,
-		modelOverride,
-		maxSubagentDepth,
+		runtimeCwd,
+		childCwd: params.cwd ?? runtimeCwd,
+		agents,
+		agentName: params.agent!,
+		task: taskText,
 		runId,
 		artifactsDir,
+		sessionMode,
+		sessionFile: sessionFileForIndex({
+			index: 0,
+			childCwd: runtimeCwd,
+			sessionMode,
+		}),
+		workflow,
+		modelOverride,
+		skills: skillOverride,
+		useTestDrivenDevelopment,
+		includeProgress: params.includeProgress === true,
+		config,
 		artifactConfig,
 		maxOutput: params.maxOutput,
-		sessionFileForIndex,
-		signal,
-		agents,
-		config,
-		workflow,
-		useTestDrivenDevelopment,
-		onUpdate: onUpdate ? (progressUpdate) => onUpdate(withProgressResultSessionMode(progressUpdate, sessionMode)) : undefined,
+		maxSubagentDepth,
 	});
+
+	// Register completion promise
+	deliveryStore.register({
+		id: childId,
+		agent: plan.agentName,
+		task: plan.task,
+		completion: runPlannedChild({
+			plan,
+			agents,
+			signal,
+			onUpdate: onUpdate ? (progressUpdate) => onUpdate(withProgressResultSessionMode(progressUpdate, sessionMode)) : undefined,
+			runId,
+			config,
+		}),
+	});
+
+	// Join one child and return result
+	const joined = await deliveryStore.join([childId]);
+	if ("error" in joined) {
+		const errorMessage = joined.error.message + (joined.error.ids ? ` [${joined.error.ids.join(", ")}]` : "");
+		return toExecutionErrorResult(params, new Error(errorMessage));
+	}
+
+	const r = joined.results[0];
+
 	if (r.progress) allProgress.push(r.progress);
 	if (r.artifactPaths) allArtifactPaths.push(r.artifactPaths);
 

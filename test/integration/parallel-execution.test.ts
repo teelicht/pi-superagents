@@ -16,10 +16,12 @@ import { createMockPi, createTempDir, makeAgentConfigs, removeTempDir, tryImport
 // Top-level await: try importing pi-dependent modules
 const utils = await tryImport<any>("./src/shared/utils.ts");
 const execution = await tryImport<any>("./src/execution/child-runner.ts");
+const resultDelivery = await tryImport<any>("./src/execution/result-delivery.ts");
 const piAvailable = !!(execution && utils);
 
 const runSync = execution?.runSync;
 const mapConcurrent = utils?.mapConcurrent;
+const createResultDeliveryStore = resultDelivery?.createResultDeliveryStore;
 
 // ---------------------------------------------------------------------------
 // mapConcurrent — always runs (pure logic, no pi deps beyond utils.ts)
@@ -70,6 +72,46 @@ void describe("mapConcurrent", { skip: !mapConcurrent ? "utils not importable" :
 				}),
 			/boom/,
 		);
+	});
+
+	void it("can isolate per-child launch failures before result delivery joins", { skip: !createResultDeliveryStore ? "result delivery not importable" : undefined }, async () => {
+		const store = createResultDeliveryStore();
+		const items = ["a", "b", "c"];
+		const launchResults = mapConcurrent(items, 3, async (agent: string, index: number) => {
+			try {
+				if (agent === "b") throw new Error("launch failed for b");
+				return {
+					agent,
+					task: `Task ${agent}`,
+					exitCode: 0,
+					messages: [{ role: "assistant", content: [{ type: "text", text: `ok ${agent}` }] }],
+					usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
+					index,
+				};
+			} catch (error) {
+				return {
+					agent,
+					task: `Task ${agent}`,
+					exitCode: 1,
+					messages: [],
+					usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
+					error: error instanceof Error ? error.message : String(error),
+					index,
+				};
+			}
+		});
+
+		for (let i = 0; i < items.length; i++) {
+			store.register({ id: items[i], agent: items[i], task: `Task ${items[i]}`, completion: launchResults.then((results: any[]) => results[i]) });
+		}
+
+		const joined = await store.join(items);
+		assert.equal("error" in joined, false);
+		if ("error" in joined) return;
+		assert.deepEqual(joined.results.map((result: any) => result.exitCode), [0, 1, 0]);
+		assert.equal(joined.results[0].error, undefined);
+		assert.match(joined.results[1].error, /launch failed for b/);
+		assert.equal(joined.results[2].error, undefined);
 	});
 });
 
