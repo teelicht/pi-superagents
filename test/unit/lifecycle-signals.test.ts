@@ -12,11 +12,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, describe, it } from "node:test";
-import {
-	consumeLifecycleSignal,
-	getLifecycleSidecarPath,
-	writeLifecycleSignalAtomic,
-} from "../../src/execution/lifecycle-signals.ts";
+import { consumeLifecycleSignal, getLifecycleSidecarPath, writeLifecycleSignalAtomic } from "../../src/execution/lifecycle-signals.ts";
 
 const tempDirs: string[] = [];
 
@@ -43,7 +39,10 @@ void describe("lifecycle sidecar signals", () => {
 
 		const sidecar = getLifecycleSidecarPath(sessionFile);
 		assert.equal(fs.existsSync(sidecar), true);
-		assert.equal(fs.readdirSync(path.dirname(sidecar)).some((name) => name.includes(".tmp-")), false);
+		assert.equal(
+			fs.readdirSync(path.dirname(sidecar)).some((name) => name.includes(".tmp-")),
+			false,
+		);
 
 		const result = consumeLifecycleSignal(sessionFile);
 		assert.equal(result.status, "consumed");

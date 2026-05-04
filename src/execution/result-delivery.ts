@@ -12,13 +12,7 @@
  * - state is in-memory and scoped to the current executor call/runtime instance
  */
 
-import type {
-	ChildRunResult,
-	CompletedDelivery,
-	DeliveryState,
-	ResultDeliveryError,
-	SubagentCompletionEnvelope,
-} from "../shared/types.ts";
+import type { ChildRunResult, CompletedDelivery, DeliveryState, ResultDeliveryError, SubagentCompletionEnvelope } from "../shared/types.ts";
 import { getSingleResultOutput } from "../shared/utils.ts";
 
 export interface RegisterChildInput {
@@ -101,8 +95,10 @@ export function deriveCompletionEnvelope(result: ChildRunResult): SubagentComple
 	}
 	const status = result.exitCode === 0 ? "completed" : result.exitCode < 0 ? "cancelled" : "failed";
 	const summary =
-		body.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ??
-		(status === "completed" ? "Subagent completed." : result.error ?? "Subagent failed.");
+		body
+			.split(/\r?\n/)
+			.map((line) => line.trim())
+			.find(Boolean) ?? (status === "completed" ? "Subagent completed." : (result.error ?? "Subagent failed."));
 	return {
 		status,
 		summary: summary.slice(0, 240),
@@ -208,12 +204,7 @@ export function createResultDeliveryStore(): {
 	 * @param options Wait options including optional timeout.
 	 * @returns The raw child run result.
 	 */
-	async function collectResult(
-		record: DeliveryRecord,
-		ownerToken: symbol,
-		ownerGeneration: number,
-		options: WaitOptions = {},
-	): Promise<ChildRunResult> {
+	async function collectResult(record: DeliveryRecord, ownerToken: symbol, ownerGeneration: number, options: WaitOptions = {}): Promise<ChildRunResult> {
 		// Check ownership before starting to await.
 		if (record.ownerToken !== ownerToken) {
 			throw Object.assign(new Error("not_owned"), { code: "not_owned", id: record.id });
@@ -245,10 +236,7 @@ export function createResultDeliveryStore(): {
 					}
 					reject(value);
 				};
-				const timer = setTimeout(
-					() => settle("timeout", Object.assign(new Error("timeout"), { code: "timeout" })),
-					options.timeoutMs,
-				);
+				const timer = setTimeout(() => settle("timeout", Object.assign(new Error("timeout"), { code: "timeout" })), options.timeoutMs);
 				record.pendingResult = {
 					resolve: (value) => settle("completion", value),
 					reject: (error) => settle("abort", error),

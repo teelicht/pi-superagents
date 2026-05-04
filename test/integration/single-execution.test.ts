@@ -2,7 +2,7 @@
  * Integration tests for single (sync) agent execution.
  *
  * Uses createMockPi() from @marcfargas/pi-test-harness to simulate the pi CLI.
- * Tests the full spawn→parse→result pipeline in runSync without a real LLM.
+ * Tests the full spawn→parse→result pipeline in runPreparedChild without a real LLM.
  *
  * These tests require pi packages to be importable (they run inside a pi
  * environment or with pi packages installed). If unavailable, tests skip
@@ -22,7 +22,7 @@ const runHistory = await tryImport<any>("./src/execution/run-history.ts");
 const utils = await tryImport<any>("./src/shared/utils.ts");
 const available = !!(execution && runHistory && utils);
 
-const runSync = execution?.runSync;
+const runPreparedChild = execution?.runPreparedChild;
 const globalRunHistory = runHistory?.globalRunHistory;
 const getFinalOutput = utils?.getFinalOutput;
 
@@ -88,7 +88,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		mockPi.onCall({ output: "Hello from mock agent" });
 		const agents = makeAgentConfigs(["echo"]);
 
-		const result = await runSync(tempDir, agents, "echo", "Say hello", {});
+		const result = await runPreparedChild(tempDir, agents, "echo", "Say hello", {});
 
 		assert.equal(result.exitCode, 0);
 		assert.equal(result.agent, "echo");
@@ -100,7 +100,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 
 	void it("returns error for unknown agent", async () => {
 		const agents = makeAgentConfigs(["echo"]);
-		const result = await runSync(tempDir, agents, "nonexistent", "Do something", {});
+		const result = await runPreparedChild(tempDir, agents, "nonexistent", "Do something", {});
 
 		assert.equal(result.exitCode, 1);
 		assert.ok(result.error?.includes("Unknown agent"));
@@ -110,7 +110,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		mockPi.onCall({ exitCode: 1, stderr: "Something went wrong" });
 		const agents = makeAgentConfigs(["fail"]);
 
-		const result = await runSync(tempDir, agents, "fail", "Do something", {});
+		const result = await runPreparedChild(tempDir, agents, "fail", "Do something", {});
 
 		assert.equal(result.exitCode, 1);
 		assert.ok(result.error?.includes("Something went wrong"));
@@ -121,7 +121,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		const longTask = "Analyze ".repeat(2000); // ~16KB
 		const agents = makeAgentConfigs(["echo"]);
 
-		const result = await runSync(tempDir, agents, "echo", longTask, {});
+		const result = await runPreparedChild(tempDir, agents, "echo", longTask, {});
 
 		assert.equal(result.exitCode, 0);
 		const output = getFinalOutput(result.messages);
@@ -132,7 +132,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		mockPi.onCall({ echoArgs: true });
 		const agents = makeAgentConfigs(["echo"]);
 
-		const result = await runSync(tempDir, agents, "echo", "Task", {});
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {});
 
 		assert.equal(result.exitCode, 0);
 		const output = getFinalOutput(result.messages);
@@ -144,7 +144,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		mockPi.onCall({ echoArgs: true });
 		const agents = [makeAgent("echo", { extensions: undefined })];
 
-		const result = await runSync(tempDir, agents, "echo", "Task", {});
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {});
 
 		assert.equal(result.exitCode, 0);
 		const output = getFinalOutput(result.messages);
@@ -158,7 +158,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		mockPi.onCall({ echoArgs: true });
 		const agents = [makeAgent("echo", { extensions: ["./my-ext.ts"] })];
 
-		const result = await runSync(tempDir, agents, "echo", "Task", {});
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {});
 
 		assert.equal(result.exitCode, 0);
 		const output = getFinalOutput(result.messages);
@@ -177,7 +177,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		mockPi.onCall({ echoArgs: true });
 		const agents = [makeAgent("echo", { extensions: ["./ext-a.ts", "./ext-b.ts"] })];
 
-		const result = await runSync(tempDir, agents, "echo", "Task", {});
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {});
 
 		assert.equal(result.exitCode, 0);
 		const output = getFinalOutput(result.messages);
@@ -195,7 +195,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		mockPi.onCall({ echoArgs: true });
 		const agents = [makeAgent("echo", { model: "anthropic/claude-sonnet-4" })];
 
-		const result = await runSync(tempDir, agents, "echo", "Task", {});
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {});
 
 		assert.equal(result.exitCode, 0);
 		assertModelArg(result.messages, "anthropic/claude-sonnet-4");
@@ -205,7 +205,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		mockPi.onCall({ echoArgs: true });
 		const agents = [makeAgent("echo", { model: "anthropic/claude-sonnet-4" })];
 
-		const result = await runSync(tempDir, agents, "echo", "Task", {
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {
 			modelOverride: "openai/gpt-4o",
 		});
 
@@ -235,7 +235,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		});
 		const agents = [makeAgent("echo", { model: "sonnet" })];
 
-		const result = await runSync(tempDir, agents, "echo", "Task", {});
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {});
 
 		assert.equal(result.exitCode, 0);
 		assert.equal(result.model, "openai-codex/gpt-5.5");
@@ -266,7 +266,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		});
 		const agents = [makeAgent("echo", { model: "sonnet" })];
 
-		const result = await runSync(tempDir, agents, "echo", "Task", {});
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {});
 
 		assert.equal(result.exitCode, 1);
 		assert.equal(result.model, "sonnet");
@@ -276,7 +276,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		mockPi.onCall({ echoArgs: true });
 		const agents = [makeAgent("sp-code-review", { model: "balanced" })];
 
-		const result = await runSync(tempDir, agents, "sp-code-review", "Review task", {
+		const result = await runPreparedChild(tempDir, agents, "sp-code-review", "Review task", {
 			workflow: "superpowers",
 			config: {
 				superagents: {
@@ -298,7 +298,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		const agents = [makeAgent("sp-code-review", { model: "balanced" })];
 
 		mockPi.onCall({ echoArgs: true });
-		const first = await runSync(tempDir, agents, "sp-code-review", "first", {
+		const first = await runPreparedChild(tempDir, agents, "sp-code-review", "first", {
 			workflow: "superpowers",
 			runId: "first",
 			config: {
@@ -311,7 +311,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		});
 
 		mockPi.onCall({ echoArgs: true });
-		const second = await runSync(tempDir, agents, "sp-code-review", "second", {
+		const second = await runPreparedChild(tempDir, agents, "sp-code-review", "second", {
 			workflow: "superpowers",
 			runId: "second",
 			config: {
@@ -331,7 +331,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		mockPi.onCall({ output: "Done" });
 		const agents = makeAgentConfigs(["echo"]);
 
-		const result = await runSync(tempDir, agents, "echo", "Task", {});
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {});
 
 		assert.equal(result.usage.turns, 1);
 		assert.equal(result.usage.input, 100); // from mock
@@ -342,7 +342,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		mockPi.onCall({ output: "Done" });
 		const agents = makeAgentConfigs(["echo"]);
 
-		const result = await runSync(tempDir, agents, "echo", "Task", { index: 3 });
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", { index: 3 });
 
 		assert.ok(result.progress, "should have progress");
 		assert.equal(result.progress.agent, "echo");
@@ -355,7 +355,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		mockPi.onCall({ exitCode: 1 });
 		const agents = makeAgentConfigs(["fail"]);
 
-		const result = await runSync(tempDir, agents, "fail", "Task", {});
+		const result = await runPreparedChild(tempDir, agents, "fail", "Task", {});
 
 		assert.equal(result.progress.status, "failed");
 	});
@@ -371,7 +371,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		});
 		const agents = makeAgentConfigs(["scout"]);
 
-		const result = await runSync(tempDir, agents, "scout", "List files", {});
+		const result = await runPreparedChild(tempDir, agents, "scout", "List files", {});
 
 		assert.equal(result.exitCode, 0);
 		const output = getFinalOutput(result.messages);
@@ -384,7 +384,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		const agents = makeAgentConfigs(["echo"]);
 		const artifactsDir = path.join(tempDir, "artifacts");
 
-		const result = await runSync(tempDir, agents, "echo", "Task", {
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {
 			runId: "test-run",
 			artifactsDir,
 			artifactConfig: { enabled: true, includeInput: true, includeOutput: true, includeMetadata: true },
@@ -399,7 +399,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		mockPi.onCall({ echoEnv: ["PI_SUBAGENT_DEPTH", "PI_SUBAGENT_MAX_DEPTH"] });
 		const agents = makeAgentConfigs(["echo"]);
 
-		const result = await runSync(tempDir, agents, "echo", "Task", {
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {
 			runId: "depth-env",
 			maxSubagentDepth: 1,
 		});
@@ -409,14 +409,13 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 			PI_SUBAGENT_DEPTH: "1",
 			PI_SUBAGENT_MAX_DEPTH: "1",
 		});
-
 	});
 	void it("passes lifecycle environment to session-backed children", async () => {
 		mockPi.onCall({ echoEnv: ["PI_SUBAGENT_SESSION", "PI_SUBAGENT_NAME", "PI_SUBAGENT_AGENT", "PI_SUBAGENT_AUTO_EXIT"] });
 		const agents = makeAgentConfigs(["echo"]);
 		const sessionFile = path.join(tempDir, "child.jsonl");
 
-		const result = await runSync(tempDir, agents, "echo", "Task", {
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {
 			runId: "run-env",
 			sessionFile,
 			sessionMode: "lineage-only",
@@ -430,11 +429,31 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		assert.equal(env.PI_SUBAGENT_AUTO_EXIT, "0");
 	});
 
+	void it("includes lifecycle extension for session-backed children", async () => {
+		mockPi.onCall({ echoArgs: true });
+		const agents = makeAgentConfigs(["echo"]);
+		const sessionFile = path.join(tempDir, "child.jsonl");
+
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {
+			runId: "run-extension",
+			sessionFile,
+			sessionMode: "lineage-only",
+		});
+
+		assert.equal(result.exitCode, 0);
+		const args = JSON.parse(result.finalOutput ?? "[]") as string[];
+		const extensionValues = args.map((arg, index) => (arg === "--extension" ? args[index + 1] : undefined)).filter((arg): arg is string => arg !== undefined);
+		assert.ok(
+			extensionValues.some((arg) => arg.endsWith("src/extension/index.ts")),
+			`expected lifecycle extension in ${result.finalOutput}`,
+		);
+	});
+
 	void it("launches superpowers recon without mutation-capable tools", async () => {
 		mockPi.onCall({ echoArgs: true });
 		const agents = [makeAgent("sp-recon")];
 
-		const result = await runSync(tempDir, agents, "sp-recon", "Inspect the repo and report findings", {
+		const result = await runPreparedChild(tempDir, agents, "sp-recon", "Inspect the repo and report findings", {
 			runId: "recon-tools",
 			workflow: "superpowers",
 		});
@@ -455,7 +474,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		writeSkill(tempDir, "override-skill");
 		const agents = [makeAgent("worker", { skills: ["default-skill"] })];
 
-		const result = await runSync(tempDir, agents, "worker", "Task", {
+		const result = await runPreparedChild(tempDir, agents, "worker", "Task", {
 			skills: ["override-skill"],
 		});
 
@@ -471,7 +490,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		const seenSkillSets: string[][] = [];
 
 		globalRunHistory.activeRuns.clear();
-		const result = await runSync(tempDir, agents, "worker", "Task", {
+		const result = await runPreparedChild(tempDir, agents, "worker", "Task", {
 			runId: "history-skills",
 			skills: ["overlay-skill"],
 			onUpdate: () => {
@@ -491,7 +510,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		writeSkill(tempDir, "default-skill");
 		const agents = [makeAgent("worker", { skills: ["default-skill"] })];
 
-		const result = await runSync(tempDir, agents, "worker", "Task", {
+		const result = await runPreparedChild(tempDir, agents, "worker", "Task", {
 			skills: false,
 		});
 
@@ -507,7 +526,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		const start = Date.now();
 		setTimeout(() => controller.abort(), 200);
 
-		const _result = await runSync(tempDir, agents, "slow", "Slow task", {
+		const _result = await runPreparedChild(tempDir, agents, "slow", "Slow task", {
 			signal: controller.signal,
 		});
 		const elapsed = Date.now() - start;
@@ -522,7 +541,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		mockPi.onCall({ output: "Success", stderr: "Warning: something", exitCode: 0 });
 		const agents = makeAgentConfigs(["echo"]);
 
-		const result = await runSync(tempDir, agents, "echo", "Task", {});
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {});
 
 		assert.equal(result.exitCode, 0);
 	});
@@ -530,7 +549,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 	void it("fails before spawning when a global subagent extension path is missing", async () => {
 		const agents = makeAgentConfigs(["echo"]);
 
-		const result = await runSync(tempDir, agents, "echo", "Task", {
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {
 			config: { superagents: { extensions: ["./missing-global-extension.ts"] } },
 		});
 
@@ -543,7 +562,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 	void it("fails before spawning when an agent extension path is missing", async () => {
 		const agents = [makeAgent("echo", { extensions: ["./missing-agent-extension.ts"] })];
 
-		const result = await runSync(tempDir, agents, "echo", "Task", {});
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {});
 
 		assert.equal(result.exitCode, 1);
 		assert.equal(mockPi.callCount(), 0);
@@ -559,7 +578,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		mockPi.onCall({ echoArgs: true });
 		const agents = [makeAgent("echo", { extensions: [agentExtensionPath] })];
 
-		const result = await runSync(tempDir, agents, "echo", "Task", {
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {
 			config: { superagents: { extensions: [globalExtensionPath] } },
 		});
 

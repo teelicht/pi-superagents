@@ -17,20 +17,32 @@
  */
 
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import type { Message } from "@mariozechner/pi-ai";
 import type { AgentConfig } from "../agents/agents.ts";
 import { ensureArtifactsDir, getArtifactPaths, writeArtifact, writeMetadata } from "../shared/artifacts.ts";
 import { buildSkillInjection, getPublishedExecutionSkills, resolveExecutionSkills } from "../shared/skills.ts";
-import { type AgentProgress, type ArtifactPaths, type ChildRunResult, DEFAULT_MAX_OUTPUT, getSubagentDepthEnv, type RunSyncOptions, type SingleResult, truncateOutput } from "../shared/types.ts";
+import {
+	type AgentProgress,
+	type ArtifactPaths,
+	type ChildRunResult,
+	DEFAULT_MAX_OUTPUT,
+	getSubagentDepthEnv,
+	type RunSyncOptions,
+	type SingleResult,
+	truncateOutput,
+} from "../shared/types.ts";
 import { detectSubagentError, extractTextFromContent, extractToolArgsPreview, getFinalOutput } from "../shared/utils.ts";
 import { createJsonlWriter } from "./jsonl-writer.ts";
+import { consumeLifecycleSignal } from "./lifecycle-signals.ts";
 import { applyThinkingSuffix, buildPiArgs, cleanupTempDir } from "./pi-args.ts";
 import { getPiSpawnCommand } from "./pi-spawn.ts";
+import { deriveCompletionEnvelope } from "./result-delivery.ts";
 import { globalRunHistory } from "./run-history.ts";
 import { findMissingSubagentExtensionPath, resolveSubagentExtensions } from "./superagents-config.ts";
 import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./superpowers-policy.ts";
-import { consumeLifecycleSignal } from "./lifecycle-signals.ts";
-import { deriveCompletionEnvelope } from "./result-delivery.ts";
+
+const SELF_EXTENSION_ENTRY = fileURLToPath(new URL("../extension/index.ts", import.meta.url));
 
 /**
  * Attach lifecycle sidecar result and derive completion envelope.
@@ -44,6 +56,18 @@ function attachLifecycle(result: SingleResult, options: RunSyncOptions): ChildRu
 	const lifecycle = consumeLifecycleSignal(sessionFile);
 	const withLifecycle = lifecycle.status === "missing" ? result : { ...result, lifecycle };
 	return { ...withLifecycle, completion: deriveCompletionEnvelope(withLifecycle) };
+}
+
+/**
+ * Ensure session-backed child runs can load this extension's lifecycle tools.
+ *
+ * @param extensions Explicit extension allowlist resolved from config and agent frontmatter.
+ * @param sessionFile Optional child session file; lifecycle tools are useful only for session-backed children.
+ * @returns Extension allowlist with the current pi-superagents extension appended when needed.
+ */
+function includeLifecycleExtension(extensions: string[], sessionFile: string | undefined): string[] {
+	if (!sessionFile) return extensions;
+	return extensions.includes(SELF_EXTENSION_ENTRY) ? extensions : [...extensions, SELF_EXTENSION_ENTRY];
 }
 
 /**
@@ -118,7 +142,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 		};
 	}
 
-	const effectiveExtensions = resolveSubagentExtensions(config, agent.extensions);
+	const effectiveExtensions = includeLifecycleExtension(resolveSubagentExtensions(config, agent.extensions), options.sessionFile);
 
 	const {
 		args,
@@ -450,9 +474,3 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 	// Attach lifecycle sidecar and derive completion envelope for completed subprocess runs
 	return attachLifecycle(result, options);
 }
-
-/**
- * Compatibility alias for runPreparedChild.
- * @deprecated Use runPreparedChild directly.
- */
-export const runSync = runPreparedChild;

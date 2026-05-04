@@ -18,7 +18,7 @@ const execution = await tryImport<any>("./src/execution/child-runner.ts");
 
 const piAvailable = !!(execution && utils);
 
-const runSync = execution?.runSync;
+const runPreparedChild = execution?.runPreparedChild;
 const detectSubagentError = utils?.detectSubagentError;
 
 /**
@@ -149,10 +149,10 @@ void describe("detectSubagentError", { skip: !detectSubagentError ? "utils not i
 });
 
 // ---------------------------------------------------------------------------
-// runSync error handling
+// runPreparedChild error handling
 // ---------------------------------------------------------------------------
 
-void describe("runSync error handling", { skip: !piAvailable ? "pi packages not available" : undefined }, () => {
+void describe("runPreparedChild error handling", { skip: !piAvailable ? "pi packages not available" : undefined }, () => {
 	let tempDir: string;
 	let mockPi: MockPi;
 
@@ -178,7 +178,7 @@ void describe("runSync error handling", { skip: !piAvailable ? "pi packages not 
 		mockPi.onCall({ exitCode: 2, stderr: "Fatal: out of memory" });
 		const agents = makeAgentConfigs(["crash"]);
 
-		const result = await runSync(tempDir, agents, "crash", "Do heavy work", {});
+		const result = await runPreparedChild(tempDir, agents, "crash", "Do heavy work", {});
 
 		assert.equal(result.exitCode, 2);
 		assert.ok(result.error?.includes("out of memory"));
@@ -190,7 +190,7 @@ void describe("runSync error handling", { skip: !piAvailable ? "pi packages not 
 		});
 		const agents = makeAgentConfigs(["deployer"]);
 
-		const result = await runSync(tempDir, agents, "deployer", "Deploy app", {});
+		const result = await runPreparedChild(tempDir, agents, "deployer", "Deploy app", {});
 
 		assert.notEqual(result.exitCode, 0, "should detect hidden failure");
 		assert.ok(result.error?.includes("connection refused"));
@@ -204,7 +204,7 @@ void describe("runSync error handling", { skip: !piAvailable ? "pi packages not 
 		const start = Date.now();
 		setTimeout(() => controller.abort(), 200);
 
-		const _result = await runSync(tempDir, agents, "slow", "Slow task", {
+		const _result = await runPreparedChild(tempDir, agents, "slow", "Slow task", {
 			signal: controller.signal,
 		});
 		const elapsed = Date.now() - start;
@@ -218,7 +218,7 @@ void describe("runSync error handling", { skip: !piAvailable ? "pi packages not 
 		const agents = makeAgentConfigs(["echo"]);
 		const signal = new TrackingAbortSignal();
 
-		const result = await runSync(tempDir, agents, "echo", "Task", {
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {
 			signal: signal as unknown as AbortSignal,
 		});
 

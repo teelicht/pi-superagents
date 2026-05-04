@@ -15,9 +15,9 @@ import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@mariozechn
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "typebox";
 import { discoverAgents } from "../agents/agents.ts";
+import { writeLifecycleSignalAtomic } from "../execution/lifecycle-signals.ts";
 import { createSubagentExecutor } from "../execution/subagent-executor.ts";
 import { requestPlannotatorPlanReview } from "../integrations/plannotator.ts";
-import { writeLifecycleSignalAtomic } from "../execution/lifecycle-signals.ts";
 import { cleanupAllArtifactDirs, cleanupOldArtifacts, getArtifactsDir } from "../shared/artifacts.ts";
 import { SubagentParams } from "../shared/schemas.ts";
 import { resolveAvailableSkill, resolveSkills } from "../shared/skills.ts";
@@ -373,7 +373,7 @@ ${result.feedback}`);
 Continue with the normal text-based Superpowers review flow.`,
 			);
 		} catch (error) {
-		const reason = error instanceof Error ? error.message : String(error);
+			const reason = error instanceof Error ? error.message : String(error);
 			if (ctx.hasUI) {
 				ctx.ui.notify(`Plannotator unavailable: ${reason}. Falling back to text-based spec review.`, "warning");
 			}
