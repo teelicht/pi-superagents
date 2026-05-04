@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.8.1] - 2026-05-04
+
+- **Compatibility**
+  - Bumped Pi development dependencies from `^0.70.0` to `^0.72.1` after verifying the `v0.70.0` to `v0.72.1` API changes do not require Superagents code changes.
+
 ## [0.8.0] - 2026-04-30
 
 - **Breaking: Agent Configuration**
