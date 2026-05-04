@@ -123,6 +123,10 @@ export interface SingleResult {
 	artifactPaths?: ArtifactPaths;
 	truncation?: TruncationResult;
 	finalOutput?: string;
+	/** Subagent completion envelope (status, summary, body, etc.) */
+	completion?: SubagentCompletionEnvelope;
+	/** Lifecycle signal read result (done/ping status and content) */
+	lifecycle?: LifecycleReadResult;
 }
 
 export interface Details {
@@ -142,6 +146,159 @@ export interface Details {
 		originalLines?: number;
 		artifactPath?: string;
 	};
+}
+
+// ============================================================================
+// Subagent Completion
+// ============================================================================
+
+/**
+ * Possible completion statuses for a subagent run.
+ */
+export type SubagentCompletionStatus = "completed" | "blocked" | "needs_parent" | "failed" | "cancelled";
+
+/**
+ * Envelope containing subagent completion result details.
+ */
+export interface SubagentCompletionEnvelope {
+	status: SubagentCompletionStatus;
+	summary: string;
+	body: string;
+	parentRequest?: string;
+	artifacts?: string[];
+	notes?: Record<string, unknown>;
+}
+
+// ============================================================================
+// Lifecycle Signals
+// ============================================================================
+
+/**
+ * Type discriminator for lifecycle signals.
+ */
+export type LifecycleSignalType = "done" | "ping";
+
+/**
+ * Signal emitted when a subagent run completes successfully.
+ */
+export interface DoneLifecycleSignal {
+	type: "done";
+	outputTokens?: number;
+}
+
+/**
+ * Signal emitted as a heartbeat/ping during subagent execution.
+ */
+export interface PingLifecycleSignal {
+	type: "ping";
+	name?: string;
+	message: string;
+	outputTokens?: number;
+}
+
+/**
+ * Union of all lifecycle signal types.
+ */
+export type LifecycleSignal = DoneLifecycleSignal | PingLifecycleSignal;
+
+// ============================================================================
+// Lifecycle Read Results
+// ============================================================================
+
+/**
+ * Possible statuses when reading a lifecycle file.
+ */
+export type LifecycleReadStatus = "consumed" | "missing" | "malformed" | "unreadable" | "stale";
+
+/**
+ * Result of attempting to read a lifecycle signal file.
+ */
+export interface LifecycleReadResult {
+	status: LifecycleReadStatus;
+	signal?: LifecycleSignal;
+	path: string;
+	diagnostic?: string;
+}
+
+// ============================================================================
+// Result Delivery
+// ============================================================================
+
+/**
+ * State of result delivery for a subagent run.
+ */
+export type DeliveryState = "detached" | "awaited" | "joined";
+
+/**
+ * How parent steers when awaiting child results.
+ */
+export type CompletedDelivery = "steer" | "wait" | "join";
+
+/**
+ * Error codes for result delivery operations.
+ */
+export type ResultDeliveryErrorCode =
+	| "not_found"
+	| "already_delivered"
+	| "already_owned"
+	| "not_owned"
+	| "duplicate_id"
+	| "empty_id_list"
+	| "timeout"
+	| "interrupted";
+
+/**
+ * Error returned when a result delivery operation fails.
+ */
+export interface ResultDeliveryError {
+	code: ResultDeliveryErrorCode;
+	message: string;
+	ids?: string[];
+}
+
+// ============================================================================
+// Planned Child Runs
+// ============================================================================
+
+/**
+ * Represents a planned child subagent run with all configuration.
+ */
+export interface PlannedChildRun {
+	id: string;
+	index: number;
+	agentName: string;
+	task: string;
+	runtimeCwd: string;
+	childCwd: string;
+	workflow: WorkflowMode;
+	sessionMode: SessionMode;
+	taskDelivery: TaskDeliveryMode;
+	sessionFile?: string;
+	taskText: string;
+	taskFilePath?: string;
+	packetFile?: string;
+	modelOverride?: string;
+	skills?: string[] | false;
+	useTestDrivenDevelopment: boolean;
+	maxSubagentDepth?: number;
+	artifactsDir?: string;
+	artifactConfig?: ArtifactConfig;
+	maxOutput?: MaxOutputConfig;
+	includeProgress: boolean;
+	config: ExtensionConfig;
+	cleanupLaunchArtifacts(): void;
+}
+
+// ============================================================================
+// Child Run Results
+// ============================================================================
+
+/**
+ * Result returned from a child subagent run.
+ */
+export interface ChildRunResult extends SingleResult {
+	completion?: SubagentCompletionEnvelope;
+	lifecycle?: LifecycleReadResult;
 }
 
 // ============================================================================
