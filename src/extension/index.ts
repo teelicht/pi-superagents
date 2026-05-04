@@ -17,6 +17,7 @@ import { Type } from "typebox";
 import { discoverAgents } from "../agents/agents.ts";
 import { createSubagentExecutor } from "../execution/subagent-executor.ts";
 import { requestPlannotatorPlanReview } from "../integrations/plannotator.ts";
+import { writeLifecycleSignalAtomic } from "../execution/lifecycle-signals.ts";
 import { cleanupAllArtifactDirs, cleanupOldArtifacts, getArtifactsDir } from "../shared/artifacts.ts";
 import { SubagentParams } from "../shared/schemas.ts";
 import { resolveAvailableSkill, resolveSkills } from "../shared/skills.ts";
@@ -157,6 +158,27 @@ const SuperpowersSpecReviewParams = Type.Object({
 });
 
 /**
+ * Parameter schema for the child subagent_done lifecycle tool.
+ *
+ * Allows child processes to record intentional completion with an optional
+ * output-token count for parent-side usage accounting.
+ */
+const SubagentDoneParams = Type.Object({
+	outputTokens: Type.Optional(Type.Number({ description: "Optional output-token count reported by the child runtime." })),
+});
+
+/**
+ * Parameter schema for the child caller_ping lifecycle tool.
+ *
+ * Allows child processes to record a concise parent-help request that is
+ * surfaced to the parent agent as a `needs_parent` completion envelope.
+ */
+const CallerPingParams = Type.Object({
+	message: Type.String({ description: "Concise question or blocked-state message for the parent agent." }),
+	outputTokens: Type.Optional(Type.Number({ description: "Optional output-token count reported by the child runtime." })),
+});
+
+/**
  * Build a text-only tool result for root-session review calls.
  *
  * @param text User-facing tool response text.
@@ -167,6 +189,20 @@ function createTextToolResult(text: string): AgentToolResult<Details> {
 		content: [{ type: "text", text }],
 		details: { mode: "single", results: [] },
 	};
+}
+
+/**
+ * Resolve the child session file path required for lifecycle sidecar writes.
+ *
+ * @returns The PI_SUBAGENT_SESSION environment variable value.
+ * @throws When PI_SUBAGENT_SESSION is not set (lifecycle tools only work inside parent-launched subagents).
+ */
+function getRequiredChildSessionFile(): string {
+	const sessionFile = process.env.PI_SUBAGENT_SESSION;
+	if (!sessionFile) {
+		throw new Error("PI_SUBAGENT_SESSION is not set; lifecycle tools only work inside parent-launched subagents.");
+	}
+	return sessionFile;
 }
 
 /**
@@ -337,7 +373,7 @@ ${result.feedback}`);
 Continue with the normal text-based Superpowers review flow.`,
 			);
 		} catch (error) {
-			const reason = error instanceof Error ? error.message : String(error);
+		const reason = error instanceof Error ? error.message : String(error);
 			if (ctx.hasUI) {
 				ctx.ui.notify(`Plannotator unavailable: ${reason}. Falling back to text-based spec review.`, "warning");
 			}
@@ -365,6 +401,58 @@ Continue with the normal text-based Superpowers review flow.`,
 		parameters: SuperpowersSpecReviewParams,
 		execute(_id, params, _signal, _onUpdate, ctx) {
 			return executeSuperpowersSpecReview(params as { specContent: string; specFilePath?: string }, ctx);
+		},
+	};
+
+	/**
+	 * Child lifecycle tool: subagent_done
+	 *
+	 * Records intentional subagent completion and exits the child run into normal
+	 * process shutdown. Writes an atomic `.exit` sidecar consumed by the parent.
+	 */
+	const subagentDoneTool: ToolDefinition<typeof SubagentDoneParams, Details> = {
+		name: "subagent_done",
+		label: "Subagent Done",
+		description: "Child-only lifecycle tool. Records intentional subagent completion and exits the child run into normal process shutdown.",
+		parameters: SubagentDoneParams,
+		execute(_id, params) {
+			try {
+				writeLifecycleSignalAtomic(getRequiredChildSessionFile(), {
+					type: "done",
+					...(typeof params.outputTokens === "number" ? { outputTokens: params.outputTokens } : {}),
+				});
+				return Promise.resolve(createTextToolResult("Subagent completion signal recorded. Finish your final response now."));
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return Promise.resolve(createTextToolResult(`Lifecycle tool error: ${message}`));
+			}
+		},
+	};
+
+	/**
+	 * Child lifecycle tool: caller_ping
+	 *
+	 * Asks the parent for clarification and records a needs_parent sidecar consumed
+	 * by the parent result-delivery store. Does not enable further subagent delegation.
+	 */
+	const callerPingTool: ToolDefinition<typeof CallerPingParams, Details> = {
+		name: "caller_ping",
+		label: "Caller Ping",
+		description: "Child-only lifecycle tool. Asks the parent for clarification and records a needs_parent sidecar.",
+		parameters: CallerPingParams,
+		execute(_id, params) {
+			try {
+				writeLifecycleSignalAtomic(getRequiredChildSessionFile(), {
+					type: "ping",
+					name: process.env.PI_SUBAGENT_NAME ?? process.env.PI_SUBAGENT_AGENT,
+					message: params.message,
+					...(typeof params.outputTokens === "number" ? { outputTokens: params.outputTokens } : {}),
+				});
+				return Promise.resolve(createTextToolResult(`Parent help requested: ${params.message}`));
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				return Promise.resolve(createTextToolResult(`Lifecycle tool error: ${message}`));
+			}
 		},
 	};
 
@@ -401,6 +489,9 @@ Bounded role agents are not allowed to call subagents.`,
 		},
 	};
 
+	// Register lifecycle tools before subagent so lifecycle tools appear earlier in the tool list
+	pi.registerTool(subagentDoneTool);
+	pi.registerTool(callerPingTool);
 	pi.registerTool(planReviewTool);
 	pi.registerTool(specReviewTool);
 	pi.registerTool(tool);

@@ -3,7 +3,7 @@
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { DELEGATION_TOOLS, READ_ONLY_TOOLS } from "../../src/shared/tool-registry.ts";
+import { CHILD_LIFECYCLE_TOOLS, DELEGATION_TOOLS, READ_ONLY_TOOLS } from "../../src/shared/tool-registry.ts";
 
 void describe("tool-registry", () => {
 	void describe("DELEGATION_TOOLS", () => {
@@ -15,6 +15,23 @@ void describe("tool-registry", () => {
 		void it("is a frozen set", () => {
 			// Object.freeze makes the set immutable as a whole.
 			assert.equal(Object.isFrozen(DELEGATION_TOOLS), true);
+		});
+	});
+
+	void describe("CHILD_LIFECYCLE_TOOLS", () => {
+		void it("contains subagent_done and caller_ping", () => {
+			assert.ok(CHILD_LIFECYCLE_TOOLS.has("subagent_done"));
+			assert.ok(CHILD_LIFECYCLE_TOOLS.has("caller_ping"));
+		});
+
+		void it("does not overlap with DELEGATION_TOOLS", () => {
+			for (const tool of CHILD_LIFECYCLE_TOOLS) {
+				assert.equal(DELEGATION_TOOLS.has(tool), false, `${tool} should not be in DELEGATION_TOOLS`);
+			}
+		});
+
+		void it("is a frozen set", () => {
+			assert.equal(Object.isFrozen(CHILD_LIFECYCLE_TOOLS), true);
 		});
 	});
 

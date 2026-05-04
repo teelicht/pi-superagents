@@ -183,7 +183,15 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 		}
 	}
 
-	const spawnEnv = { ...process.env, ...sharedEnv, ...getSubagentDepthEnv(options.maxSubagentDepth) };
+	const lifecycleEnv = options.sessionFile
+		? {
+				PI_SUBAGENT_SESSION: options.sessionFile,
+				PI_SUBAGENT_NAME: agent.name,
+				PI_SUBAGENT_AGENT: agent.name,
+				PI_SUBAGENT_AUTO_EXIT: "0",
+			}
+		: {};
+	const spawnEnv = { ...process.env, ...sharedEnv, ...lifecycleEnv, ...getSubagentDepthEnv(options.maxSubagentDepth) };
 
 	let closeJsonlWriter: (() => Promise<void>) | undefined;
 	let exitCode = 1;
