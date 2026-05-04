@@ -13,7 +13,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { inferExecutionRole, resolveImplementerSkillSet, resolveModelForAgent, resolveRoleSkillSet, resolveRoleTools } from "../../src/execution/superpowers-policy.ts";
-import { READ_ONLY_TOOLS } from "../../src/shared/tool-registry.ts";
+import { CHILD_LIFECYCLE_TOOLS, READ_ONLY_TOOLS } from "../../src/shared/tool-registry.ts";
 
 void describe("superpowers policy", () => {
 	void it("resolves tiers in default workflow when configured", () => {
@@ -209,13 +209,31 @@ void describe("superpowers policy", () => {
 		);
 	});
 
-	void it("falls back to READ_ONLY_TOOLS for bounded roles without explicit tools", () => {
-		assert.deepEqual(
+	void it("keeps child lifecycle tools while stripping delegation tools", () => {
+		const tools = resolveRoleTools({
+			workflow: "superpowers",
+			role: "sp-research",
+			agentTools: ["read", "subagent", "subagent_done", "caller_ping"],
+		});
+		assert.deepEqual(tools, ["read", "subagent_done", "caller_ping"]);
+	});
+
+	void it("includes lifecycle tools in fallback for bounded roles without explicit tools", () => {
+		const tools = resolveRoleTools({
+			workflow: "superpowers",
+			role: "sp-recon",
+		});
+		const expected = [...READ_ONLY_TOOLS, ...CHILD_LIFECYCLE_TOOLS];
+		assert.deepEqual(tools, expected);
+	});
+
+	void it("keeps root-planning tool access when workflow is superpowers", () => {
+		assert.equal(
 			resolveRoleTools({
 				workflow: "superpowers",
-				role: "sp-recon",
+				role: "root-planning",
 			}),
-			[...READ_ONLY_TOOLS],
+			undefined,
 		);
 	});
 
@@ -279,16 +297,6 @@ void describe("superpowers policy", () => {
 		assert.equal(inferExecutionRole("sp-custom-role"), "sp-custom-role");
 		assert.equal(inferExecutionRole("root"), "root-planning");
 		assert.equal(inferExecutionRole("any-other-name"), "root-planning");
-	});
-
-	void it("uses READ_ONLY_TOOLS as fallback for any bounded role without explicit tools", () => {
-		assert.deepEqual(
-			resolveRoleTools({
-				workflow: "superpowers",
-				role: "sp-implementer",
-			}),
-			[...READ_ONLY_TOOLS],
-		);
 	});
 
 	void it("prefers agent-declared tools over fallback for bounded roles", () => {

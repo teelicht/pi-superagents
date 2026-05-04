@@ -7,7 +7,7 @@
  * - add TDD behavior for the implementer role when requested
  */
 
-import { DELEGATION_TOOLS, READ_ONLY_TOOLS } from "../shared/tool-registry.ts";
+import { CHILD_LIFECYCLE_TOOLS, DELEGATION_TOOLS, READ_ONLY_TOOLS } from "../shared/tool-registry.ts";
 import type { ExecutionRole, ExtensionConfig, ModelTierConfig, WorkflowMode } from "../shared/types.ts";
 import { getSuperagentSettings } from "./superagents-config.ts";
 
@@ -134,10 +134,10 @@ export function resolveRoleSkillSet(input: {
  * Invariants:
  * - bounded Superpowers roles never receive delegation tools
  * - root-planning keeps orchestration access
- * - when a bounded agent declares no tools, falls back to READ_ONLY_TOOLS
+ * - when a bounded agent declares no tools, falls back to READ_ONLY_TOOLS plus CHILD_LIFECYCLE_TOOLS
  *
  * Failure modes:
- * - none; missing tool declarations fall back to a safe read-only baseline
+ * - none; missing tool declarations fall back to a safe read-only baseline with lifecycle tools
  */
 export function resolveRoleTools(input: { workflow: WorkflowMode; role: ExecutionRole; agentTools?: string[] }): string[] | undefined {
 	if (input.workflow !== "superpowers" || input.role === "root-planning") {
@@ -146,8 +146,9 @@ export function resolveRoleTools(input: { workflow: WorkflowMode; role: Executio
 
 	const explicitTools = input.agentTools?.filter((tool) => !DELEGATION_TOOLS.has(tool));
 	if (explicitTools && explicitTools.length > 0) return explicitTools;
-	// Safe read-only fallback for agents without tool declarations
-	return [...READ_ONLY_TOOLS];
+	// Safe read-only fallback for agents without tool declarations,
+	// including child lifecycle tools for bounded roles
+	return [...READ_ONLY_TOOLS, ...CHILD_LIFECYCLE_TOOLS];
 }
 
 /**

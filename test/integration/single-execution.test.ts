@@ -409,6 +409,25 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 			PI_SUBAGENT_DEPTH: "1",
 			PI_SUBAGENT_MAX_DEPTH: "1",
 		});
+
+	});
+	void it("passes lifecycle environment to session-backed children", async () => {
+		mockPi.onCall({ echoEnv: ["PI_SUBAGENT_SESSION", "PI_SUBAGENT_NAME", "PI_SUBAGENT_AGENT", "PI_SUBAGENT_AUTO_EXIT"] });
+		const agents = makeAgentConfigs(["echo"]);
+		const sessionFile = path.join(tempDir, "child.jsonl");
+
+		const result = await runSync(tempDir, agents, "echo", "Task", {
+			runId: "run-env",
+			sessionFile,
+			sessionMode: "lineage-only",
+		});
+
+		assert.equal(result.exitCode, 0);
+		const env = JSON.parse(result.finalOutput ?? "{}") as Record<string, string>;
+		assert.equal(env.PI_SUBAGENT_SESSION, sessionFile);
+		assert.equal(env.PI_SUBAGENT_NAME, "echo");
+		assert.equal(env.PI_SUBAGENT_AGENT, "echo");
+		assert.equal(env.PI_SUBAGENT_AUTO_EXIT, "0");
 	});
 
 	void it("launches superpowers recon without mutation-capable tools", async () => {
@@ -425,7 +444,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		const toolsFlagIndex = args.indexOf("--tools");
 		assert.notEqual(toolsFlagIndex, -1, "should pass an explicit tools allowlist");
 		const toolsArg = args[toolsFlagIndex + 1] ?? "";
-		assert.equal(toolsArg, "read,grep,find,ls");
+		assert.equal(toolsArg, "read,grep,find,ls,subagent_done,caller_ping");
 		assert.doesNotMatch(toolsArg, /\bbash\b/);
 		assert.doesNotMatch(toolsArg, /\bwrite\b/);
 	});
