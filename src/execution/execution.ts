@@ -238,7 +238,7 @@ export async function runSync(runtimeCwd: string, agents: AgentConfig[], agentNa
 								result.usage.cacheWrite += u.cacheWrite || 0;
 								result.usage.cost += u.cost?.total || 0;
 							}
-							if (!result.model && evt.message.model) result.model = evt.message.model;
+							if (evt.message.model && !evt.message.errorMessage) result.model = evt.message.model;
 							if (evt.message.errorMessage) result.error = evt.message.errorMessage;
 
 							const text = extractTextFromContent(evt.message.content);
