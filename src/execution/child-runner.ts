@@ -1,5 +1,18 @@
 /**
- * Core execution logic for running subagents
+ * Child process runner for executing subagent tasks.
+ *
+ * Responsibilities:
+ * - spawn Pi subprocess for agent execution
+ * - parse and accumulate structured events from JSONL stdout
+ * - manage progress, usage stats, and tool execution tracking
+ * - handle abort signals, temp directories, and resource cleanup
+ * - integrate lifecycle sidecar consumption for completed runs
+ *
+ * Important dependencies and side effects:
+ * - spawns real child processes (test with mocks)
+ * - writes JSONL and metadata artifacts to disk
+ * - updates global run history for monitoring
+ * - consumes lifecycle sidecars via consumeLifecycleSignal
  */
 
 import { spawn } from "node:child_process";
@@ -7,7 +20,7 @@ import type { Message } from "@mariozechner/pi-ai";
 import type { AgentConfig } from "../agents/agents.ts";
 import { ensureArtifactsDir, getArtifactPaths, writeArtifact, writeMetadata } from "../shared/artifacts.ts";
 import { buildSkillInjection, getPublishedExecutionSkills, resolveExecutionSkills } from "../shared/skills.ts";
-import { type AgentProgress, type ArtifactPaths, DEFAULT_MAX_OUTPUT, getSubagentDepthEnv, type RunSyncOptions, type SingleResult, truncateOutput } from "../shared/types.ts";
+import { type AgentProgress, type ArtifactPaths, type ChildRunResult, DEFAULT_MAX_OUTPUT, getSubagentDepthEnv, type RunSyncOptions, type SingleResult, truncateOutput } from "../shared/types.ts";
 import { detectSubagentError, extractTextFromContent, extractToolArgsPreview, getFinalOutput } from "../shared/utils.ts";
 import { createJsonlWriter } from "./jsonl-writer.ts";
 import { applyThinkingSuffix, buildPiArgs, cleanupTempDir } from "./pi-args.ts";
@@ -15,11 +28,35 @@ import { getPiSpawnCommand } from "./pi-spawn.ts";
 import { globalRunHistory } from "./run-history.ts";
 import { findMissingSubagentExtensionPath, resolveSubagentExtensions } from "./superagents-config.ts";
 import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./superpowers-policy.ts";
+import { consumeLifecycleSignal } from "./lifecycle-signals.ts";
 
 /**
- * Run a subagent synchronously (blocking until complete)
+ * Attach lifecycle sidecar result to a SingleResult when available.
+ *
+ * Only attaches when the lifecycle status is not "missing" (e.g., consumed,
+ * malformed, unreadable, or stale diagnostics). Missing sidecars leave the
+ * original result unchanged.
  */
-export async function runSync(runtimeCwd: string, agents: AgentConfig[], agentName: string, task: string, options: RunSyncOptions): Promise<SingleResult> {
+function attachLifecycle(result: SingleResult, options: RunSyncOptions): ChildRunResult {
+	const sessionFile = result.sessionFile ?? options.sessionFile;
+	const lifecycle = consumeLifecycleSignal(sessionFile);
+	if (lifecycle.status !== "missing") {
+		result.lifecycle = lifecycle;
+	}
+	return result;
+}
+
+/**
+ * Run a prepared child subagent synchronously (blocking until complete).
+ *
+ * @param runtimeCwd Directory used to resolve runtime configuration and extensions.
+ * @param agents Available agent configurations.
+ * @param agentName Name of the child agent to launch.
+ * @param task Prepared task text or packet reference for the child.
+ * @param options Launch, session, artifact, and progress options.
+ * @returns Aggregated child execution result with lifecycle metadata when available.
+ */
+export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[], agentName: string, task: string, options: RunSyncOptions): Promise<ChildRunResult> {
 	const { cwd, signal, onUpdate, maxOutput, artifactsDir, artifactConfig, runId, index, modelOverride, sessionMode, taskFilePath } = options;
 	const agent = agents.find((a) => a.name === agentName);
 	if (!agent) {
@@ -113,6 +150,7 @@ export async function runSync(runtimeCwd: string, agents: AgentConfig[], agentNa
 		skills: resolvedSkillNames,
 		skillsWarning,
 		sessionMode,
+		sessionFile: options.sessionFile,
 	};
 
 	const progress: AgentProgress = {
@@ -401,5 +439,12 @@ export async function runSync(runtimeCwd: string, agents: AgentConfig[], agentNa
 	});
 	globalRunHistory.finishRun(historyId, result.exitCode === 0 ? "ok" : "error", result.error);
 
-	return result;
+	// Attach lifecycle sidecar for completed subprocess runs (not for pre-spawn validation errors)
+	return attachLifecycle(result, options);
 }
+
+/**
+ * Compatibility alias for runPreparedChild.
+ * @deprecated Use runPreparedChild directly.
+ */
+export const runSync = runPreparedChild;

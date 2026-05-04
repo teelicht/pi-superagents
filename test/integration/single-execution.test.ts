@@ -17,7 +17,7 @@ import type { MockPi } from "../support/helpers.ts";
 import { createMockPi, createTempDir, events, makeAgent, makeAgentConfigs, removeTempDir, tryImport } from "../support/helpers.ts";
 
 // Top-level await: try importing pi-dependent modules
-const execution = await tryImport<any>("./src/execution/execution.ts");
+const execution = await tryImport<any>("./src/execution/child-runner.ts");
 const runHistory = await tryImport<any>("./src/execution/run-history.ts");
 const utils = await tryImport<any>("./src/shared/utils.ts");
 const available = !!(execution && runHistory && utils);
