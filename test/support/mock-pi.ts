@@ -11,6 +11,8 @@ export interface MockPiResponse {
 	jsonl?: unknown[];
 	echoEnv?: string[];
 	echoArgs?: boolean;
+	/** Write a lifecycle sidecar atomically before the child process closes. */
+	writeLifecycleSignal?: { sessionFile: string; signal: unknown };
 }
 
 export interface MockPi {
