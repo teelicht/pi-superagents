@@ -31,6 +31,10 @@ When Pi starts, the extension shows a notification with the config path and exac
 /sp-settings
 ```
 
+## No Async Configuration
+
+Execution is strictly synchronous and blocking. There is no `async`, `wait`, `collect`, or `cancel` frontmatter key or config key. Lifecycle tools (`subagent_done`, `caller_ping`) are internal child-only tools registered through policy; they are not user-configurable delegation controls.
+
 ## Built-in Commands
 
 Slash commands are registered from interactive entrypoint agent frontmatter, not generated from `config.json`. The bundled defaults include behavior flags for three built-in commands:

@@ -119,6 +119,10 @@ Bundled entrypoint assignments:
 Bundled role assignments:
 - `agents/sp-debug.md` assigns `systematic-debugging` to the bounded debug role.
 
+## Child Lifecycle Tools
+
+Child lifecycle tools (`subagent_done`, `caller_ping`) may be available to bounded roles through the tool policy for semantic completion signaling and parent request handling. These are internal child-only tools; they are not general-purpose delegation tools and are not listed in the parameters API.
+
 ## Missing Skills
 
 For delegated subagent runs, missing skills are reported in the result summary and execution continues with the skills that were found. For root Superpowers entry-skill flows, missing required entry or entrypoint lifecycle skills block prompt dispatch so the user can fix the configuration.
