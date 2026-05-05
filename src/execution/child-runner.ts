@@ -52,6 +52,28 @@ const SELF_EXTENSION_ENTRY = fileURLToPath(new URL("../extension/index.ts", impo
 const VALID_THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"];
 
 /**
+ * Extract a valid ThinkingLevel suffix from a model string.
+ *
+ * Inspects the suffix after the last colon in a model string and returns it
+ * only if it is a known thinking level. Used to determine the effective thinking
+ * level from a model string that may already include a thinking suffix (e.g.
+ * "openai/gpt-4o:medium").
+ *
+ * @param model A model string, possibly with a thinking suffix.
+ * @returns The extracted ThinkingLevel suffix, or undefined if none found.
+ */
+function extractThinkingSuffix(model: string | undefined): ThinkingLevel | undefined {
+	if (!model) return undefined;
+	const colonIdx = model.lastIndexOf(":");
+	if (colonIdx === -1) return undefined;
+	const suffix = model.slice(colonIdx + 1);
+	if (VALID_THINKING_LEVELS.includes(suffix as ThinkingLevel)) {
+		return suffix as ThinkingLevel;
+	}
+	return undefined;
+}
+
+/**
  * Narrow agent frontmatter thinking strings to the shared ThinkingLevel union.
  *
  * Valid thinking argument takes precedence. Falls back to valid tier thinking when
@@ -136,8 +158,14 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 	});
 	const effectiveModel = modelOverride ?? tierModel?.model ?? agent.model;
 	const hasModelOverride = modelOverride !== undefined;
-	const effectiveThinking = toThinkingLevel(agent.thinking, tierModel?.thinking, hasModelOverride);
-	const modelArg = applyThinkingSuffix(effectiveModel, effectiveThinking);
+
+	// The launch/actual thinking level reflects what was actually passed as the CLI
+	// argument. When the effective model already contains a thinking suffix (e.g.
+	// "openai/gpt-4o:medium"), that suffix is the authoritative thinking level since
+	// it is what the runtime will actually use. Falls back to agent/tier thinking
+	// when there is no model-level thinking suffix.
+	const launchThinking = extractThinkingSuffix(effectiveModel) ?? toThinkingLevel(agent.thinking, tierModel?.thinking, hasModelOverride);
+	const modelArg = applyThinkingSuffix(effectiveModel, launchThinking);
 	const effectiveTools = resolveRoleTools({
 		workflow,
 		role,
@@ -185,7 +213,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 		sessionEnabled,
 		sessionFile: options.sessionFile,
 		model: effectiveModel,
-		thinking: effectiveThinking,
+		thinking: launchThinking,
 		tools: effectiveTools,
 		extensions: effectiveExtensions,
 		skills: skillNames,
@@ -202,7 +230,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 		messages: [],
 		usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
 		model: effectiveModel,
-		thinking: effectiveThinking,
+		thinking: launchThinking,
 		skills: resolvedSkillNames,
 		skillsWarning,
 		sessionMode,
@@ -215,7 +243,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 		status: "running",
 		task,
 		model: effectiveModel,
-		thinking: effectiveThinking,
+		thinking: launchThinking,
 		skills: resolvedSkillNames,
 		recentTools: [],
 		recentOutput: [],
@@ -232,7 +260,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 		skills: resolvedSkillNames,
 		skillsWarning,
 		model: effectiveModel,
-		thinking: effectiveThinking,
+		thinking: launchThinking,
 	});
 
 	let artifactPathsResult: ArtifactPaths | undefined;
@@ -298,7 +326,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 				globalRunHistory.updateRun(historyId, {
 					duration: progress.durationMs,
 					model: result.model,
-					thinking: result.thinking,
+					thinking: launchThinking,
 					skills: result.skills,
 					skillsWarning: result.skillsWarning,
 					tokens: { total: result.usage.input + result.usage.output },
@@ -460,9 +488,11 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 		}
 	}
 
-	// Sync runtime-confirmed model and thinking into progress before final assignment
+	// Sync runtime-confirmed model into progress while keeping thinking as launch thinking.
+	// The runtime model event is authoritative for `model` only; thinking must reflect the
+	// actual CLI launch argument so result/progress/history always agree with what was run.
 	progress.model = result.model;
-	progress.thinking = result.thinking;
+	progress.thinking = launchThinking;
 	result.progress = progress;
 	result.progressSummary = {
 		toolCount: progress.toolCount,
@@ -486,7 +516,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 				exitCode: result.exitCode,
 				usage: result.usage,
 				model: result.model,
-				thinking: result.thinking,
+				thinking: launchThinking,
 				durationMs: progress.durationMs,
 				toolCount: progress.toolCount,
 				error: result.error,
@@ -514,7 +544,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 	globalRunHistory.updateRun(historyId, {
 		duration: progress.durationMs,
 		model: result.model,
-		thinking: result.thinking,
+		thinking: launchThinking,
 		skills: result.skills,
 		skillsWarning: result.skillsWarning,
 		tokens: { total: result.usage.input + result.usage.output },
