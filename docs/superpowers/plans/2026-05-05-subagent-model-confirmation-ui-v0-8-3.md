@@ -388,7 +388,7 @@ git commit -m "feat: confirm subagent model from execution events"
 - Modify: `src/execution/subagent-executor.ts`
 - Test: `test/unit/subagent-result-lines.test.ts`
 
-- [ ] **Step 1: Add inline renderer coverage for pending/running model labels**
+- [x] **Step 1: Add inline renderer coverage for pending/running model labels**
 
 In `test/unit/subagent-result-lines.test.ts`, append this test in the `renderSubagentResultLines parallel runs` describe block before the truncation test:
 
@@ -436,7 +436,7 @@ In `test/unit/subagent-result-lines.test.ts`, append this test in the `renderSub
 
 This test initially fails until Task 4 changes the inline row formatter.
 
-- [ ] **Step 2: Add pending progress model/thinking seeding in parallel executor**
+- [x] **Step 2: Add pending progress model/thinking seeding in parallel executor**
 
 In `src/execution/subagent-executor.ts`, import `resolveModelForAgent` from `./superpowers-policy.ts` if it is not already imported in that file. Keep the existing `ExecutionRole` import usage unchanged.
 
@@ -461,7 +461,7 @@ Add `model` and `thinking` to the returned pending `AgentProgress` object immedi
 
 This mirrors child launch resolution so inline pending rows can show the model expected to launch with until the execution loop confirms the runtime-reported model.
 
-- [ ] **Step 3: Run the inline formatter test and verify it still fails only on formatting**
+- [x] **Step 3: Run the inline formatter test and verify it still fails only on formatting**
 
 Run:
 
@@ -471,7 +471,7 @@ node --experimental-strip-types --test test/unit/subagent-result-lines.test.ts
 
 Expected: FAIL on missing model labels in row text. There should be no type error for `AgentProgress.model` or `AgentProgress.thinking` after Task 1.
 
-- [ ] **Step 4: Commit Task 3**
+- [x] **Step 4: Commit Task 3**
 
 Run:
 
