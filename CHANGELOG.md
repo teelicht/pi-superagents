@@ -1,18 +1,14 @@
 # Changelog
 
 ## [0.8.3] - 2026-05-05
-
-- **Preserved No-Async Public Contract**
-  - Subagent execution remains strictly synchronous and blocking. There are no user-facing `async`, `wait`, `collect`, or `cancel` parameters.
-  - Lifecycle tools (`subagent_done`, `caller_ping`) are internal child-only tools registered for bounded roles through `tool-registry.ts` policy; they are not general-purpose delegation tools.
-  - Worktree-backed parallel children are joined before cleanup; worktree policy is unchanged.
-
-- **Compatibility**
+  
+- **Hardened Subagent Execution**
   - Added child lifecycle sidecar parsing (`lifecycle-signals.ts`) for atomic `.exit` sidecar writes consumed by the parent after child exit.
   - Added deterministic result delivery store (`result-delivery.ts`) with `wait`/`join`/`detach` semantics and delivered-once enforcement.
   - Extracted child runner into `child-runner.ts` (replaces deleted `execution.ts`).
   - Added execution planner (`execution-planner.ts`) for prepared child run plans with packet/fork handoff logic.
   - Subagent results carry optional `completion` envelope metadata and `lifecycle` sidecar status.
+  - Worktree-backed parallel children are joined before cleanup; worktree policy is unchanged.
 
 ## [0.8.2] - 2026-05-04
 
