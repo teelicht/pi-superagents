@@ -80,6 +80,7 @@ void describe("renderSubagentResultLines collapsed single runs", () => {
 		const text = lines.join("\n");
 		assert.match(text, /^Subagent\s+running/m);
 		assert.match(text, /sp-recon/);
+		assert.match(text, /unknown/);
 		assert.match(text, /Inspect auth flow/);
 		assert.match(text, /3 tools/);
 		assert.match(text, /12\.3s/);
@@ -100,6 +101,7 @@ void describe("renderSubagentResultLines expanded single runs", () => {
 				results: [
 					singleResult({
 						model: "openai/gpt-5.4-mini",
+						thinking: "medium",
 						skills: ["brainstorming"],
 						skillsWarning: "Missing optional skill: product-designer",
 						progress: {
@@ -128,6 +130,8 @@ void describe("renderSubagentResultLines expanded single runs", () => {
 		const text = lines.join("\n");
 		assert.match(text, /Subagent \[fork\]\s+running/);
 		assert.match(text, /model: openai\/gpt-5\.4-mini/);
+		assert.match(text, /thinking: medium/);
+		assert.match(text, /sp-recon\s+gpt-5\.4-mini\s+Inspect auth flow/);
 		assert.match(text, /current: read src\/auth\/session\.ts/);
 		assert.doesNotMatch(text, /\{"pattern":"token"\}/);
 		assert.match(text, /recent: read middleware\.ts, read session\.ts, rg \{"pattern":"cookie"\}/);
@@ -146,6 +150,7 @@ void describe("renderSubagentResultLines expanded single runs", () => {
 						exitCode: 1,
 						error: "Child process exited with 1",
 						model: "anthropic/claude-sonnet-4.5",
+						thinking: "high",
 						sessionFile: "/Users/thomas/.pi/sessions/session.jsonl",
 						artifactPaths: {
 							inputPath: "/tmp/input.md",
@@ -163,8 +168,9 @@ void describe("renderSubagentResultLines expanded single runs", () => {
 
 		const text = lines.join("\n");
 		assert.match(text, /Subagent\s+0\/1 complete error/);
-		assert.match(text, /- failed\s+sp-recon\s+Inspect auth flow/);
+		assert.match(text, /- failed\s+sp-recon\s+claude-sonnet-4\.5\s+Inspect auth flow/);
 		assert.match(text, /model: anthropic\/claude-sonnet-4\.5/);
+		assert.match(text, /thinking: high/);
 		assert.match(text, /output: The auth flow fails when token refresh is skipped\./);
 		assert.match(text, /error: Child process exited with 1/);
 		assert.match(text, /session: .*session\.jsonl/);
@@ -223,9 +229,9 @@ void describe("renderSubagentResultLines parallel runs", () => {
 
 		const text = lines.join("\n");
 		assert.match(text, /^Subagents\s+0\/2 complete/m);
-		assert.match(text, /- running\s+sp-recon\s+Inspect auth flow\s+3 tools\s+12\.3s/);
+		assert.match(text, /- running\s+sp-recon\s+unknown\s+Inspect auth flow\s+3 tools\s+12\.3s/);
 		assert.match(text, /-> read src\/auth\/session\.ts/);
-		assert.match(text, /- pending\s+sp-code-review\s+Review auth changes/);
+		assert.match(text, /- pending\s+sp-code-review\s+unknown\s+Review auth changes/);
 		assert.doesNotMatch(text, /recent:/);
 	});
 
