@@ -39,6 +39,7 @@ import {
 	type SessionMode,
 	type SingleResult,
 	type SubagentState,
+	type ThinkingLevel,
 	type WorkflowMode,
 } from "../shared/types.ts";
 import { getSingleResultOutput, mapConcurrent } from "../shared/utils.ts";
@@ -117,6 +118,39 @@ interface ExecutionContextData {
 	artifactsDir: string;
 	workflow: WorkflowMode;
 	useTestDrivenDevelopment: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Thinking level narrowing
+// ---------------------------------------------------------------------------
+
+/**
+ * Valid thinking levels used for type-safe thinking value narrowing.
+ * Corresponds to the ThinkingLevel union in shared/types.ts.
+ */
+const VALID_THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"];
+
+/**
+ * Narrow agent frontmatter thinking strings to the shared ThinkingLevel union.
+ *
+ * Valid agent thinking takes precedence. Falls back to valid tier thinking when
+ * no model override is active and no valid agent thinking is available.
+ *
+ * @param thinking Raw thinking string from agent config.
+ * @param tierThinking Optional thinking level from model tier config.
+ * @param hasModelOverride Whether a runtime model override is active.
+ * @returns Narrowed ThinkingLevel or undefined.
+ */
+function toThinkingLevel(thinking: string | undefined, tierThinking: string | undefined, hasModelOverride: boolean): ThinkingLevel | undefined {
+	// Valid agent thinking wins first
+	if (thinking && VALID_THINKING_LEVELS.includes(thinking as ThinkingLevel)) {
+		return thinking as ThinkingLevel;
+	}
+	// If no model override and no valid agent thinking, use valid tier thinking
+	if (!hasModelOverride && tierThinking && VALID_THINKING_LEVELS.includes(tierThinking as ThinkingLevel)) {
+		return tierThinking as ThinkingLevel;
+	}
+	return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -371,7 +405,8 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 				config,
 			});
 			const provisionalModel = modelOverrides[index] ?? tierModel?.model ?? agentConfigs[index].model;
-			const provisionalThinking = agentConfigs[index].thinking ?? (modelOverrides[index] ? undefined : tierModel?.thinking);
+			const hasModelOverride = modelOverrides[index] !== undefined;
+			const provisionalThinking = toThinkingLevel(agentConfigs[index].thinking, tierModel?.thinking, hasModelOverride);
 			return {
 				index,
 				agent: task.agent,
