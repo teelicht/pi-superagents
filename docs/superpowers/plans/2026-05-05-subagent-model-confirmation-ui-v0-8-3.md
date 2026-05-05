@@ -166,7 +166,7 @@ git commit -m "feat: type subagent model confirmation metadata"
 - Modify: `src/execution/child-runner.ts`
 - Test: `test/integration/single-execution.test.ts`
 
-- [ ] **Step 1: Write the failing integration test for runtime-confirmed result/progress/history**
+- [x] **Step 1: Write the failing integration test for runtime-confirmed result/progress/history**
 
 In `test/integration/single-execution.test.ts`, add this test after `records the actual model emitted by child pi`:
 
@@ -235,7 +235,7 @@ If `globalRunHistory` is not imported in this file, add this import at the top w
 import { globalRunHistory } from "../../src/execution/run-history.ts";
 ```
 
-- [ ] **Step 2: Run the focused integration test and verify it fails**
+- [x] **Step 2: Run the focused integration test and verify it fails**
 
 Run:
 
@@ -245,7 +245,7 @@ node --experimental-transform-types --import ./test/support/register-loader.mjs 
 
 Expected: FAIL because `result.thinking`, `progress.model`, `progress.thinking`, and persisted `historyRun.thinking` are missing.
 
-- [ ] **Step 3: Initialize result and progress model/thinking metadata**
+- [x] **Step 3: Initialize result and progress model/thinking metadata**
 
 In `src/execution/child-runner.ts`, update the `result` object so model and thinking are separate fields:
 
@@ -287,7 +287,7 @@ Replace the current `globalRunHistory.startRun(...)` call with:
 
 These are provisional values shown while the child is starting or before it emits a model event.
 
-- [ ] **Step 4: Update progress and history when runtime model events arrive**
+- [x] **Step 4: Update progress and history when runtime model events arrive**
 
 In the assistant `message_end` branch in `src/execution/child-runner.ts`, replace the one-line model assignment:
 
@@ -306,7 +306,7 @@ with:
 
 Keep the error model guard exactly as shown. Do not replace the runtime event model with frontmatter, tier config, `modelOverride`, or `modelArg`.
 
-- [ ] **Step 5: Propagate thinking through live and final history updates**
+- [x] **Step 5: Propagate thinking through live and final history updates**
 
 In the `fireUpdate` function in `src/execution/child-runner.ts`, include `thinking` in the update payload:
 
@@ -341,7 +341,7 @@ Update the final `globalRunHistory.updateRun(...)` payload:
 	});
 ```
 
-- [ ] **Step 6: Write thinking to artifacts metadata**
+- [x] **Step 6: Write thinking to artifacts metadata**
 
 In `src/execution/child-runner.ts`, update the `writeMetadata(...)` object to include thinking immediately after model:
 
@@ -363,7 +363,7 @@ In `src/execution/child-runner.ts`, update the `writeMetadata(...)` object to in
 			});
 ```
 
-- [ ] **Step 7: Run the focused integration test and verify it passes**
+- [x] **Step 7: Run the focused integration test and verify it passes**
 
 Run:
 
@@ -373,7 +373,7 @@ node --experimental-transform-types --import ./test/support/register-loader.mjs 
 
 Expected: PASS, including the new runtime-confirmed result/progress/history test.
 
-- [ ] **Step 8: Commit Task 2**
+- [x] **Step 8: Commit Task 2**
 
 Run:
 
