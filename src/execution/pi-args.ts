@@ -1,10 +1,35 @@
+/**
+ * Pi argument builder and utilities
+ *
+ * Key responsibilities:
+ * - build CLI argument arrays for invoking the `pi` binary
+ * - apply thinking-level suffixes to model identifiers
+ * - manage temporary files for large tasks and system prompts
+ * - handle session file and MCP tool configuration
+ *
+ * Important dependencies/side effects:
+ * - node:fs (mkdtempSync, writeFileSync, rmSync) — creates/deletes temp directories
+ * - node:os (tmpdir) — temp directory root
+ * - node:path (join) — path construction
+ *
+ * Consumed by: src/execution/launch.ts (buildPiArgs), src/shared/hooks.ts (cleanupTempDir)
+ */
+
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"];
+import type { ThinkingLevel } from "../shared/types.ts";
+
+const THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"];
+
 const TASK_ARG_LIMIT = 8000;
 
+/**
+ * Input contract for `buildPiArgs`.
+ *
+ * @see buildPiArgs
+ */
 export interface BuildPiArgsInput {
 	baseArgs: string[];
 	task: string;
@@ -32,19 +57,53 @@ export interface BuildPiArgsInput {
 	promptFileStem?: string;
 }
 
+/**
+ * Output contract from `buildPiArgs`.
+ *
+ * @see buildPiArgs
+ */
 export interface BuildPiArgsResult {
 	args: string[];
 	env: Record<string, string | undefined>;
 	tempDir?: string;
 }
 
+/**
+ * Appends a thinking-level suffix to a model identifier when the suffix differs
+ * from what is already present.
+ *
+ * @param model   - The model string (e.g. `"anthropic/claude-3-5-sonnet"`).  May include an existing
+ *                  thinking suffix separated by `:`.
+ * @param thinking - Desired thinking level (e.g. `"medium"`).  Ignored if `"off"` or `undefined`.
+ * @returns       - The model string with the suffix appended (e.g. `"anthropic/claude-3-5-sonnet:medium"`),
+ *                  or the original model if no suffix change is needed.
+ */
 export function applyThinkingSuffix(model: string | undefined, thinking: string | undefined): string | undefined {
 	if (!model || !thinking || thinking === "off") return model;
 	const colonIdx = model.lastIndexOf(":");
-	if (colonIdx !== -1 && THINKING_LEVELS.includes(model.substring(colonIdx + 1))) return model;
+	if (colonIdx !== -1 && THINKING_LEVELS.includes(model.substring(colonIdx + 1) as ThinkingLevel)) return model;
 	return `${model}:${thinking}`;
 }
 
+/**
+ * Builds the CLI argument array and environment variables for launching the `pi` binary.
+ *
+ * - Session: when `sessionFile` is provided, emits `--session`; otherwise uses `sessionEnabled`
+ *   to emit `--no-session` or nothing.
+ * - Model: applies the thinking suffix via `applyThinkingSuffix` and emits `--models` (not `--model`,
+ *   because pi CLI silently ignores `--model` without `--provider`).
+ * - Tools: path-like tools (containing `/` or ending in `.ts`/`.js`) are emitted as `--extension`;
+ *   builtin tool names are emitted as `--tools`.
+ * - Extensions: when `extensions` is defined, emits `--no-extensions` then `--extension` for each path.
+ * - System prompt: written to a temp file (mode `0o600`) and passed via `--append-system-prompt`.
+ * - Task: passed as `@<file>` when `taskFilePath` is supplied or when `task` exceeds `TASK_ARG_LIMIT`;
+ *   otherwise passed as a positional argument.
+ *
+ * @param input - Configuration for the pi invocation.
+ * @returns     - `{ args, env, tempDir }`.  Callers must eventually call `cleanupTempDir(result.tempDir)`.
+ * @see BuildPiArgsInput
+ * @see BuildPiArgsResult
+ */
 export function buildPiArgs(input: BuildPiArgsInput): BuildPiArgsResult {
 	const args = [...input.baseArgs];
 
@@ -125,6 +184,14 @@ export function buildPiArgs(input: BuildPiArgsInput): BuildPiArgsResult {
 	return { args, env, tempDir };
 }
 
+/**
+ * Removes a temporary directory created by `buildPiArgs`.
+ *
+ * Cleanup is best-effort; errors are swallowed to avoid disrupting callers.
+ *
+ * @param tempDir - Path to the directory returned by `buildPiArgs`.  May be `null` or `undefined`
+ *                  (no-op in that case).
+ */
 export function cleanupTempDir(tempDir: string | null | undefined): void {
 	if (!tempDir) return;
 	try {
