@@ -12,7 +12,7 @@
  * - node:os (tmpdir) — temp directory root
  * - node:path (join) — path construction
  *
- * Consumed by: src/execution/launch.ts (buildPiArgs), src/shared/hooks.ts (cleanupTempDir)
+ * Consumed by: src/execution/child-runner.ts for child process launch preparation and cleanup.
  */
 
 import * as fs from "node:fs";
