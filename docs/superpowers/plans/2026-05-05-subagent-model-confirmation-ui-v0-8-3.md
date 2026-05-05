@@ -59,7 +59,7 @@ The user clarified that the primary UI is the inline Pi chat subagent UI: the ro
 - Modify: `src/execution/run-history.ts`
 - Test: `test/unit/run-history.test.ts`
 
-- [ ] **Step 1: Write the failing run-history test**
+- [x] **Step 1: Write the failing run-history test**
 
 Edit `test/unit/run-history.test.ts` and append this test after `globalRunHistory tracks active and finished runs`:
 
@@ -95,7 +95,7 @@ void test("globalRunHistory preserves model thinking metadata", () => {
 });
 ```
 
-- [ ] **Step 2: Run the focused test and verify it fails**
+- [x] **Step 2: Run the focused test and verify it fails**
 
 Run:
 
@@ -105,7 +105,7 @@ node --experimental-strip-types --test test/unit/run-history.test.ts
 
 Expected: FAIL because `thinking` is not part of `RunEntry` yet.
 
-- [ ] **Step 3: Add model/thinking to shared progress and result metadata**
+- [x] **Step 3: Add model/thinking to shared progress and result metadata**
 
 In `src/shared/types.ts`, update `AgentProgress` immediately after `task: string;`:
 
@@ -123,7 +123,7 @@ Update `SingleResult` near the existing `model?: string;` field:
 	error?: string;
 ```
 
-- [ ] **Step 4: Add thinking to run history entries**
+- [x] **Step 4: Add thinking to run history entries**
 
 In `src/execution/run-history.ts`, add this import after the Node imports:
 
@@ -141,7 +141,7 @@ Update `RunEntry` near `model?: string;`:
 
 Do not add custom serialization logic. Existing `startRun`, `updateRun`, `finishRun`, and `recordRun` already shallow-copy optional fields through the lifecycle once the type allows them.
 
-- [ ] **Step 5: Run the focused test and verify it passes**
+- [x] **Step 5: Run the focused test and verify it passes**
 
 Run:
 
@@ -151,7 +151,7 @@ node --experimental-strip-types --test test/unit/run-history.test.ts
 
 Expected: PASS for both run-history tests.
 
-- [ ] **Step 6: Commit Task 1**
+- [x] **Step 6: Commit Task 1**
 
 Run:
 
