@@ -241,6 +241,63 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		assert.equal(result.model, "openai-codex/gpt-5.5");
 	});
 
+	void it("records runtime-confirmed model and separate thinking in result progress and run history", async () => {
+		globalRunHistory.activeRuns.clear();
+		const updates: unknown[] = [];
+		mockPi.onCall({
+			jsonl: [
+				{
+					type: "message_end",
+					message: {
+						role: "assistant",
+						content: [{ type: "text", text: "Done" }],
+						model: "runtime/provider-model",
+						usage: {
+							input: 10,
+							output: 5,
+							cacheRead: 0,
+							cacheWrite: 0,
+							cost: { total: 0.001 },
+						},
+					},
+				},
+			],
+		});
+		const agents = [makeAgent("sp-code-review", { model: "balanced" })];
+
+		const result = await runPreparedChild(tempDir, agents, "sp-code-review", "History task", {
+			workflow: "superpowers",
+			runId: "history-confirmation",
+			onUpdate: (update) => updates.push(update),
+			config: {
+				superagents: {
+					modelTiers: {
+						balanced: {
+							model: "configured/provider-model",
+							thinking: "medium",
+						},
+					},
+				},
+			},
+		});
+
+		assert.equal(result.exitCode, 0);
+		assert.equal(result.model, "runtime/provider-model");
+		assert.equal(result.thinking, "medium");
+		assert.equal(result.progress?.model, "runtime/provider-model");
+		assert.equal(result.progress?.thinking, "medium");
+
+		const lastUpdate = updates.at(-1) as { details?: { results?: Array<{ model?: string; thinking?: string; progress?: { model?: string; thinking?: string } }> } };
+		assert.equal(lastUpdate.details?.results?.[0]?.model, "runtime/provider-model");
+		assert.equal(lastUpdate.details?.results?.[0]?.thinking, "medium");
+		assert.equal(lastUpdate.details?.results?.[0]?.progress?.model, "runtime/provider-model");
+		assert.equal(lastUpdate.details?.results?.[0]?.progress?.thinking, "medium");
+
+		const historyRun = globalRunHistory.getRecent(10).find((run) => run.agent === "sp-code-review" && run.task === "History task");
+		assert.equal(historyRun?.model, "runtime/provider-model");
+		assert.equal(historyRun?.thinking, "medium");
+	});
+
 	void it("keeps requested model when child pi emits a synthetic error model", async () => {
 		mockPi.onCall({
 			exitCode: 1,
