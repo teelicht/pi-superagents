@@ -486,7 +486,7 @@ git commit -m "feat: seed inline subagent progress models"
 - Modify: `src/ui/subagent-result-lines.ts`
 - Test: `test/unit/subagent-result-lines.test.ts`
 
-- [ ] **Step 1: Add expanded inline detail tests**
+- [x] **Step 1: Add expanded inline detail tests**
 
 In `test/unit/subagent-result-lines.test.ts`, update the `shows bounded running details when expanded` fixture by adding `thinking: "medium",` immediately after `model: "openai/gpt-5.4-mini",`.
 
@@ -505,7 +505,7 @@ Add this assertion after the existing completed model assertion:
 		assert.match(text, /thinking: high/);
 ```
 
-- [ ] **Step 2: Add inline model label helper**
+- [x] **Step 2: Add inline model label helper**
 
 In `src/ui/subagent-result-lines.ts`, add this helper above `formatExpandedRow`:
 
@@ -524,7 +524,7 @@ function formatRowModelLabel(row: SubagentDisplayRow): string {
 }
 ```
 
-- [ ] **Step 3: Include model in expanded inline row headlines**
+- [x] **Step 3: Include model in expanded inline row headlines**
 
 In `src/ui/subagent-result-lines.ts`, replace `formatExpandedRow` with:
 
@@ -542,7 +542,7 @@ function formatExpandedRow(row: SubagentDisplayRow): string {
 }
 ```
 
-- [ ] **Step 4: Include thinking in expanded inline details**
+- [x] **Step 4: Include thinking in expanded inline details**
 
 In `formatExpandedDetails`, replace:
 
@@ -559,7 +559,7 @@ with:
 	if (thinking) lines.push(`thinking: ${thinking}`);
 ```
 
-- [ ] **Step 5: Include model in collapsed inline rows**
+- [x] **Step 5: Include model in collapsed inline rows**
 
 In `src/ui/subagent-result-lines.ts`, replace `formatCollapsedRow` with:
 
@@ -579,7 +579,7 @@ function formatCollapsedRow(row: SubagentDisplayRow, includeStatus: boolean): st
 }
 ```
 
-- [ ] **Step 6: Run the focused inline renderer tests and verify they pass**
+- [x] **Step 6: Run the focused inline renderer tests and verify they pass**
 
 Run:
 
@@ -589,7 +589,7 @@ node --experimental-strip-types --test test/unit/subagent-result-lines.test.ts
 
 Expected: PASS for all inline subagent result line tests.
 
-- [ ] **Step 7: Commit Task 4**
+- [x] **Step 7: Commit Task 4**
 
 Run:
 
