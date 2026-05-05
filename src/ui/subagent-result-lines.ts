@@ -55,7 +55,7 @@ interface SubagentDisplaySummary {
  */
 export function renderSubagentResultLines(result: AgentToolResult<Details>, options: RenderSubagentResultLinesOptions): string[] {
 	const details = result.details;
-	if (!details || details.results.length === 0) {
+	if (!details || (details.results.length === 0 && !details.progress?.length)) {
 		const text = result.content[0]?.type === "text" ? result.content[0].text : "(no output)";
 		const prefix = details?.sessionMode === "fork" ? "[fork] " : "";
 		return [truncateLine(`${prefix}${text}`, options.width)];
@@ -215,6 +215,19 @@ function renderExpandedLines(summary: SubagentDisplaySummary, rows: SubagentDisp
 }
 
 /**
+ * Formats a runtime model for compact inline subagent rows.
+ *
+ * @param row Normalized display row that may contain completed or live progress metadata.
+ * @returns Compact model label with an explicit unknown fallback.
+ */
+function formatRowModelLabel(row: SubagentDisplayRow): string {
+	const model = row.result?.model ?? row.progress?.model;
+	if (!model) return "unknown";
+	const tail = model.split("/").pop() ?? model;
+	return tail.length > 28 ? `${tail.slice(0, 25)}...` : tail;
+}
+
+/**
  * Formats the expanded row headline.
  *
  * @param row Normalized display row.
@@ -222,8 +235,9 @@ function renderExpandedLines(summary: SubagentDisplaySummary, rows: SubagentDisp
  */
 function formatExpandedRow(row: SubagentDisplayRow): string {
 	const summary = row.summary;
+	const modelLabel = formatRowModelLabel(row);
 	const stats = summary && summary.toolCount > 0 ? `  ${summary.toolCount} tools  ${formatDuration(summary.durationMs)}` : "";
-	return `- ${row.status}  ${row.agent}  ${row.task}${stats}`;
+	return `- ${row.status}  ${row.agent}  ${modelLabel}  ${row.task}${stats}`;
 }
 
 /**
@@ -237,7 +251,11 @@ function formatExpandedDetails(row: SubagentDisplayRow): string[] {
 	const result = row.result;
 	const progress = row.progress;
 
-	if (result?.model) lines.push(`model: ${result.model}`);
+	const model = result?.model ?? progress?.model;
+	const thinking = result?.thinking ?? progress?.thinking;
+	if (model) lines.push(`model: ${model}`);
+	if (thinking) lines.push(`thinking: ${thinking}`);
+
 	const current = formatCurrentActivity(progress);
 	if (current) lines.push(`current: ${current}`);
 
@@ -299,9 +317,10 @@ function formatHeader(summary: SubagentDisplaySummary): string {
  */
 function formatCollapsedRow(row: SubagentDisplayRow, includeStatus: boolean): string {
 	const summary = row.summary;
+	const modelLabel = formatRowModelLabel(row);
 	const stats = summary && summary.toolCount > 0 ? `  ${summary.toolCount} tools  ${formatDuration(summary.durationMs)}` : "";
 	const status = includeStatus ? `${row.status}  ` : "";
-	return `- ${status}${row.agent}  ${row.task}${stats}`;
+	return `- ${status}${row.agent}  ${modelLabel}  ${row.task}${stats}`;
 }
 
 /**
