@@ -282,6 +282,101 @@ void describe("renderSubagentResultLines parallel runs", () => {
 		assert.deepStrictEqual(lines, ["Subagents  1/2 complete error  12 tools  28.4s"]);
 	});
 
+	// RED: Test that exitCode 2 counts as failure, not ok
+	void it("treats exitCode 2 as failure, not ok in parallel completed summary", () => {
+		const lines = renderSubagentResultLines(
+			toolResult({
+				mode: "parallel",
+				results: [
+					singleResult({
+						exitCode: 0,
+						progressSummary: { toolCount: 7, durationMs: 20_000 },
+						finalOutput: "Recon complete",
+					}),
+					singleResult({
+						agent: "sp-code-review",
+						task: "Review auth changes",
+						exitCode: 2,
+						error: "Script not found",
+						progressSummary: { toolCount: 5, durationMs: 28_400 },
+					}),
+				],
+			}),
+			{ expanded: false, width: 120 },
+		);
+
+		// Should be 1/2 not 2/2 because exitCode 2 is a failure
+		assert.deepStrictEqual(lines, ["Subagents  1/2 complete error  12 tools  28.4s"]);
+	});
+
+	// RED: Test that long model labels truncate with proper ellipsis
+	void it("truncates long model labels with single-character ellipsis in collapsed rows", () => {
+		const lines = renderSubagentResultLines(
+			toolResult({
+				mode: "parallel",
+				results: [
+					singleResult({
+						agent: "sp-recon",
+						task: "Inspect auth flow",
+						model: "openai/gpt-4.1-ultra-with-thinking-mode-enabled-v3",
+						progress: {
+							index: 0,
+							agent: "sp-recon",
+							status: "running",
+							task: "Inspect auth flow",
+							model: "openai/gpt-4.1-ultra-with-thinking-mode-enabled-v3",
+							currentTool: "read",
+							currentToolArgs: "src/auth/session.ts",
+							recentTools: [],
+							recentOutput: [],
+							toolCount: 1,
+							durationMs: 1000,
+						},
+					}),
+				],
+			}),
+			{ expanded: false, width: 160 },
+		);
+
+		const text = lines.join("\n");
+		// Model tail is >28 chars: "gpt-4.1-ultra-with-thinking-mode-enabled-v3" (42 chars)
+		// slice(0, 25) = "gpt-4.1-ultra-with-thinki" + "…" = "gpt-4.1-ultra-with-thinki…" (25 chars)
+		assert.match(text, /sp-recon\s+gpt-4\.1-ultra-with-thinki…\s+Inspect auth flow/);
+		assert.doesNotMatch(text, /\.\.\./);
+	});
+
+	void it("truncates long model labels with single-character ellipsis in expanded rows", () => {
+		const lines = renderSubagentResultLines(
+			toolResult({
+				mode: "parallel",
+				results: [
+					singleResult({
+						agent: "sp-recon",
+						task: "Inspect auth flow",
+						model: "openai/gpt-4.1-ultra-with-thinking-mode-enabled-v3",
+						progress: {
+							index: 0,
+							agent: "sp-recon",
+							status: "completed",
+							task: "Inspect auth flow",
+							model: "openai/gpt-4.1-ultra-with-thinking-mode-enabled-v3",
+							recentTools: [],
+							recentOutput: [],
+							toolCount: 1,
+							durationMs: 1000,
+						},
+					}),
+				],
+			}),
+			{ expanded: true, width: 160 },
+		);
+
+		const text = lines.join("\n");
+		// Model tail is >28 chars, truncated in headline with slice(0, 25) + ellipsis
+		assert.match(text, /- completed\s+sp-recon\s+gpt-4\.1-ultra-with-thinki…\s+Inspect auth flow/);
+		assert.doesNotMatch(text, /\.\.\./);
+	});
+
 	void it("shows model labels for inline pending and running rows", () => {
 		const lines = renderSubagentResultLines(
 			toolResult({

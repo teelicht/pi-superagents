@@ -131,7 +131,7 @@ function inferStatus(result: SingleResult, progress: AgentProgress | undefined):
  */
 function summarizeDetails(details: Details, rows: SubagentDisplayRow[]): SubagentDisplaySummary {
 	const totalCount = Math.max(rows.length, details.results.length);
-	const okCount = rows.filter((row) => row.status === "completed" && row.result?.exitCode !== 1).length;
+	const okCount = rows.filter((row) => row.status === "completed" && row.result?.exitCode === 0).length;
 	const hasRunning = rows.some((row) => row.status === "running" || row.status === "pending");
 	const hasNeedsParent = rows.some((row) => row.status === "needs_parent");
 	const hasFailure = rows.some((row) => row.status === "failed" || (row.result !== undefined && row.result.exitCode !== 0));
@@ -224,7 +224,7 @@ function formatRowModelLabel(row: SubagentDisplayRow): string {
 	const model = row.result?.model ?? row.progress?.model;
 	if (!model) return "unknown";
 	const tail = model.split("/").pop() ?? model;
-	return tail.length > 28 ? `${tail.slice(0, 25)}...` : tail;
+	return tail.length > 28 ? `${tail.slice(0, 25)}…` : tail;
 }
 
 /**
