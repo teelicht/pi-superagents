@@ -87,6 +87,8 @@ export interface AgentProgress {
 	agent: string;
 	status: "pending" | "running" | "completed" | "failed";
 	task: string;
+	model?: string;
+	thinking?: ThinkingLevel;
 	skills?: string[];
 	currentTool?: string;
 	currentToolArgs?: string;
@@ -114,6 +116,7 @@ export interface SingleResult {
 	messages: Message[];
 	usage: Usage;
 	model?: string;
+	thinking?: ThinkingLevel;
 	error?: string;
 	sessionFile?: string;
 	skills?: string[];

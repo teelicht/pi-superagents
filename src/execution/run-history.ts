@@ -10,6 +10,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import type { ThinkingLevel } from "../shared/types.ts";
 
 export interface RunEntry {
 	agent: string;
@@ -19,6 +20,7 @@ export interface RunEntry {
 	duration: number;
 	exit?: number;
 	model?: string;
+	thinking?: ThinkingLevel;
 	skills?: string[];
 	skillsWarning?: string;
 	tokens?: { total: number };

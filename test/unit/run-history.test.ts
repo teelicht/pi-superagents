@@ -37,3 +37,33 @@ void test("globalRunHistory tracks active and finished runs", () => {
 	globalRunHistory.finishRun(runId, "ok");
 	assert.strictEqual(globalRunHistory.activeRuns.size, 0);
 });
+
+void test("globalRunHistory preserves model thinking metadata", () => {
+	globalRunHistory.activeRuns.clear();
+	const runId = "test-run-thinking";
+
+	globalRunHistory.startRun(runId, {
+		agent: "sp-code-review",
+		task: "Review model confirmation",
+		model: "anthropic/claude-sonnet-4",
+		thinking: "medium",
+	});
+
+	const active = globalRunHistory.activeRuns.get(runId);
+	assert.strictEqual(active?.model, "anthropic/claude-sonnet-4");
+	assert.strictEqual(active?.thinking, "medium");
+
+	globalRunHistory.updateRun(runId, {
+		model: "anthropic/claude-sonnet-4-actual",
+		thinking: "high",
+	});
+
+	const updated = globalRunHistory.activeRuns.get(runId);
+	assert.strictEqual(updated?.model, "anthropic/claude-sonnet-4-actual");
+	assert.strictEqual(updated?.thinking, "high");
+
+	globalRunHistory.finishRun(runId, "ok");
+	const persisted = globalRunHistory.getRecent(5).find((run) => run.agent === "sp-code-review" && run.task === "Review model confirmation");
+	assert.strictEqual(persisted?.model, "anthropic/claude-sonnet-4-actual");
+	assert.strictEqual(persisted?.thinking, "high");
+});
