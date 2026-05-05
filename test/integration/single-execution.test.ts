@@ -11,6 +11,7 @@
 
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
 import type { MockPi } from "../support/helpers.ts";
@@ -19,7 +20,12 @@ import type { Details } from "../../src/shared/types.ts";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { RunEntry } from "../../src/execution/run-history.ts";
 
-// Top-level await: try importing pi-dependent modules
+// Top-level: isolate run history to a temp path BEFORE dynamic imports
+// This prevents interference from any existing run-history.jsonl
+const tempHistoryDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-superagents-run-history-test-"));
+process.env.PI_SUPERAGENTS_RUN_HISTORY_PATH = path.join(tempHistoryDir, "run-history.jsonl");
+
+// Dynamic imports for pi-dependent modules
 const execution = await tryImport<any>("./src/execution/child-runner.ts");
 const runHistory = await tryImport<any>("./src/execution/run-history.ts");
 const utils = await tryImport<any>("./src/shared/utils.ts");
@@ -63,6 +69,12 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 
 	after(() => {
 		mockPi.uninstall();
+		// Clean up isolated run history
+		try {
+			fs.rmSync(tempHistoryDir, { recursive: true, force: true });
+		} catch {
+			/* best effort */
+		}
 	});
 
 	beforeEach(() => {
@@ -672,5 +684,55 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		const secondExtension = args.indexOf("--extension", firstExtension + 1);
 		assert.equal(args[firstExtension + 1], globalExtensionPath);
 		assert.equal(args[secondExtension + 1], agentExtensionPath);
+	});
+
+	// -------------------------------------------------------------------------
+	// B. modelOverride with thinking suffix: suffix thinking wins (launch arg)
+	// -------------------------------------------------------------------------
+	void it("model override thinking suffix wins over agent thinking for displayed thinking", async () => {
+		mockPi.onCall({ echoArgs: true });
+		const agents = [makeAgent("sp-code-review", { model: "balanced", thinking: "high" })];
+
+		const result = await runPreparedChild(tempDir, agents, "sp-code-review", "Review task", {
+			workflow: "superpowers",
+			modelOverride: "openai/gpt-4o:medium",
+		});
+
+		assert.equal(result.exitCode, 0);
+		// The model arg must contain the modelOverride's thinking suffix
+		assertModelArg(result.messages, "openai/gpt-4o:medium");
+		// result.thinking must reflect the launch argument's suffix, not agent thinking
+		assert.equal(result.thinking, "medium");
+		assert.equal(result.progress?.thinking, "medium");
+	});
+
+	// -------------------------------------------------------------------------
+	// C. modelOverride discards tier thinking when no agent thinking
+	// -------------------------------------------------------------------------
+	void it("model override without thinking suffix discards tier thinking", async () => {
+		mockPi.onCall({ echoArgs: true });
+		const agents = [makeAgent("sp-code-review", { model: "balanced" })];
+
+		const result = await runPreparedChild(tempDir, agents, "sp-code-review", "Review task", {
+			workflow: "superpowers",
+			modelOverride: "openai/gpt-4o",
+			config: {
+				superagents: {
+					modelTiers: {
+						balanced: {
+							model: "configured/provider-model",
+							thinking: "medium",
+						},
+					},
+				},
+			},
+		});
+
+		assert.equal(result.exitCode, 0);
+		// No thinking suffix in the model arg
+		assertModelArg(result.messages, "openai/gpt-4o");
+		// No thinking level propagated when agent has no thinking and modelOverride lacks suffix
+		assert.equal(result.thinking, undefined);
+		assert.equal(result.progress?.thinking, undefined);
 	});
 });
