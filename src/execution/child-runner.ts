@@ -54,8 +54,8 @@ const VALID_THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low"
 /**
  * Narrow agent frontmatter thinking strings to the shared ThinkingLevel union.
  *
- * Valid levels are: off, minimal, low, medium, high, xhigh.
- * Returns tier thinking when available and no modelOverride is set; otherwise undefined.
+ * Valid thinking argument takes precedence. Falls back to valid tier thinking when
+ * no model override is active and no valid agent thinking is available.
  *
  * @param thinking Raw thinking string from agent config.
  * @param tierThinking Optional thinking level from model tier config.
@@ -63,17 +63,14 @@ const VALID_THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low"
  * @returns Narrowed ThinkingLevel or undefined.
  */
 function toThinkingLevel(thinking: string | undefined, tierThinking: string | undefined, hasModelOverride: boolean): ThinkingLevel | undefined {
-	// Prefer tier thinking when no model override is active
-	if (!hasModelOverride && tierThinking) {
-		if (VALID_THINKING_LEVELS.includes(tierThinking as ThinkingLevel)) {
-			return tierThinking as ThinkingLevel;
-		}
-	}
-	// Fall back to agent thinking if valid
+	// Valid agent thinking wins first
 	if (thinking && VALID_THINKING_LEVELS.includes(thinking as ThinkingLevel)) {
 		return thinking as ThinkingLevel;
 	}
-	// No valid thinking level found
+	// If no model override and no valid agent thinking, use valid tier thinking
+	if (!hasModelOverride && tierThinking && VALID_THINKING_LEVELS.includes(tierThinking as ThinkingLevel)) {
+		return tierThinking as ThinkingLevel;
+	}
 	return undefined;
 }
 
