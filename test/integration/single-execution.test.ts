@@ -15,6 +15,9 @@ import * as path from "node:path";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
 import type { MockPi } from "../support/helpers.ts";
 import { createMockPi, createTempDir, events, makeAgent, makeAgentConfigs, removeTempDir, tryImport } from "../support/helpers.ts";
+import type { Details } from "../../src/shared/types.ts";
+import type { AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { RunEntry } from "../../src/execution/run-history.ts";
 
 // Top-level await: try importing pi-dependent modules
 const execution = await tryImport<any>("./src/execution/child-runner.ts");
@@ -243,7 +246,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 
 	void it("records runtime-confirmed model and separate thinking in result progress and run history", async () => {
 		globalRunHistory.activeRuns.clear();
-		const updates: unknown[] = [];
+		const updates: AgentToolResult<Details>[] = [];
 		mockPi.onCall({
 			jsonl: [
 				{
@@ -268,7 +271,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		const result = await runPreparedChild(tempDir, agents, "sp-code-review", "History task", {
 			workflow: "superpowers",
 			runId: "history-confirmation",
-			onUpdate: (update) => updates.push(update),
+			onUpdate: (update: AgentToolResult<Details>) => updates.push(update),
 			config: {
 				superagents: {
 					modelTiers: {
@@ -287,13 +290,13 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		assert.equal(result.progress?.model, "runtime/provider-model");
 		assert.equal(result.progress?.thinking, "medium");
 
-		const lastUpdate = updates.at(-1) as { details?: { results?: Array<{ model?: string; thinking?: string; progress?: { model?: string; thinking?: string } }> } };
+		const lastUpdate = updates.at(-1) as AgentToolResult<Details>;
 		assert.equal(lastUpdate.details?.results?.[0]?.model, "runtime/provider-model");
 		assert.equal(lastUpdate.details?.results?.[0]?.thinking, "medium");
 		assert.equal(lastUpdate.details?.results?.[0]?.progress?.model, "runtime/provider-model");
 		assert.equal(lastUpdate.details?.results?.[0]?.progress?.thinking, "medium");
 
-		const historyRun = globalRunHistory.getRecent(10).find((run) => run.agent === "sp-code-review" && run.task === "History task");
+		const historyRun = globalRunHistory.getRecent(10).find((run: RunEntry) => run.agent === "sp-code-review" && run.task === "History task") as RunEntry | undefined;
 		assert.equal(historyRun?.model, "runtime/provider-model");
 		assert.equal(historyRun?.thinking, "medium");
 	});
