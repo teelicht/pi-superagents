@@ -170,7 +170,8 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 		exitCode: 0,
 		messages: [],
 		usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
-		model: modelArg,
+		model: effectiveModel,
+		thinking: effectiveThinking,
 		skills: resolvedSkillNames,
 		skillsWarning,
 		sessionMode,
@@ -182,6 +183,8 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 		agent: agentName,
 		status: "running",
 		task,
+		model: effectiveModel,
+		thinking: effectiveThinking,
 		skills: resolvedSkillNames,
 		recentTools: [],
 		recentOutput: [],
@@ -192,7 +195,14 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 
 	const startTime = Date.now();
 	const historyId = options.runId ? `${options.runId}-${agentName}-${index ?? 0}` : `run-${Date.now()}-${agentName}`;
-	globalRunHistory.startRun(historyId, { agent: agentName, task, skills: resolvedSkillNames, skillsWarning });
+	globalRunHistory.startRun(historyId, {
+		agent: agentName,
+		task,
+		skills: resolvedSkillNames,
+		skillsWarning,
+		model: effectiveModel,
+		thinking: effectiveThinking,
+	});
 
 	let artifactPathsResult: ArtifactPaths | undefined;
 	let jsonlPath: string | undefined;
@@ -257,6 +267,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 				globalRunHistory.updateRun(historyId, {
 					duration: progress.durationMs,
 					model: result.model,
+					thinking: result.thinking,
 					skills: result.skills,
 					skillsWarning: result.skillsWarning,
 					tokens: { total: result.usage.input + result.usage.output },
@@ -308,7 +319,10 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 								result.usage.cacheWrite += u.cacheWrite || 0;
 								result.usage.cost += u.cost?.total || 0;
 							}
-							if (evt.message.model && !evt.message.errorMessage) result.model = evt.message.model;
+							if (evt.message.model && !evt.message.errorMessage) {
+								result.model = evt.message.model;
+								progress.model = evt.message.model;
+							}
 							if (evt.message.errorMessage) result.error = evt.message.errorMessage;
 
 							const text = extractTextFromContent(evt.message.content);
@@ -415,6 +429,9 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 		}
 	}
 
+	// Sync runtime-confirmed model and thinking into progress before final assignment
+	progress.model = result.model;
+	progress.thinking = result.thinking;
 	result.progress = progress;
 	result.progressSummary = {
 		toolCount: progress.toolCount,
@@ -438,6 +455,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 				exitCode: result.exitCode,
 				usage: result.usage,
 				model: result.model,
+				thinking: result.thinking,
 				durationMs: progress.durationMs,
 				toolCount: progress.toolCount,
 				error: result.error,
@@ -465,6 +483,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 	globalRunHistory.updateRun(historyId, {
 		duration: progress.durationMs,
 		model: result.model,
+		thinking: result.thinking,
 		skills: result.skills,
 		skillsWarning: result.skillsWarning,
 		tokens: { total: result.usage.input + result.usage.output },
