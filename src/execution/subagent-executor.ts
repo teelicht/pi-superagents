@@ -22,6 +22,7 @@ import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import type { AgentConfig, AgentScope } from "../agents/agents.ts";
 import { getArtifactsDir } from "../shared/artifacts.ts";
 import { getPublishedExecutionSkills, normalizeSkillInput, resolveExecutionSkills } from "../shared/skills.ts";
+import { extractThinkingSuffix, toThinkingLevel } from "../shared/thinking-levels.ts";
 import {
 	type AgentProgress,
 	type ArtifactConfig,
@@ -39,7 +40,6 @@ import {
 	type SessionMode,
 	type SingleResult,
 	type SubagentState,
-	type ThinkingLevel,
 	type WorkflowMode,
 } from "../shared/types.ts";
 import { getSingleResultOutput, mapConcurrent } from "../shared/utils.ts";
@@ -118,39 +118,6 @@ interface ExecutionContextData {
 	artifactsDir: string;
 	workflow: WorkflowMode;
 	useTestDrivenDevelopment: boolean;
-}
-
-// ---------------------------------------------------------------------------
-// Thinking level narrowing
-// ---------------------------------------------------------------------------
-
-/**
- * Valid thinking levels used for type-safe thinking value narrowing.
- * Corresponds to the ThinkingLevel union in shared/types.ts.
- */
-const VALID_THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"];
-
-/**
- * Narrow agent frontmatter thinking strings to the shared ThinkingLevel union.
- *
- * Valid agent thinking takes precedence. Falls back to valid tier thinking when
- * no model override is active and no valid agent thinking is available.
- *
- * @param thinking Raw thinking string from agent config.
- * @param tierThinking Optional thinking level from model tier config.
- * @param hasModelOverride Whether a runtime model override is active.
- * @returns Narrowed ThinkingLevel or undefined.
- */
-function toThinkingLevel(thinking: string | undefined, tierThinking: string | undefined, hasModelOverride: boolean): ThinkingLevel | undefined {
-	// Valid agent thinking wins first
-	if (thinking && VALID_THINKING_LEVELS.includes(thinking as ThinkingLevel)) {
-		return thinking as ThinkingLevel;
-	}
-	// If no model override and no valid agent thinking, use valid tier thinking
-	if (!hasModelOverride && tierThinking && VALID_THINKING_LEVELS.includes(tierThinking as ThinkingLevel)) {
-		return tierThinking as ThinkingLevel;
-	}
-	return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -338,6 +305,7 @@ function formatNeedsParentHelp(result: SingleResult): string | undefined {
  * - task order is preserved in result and progress arrays
  * - worktree setup, if created, is cleaned up in a `finally` block
  * - every task receives a pending progress row even if no child progress event arrives
+ * - pending progress uses original task text (task.task) to avoid leaking internal packet instructions
  *
  * Failure modes:
  * - returns structured validation errors for unknown agents, too many tasks, or worktree conflicts
@@ -406,12 +374,13 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 			});
 			const provisionalModel = modelOverrides[index] ?? tierModel?.model ?? agentConfigs[index].model;
 			const hasModelOverride = modelOverrides[index] !== undefined;
-			const provisionalThinking = toThinkingLevel(agentConfigs[index].thinking, tierModel?.thinking, hasModelOverride);
+			// Extract thinking suffix from model first (matching child-runner behavior), then fall back to config-based resolution
+			const provisionalThinking = extractThinkingSuffix(provisionalModel) ?? toThinkingLevel(agentConfigs[index].thinking, tierModel?.thinking, hasModelOverride);
 			return {
 				index,
 				agent: task.agent,
 				status: "pending",
-				task: taskTexts[index],
+				task: task.task,
 				model: provisionalModel,
 				thinking: provisionalThinking,
 				skills: getPublishedExecutionSkills(effectiveSkills.resolvedSkills),

@@ -11,7 +11,8 @@
  * - none; this module is pure and safe to use from tests and extension startup
  */
 
-import type { ConfigDiagnostic, ExtensionConfig, ModelTierSetting, SuperpowersCommandPreset, ThinkingLevel } from "../shared/types.ts";
+import type { ConfigDiagnostic, ExtensionConfig, ModelTierSetting, SuperpowersCommandPreset } from "../shared/types.ts";
+import { isThinkingLevel } from "../shared/thinking-levels.ts";
 
 export interface ConfigValidationOptions {
 	/** Interactive entrypoint command names discovered at startup. Commands in config but not in this list produce warnings. */
@@ -46,8 +47,6 @@ const COMMAND_NAME_PATTERN = /^(?:superpowers-[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|sp
 const WORKTREE_KEYS = new Set(["enabled", "root"]);
 
 const MODEL_TIER_KEYS = new Set(["model", "thinking"]);
-
-const THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"];
 
 /** Removed top-level config keys with migration guidance. */
 const REMOVED_GENERIC_KEYS: Record<string, { code: string; message: string }> = {
@@ -164,7 +163,7 @@ function validateModelTier(diagnostics: ConfigDiagnostic[], value: unknown, path
 	if (typeof value.model !== "string" || !value.model.trim()) {
 		addError(diagnostics, `${path}.model`, "must be a non-empty string.");
 	}
-	if ("thinking" in value && !THINKING_LEVELS.includes(value.thinking as ThinkingLevel)) {
+	if ("thinking" in value && !isThinkingLevel(value.thinking as string | undefined)) {
 		addError(diagnostics, `${path}.thinking`, "must be one of off, minimal, low, medium, high, xhigh.");
 	}
 }
