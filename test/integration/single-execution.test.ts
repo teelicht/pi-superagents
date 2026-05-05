@@ -354,6 +354,29 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		assertModelArg(result.messages, "openai/gpt-5.4:medium");
 	});
 
+	void it("agent frontmatter thinking takes precedence over tier thinking", async () => {
+		mockPi.onCall({ echoArgs: true });
+		const agents = [makeAgent("sp-code-review", { model: "balanced", thinking: "high" })];
+
+		const result = await runPreparedChild(tempDir, agents, "sp-code-review", "Review task", {
+			workflow: "superpowers",
+			config: {
+				superagents: {
+					modelTiers: {
+						balanced: {
+							model: "openai/gpt-5.4",
+							thinking: "medium",
+						},
+					},
+				},
+			},
+		});
+
+		assert.equal(result.exitCode, 0);
+		assertModelArg(result.messages, "openai/gpt-5.4:high");
+		assert.equal(result.thinking, "high");
+	});
+
 	void it("uses changed model tier config for later single executions", async () => {
 		const agents = [makeAgent("sp-code-review", { model: "balanced" })];
 
