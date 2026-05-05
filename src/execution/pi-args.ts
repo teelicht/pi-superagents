@@ -19,9 +19,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import type { ThinkingLevel } from "../shared/types.ts";
-
-const THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"];
+import { isThinkingLevel, VALID_THINKING_LEVELS } from "../shared/thinking-levels.ts";
 
 const TASK_ARG_LIMIT = 8000;
 
@@ -81,7 +79,7 @@ export interface BuildPiArgsResult {
 export function applyThinkingSuffix(model: string | undefined, thinking: string | undefined): string | undefined {
 	if (!model || !thinking || thinking === "off") return model;
 	const colonIdx = model.lastIndexOf(":");
-	if (colonIdx !== -1 && THINKING_LEVELS.includes(model.substring(colonIdx + 1) as ThinkingLevel)) return model;
+	if (colonIdx !== -1 && isThinkingLevel(model.substring(colonIdx + 1))) return model;
 	return `${model}:${thinking}`;
 }
 

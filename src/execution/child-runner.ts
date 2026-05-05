@@ -22,6 +22,7 @@ import type { Message } from "@mariozechner/pi-ai";
 import type { AgentConfig } from "../agents/agents.ts";
 import { ensureArtifactsDir, getArtifactPaths, writeArtifact, writeMetadata } from "../shared/artifacts.ts";
 import { buildSkillInjection, getPublishedExecutionSkills, resolveExecutionSkills } from "../shared/skills.ts";
+import { extractThinkingSuffix, toThinkingLevel } from "../shared/thinking-levels.ts";
 import {
 	type AgentProgress,
 	type ArtifactPaths,
@@ -44,57 +45,6 @@ import { findMissingSubagentExtensionPath, resolveSubagentExtensions } from "./s
 import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./superpowers-policy.ts";
 
 const SELF_EXTENSION_ENTRY = fileURLToPath(new URL("../extension/index.ts", import.meta.url));
-
-/**
- * Valid thinking levels used for type-safe thinking value narrowing.
- * Corresponds to the ThinkingLevel union in shared/types.ts.
- */
-const VALID_THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"];
-
-/**
- * Extract a valid ThinkingLevel suffix from a model string.
- *
- * Inspects the suffix after the last colon in a model string and returns it
- * only if it is a known thinking level. Used to determine the effective thinking
- * level from a model string that may already include a thinking suffix (e.g.
- * "openai/gpt-4o:medium").
- *
- * @param model A model string, possibly with a thinking suffix.
- * @returns The extracted ThinkingLevel suffix, or undefined if none found.
- */
-function extractThinkingSuffix(model: string | undefined): ThinkingLevel | undefined {
-	if (!model) return undefined;
-	const colonIdx = model.lastIndexOf(":");
-	if (colonIdx === -1) return undefined;
-	const suffix = model.slice(colonIdx + 1);
-	if (VALID_THINKING_LEVELS.includes(suffix as ThinkingLevel)) {
-		return suffix as ThinkingLevel;
-	}
-	return undefined;
-}
-
-/**
- * Narrow agent frontmatter thinking strings to the shared ThinkingLevel union.
- *
- * Valid thinking argument takes precedence. Falls back to valid tier thinking when
- * no model override is active and no valid agent thinking is available.
- *
- * @param thinking Raw thinking string from agent config.
- * @param tierThinking Optional thinking level from model tier config.
- * @param hasModelOverride Whether a runtime model override is active.
- * @returns Narrowed ThinkingLevel or undefined.
- */
-function toThinkingLevel(thinking: string | undefined, tierThinking: string | undefined, hasModelOverride: boolean): ThinkingLevel | undefined {
-	// Valid agent thinking wins first
-	if (thinking && VALID_THINKING_LEVELS.includes(thinking as ThinkingLevel)) {
-		return thinking as ThinkingLevel;
-	}
-	// If no model override and no valid agent thinking, use valid tier thinking
-	if (!hasModelOverride && tierThinking && VALID_THINKING_LEVELS.includes(tierThinking as ThinkingLevel)) {
-		return tierThinking as ThinkingLevel;
-	}
-	return undefined;
-}
 
 /**
  * Attach lifecycle sidecar result and derive completion envelope.
