@@ -59,6 +59,7 @@ import { createResultDeliveryStore } from "./result-delivery.ts";
 import { createSessionLaunchResolver, resolveRequestedSessionMode, type SessionLaunchManager } from "./session-mode.ts";
 import { resolveStepBehavior } from "./settings.ts";
 import { resolveSuperagentWorktreeEnabled } from "./superagents-config.ts";
+import { resolveModelForAgent } from "./superpowers-policy.ts";
 import { buildSuperpowersPacketPlan, injectSuperpowersPacketInstructions } from "./superpowers-packets.ts";
 import {
 	buildParallelWorktreeSuffix,
@@ -364,11 +365,20 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 				useTestDrivenDevelopment,
 				skills: configuredSkills,
 			});
+			const tierModel = resolveModelForAgent({
+				workflow,
+				agentModel: agentConfigs[index].model,
+				config,
+			});
+			const provisionalModel = modelOverrides[index] ?? tierModel?.model ?? agentConfigs[index].model;
+			const provisionalThinking = agentConfigs[index].thinking ?? (modelOverrides[index] ? undefined : tierModel?.thinking);
 			return {
 				index,
 				agent: task.agent,
 				status: "pending",
 				task: taskTexts[index],
+				model: provisionalModel,
+				thinking: provisionalThinking,
 				skills: getPublishedExecutionSkills(effectiveSkills.resolvedSkills),
 				recentTools: [],
 				recentOutput: [],

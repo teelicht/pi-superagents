@@ -276,6 +276,46 @@ void describe("renderSubagentResultLines parallel runs", () => {
 		assert.deepStrictEqual(lines, ["Subagents  1/2 complete error  12 tools  28.4s"]);
 	});
 
+	void it("shows model labels for inline pending and running rows", () => {
+		const lines = renderSubagentResultLines(
+			toolResult({
+				mode: "parallel",
+				results: [],
+				progress: [
+					{
+						index: 0,
+						agent: "sp-recon",
+						status: "running",
+						task: "Inspect auth flow",
+						model: "configured/recon-runtime-model",
+						thinking: "low",
+						recentTools: [],
+						recentOutput: [],
+						toolCount: 1,
+						durationMs: 1000,
+					},
+					{
+						index: 1,
+						agent: "sp-code-review",
+						status: "pending",
+						task: "Review auth changes",
+						model: "configured/review-runtime-model",
+						thinking: "medium",
+						recentTools: [],
+						recentOutput: [],
+						toolCount: 0,
+						durationMs: 0,
+					},
+				],
+			}),
+			{ expanded: false, width: 160 },
+		);
+
+		const text = lines.join("\n");
+		assert.match(text, /sp-recon\s+recon-runtime-model\s+Inspect auth flow/);
+		assert.match(text, /sp-code-review\s+review-runtime-model\s+Review auth changes/);
+	});
+
 	void it("truncates long task, tool, and output previews to the supplied width", () => {
 		const lines = renderSubagentResultLines(
 			toolResult({
