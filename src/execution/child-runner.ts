@@ -30,6 +30,7 @@ import {
 	getSubagentDepthEnv,
 	type RunSyncOptions,
 	type SingleResult,
+	type ThinkingLevel,
 	truncateOutput,
 } from "../shared/types.ts";
 import { detectSubagentError, extractTextFromContent, extractToolArgsPreview, getFinalOutput } from "../shared/utils.ts";
@@ -43,6 +44,38 @@ import { findMissingSubagentExtensionPath, resolveSubagentExtensions } from "./s
 import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./superpowers-policy.ts";
 
 const SELF_EXTENSION_ENTRY = fileURLToPath(new URL("../extension/index.ts", import.meta.url));
+
+/**
+ * Valid thinking levels used for type-safe thinking value narrowing.
+ * Corresponds to the ThinkingLevel union in shared/types.ts.
+ */
+const VALID_THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"];
+
+/**
+ * Narrow agent frontmatter thinking strings to the shared ThinkingLevel union.
+ *
+ * Valid levels are: off, minimal, low, medium, high, xhigh.
+ * Returns tier thinking when available and no modelOverride is set; otherwise undefined.
+ *
+ * @param thinking Raw thinking string from agent config.
+ * @param tierThinking Optional thinking level from model tier config.
+ * @param hasModelOverride Whether a runtime model override is active.
+ * @returns Narrowed ThinkingLevel or undefined.
+ */
+function toThinkingLevel(thinking: string | undefined, tierThinking: string | undefined, hasModelOverride: boolean): ThinkingLevel | undefined {
+	// Prefer tier thinking when no model override is active
+	if (!hasModelOverride && tierThinking) {
+		if (VALID_THINKING_LEVELS.includes(tierThinking as ThinkingLevel)) {
+			return tierThinking as ThinkingLevel;
+		}
+	}
+	// Fall back to agent thinking if valid
+	if (thinking && VALID_THINKING_LEVELS.includes(thinking as ThinkingLevel)) {
+		return thinking as ThinkingLevel;
+	}
+	// No valid thinking level found
+	return undefined;
+}
 
 /**
  * Attach lifecycle sidecar result and derive completion envelope.
@@ -105,7 +138,8 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 		config,
 	});
 	const effectiveModel = modelOverride ?? tierModel?.model ?? agent.model;
-	const effectiveThinking = agent.thinking ?? (modelOverride ? undefined : tierModel?.thinking);
+	const hasModelOverride = modelOverride !== undefined;
+	const effectiveThinking = toThinkingLevel(agent.thinking, tierModel?.thinking, hasModelOverride);
 	const modelArg = applyThinkingSuffix(effectiveModel, effectiveThinking);
 	const effectiveTools = resolveRoleTools({
 		workflow,
