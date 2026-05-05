@@ -19,7 +19,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { isThinkingLevel, VALID_THINKING_LEVELS } from "../shared/thinking-levels.ts";
+import { isThinkingLevel } from "../shared/thinking-levels.ts";
 
 const TASK_ARG_LIMIT = 8000;
 
