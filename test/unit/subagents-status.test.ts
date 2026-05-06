@@ -43,6 +43,7 @@ function createRun(overrides: Partial<RunEntry> = {}): RunEntry {
 		status: "ok",
 		duration: 1250,
 		model: "test-model",
+		thinking: "medium",
 		tokens: { total: 1536 },
 		steps: [
 			{ index: 0, agent: "sp-recon", status: "complete", durationMs: 250, tokens: { total: 256 } },
@@ -129,6 +130,48 @@ void test("SubagentsStatusComponent renders selected run skill details", () => {
 	assert.match(rendered, /Skills:/);
 	assert.match(rendered, /test-driven-development, supabase-postgres-best-practices/);
 	assert.match(rendered, /Skills not found: missing-skill/);
+	component.dispose();
+});
+
+void test("SubagentsStatusComponent renders compact model labels in run rows", () => {
+	const component = new SubagentsStatusComponent(createTuiMock().tui as never, createThemeMock() as never, () => {}, {
+		refreshMs: 60_000,
+		getActiveRuns: () => [],
+		getRecentRuns: () => [createRun({ model: "anthropic/claude-sonnet-4-runtime" })],
+	});
+
+	const rendered = component.render(120).join("\n");
+
+	assert.match(rendered, /claude-sonnet-4-runtime/);
+	assert.match(rendered, /Implement auth fix/);
+	component.dispose();
+});
+
+void test("SubagentsStatusComponent renders selected model and thinking separately", () => {
+	const component = new SubagentsStatusComponent(createTuiMock().tui as never, createThemeMock() as never, () => {}, {
+		refreshMs: 60_000,
+		getActiveRuns: () => [],
+		getRecentRuns: () => [createRun({ model: "runtime/model", thinking: "high" })],
+	});
+
+	const rendered = component.render(120).join("\n");
+
+	assert.match(rendered, /Model:\s+runtime\/model/);
+	assert.match(rendered, /Thinking:\s+high/);
+	component.dispose();
+});
+
+void test("SubagentsStatusComponent omits selected thinking when absent", () => {
+	const component = new SubagentsStatusComponent(createTuiMock().tui as never, createThemeMock() as never, () => {}, {
+		refreshMs: 60_000,
+		getActiveRuns: () => [],
+		getRecentRuns: () => [createRun({ thinking: undefined })],
+	});
+
+	const rendered = component.render(120).join("\n");
+
+	assert.match(rendered, /Model:\s+test-model/);
+	assert.doesNotMatch(rendered, /Thinking:/);
 	component.dispose();
 });
 

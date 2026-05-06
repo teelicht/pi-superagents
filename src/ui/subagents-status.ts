@@ -163,9 +163,11 @@ export class SubagentsStatusComponent implements Component {
 			`  Agent:  ${run.agent}`,
 			`  Status: ${run.status}`,
 			`  Model:  ${run.model ?? "unknown"}`,
-			`  Tokens: ${run.tokens ? formatTokens(run.tokens.total) : "0"}`,
-			`  Time:   ${formatDuration(run.duration)}`,
 		];
+		if (run.thinking) {
+			lines.push(`  Thinking: ${run.thinking}`);
+		}
+		lines.push(`  Tokens: ${run.tokens ? formatTokens(run.tokens.total) : "0"}`, `  Time:   ${formatDuration(run.duration)}`);
 		if (run.skills?.length) {
 			lines.push(truncateToWidth(`  Skills: ${run.skills.join(", ")}`, innerWidth));
 		}
@@ -207,10 +209,31 @@ function runKey(run: RunEntry): string {
 	return `${run.ts}:${run.agent}:${run.task}`;
 }
 
+/**
+ * Format a run model for row-level status display.
+ *
+ * @param model Runtime-confirmed model id, if available.
+ * @returns A compact model label with an explicit unknown fallback.
+ */
+function compactModelLabel(model: string | undefined): string {
+	if (!model) return "unknown";
+	const tail = model.split("/").pop() ?? model;
+	return tail.length > 22 ? `${tail.slice(0, 19)}...` : tail;
+}
+
+/**
+ * Render one run row with compact model confirmation metadata.
+ *
+ * @param run Run entry to summarize.
+ * @param selected Whether the row is currently selected.
+ * @param theme Active Pi theme for status colors.
+ * @returns A single width-bounded row string before outer truncation.
+ */
 function formatRunRow(run: RunEntry, selected: boolean, theme: Theme): string {
 	const prefix = selected ? theme.fg("success", ">") : " ";
 	const status = run.status === "ok" ? theme.fg("success", "OK ") : theme.fg("error", "ERR");
 	const duration = formatDuration(run.duration).padStart(6);
-	const task = run.task.length > 44 ? `${run.task.slice(0, 41)}...` : run.task;
-	return `${prefix} ${run.agent.padEnd(15)} | ${status} | ${duration} | ${task}`;
+	const model = compactModelLabel(run.model);
+	const task = run.task.length > 36 ? `${run.task.slice(0, 33)}...` : run.task;
+	return `${prefix} ${run.agent.padEnd(15)} | ${status} | ${duration} | ${model.padEnd(22)} | ${task}`;
 }
