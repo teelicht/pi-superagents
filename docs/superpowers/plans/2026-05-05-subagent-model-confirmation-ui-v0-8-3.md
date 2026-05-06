@@ -937,7 +937,7 @@ git commit -m "docs: document subagent model confirmation UI"
 **Files:**
 - No source changes expected.
 
-- [ ] **Step 1: Run focused inline/status tests**
+- [x] **Step 1: Run focused inline/status tests**
 
 Run:
 
@@ -947,7 +947,7 @@ node --experimental-strip-types --test test/unit/subagent-result-lines.test.ts t
 
 Expected: PASS.
 
-- [ ] **Step 2: Run focused execution integration tests**
+- [x] **Step 2: Run focused execution integration tests**
 
 Run:
 
@@ -957,7 +957,7 @@ node --experimental-transform-types --import ./test/support/register-loader.mjs 
 
 Expected: PASS.
 
-- [ ] **Step 3: Run unit tests**
+- [x] **Step 3: Run unit tests**
 
 Run:
 
@@ -967,7 +967,7 @@ npm run test:unit
 
 Expected: PASS.
 
-- [ ] **Step 4: Run integration tests**
+- [x] **Step 4: Run integration tests**
 
 Run:
 
@@ -977,7 +977,7 @@ npm run test:integration
 
 Expected: PASS.
 
-- [ ] **Step 5: Run typecheck**
+- [x] **Step 5: Run typecheck**
 
 Run:
 
@@ -987,7 +987,7 @@ npm run typecheck
 
 Expected: PASS.
 
-- [ ] **Step 6: Run full QA if time allows**
+- [x] **Step 6: Run full QA if time allows**
 
 Run:
 
@@ -997,7 +997,7 @@ npm run qa
 
 Expected: PASS. If `npm run qa` modifies formatting, inspect the diff and commit those formatting changes with the relevant task commit or a final `chore: apply formatting` commit.
 
-- [ ] **Step 7: Inspect git state**
+- [x] **Step 7: Inspect git state**
 
 Run:
 
