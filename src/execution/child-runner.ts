@@ -436,9 +436,9 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 		}
 	}
 
-	// Sync runtime-confirmed model into progress while keeping thinking as launch thinking.
-	// The runtime model event is authoritative for `model` only; thinking must reflect the
-	// actual CLI launch argument so result/progress/history always agree with what was run.
+	// Sync progress from the result object so downstream UI, history, and artifacts
+	// share the same source of truth. Runtime events currently update `model`; thinking
+	// remains initialized from the actual CLI launch argument unless future events refine it.
 	progress.model = result.model;
 	progress.thinking = result.thinking;
 	result.progress = progress;
