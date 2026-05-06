@@ -11,8 +11,8 @@
  * - none; this module is pure and safe to use from tests and extension startup
  */
 
-import type { ConfigDiagnostic, ExtensionConfig, ModelTierSetting, SuperpowersCommandPreset } from "../shared/types.ts";
 import { isThinkingLevel } from "../shared/thinking-levels.ts";
+import type { ConfigDiagnostic, ExtensionConfig, ModelTierSetting, SuperpowersCommandPreset } from "../shared/types.ts";
 
 export interface ConfigValidationOptions {
 	/** Interactive entrypoint command names discovered at startup. Commands in config but not in this list produce warnings. */

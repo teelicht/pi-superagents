@@ -31,13 +31,12 @@ import {
 	getSubagentDepthEnv,
 	type RunSyncOptions,
 	type SingleResult,
-	type ThinkingLevel,
 	truncateOutput,
 } from "../shared/types.ts";
 import { detectSubagentError, extractTextFromContent, extractToolArgsPreview, getFinalOutput } from "../shared/utils.ts";
 import { createJsonlWriter } from "./jsonl-writer.ts";
 import { consumeLifecycleSignal } from "./lifecycle-signals.ts";
-import { applyThinkingSuffix, buildPiArgs, cleanupTempDir } from "./pi-args.ts";
+import { buildPiArgs, cleanupTempDir } from "./pi-args.ts";
 import { getPiSpawnCommand } from "./pi-spawn.ts";
 import { deriveCompletionEnvelope } from "./result-delivery.ts";
 import { globalRunHistory } from "./run-history.ts";
@@ -115,7 +114,6 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 	// it is what the runtime will actually use. Falls back to agent/tier thinking
 	// when there is no model-level thinking suffix.
 	const launchThinking = extractThinkingSuffix(effectiveModel) ?? toThinkingLevel(agent.thinking, tierModel?.thinking, hasModelOverride);
-	const modelArg = applyThinkingSuffix(effectiveModel, launchThinking);
 	const effectiveTools = resolveRoleTools({
 		workflow,
 		role,

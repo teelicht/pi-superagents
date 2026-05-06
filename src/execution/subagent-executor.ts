@@ -60,8 +60,8 @@ import { createResultDeliveryStore } from "./result-delivery.ts";
 import { createSessionLaunchResolver, resolveRequestedSessionMode, type SessionLaunchManager } from "./session-mode.ts";
 import { resolveStepBehavior } from "./settings.ts";
 import { resolveSuperagentWorktreeEnabled } from "./superagents-config.ts";
-import { resolveModelForAgent } from "./superpowers-policy.ts";
 import { buildSuperpowersPacketPlan, injectSuperpowersPacketInstructions } from "./superpowers-packets.ts";
+import { resolveModelForAgent } from "./superpowers-policy.ts";
 import {
 	buildParallelWorktreeSuffix,
 	buildParallelWorktreeTaskCwdError,

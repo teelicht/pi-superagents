@@ -158,12 +158,7 @@ export class SubagentsStatusComponent implements Component {
 	}
 
 	private renderRunDetails(run: RunEntry, innerWidth: number): string[] {
-		const lines = [
-			this.theme.fg("success", "Selected Details:"),
-			`  Agent:  ${run.agent}`,
-			`  Status: ${run.status}`,
-			`  Model:  ${run.model ?? "unknown"}`,
-		];
+		const lines = [this.theme.fg("success", "Selected Details:"), `  Agent:  ${run.agent}`, `  Status: ${run.status}`, `  Model:  ${run.model ?? "unknown"}`];
 		if (run.thinking) {
 			lines.push(`  Thinking: ${run.thinking}`);
 		}

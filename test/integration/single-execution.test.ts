@@ -14,11 +14,11 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
-import type { MockPi } from "../support/helpers.ts";
-import { createMockPi, createTempDir, events, makeAgent, makeAgentConfigs, removeTempDir, tryImport } from "../support/helpers.ts";
-import type { Details } from "../../src/shared/types.ts";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { RunEntry } from "../../src/execution/run-history.ts";
+import type { Details } from "../../src/shared/types.ts";
+import type { MockPi } from "../support/helpers.ts";
+import { createMockPi, createTempDir, events, makeAgent, makeAgentConfigs, removeTempDir, tryImport } from "../support/helpers.ts";
 
 // Top-level: isolate run history to a temp path BEFORE dynamic imports
 // This prevents interference from any existing run-history.jsonl
