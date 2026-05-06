@@ -604,7 +604,7 @@ git commit -m "feat: show model in inline subagent rows"
 - Modify: `src/ui/subagents-status.ts`
 - Test: `test/unit/subagents-status.test.ts`
 
-- [ ] **Step 1: Write failing status overlay tests**
+- [x] **Step 1: Write failing status overlay tests**
 
 In `test/unit/subagents-status.test.ts`, add `thinking: "medium",` to the `createRun()` default object immediately after `model: "test-model",`:
 
@@ -659,7 +659,7 @@ void test("SubagentsStatusComponent omits selected thinking when absent", () => 
 });
 ```
 
-- [ ] **Step 2: Run the focused status tests and verify they fail**
+- [x] **Step 2: Run the focused status tests and verify they fail**
 
 Run:
 
@@ -669,7 +669,7 @@ node --experimental-strip-types --test test/unit/subagents-status.test.ts
 
 Expected: FAIL because overlay row rendering does not include model labels and details do not render thinking.
 
-- [ ] **Step 3: Render thinking in selected details**
+- [x] **Step 3: Render thinking in selected details**
 
 In `src/ui/subagents-status.ts`, replace the initial `lines` array in `renderRunDetails` with:
 
@@ -688,7 +688,7 @@ In `src/ui/subagents-status.ts`, replace the initial `lines` array in `renderRun
 
 Keep the existing skills, warning, and step-detail rendering after this block.
 
-- [ ] **Step 4: Render compact model labels in status rows**
+- [x] **Step 4: Render compact model labels in status rows**
 
 In `src/ui/subagents-status.ts`, replace `formatRunRow` with:
 
@@ -727,7 +727,7 @@ function compactModelLabel(model: string | undefined): string {
 }
 ```
 
-- [ ] **Step 5: Run the focused status tests and verify they pass**
+- [x] **Step 5: Run the focused status tests and verify they pass**
 
 Run:
 
@@ -737,7 +737,7 @@ node --experimental-strip-types --test test/unit/subagents-status.test.ts
 
 Expected: PASS for all status overlay tests.
 
-- [ ] **Step 6: Commit Task 5**
+- [x] **Step 6: Commit Task 5**
 
 Run:
 
