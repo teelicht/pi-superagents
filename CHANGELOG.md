@@ -2,6 +2,8 @@
 
 ## [0.8.3] - 2026-05-06
   
+- Updated pi dependencies to `^0.73.0`
+
 - **Hardened Subagent Execution**
   - Added child lifecycle sidecar parsing (`lifecycle-signals.ts`) for atomic `.exit` sidecar writes consumed by the parent after child exit.
   - Added deterministic result delivery store (`result-delivery.ts`) with `wait`/`join`/`detach` semantics and delivered-once enforcement.
