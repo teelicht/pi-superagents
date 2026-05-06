@@ -137,13 +137,21 @@ void test("SubagentsStatusComponent renders compact model labels in run rows", (
 	const component = new SubagentsStatusComponent(createTuiMock().tui as never, createThemeMock() as never, () => {}, {
 		refreshMs: 60_000,
 		getActiveRuns: () => [],
-		getRecentRuns: () => [createRun({ model: "anthropic/claude-sonnet-4-runtime" })],
+		getRecentRuns: () => [createRun({ model: "provider/row-model" })],
 	});
 
 	const rendered = component.render(120).join("\n");
 
-	assert.match(rendered, /claude-sonnet-4-runtime/);
-	assert.match(rendered, /Implement auth fix/);
+	// Primary assertion: row contains compact model label in pipe-delimited format
+	// Format: <prefix> <agent.pad(15)> | <status> | <duration.pad(6)> | <model.pad(22)> | <task>
+	// Duration format may vary (1.3s or 1.25s) so flexible on that part
+	assert.match(
+		rendered,
+		/ sp-implementer  \| OK  \|   \d+\.?\d*s \| row-model\s*\| Implement auth fix/,
+	);
+
+	// Secondary assertion: full provider path present in details
+	assert.match(rendered, /Model:\s+provider\/row-model/);
 	component.dispose();
 });
 
