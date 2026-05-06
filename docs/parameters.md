@@ -24,7 +24,7 @@ Execution is strictly synchronous and blocking. The `subagent` tool does not acc
 
 The runtime may attach additive completion metadata to results. The child's normal answer remains available as text; the envelope only adds `status`, `summary`, optional `parentRequest`, and optional artifact references for parent orchestration.
 
-Resolved skills, including per-call `skill` overrides and agent frontmatter defaults, are shown in `/subagents-status` for active and recent subagent runs. Missing skills are shown as warnings there. The bundled `sp-debug` role resolves `systematic-debugging` from its frontmatter unless a call overrides or disables skills.
+Runtime-confirmed models, effective thinking levels, and resolved skills are shown in inline subagent rows/details and `/subagents-status` for active and recent subagent runs. Missing skills are shown as warnings there. The bundled `sp-debug` role resolves `systematic-debugging` from its frontmatter unless a call overrides or disables skills.
 
 Provide either `agent` plus `task` for a single delegation, or `tasks` for parallel delegation. The runtime validates this selector after Pi accepts the tool call; the machine-readable schema stays intentionally simple for host compatibility.
 
@@ -86,8 +86,8 @@ These tools are registered for root Superpowers workflows and are used by the pr
 
 Subagent tool results are rendered inline in the Pi conversation. The renderer produces compact, width-bounded text lines:
 
-- **Collapsed**: status line, task name, current tool activity, and timing stats.
-- **Expanded**: model, skills, recent tools, bounded output preview, errors, session file, and artifact paths.
+- **Collapsed**: status line plus per-subagent rows with agent, compact runtime-confirmed model label, task name, current tool activity, and timing stats.
+- **Expanded**: runtime-confirmed model, thinking level when available, skills, recent tools, bounded output preview, errors, session file, and artifact paths.
 
 This applies to both single and parallel subagent executions. Use `/subagents-status` for a dedicated overlay of active and recent runs.
 

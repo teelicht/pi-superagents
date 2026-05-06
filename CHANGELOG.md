@@ -10,6 +10,11 @@
   - Subagent results carry optional `completion` envelope metadata and `lifecycle` sidecar status.
   - Worktree-backed parallel children are joined before cleanup; worktree policy is unchanged.
 
+- **Subagent Model Confirmation UI**
+  - Inline Pi chat subagent rows now show compact runtime-confirmed model labels for started, running, and completed subagent runs.
+  - Expanded inline details and `/subagents-status` selected details show the child Pi-reported model separately from the effective thinking level.
+  - Run history records thinking metadata separately from model ids so the status overlay can confirm actual subagent model routing.
+
 ## [0.8.2] - 2026-05-04
 
 - **Fixed**
