@@ -129,13 +129,13 @@ For delegated subagent runs, missing skills are reported in the result summary a
 
 ## Status Visibility
 
-Open `/subagents-status` and select an active or recent subagent run to see the resolved skill names injected for that run. This includes default agent skills, runtime `skill` overrides, and TDD skill injection from the explicit `useTestDrivenDevelopment` tool parameter. Missing skills are shown as warnings in the selected run details.
+Inline subagent result rows show each run's compact runtime-confirmed model label. Open `/subagents-status` and select an active or recent subagent run to see the runtime-confirmed model, effective thinking level when available, and resolved skill names injected for that run. Skill details include default agent skills, runtime `skill` overrides, and TDD skill injection from the explicit `useTestDrivenDevelopment` tool parameter. Missing skills are shown as warnings in the selected run details.
 
 ## Role Output
 
 Skills and role prompts should return findings in the assistant response. Pi Superagents forwards that response through the `subagent` tool result and preserves optional debug artifacts outside the repository. Skills should not ask bounded roles to write handoff files like `implementer-report.md`, `spec-review.md`, or `code-review.md`. Skills should assume bounded Superpowers roles receive curated packet input, not inherited parent-session history, because built-in bounded roles default to `session-mode: lineage-only`.
 
-Subagent results are rendered as compact inline lines in the Pi conversation. Collapsed view shows the agent name, task, status, and current tool activity. Expanded view reveals model, skills, recent tools, output preview, errors, and artifact paths. This keeps long-running Superpowers workflows readable without scrolling through verbose output.
+Subagent results are rendered as compact inline lines in the Pi conversation. Collapsed view shows the agent name, compact runtime-confirmed model label, task, status, and current tool activity. Expanded view reveals model, thinking level when available, skills, recent tools, output preview, errors, and artifact paths. This keeps long-running Superpowers workflows readable without scrolling through verbose output.
 
 ## Release Notes
 

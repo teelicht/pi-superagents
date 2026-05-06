@@ -144,13 +144,13 @@ Execution artifacts are still available when `artifacts` is enabled. Those files
 
 ## Compact Inline Subagent Results
 
-Subagent tool results are rendered inline in the Pi conversation as compact, width-bounded lines. A collapsed view shows the subagent name, task, status, and live activity (e.g., current tool). Clicking or expanding the result reveals concise details: model, skills, recent tools, output preview, errors, and artifact paths. This keeps long-running Superpowers workflows readable without scrolling through verbose JSON or full Markdown output.
+Subagent tool results are rendered inline in the Pi conversation as compact, width-bounded lines. A collapsed view shows the subagent name, runtime-confirmed model label, task, status, and live activity (e.g., current tool). Clicking or expanding the result reveals concise details: model, thinking level when available, skills, recent tools, output preview, errors, and artifact paths. This keeps long-running Superpowers workflows readable without scrolling through verbose JSON or full Markdown output.
 
-The compact renderer is active for all `subagent` tool results produced by `pi-superagents`. `/subagents-status` remains available for inspecting active or recently completed runs in a dedicated overlay.
+The compact renderer is active for all `subagent` tool results produced by `pi-superagents`. `/subagents-status` remains available for inspecting active or recently completed runs in a dedicated overlay, including the runtime-confirmed model and separate thinking level when available.
 
 ## Run History
 
-Completed subagent runs are stored as JSONL at `~/.pi/agent/run-history.jsonl` so `/subagents-status` can show recent runs across sessions. Set `PI_SUPERAGENTS_RUN_HISTORY_PATH` to an absolute file path when you need to isolate run history, for example in tests or sandboxed PI sessions.
+Completed subagent runs are stored as JSONL at `~/.pi/agent/run-history.jsonl` so `/subagents-status` can show recent runs across sessions. Inline rows use live progress/result metadata, and run history stores the child Pi-reported model separately from the effective thinking level so the overlay can confirm actual model routing instead of only showing configured defaults. Set `PI_SUPERAGENTS_RUN_HISTORY_PATH` to an absolute file path when you need to isolate run history, for example in tests or sandboxed PI sessions.
 
 ## Common Override Examples
 
@@ -313,7 +313,7 @@ Skill selection is trigger-driven via `using-superpowers`. Do not preload domain
 
 ## Status and Settings
 
-Use `/subagents-status` to inspect active and recent subagent runs (`Ctrl+Alt+S`).
+Use `/subagents-status` to inspect active and recent subagent runs (`Ctrl+Alt+S`), including runtime-confirmed model labels, thinking levels, resolved skills, and warnings.
 
 Use `/sp-settings` to inspect workflow settings and config diagnostics. In the settings overlay, `c` cycles the selected command; boolean toggles apply to that command only.
 

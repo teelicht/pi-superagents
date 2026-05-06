@@ -7,7 +7,7 @@
 - **Superpowers Workflow**: Proven pipeline for robust AI-assisted development.
 - **Role-Specific Agents**: Thin agents-layer for every phase of the development lifecycle.
 - **Model Tiers & Command Settings**: Abstract model selection (cheap, balanced, max) for each agent. One model can be configured per tier. Custom tiers are possible. Models and command-scoped behavior toggles can be changed through the `/sp-settings` TUI; slash-command metadata lives in entrypoint agent frontmatter.
-- **Compact Inline Subagent Results**: Subagent tool results render as collapsed single-line summaries with an expandable details view, keeping the Pi conversation readable during multi-step Superpowers workflows.
+- **Compact Inline Subagent Results**: Subagent tool results render as collapsed summaries with per-subagent rows that include runtime-confirmed model labels, plus expandable details for thinking levels, skills, tools, and output previews.
 - **Strictly Synchronous Execution**: Subagent execution is synchronous and blocking. There are no user-facing `async`, `wait`, `collect`, or `cancel` parameters. The subagent tool does not return until the child Pi process completes.
 - **Child Lifecycle Signals**: Internal lifecycle tools (`subagent_done`, `caller_ping`) enable child processes to signal semantic completion or request parent input without exposing async control to callers.
 - **Lineage-Only Sessions**: Bounded Superpowers roles default to `sessionMode: lineage-only`. Child sessions stay linked to the parent for session tree visibility, but do not inherit parent conversation turns.
@@ -52,7 +52,7 @@ Superpowers slash commands are registered from interactive entrypoint agent fron
 | `/sp-brainstorm <task>` | Brainstorm a task and save a spec, optionally review it with Plannotator UI |
 | `/sp-plan <task>`       | Plan a task with optional Plannotator plan review                           |
 | `/sp-implement <task>`  | Run an implementation task through the Superpowers flow                     |
-| `/subagents-status`     | Open active and recent subagent run status, including resolved skills       |
+| `/subagents-status`     | Open active and recent subagent run status, including runtime-confirmed models, thinking levels, and resolved skills |
 | `/sp-settings`          | Open superagents settings                                                   |
 
 ### Custom Commands
@@ -75,7 +75,7 @@ Subagent execution remains conservative and synchronous for ordinary Superpowers
 
 Subagent-driven development keeps implementer and reviewer reports inline in the Pi conversation. Bounded roles default to `lineage-only` - they see a curated work brief rather than the full parent conversation history. The runtime does not create repo-root packet files such as `implementer-report.md`, `spec-review.md`, `code-review.md`, `debug-brief.md`, or `task-brief.md`; those names are ignored if an older prompt or manual run creates them.
 
-Run history is persisted at `~/.pi/agent/run-history.jsonl` for `/subagents-status`. Set `PI_SUPERAGENTS_RUN_HISTORY_PATH` to isolate that file for tests or sandboxed sessions.
+Run history is persisted at `~/.pi/agent/run-history.jsonl` for `/subagents-status`. Inline subagent rows and the status overlay show the model reported by the child Pi execution loop and, when available, the effective thinking level used for that run. Set `PI_SUPERAGENTS_RUN_HISTORY_PATH` to isolate that file for tests or sandboxed sessions.
 
 ## Configuration & Documentation
 

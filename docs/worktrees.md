@@ -32,7 +32,7 @@ When resolved worktree config is `enabled: false`, Superpowers treats that as a 
 
 After parallel completion, per-agent diff stats are appended to the output. Full patch files are written to the artifacts directory.
 
-While parallel worktree runs are active, `/subagents-status` shows each delegated subagent separately, including its resolved skills and any missing-skill warnings. Worktree isolation does not change entrypoint or role skill resolution; for example, `/sp-implement` root lifecycle skills and `sp-debug`'s `systematic-debugging` assignment are resolved before any child process runs in a worktree.
+While parallel worktree runs are active, inline subagent rows and `/subagents-status` show each delegated subagent separately, including its runtime-confirmed model, effective thinking level when available, resolved skills, and any missing-skill warnings. Worktree isolation does not change entrypoint or role skill resolution; for example, `/sp-implement` root lifecycle skills and `sp-debug`'s `systematic-debugging` assignment are resolved before any child process runs in a worktree.
 
 Agent reports themselves are returned inline through Pi tool results. Worktree isolation does not require `implementer-report.md`, `spec-review.md`, or `code-review.md` files in the worktree. Worktree isolation and session mode are separate concerns: packet handoff files live in the session artifact directory, not inside the worktree, and are cleaned up by the runtime.
 
