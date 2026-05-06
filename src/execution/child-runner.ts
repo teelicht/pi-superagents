@@ -274,7 +274,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 				globalRunHistory.updateRun(historyId, {
 					duration: progress.durationMs,
 					model: result.model,
-					thinking: launchThinking,
+					thinking: result.thinking,
 					skills: result.skills,
 					skillsWarning: result.skillsWarning,
 					tokens: { total: result.usage.input + result.usage.output },
@@ -440,7 +440,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 	// The runtime model event is authoritative for `model` only; thinking must reflect the
 	// actual CLI launch argument so result/progress/history always agree with what was run.
 	progress.model = result.model;
-	progress.thinking = launchThinking;
+	progress.thinking = result.thinking;
 	result.progress = progress;
 	result.progressSummary = {
 		toolCount: progress.toolCount,
@@ -464,7 +464,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 				exitCode: result.exitCode,
 				usage: result.usage,
 				model: result.model,
-				thinking: launchThinking,
+				thinking: result.thinking,
 				durationMs: progress.durationMs,
 				toolCount: progress.toolCount,
 				error: result.error,
@@ -492,7 +492,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 	globalRunHistory.updateRun(historyId, {
 		duration: progress.durationMs,
 		model: result.model,
-		thinking: launchThinking,
+		thinking: result.thinking,
 		skills: result.skills,
 		skillsWarning: result.skillsWarning,
 		tokens: { total: result.usage.input + result.usage.output },
