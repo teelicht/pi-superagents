@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.8.3] - 2026-05-05
+## [0.8.3] - 2026-05-06
   
 - **Hardened Subagent Execution**
   - Added child lifecycle sidecar parsing (`lifecycle-signals.ts`) for atomic `.exit` sidecar writes consumed by the parent after child exit.
@@ -10,7 +10,7 @@
   - Subagent results carry optional `completion` envelope metadata and `lifecycle` sidecar status.
   - Worktree-backed parallel children are joined before cleanup; worktree policy is unchanged.
 
-- **Subagent Model Confirmation UI**
+- **Subagent UI**
   - Inline Pi chat subagent rows now show compact runtime-confirmed model labels for started, running, and completed subagent runs.
   - Expanded inline details and `/subagents-status` selected details show the child Pi-reported model separately from the effective thinking level.
   - Run history records thinking metadata separately from model ids so the status overlay can confirm actual subagent model routing.
