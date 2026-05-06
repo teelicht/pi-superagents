@@ -756,7 +756,7 @@ git commit -m "feat: show subagent model in status overlay"
 - Modify: `docs/skills.md`
 - Modify: `CHANGELOG.md`
 
-- [ ] **Step 1: Update README feature and status descriptions**
+- [x] **Step 1: Update README feature and status descriptions**
 
 In `README.md`, replace this bullet:
 
@@ -794,7 +794,7 @@ with:
 Run history is persisted at `~/.pi/agent/run-history.jsonl` for `/subagents-status`. Inline subagent rows and the status overlay show the model reported by the child Pi execution loop and, when available, the effective thinking level used for that run. Set `PI_SUPERAGENTS_RUN_HISTORY_PATH` to isolate that file for tests or sandboxed sessions.
 ```
 
-- [ ] **Step 2: Update configuration docs for inline and status rendering**
+- [x] **Step 2: Update configuration docs for inline and status rendering**
 
 In `docs/configuration.md`, replace:
 
@@ -844,7 +844,7 @@ with:
 Use `/subagents-status` to inspect active and recent subagent runs (`Ctrl+Alt+S`), including runtime-confirmed model labels, thinking levels, resolved skills, and warnings.
 ```
 
-- [ ] **Step 3: Update worktrees docs**
+- [x] **Step 3: Update worktrees docs**
 
 In `docs/worktrees.md`, replace:
 
@@ -858,7 +858,7 @@ with:
 While parallel worktree runs are active, inline subagent rows and `/subagents-status` show each delegated subagent separately, including its runtime-confirmed model, effective thinking level when available, resolved skills, and any missing-skill warnings. Worktree isolation does not change entrypoint or role skill resolution; for example, `/sp-implement` root lifecycle skills and `sp-debug`'s `systematic-debugging` assignment are resolved before any child process runs in a worktree.
 ```
 
-- [ ] **Step 4: Update parameters docs**
+- [x] **Step 4: Update parameters docs**
 
 In `docs/parameters.md`, replace:
 
@@ -886,7 +886,7 @@ with:
 - **Expanded**: runtime-confirmed model, thinking level when available, skills, recent tools, bounded output preview, errors, session file, and artifact paths.
 ```
 
-- [ ] **Step 5: Update skills docs**
+- [x] **Step 5: Update skills docs**
 
 In `docs/skills.md`, replace:
 
@@ -912,7 +912,7 @@ with:
 Subagent results are rendered as compact inline lines in the Pi conversation. Collapsed view shows the agent name, compact runtime-confirmed model label, task, status, and current tool activity. Expanded view reveals model, thinking level when available, skills, recent tools, output preview, errors, and artifact paths. This keeps long-running Superpowers workflows readable without scrolling through verbose output.
 ```
 
-- [ ] **Step 6: Update unreleased v0.8.3 changelog**
+- [x] **Step 6: Update unreleased v0.8.3 changelog**
 
 In `CHANGELOG.md`, under `## [0.8.3] - 2026-05-05` and below the existing `- **Hardened Subagent Execution**` block, add:
 
@@ -923,7 +923,7 @@ In `CHANGELOG.md`, under `## [0.8.3] - 2026-05-05` and below the existing `- **H
   - Run history records thinking metadata separately from model ids so the status overlay can confirm actual subagent model routing.
 ```
 
-- [ ] **Step 7: Commit Task 6**
+- [x] **Step 7: Commit Task 6**
 
 Run:
 
