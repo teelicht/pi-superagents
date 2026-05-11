@@ -1,8 +1,12 @@
 # Changelog
 
-## [0.8.3] - 2026-05-06
+## [0.8.3] - 2026-05-11
   
 - Updated pi dependencies to `^0.73.0`
+  
+- **Global Tools Alowlist**
+  - Global config for tools that are allowed to be used by all agents.
+  - Global tools are appended to agent-specific ones.
 
 - **Hardened Subagent Execution**
   - Added child lifecycle sidecar parsing (`lifecycle-signals.ts`) for atomic `.exit` sidecar writes consumed by the parent after child exit.
@@ -12,7 +16,7 @@
   - Subagent results carry optional `completion` envelope metadata and `lifecycle` sidecar status.
   - Worktree-backed parallel children are joined before cleanup; worktree policy is unchanged.
 
-- **Subagent UI**
+- **Improved Subagent UI**
   - Inline Pi chat subagent rows now show compact runtime-confirmed model labels for started, running, and completed subagent runs.
   - Expanded inline details and `/subagents-status` selected details show the child Pi-reported model separately from the effective thinking level.
   - Run history records thinking metadata separately from model ids so the status overlay can confirm actual subagent model routing.

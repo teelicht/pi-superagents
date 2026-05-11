@@ -102,6 +102,26 @@ void describe("config templates", () => {
 		assertPublicConfigSurface(readConfigFile("default-config.json"), true, true);
 	});
 
+	void it("keeps globally configured tools out of built-in agent frontmatter", () => {
+		const config = readConfigFile("default-config.json");
+		const globalTools = (config.superagents as Record<string, unknown>).tools as string[];
+		assert.deepEqual(globalTools, ["read", "grep", "find", "ls"]);
+
+		const agentsDir = path.join(process.cwd(), "agents");
+		for (const entry of fs.readdirSync(agentsDir)) {
+			if (!entry.endsWith(".md")) continue;
+			const content = fs.readFileSync(path.join(agentsDir, entry), "utf-8");
+			const toolsLine = content.match(/^tools:\s*(.+)$/m)?.[1];
+			if (!toolsLine) continue;
+			const agentTools = toolsLine
+				.split(",")
+				.map((tool) => tool.trim())
+				.filter(Boolean);
+			const duplicates = agentTools.filter((tool) => globalTools.includes(tool));
+			assert.deepEqual(duplicates, [], `${entry} repeats globally configured tools: ${duplicates.join(", ")}`);
+		}
+	});
+
 	void it("ships a parseable user-facing example config with the same public surface", () => {
 		assertPublicConfigSurface(readConfigFile("config.example.json"), false, false);
 	});

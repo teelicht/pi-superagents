@@ -2,7 +2,6 @@
 name: sp-spec-review
 description: Superpowers spec compliance reviewer for a single task packet
 model: balanced
-tools: read, grep, find, ls
 maxSubagentDepth: 0
 session-mode: lineage-only
 ---

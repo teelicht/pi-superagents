@@ -21,6 +21,16 @@ function readPackageJson(): Record<string, unknown> {
 	return JSON.parse(fs.readFileSync(packagePath, "utf-8")) as Record<string, unknown>;
 }
 
+/**
+ * Read a repository text file.
+ *
+ * @param filePath Repository-relative file path.
+ * @returns UTF-8 file contents.
+ */
+function readTextFile(filePath: string): string {
+	return fs.readFileSync(path.resolve(filePath), "utf-8");
+}
+
 void describe("package.json manifest", () => {
 	void it("publishes the src-based Pi extension entrypoints and files", () => {
 		const packageJson = readPackageJson();
@@ -49,5 +59,18 @@ void describe("package.json manifest", () => {
 		assert.deepEqual(packageJson.bugs, {
 			url: "https://github.com/teelicht/pi-superagents/issues",
 		});
+	});
+
+	void it("uses lockfile-backed npm ci in GitHub Actions release and CI workflows", () => {
+		assert.ok(fs.existsSync(path.resolve("package-lock.json")), "package-lock.json should be committed for npm ci");
+		const releaseWorkflow = readTextFile(".github/workflows/release.yml");
+		const testWorkflow = readTextFile(".github/workflows/test.yml");
+
+		assert.match(releaseWorkflow, /cache:\s*"?npm"?/);
+		assert.match(testWorkflow, /cache:\s*"?npm"?/);
+		assert.match(releaseWorkflow, /run:\s*npm ci/);
+		assert.match(testWorkflow, /run:\s*npm ci/);
+		assert.doesNotMatch(releaseWorkflow, /run:\s*npm install/);
+		assert.doesNotMatch(testWorkflow, /run:\s*npm install/);
 	});
 });
