@@ -2,7 +2,7 @@
 name: sp-debug
 description: Superpowers debug specialist for one bounded failure investigation
 model: max
-tools: read, grep, find, ls, bash
+tools: bash
 skills: systematic-debugging
 maxSubagentDepth: 0
 session-mode: lineage-only

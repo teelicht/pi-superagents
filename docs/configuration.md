@@ -92,12 +92,12 @@ Configure `superagents.tools` as a global list of tool names or tool extension p
 ```json
 {
   "superagents": {
-    "tools": ["read", "grep", "./tools/shared-tool.ts"]
+    "tools": ["read", "grep", "find", "ls", "./tools/shared-tool.ts"]
   }
 }
 ```
 
-These tools are appended after each role's normal tool policy and de-duplicated while preserving order. Existing agent `tools:` frontmatter still defines that agent's baseline tools; `superagents.tools` only saves you from repeating common additions. Path-like entries such as `./tools/shared-tool.ts` are passed to child Pi as tool extensions using Pi's normal `--extension` handling.
+These tools are appended after each role's normal tool policy and de-duplicated while preserving order. The bundled default config provides the common read-only baseline (`read`, `grep`, `find`, `ls`) globally, so built-in role agents only list extra tools such as `bash` or `write` in frontmatter. Existing agent `tools:` frontmatter still defines that agent's baseline extras; `superagents.tools` saves you from repeating common additions. Path-like entries such as `./tools/shared-tool.ts` are passed to child Pi as tool extensions using Pi's normal `--extension` handling.
 
 Bounded Superpowers roles still cannot receive delegation tools such as `subagent` through this setting; those entries are filtered by policy for bounded roles. Child lifecycle tools (`subagent_done`, `caller_ping`) remain managed by the runtime.
 

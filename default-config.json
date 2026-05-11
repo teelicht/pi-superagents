@@ -1,7 +1,7 @@
 {
   "superagents": {
     "extensions": [],
-    "tools": [],
+    "tools": ["read", "grep", "find", "ls"],
     "commands": {
       "sp-implement": {
         "useSubagents": true,

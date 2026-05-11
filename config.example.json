@@ -18,7 +18,7 @@
       "npm:@tomooshi/caveman-milk-pi",
       "npm:@tomooshi/condensed-milk-pi"
     ],
-    "tools": [],
+    "tools": ["read", "grep", "find", "ls"],
     "modelTiers": {
       "cheap": {
         "model": "opencode-go/minimax-m2.7",

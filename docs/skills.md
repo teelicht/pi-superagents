@@ -123,7 +123,7 @@ Bundled role assignments:
 
 Child lifecycle tools (`subagent_done`, `caller_ping`) may be available to bounded roles through the tool policy for semantic completion signaling and parent request handling. These are internal child-only tools; they are not general-purpose delegation tools and are not listed in the parameters API.
 
-Shared tool names or tool extension paths can be configured once with `superagents.tools`. The runtime appends those entries to each agent's resolved baseline tools after role policy and removes duplicates, so common tools do not need to be repeated in every `agents/*.md` frontmatter block.
+Shared tool names or tool extension paths can be configured once with `superagents.tools`. The bundled default config uses this for the common read-only baseline (`read`, `grep`, `find`, `ls`). The runtime appends those entries to each agent's resolved baseline tools after role policy and removes duplicates, so common tools do not need to be repeated in every `agents/*.md` frontmatter block.
 
 ## Missing Skills
 
