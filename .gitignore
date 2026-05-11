@@ -12,8 +12,6 @@ node_modules/
 
 .scratch/
 
-package-lock.json
-
 # Agent packet scratch files
 task-brief.md
 implementer-report.md
@@ -24,3 +22,8 @@ debug-brief.md
 
 # old specs and plans
 .archive/
+.grepai/
+
+# agent config
+.agents/
+skills-lock.json
