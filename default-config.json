@@ -1,6 +1,7 @@
 {
   "superagents": {
     "extensions": [],
+    "tools": [],
     "commands": {
       "sp-implement": {
         "useSubagents": true,
