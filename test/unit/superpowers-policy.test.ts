@@ -209,6 +209,53 @@ void describe("superpowers policy", () => {
 		);
 	});
 
+	void it("appends configured global tools to bounded role tools without duplicates", () => {
+		assert.deepEqual(
+			resolveRoleTools({
+				workflow: "superpowers",
+				role: "sp-implementer",
+				agentTools: ["read", "write"],
+				configTools: ["write", "./tools/shared-tool.ts"],
+			}),
+			["read", "write", "./tools/shared-tool.ts"],
+		);
+	});
+
+	void it("strips delegation tools from configured global tools for bounded roles", () => {
+		assert.deepEqual(
+			resolveRoleTools({
+				workflow: "superpowers",
+				role: "sp-research",
+				agentTools: ["read"],
+				configTools: ["subagent", "grep", "subagent_status"],
+			}),
+			["read", "grep"],
+		);
+	});
+
+	void it("appends configured global tools to bounded role fallback tools", () => {
+		assert.deepEqual(
+			resolveRoleTools({
+				workflow: "superpowers",
+				role: "sp-recon",
+				configTools: ["bash"],
+			}),
+			[...READ_ONLY_TOOLS, ...CHILD_LIFECYCLE_TOOLS, "bash"],
+		);
+	});
+
+	void it("appends configured global tools for root-planning roles", () => {
+		assert.deepEqual(
+			resolveRoleTools({
+				workflow: "superpowers",
+				role: "root-planning",
+				agentTools: ["read"],
+				configTools: ["grep"],
+			}),
+			["read", "grep"],
+		);
+	});
+
 	void it("keeps child lifecycle tools while stripping delegation tools", () => {
 		const tools = resolveRoleTools({
 			workflow: "superpowers",

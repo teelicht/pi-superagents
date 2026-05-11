@@ -35,7 +35,7 @@ export interface FormatConfigDiagnosticsOptions {
 
 const TOP_LEVEL_KEYS = new Set(["superagents"]);
 
-const SUPERAGENTS_KEYS = new Set(["commands", "modelTiers", "interceptSkillCommands", "extensions", "superpowersSkills"]);
+const SUPERAGENTS_KEYS = new Set(["commands", "modelTiers", "interceptSkillCommands", "extensions", "tools", "superpowersSkills"]);
 
 /** Skills that can be intercepted for direct skill command interception. */
 const SUPPORTED_INTERCEPTED_SKILLS = new Set(["brainstorming", "writing-plans"]);
@@ -334,6 +334,9 @@ export function validateConfigObject(rawConfig: unknown, options: ConfigValidati
 			if ("extensions" in superagents) {
 				validateNonEmptyStringArray(diagnostics, superagents.extensions, "superagents.extensions", "extension path");
 			}
+			if ("tools" in superagents) {
+				validateNonEmptyStringArray(diagnostics, superagents.tools, "superagents.tools", "tool name or path");
+			}
 			if ("superpowersSkills" in superagents) {
 				diagnostics.push({
 					level: "warning",
@@ -401,6 +404,9 @@ export function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfi
 	// Replace-not-merge for globally allowlisted child Pi extensions.
 	const mergedExtensions = overrideSuperagents?.extensions ?? defaultSuperagents?.extensions ?? [];
 
+	// Replace-not-merge for global child Pi tools.
+	const mergedTools = overrideSuperagents?.tools ?? defaultSuperagents?.tools ?? [];
+
 	const mergedSuperagents =
 		defaultSuperagents || overrideSuperagents
 			? {
@@ -416,6 +422,7 @@ export function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfi
 					modelTiers: mergeModelTiers(defaultSuperagents?.modelTiers, overrideSuperagents?.modelTiers),
 					interceptSkillCommands: mergedInterceptSkillCommands,
 					extensions: mergedExtensions,
+					tools: mergedTools,
 					superpowersSkills: defaultSuperagents?.superpowersSkills ?? [],
 				}
 			: undefined;

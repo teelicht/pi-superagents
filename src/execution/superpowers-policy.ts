@@ -5,6 +5,7 @@
  * - resolve Markdown-declared Superpowers model tiers into concrete models
  * - merge agent-declared and step-injected skills safely
  * - add TDD behavior for the implementer role when requested
+ * - append global config tools after role-specific tool policy
  */
 
 import { CHILD_LIFECYCLE_TOOLS, DELEGATION_TOOLS, READ_ONLY_TOOLS } from "../shared/tool-registry.ts";
@@ -128,27 +129,34 @@ export function resolveRoleSkillSet(input: {
  * Resolve the effective tool allowlist for a Superpowers execution role.
  *
  * Inputs/outputs:
- * - accepts the active workflow, inferred role, and any agent-declared tools
- * - returns the unchanged tool list for default/root runs, or a bounded list for `sp-*` roles
+ * - accepts the active workflow, inferred role, agent-declared tools, and optional global config tools
+ * - returns the unchanged-plus-global tool list for default/root runs, or a bounded-plus-global list for `sp-*` roles
  *
  * Invariants:
  * - bounded Superpowers roles never receive delegation tools
  * - root-planning keeps orchestration access
+ * - configured global tools are appended after role policy and de-duplicated
  * - when a bounded agent declares no tools, falls back to READ_ONLY_TOOLS plus CHILD_LIFECYCLE_TOOLS
  *
  * Failure modes:
  * - none; missing tool declarations fall back to a safe read-only baseline with lifecycle tools
  */
-export function resolveRoleTools(input: { workflow: WorkflowMode; role: ExecutionRole; agentTools?: string[] }): string[] | undefined {
+export function resolveRoleTools(input: { workflow: WorkflowMode; role: ExecutionRole; agentTools?: string[]; configTools?: string[] }): string[] | undefined {
+	const appendTools = (baseTools: string[] | undefined, extraTools: string[] | undefined): string[] | undefined => {
+		const merged = [...(baseTools ?? []), ...(extraTools ?? [])];
+		return merged.length > 0 ? [...new Set(merged)] : undefined;
+	};
+
 	if (input.workflow !== "superpowers" || input.role === "root-planning") {
-		return input.agentTools;
+		return appendTools(input.agentTools, input.configTools);
 	}
 
 	const explicitTools = input.agentTools?.filter((tool) => !DELEGATION_TOOLS.has(tool));
-	if (explicitTools && explicitTools.length > 0) return explicitTools;
+	const boundedConfigTools = input.configTools?.filter((tool) => !DELEGATION_TOOLS.has(tool));
+	if (explicitTools && explicitTools.length > 0) return appendTools(explicitTools, boundedConfigTools);
 	// Safe read-only fallback for agents without tool declarations,
 	// including child lifecycle tools for bounded roles
-	return [...READ_ONLY_TOOLS, ...CHILD_LIFECYCLE_TOOLS];
+	return appendTools([...READ_ONLY_TOOLS, ...CHILD_LIFECYCLE_TOOLS], boundedConfigTools);
 }
 
 /**
