@@ -7,16 +7,11 @@
 - **Superpowers Workflow**: Proven pipeline for robust AI-assisted development.
 - **Role-Specific Agents**: Thin agents-layer for every phase of the development lifecycle.
 - **Model Tiers & Command Settings**: Abstract model selection (cheap, balanced, max) for each agent. One model can be configured per tier. Custom tiers are possible. Models and command-scoped behavior toggles can be changed through the `/sp-settings` TUI; slash-command metadata lives in entrypoint agent frontmatter.
-- **Compact Inline Subagent Results**: Subagent tool results render as collapsed summaries with per-subagent rows that include runtime-confirmed model labels, plus expandable details for thinking levels, skills, tools, and output previews.
-- **Strictly Synchronous Execution**: Subagent execution is synchronous and blocking. There are no user-facing `async`, `wait`, `collect`, or `cancel` parameters. The subagent tool does not return until the child Pi process completes.
-- **Child Lifecycle Signals**: Internal lifecycle tools (`subagent_done`, `caller_ping`) enable child processes to signal semantic completion or request parent input without exposing async control to callers.
-- **Lineage-Only Sessions**: Bounded Superpowers roles default to `sessionMode: lineage-only`. Child sessions stay linked to the parent for session tree visibility, but do not inherit parent conversation turns.
-- **Packet Handoffs**: Work briefs are delivered through runtime-managed packet artifacts in the session artifact directory, automatically cleaned up after the child exits.
-- **Inline Agent Handoffs**: Role outputs are returned through Pi tool results and session artefacts.
-- **Worktree Isolation**: Optional git worktree creation for parallel tasks to prevent filesystem conflicts. Worktree-backed parallel children are joined before cleanup; worktree policy is unchanged.
-- **Entrypoint Lifecycle Skills**: Superpowers entrypoint agents inject root lifecycle skills (verification, review-feedback, branch finishing) defined in frontmatter. Skill selection is trigger-driven via `using-superpowers`; do not preload domain skills through command config.
-- **Subagent Extension & Tool Defaults**: Subagents run with implicit Pi extension discovery disabled by default; configure `superagents.extensions` with local paths or Pi `-e` source specs, and `superagents.tools` with shared tool names or tool extension paths. The bundled defaults provide the common read-only tools globally so agent frontmatter only lists role-specific extras.
 - **Plannotator Integration**: Optional event bridge to [Plannotator](https://plannotator.ai/) for browser-based spec/plan review and approval (setting).
+- **Worktree Isolation**: Optional git worktree creation for parallel tasks to prevent filesystem conflicts. Worktree-backed parallel children are joined before cleanup; worktree policy is unchanged.
+- **Entrypoint Lifecycle Skills**: Superpowers entrypoint agents inject root lifecycle skills (verification, review-feedback, branch finishing) defined in frontmatter. .
+- **Subagent Extension & Tool Defaults**: Subagents run with implicit Pi extension discovery disabled by default; configure `superagents.extensions` with local paths or Pi `-e` source specs, and `superagents.tools` with shared tool names or tool extension paths. The bundled defaults provide the common read-only tools globally so agent frontmatter only lists role-specific extras.
+
 
 ## Installation
 
