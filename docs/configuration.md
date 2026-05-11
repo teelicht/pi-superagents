@@ -59,6 +59,7 @@ Configures the Superpowers workflow.
 |---|---|
 | `commands` | Map of command behavior presets. Each preset has per-command policy booleans. Slash commands are registered from interactive entrypoint agents; `config.json` only controls behavior flags for existing entrypoint commands. |
 | `extensions` | Array of local extension paths or Pi extension source specs that every subagent receives. Implicit Pi extension discovery is disabled by default; add extensions here for child Pi processes. |
+| `tools` | Array of tool names or tool extension paths appended to every subagent after role-specific tool policy. Use this for shared tools you do not want to repeat in every agent frontmatter file. |
 | `modelTiers` | Maps abstract tier names (`cheap`, `balanced`, `max`, plus any custom tiers) to concrete model configs. |
 | `interceptSkillCommands` | List of skill names intercepted for Superpowers entry (`brainstorming`, `writing-plans`). |
 | `superpowersSkills` | List of Superpowers process skill names (bundled default, not user-configurable). |
@@ -83,6 +84,22 @@ Local extension entries must point to existing files or directories when the sub
 Package and remote entries should use normal Pi `-e` source prefixes such as `npm:`, `git:`, `https:`, or `ssh:`. These sources pass through to child Pi unchanged, and child Pi resolves, installs, and loads them through its normal extension resolver. Bare package names such as `@scope/package` are treated as local paths; use `npm:@scope/package` for npm packages.
 
 Agent frontmatter can append additional extensions per-agent using the `extensions` field, which is additive to the global list. Extensions declared in agent frontmatter are appended to the global `extensions` array at session launch.
+
+### Global Tools
+
+Configure `superagents.tools` as a global list of tool names or tool extension paths that every subagent should receive:
+
+```json
+{
+  "superagents": {
+    "tools": ["read", "grep", "./tools/shared-tool.ts"]
+  }
+}
+```
+
+These tools are appended after each role's normal tool policy and de-duplicated while preserving order. Existing agent `tools:` frontmatter still defines that agent's baseline tools; `superagents.tools` only saves you from repeating common additions. Path-like entries such as `./tools/shared-tool.ts` are passed to child Pi as tool extensions using Pi's normal `--extension` handling.
+
+Bounded Superpowers roles still cannot receive delegation tools such as `subagent` through this setting; those entries are filtered by policy for bounded roles. Child lifecycle tools (`subagent_done`, `caller_ping`) remain managed by the runtime.
 
 ### Entrypoint Agent Frontmatter
 

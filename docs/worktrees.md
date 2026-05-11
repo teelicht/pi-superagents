@@ -44,7 +44,7 @@ Lifecycle tools (`subagent_done`, `caller_ping`) are internal child-only tools r
 
 ## Extension Loading
 
-Extension loading for subagents is independent of worktree isolation. Even when running inside a git worktree, child Pi processes load extensions from `superagents.extensions` (global config) and the `extensions` field in agent frontmatter (additive to global). Implicit Pi extension discovery is disabled by default; only explicitly configured extensions are loaded. Configured entries may be local paths or normal Pi `-e` source specs such as `npm:@scope/package`; relative local paths resolve from the subagent runtime working directory.
+Extension and shared-tool loading for subagents is independent of worktree isolation. Even when running inside a git worktree, child Pi processes load extensions from `superagents.extensions` (global config) and the `extensions` field in agent frontmatter (additive to global). They also receive global `superagents.tools` entries appended to each agent's role-policy tool list. Implicit Pi extension discovery is disabled by default; only explicitly configured extensions are loaded. Configured entries may be local paths or normal Pi `-e` source specs such as `npm:@scope/package`; relative local paths resolve from the subagent runtime working directory.
 
 ## Requirements
 
