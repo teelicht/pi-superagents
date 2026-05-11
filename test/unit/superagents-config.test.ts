@@ -16,6 +16,7 @@ import { describe, it } from "node:test";
 
 import {
 	findMissingSubagentExtensionPath,
+	findMissingSubagentToolPath,
 	getSuperagentSettings,
 	isSchemeLikeExtensionSource,
 	resolveLocalSubagentExtensionPath,
@@ -424,6 +425,76 @@ void describe("findMissingSubagentExtensionPath", () => {
 			assert.equal(result!.source, "agent.extensions[1]");
 			assert.equal(result!.configuredPath, missingAgentPath);
 			assert.equal(result!.resolvedPath, missingAgentPath);
+		} finally {
+			fs.rmSync(tempDir, { recursive: true, force: true });
+		}
+	});
+});
+
+void describe("findMissingSubagentToolPath", () => {
+	/**
+	 * Verifies builtin-style tool names are not treated as local paths.
+	 *
+	 * @returns Nothing; asserts builtin tool names pass validation.
+	 */
+	void it("ignores builtin-style tool names", () => {
+		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-tool-config-test-builtin-"));
+		try {
+			assert.equal(findMissingSubagentToolPath(tempDir, ["read", "grep"], ["write"]), undefined);
+		} finally {
+			fs.rmSync(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	/**
+	 * Verifies missing global path-like tool entries report their config source.
+	 *
+	 * @returns Nothing; asserts missing global tool path diagnostics.
+	 */
+	void it("reports missing global path-like tool entries", () => {
+		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-tool-config-test-global-"));
+		try {
+			const result = findMissingSubagentToolPath(tempDir, ["./missing-tool.ts"], undefined);
+
+			assert.ok(result !== undefined);
+			assert.equal(result!.source, "superagents.tools[0]");
+			assert.equal(result!.configuredPath, "./missing-tool.ts");
+			assert.equal(result!.resolvedPath, path.resolve(tempDir, "./missing-tool.ts"));
+		} finally {
+			fs.rmSync(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	/**
+	 * Verifies existing path-like tool entries pass validation.
+	 *
+	 * @returns Nothing; asserts existing tool extension path is accepted.
+	 */
+	void it("accepts existing path-like tool entries", () => {
+		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-tool-config-test-existing-"));
+		try {
+			const toolPath = path.join(tempDir, "tool.ts");
+			fs.writeFileSync(toolPath, "// tool");
+
+			assert.equal(findMissingSubagentToolPath(tempDir, [toolPath], undefined), undefined);
+		} finally {
+			fs.rmSync(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	/**
+	 * Verifies missing agent frontmatter tool paths report their agent source.
+	 *
+	 * @returns Nothing; asserts missing agent tool path diagnostics.
+	 */
+	void it("reports missing agent path-like tool entries", () => {
+		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-tool-config-test-agent-"));
+		try {
+			const result = findMissingSubagentToolPath(tempDir, undefined, ["tools/missing.js"]);
+
+			assert.ok(result !== undefined);
+			assert.equal(result!.source, "agent.tools[0]");
+			assert.equal(result!.configuredPath, "tools/missing.js");
 		} finally {
 			fs.rmSync(tempDir, { recursive: true, force: true });
 		}

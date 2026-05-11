@@ -40,6 +40,7 @@ const defaults: ExtensionConfig = {
 		interceptSkillCommands: [],
 		superpowersSkills: [],
 		extensions: [],
+		tools: [],
 	},
 };
 
@@ -485,6 +486,26 @@ void describe("config validation", () => {
 		assert.deepEqual(result.config.superagents?.extensions, ["./user-extension.ts"]);
 	});
 
+	void it("accepts and merges global subagent tools with replace semantics", () => {
+		const result = loadEffectiveConfig(
+			{
+				superagents: {
+					...defaults.superagents,
+					tools: ["read"],
+				},
+			},
+			{
+				superagents: {
+					tools: ["read", "./tools/shared-tool.ts"],
+				},
+			},
+		);
+
+		assert.equal(result.blocked, false);
+		assert.deepEqual(result.diagnostics, []);
+		assert.deepEqual(result.config.superagents?.tools, ["read", "./tools/shared-tool.ts"]);
+	});
+
 	void it("rejects malformed global subagent extensions", () => {
 		const result = validateConfigObject({
 			superagents: {
@@ -510,6 +531,34 @@ void describe("config validation", () => {
 		assert.deepEqual(
 			result.diagnostics.map((diagnostic) => diagnostic.path),
 			["superagents.extensions"],
+		);
+	});
+
+	void it("rejects malformed global subagent tools", () => {
+		const result = validateConfigObject({
+			superagents: {
+				tools: ["read", "", 42],
+			},
+		});
+
+		assert.equal(result.blocked, true);
+		assert.deepEqual(
+			result.diagnostics.map((diagnostic) => diagnostic.path),
+			["superagents.tools[1]", "superagents.tools[2]"],
+		);
+	});
+
+	void it("rejects non-array global subagent tools", () => {
+		const result = validateConfigObject({
+			superagents: {
+				tools: "read",
+			},
+		});
+
+		assert.equal(result.blocked, true);
+		assert.deepEqual(
+			result.diagnostics.map((diagnostic) => diagnostic.path),
+			["superagents.tools"],
 		);
 	});
 

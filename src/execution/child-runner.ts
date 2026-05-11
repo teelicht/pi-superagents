@@ -40,7 +40,7 @@ import { buildPiArgs, cleanupTempDir } from "./pi-args.ts";
 import { getPiSpawnCommand } from "./pi-spawn.ts";
 import { deriveCompletionEnvelope } from "./result-delivery.ts";
 import { globalRunHistory } from "./run-history.ts";
-import { findMissingSubagentExtensionPath, resolveSubagentExtensions } from "./superagents-config.ts";
+import { findMissingSubagentExtensionPath, findMissingSubagentToolPath, resolveSubagentExtensions } from "./superagents-config.ts";
 import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./superpowers-policy.ts";
 
 const SELF_EXTENSION_ENTRY = fileURLToPath(new URL("../extension/index.ts", import.meta.url));
@@ -118,6 +118,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 		workflow,
 		role,
 		agentTools: agent.tools,
+		configTools: config.superagents?.tools,
 	});
 	const configuredSkills = options.skills !== undefined ? options.skills : (agent.skills ?? []);
 	const { skillNames, resolvedSkills, missingSkills } = resolveExecutionSkills({
@@ -146,6 +147,18 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 			messages: [],
 			usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
 			error: `Extension path from ${missingExtension.source} does not exist: ${missingExtension.configuredPath} (resolved to ${missingExtension.resolvedPath})`,
+		};
+	}
+
+	const missingTool = findMissingSubagentToolPath(runtimeCwd, config.superagents?.tools, agent.tools);
+	if (missingTool) {
+		return {
+			agent: agentName,
+			task,
+			exitCode: 1,
+			messages: [],
+			usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
+			error: `Tool path from ${missingTool.source} does not exist: ${missingTool.configuredPath} (resolved to ${missingTool.resolvedPath})`,
 		};
 	}
 

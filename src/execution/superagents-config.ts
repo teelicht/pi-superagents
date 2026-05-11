@@ -6,7 +6,7 @@
  * - apply Superpowers-only worktree defaults in one shared place
  * - build scoped git-worktree options for sync and async execution paths
  * - resolve global extension ordering for subagent execution
- * - validate that configured subagent extension paths exist at runtime
+ * - validate that configured subagent extension and tool paths exist at runtime
  */
 
 import * as fs from "node:fs";
@@ -152,6 +152,21 @@ export interface MissingSubagentExtensionPath {
 }
 
 /**
+ * Determine whether a tool entry is passed to Pi as a tool extension path.
+ *
+ * Mirrors `buildPiArgs` path-like tool classification: entries containing a
+ * path separator or ending with `.ts`/`.js` are emitted as `--extension`.
+ * Scheme-like entries are also extension sources but are resolved by child Pi,
+ * not by local filesystem preflight checks.
+ *
+ * @param value Configured tool name or path.
+ * @returns True when the value is path-like and should be treated as a tool extension source.
+ */
+export function isPathLikeToolEntry(value: string): boolean {
+	return value.includes("/") || value.endsWith(".ts") || value.endsWith(".js");
+}
+
+/**
  * Find the first configured local subagent extension path that does not exist.
  *
  * This function skips scheme-like extension sources (e.g. `npm:pkg`, `git:repo`, `https://...`)
@@ -175,6 +190,37 @@ export function findMissingSubagentExtensionPath(
 		...(globalExtensions ?? []).map((configuredPath, index) => ({ source: `superagents.extensions[${index}]`, configuredPath })),
 		...(agentExtensions ?? []).map((configuredPath, index) => ({ source: `agent.extensions[${index}]`, configuredPath })),
 	];
+	return findMissingLocalPath(runtimeCwd, entries);
+}
+
+/**
+ * Find the first configured local subagent tool-extension path that does not exist.
+ *
+ * Builtin-style tool names such as `read` and `grep` are skipped because they
+ * are passed to Pi via `--tools`. Path-like entries are validated when local;
+ * scheme-like entries are left for child Pi to resolve.
+ *
+ * @param runtimeCwd Runtime working directory used to resolve relative paths.
+ * @param globalTools Tools from `superagents.tools`.
+ * @param agentTools Tools from agent frontmatter.
+ * @returns The first missing local tool-extension path, or undefined when all local paths exist.
+ */
+export function findMissingSubagentToolPath(runtimeCwd: string, globalTools: string[] | undefined, agentTools: string[] | undefined): MissingSubagentExtensionPath | undefined {
+	const entries = [
+		...(globalTools ?? []).map((configuredPath, index) => ({ source: `superagents.tools[${index}]`, configuredPath })),
+		...(agentTools ?? []).map((configuredPath, index) => ({ source: `agent.tools[${index}]`, configuredPath })),
+	].filter((entry) => isPathLikeToolEntry(entry.configuredPath));
+	return findMissingLocalPath(runtimeCwd, entries);
+}
+
+/**
+ * Find the first missing local path among source-labelled config entries.
+ *
+ * @param runtimeCwd Runtime working directory used to resolve relative paths.
+ * @param entries Source-labelled configured path entries.
+ * @returns Missing path diagnostic for the first missing local path, if any.
+ */
+function findMissingLocalPath(runtimeCwd: string, entries: { source: string; configuredPath: string }[]): MissingSubagentExtensionPath | undefined {
 	for (const entry of entries) {
 		if (isSchemeLikeExtensionSource(entry.configuredPath)) continue;
 		const resolvedPath = resolveLocalSubagentExtensionPath(runtimeCwd, entry.configuredPath);

@@ -418,6 +418,8 @@ export interface SuperpowersSettings {
 	superpowersSkills?: string[];
 	/** Global extensions applied to all subagent runs before agent-specific extensions. */
 	extensions?: string[];
+	/** Global tools appended to every subagent after role-specific tool policy. */
+	tools?: string[];
 }
 
 export interface ExtensionConfig {
