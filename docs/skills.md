@@ -102,7 +102,7 @@ Bounded role agents (delegated to subagents) support:
 | `skills` | No | Comma-separated skills injected into delegated subagent prompts |
 | `extensions` | No | Comma-separated Pi extension entrypoints to append for this agent |
 | `model` | No | Default model tier or concrete model ID |
-| `tools` | No | Comma-separated list of tool names available to this agent |
+| `tools` | No | Comma-separated list of baseline tool names available to this agent. Global `superagents.tools` entries are appended at launch time. |
 | `maxSubagentDepth` | No | Maximum subagent delegation depth (0 disables delegation) |
 | `session-mode` | No | `standalone`, `lineage-only`, or `fork`. Built-in bounded roles default to `lineage-only`. |
 
@@ -122,6 +122,8 @@ Bundled role assignments:
 ## Child Lifecycle Tools
 
 Child lifecycle tools (`subagent_done`, `caller_ping`) may be available to bounded roles through the tool policy for semantic completion signaling and parent request handling. These are internal child-only tools; they are not general-purpose delegation tools and are not listed in the parameters API.
+
+Shared tool names or tool extension paths can be configured once with `superagents.tools`. The runtime appends those entries to each agent's resolved baseline tools after role policy and removes duplicates, so common tools do not need to be repeated in every `agents/*.md` frontmatter block.
 
 ## Missing Skills
 
