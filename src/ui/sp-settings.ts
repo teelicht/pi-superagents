@@ -12,6 +12,7 @@
  */
 
 import * as fs from "node:fs";
+import * as path from "node:path";
 import type { Theme } from "@mariozechner/pi-coding-agent";
 import type { Component, TUI } from "@mariozechner/pi-tui";
 import { matchesKey } from "@mariozechner/pi-tui";
@@ -69,6 +70,7 @@ export class SuperpowersSettingsComponent implements Component {
 	private selectedModelIndex = 0;
 	private selectedCommand: string | undefined;
 	private mode: SettingsMode = "settings";
+	private modelSearchQuery = "";
 	private readonly tui: TUI;
 	private readonly theme: Theme;
 	private readonly state: SubagentState;
@@ -106,7 +108,7 @@ export class SuperpowersSettingsComponent implements Component {
 				? "c command | p plannotator | s subagents | t tdd | m model tiers | w worktrees | q close"
 				: mode === "tier-picker"
 					? "↑↓ navigate | enter select | q back"
-					: "↑↓ navigate | enter confirm | q back";
+					: "type to search | ↑↓ navigate | enter select | esc clear | q back";
 
 		return renderFramedPanel(title, this.renderBody(), Math.min(width, 92), this.theme, footer);
 	}
@@ -177,7 +179,25 @@ export class SuperpowersSettingsComponent implements Component {
 	 * Handle keyboard input in tier/model picker modes.
 	 */
 	private handlePickerInput(data: string): void {
-		if (matchesKey(data, "escape") || matchesKey(data, "q")) {
+		// q always goes back (escape handled per-mode for search clearing)
+		if (matchesKey(data, "q")) {
+			if (this.mode === "model-picker") {
+				// Go back to tier picker, clear search
+				this.mode = "tier-picker";
+				this.modelSearchQuery = "";
+				this.selectedModelIndex = 0;
+			} else {
+				// Go back to settings
+				this.mode = "settings";
+				this.selectedTier = undefined;
+				this.selectedModelIndex = 0;
+			}
+			this.tui.requestRender();
+			return;
+		}
+
+		// Escape in tier-picker goes to settings
+		if (matchesKey(data, "escape") && this.mode === "tier-picker") {
 			this.mode = "settings";
 			this.selectedTier = undefined;
 			this.selectedModelIndex = 0;
@@ -213,27 +233,56 @@ export class SuperpowersSettingsComponent implements Component {
 				this.tui.requestRender();
 			}
 		} else if (this.mode === "model-picker") {
-			// Model picker navigation
-			if (this.modelOptions.length === 0) return;
+			// Model picker with search
+			const filtered = this.getFilteredModels();
+
+			// Handle backspace for search
+			if (matchesKey(data, "backspace")) {
+				if (this.modelSearchQuery.length > 0) {
+					this.modelSearchQuery = this.modelSearchQuery.slice(0, -1);
+					this.selectedModelIndex = 0;
+					this.tui.requestRender();
+				}
+				return;
+			}
+
+			// Handle clear search with Escape when search active
+			if (matchesKey(data, "escape") && this.modelSearchQuery) {
+				this.modelSearchQuery = "";
+				this.selectedModelIndex = 0;
+				this.tui.requestRender();
+				return;
+			}
 
 			if (matchesKey(data, "up") || matchesKey(data, "k")) {
-				this.selectedModelIndex = this.selectedModelIndex <= 0 ? this.modelOptions.length - 1 : this.selectedModelIndex - 1;
+				if (filtered.length === 0) return;
+				this.selectedModelIndex = this.selectedModelIndex <= 0 ? filtered.length - 1 : this.selectedModelIndex - 1;
 				this.tui.requestRender();
 				return;
 			}
 
 			if (matchesKey(data, "down") || matchesKey(data, "j")) {
-				this.selectedModelIndex = this.selectedModelIndex >= this.modelOptions.length - 1 ? 0 : this.selectedModelIndex + 1;
+				if (filtered.length === 0) return;
+				this.selectedModelIndex = this.selectedModelIndex >= filtered.length - 1 ? 0 : this.selectedModelIndex + 1;
 				this.tui.requestRender();
 				return;
 			}
 
-			if (matchesKey(data, "enter") && this.selectedTier && this.modelOptions.length > 0) {
+			if (matchesKey(data, "enter") && this.selectedTier && filtered.length > 0) {
 				const editedTier = this.selectedTier;
-				const selectedModel = this.modelOptions[this.selectedModelIndex];
+				const selectedModel = filtered[this.selectedModelIndex];
 				this.writeModelTier(editedTier, modelToValue(selectedModel));
 				this.mode = "tier-picker";
 				this.selectedTier = this.modelTierEntries().includes(editedTier) ? editedTier : this.firstModelTier();
+				this.selectedModelIndex = 0;
+				this.modelSearchQuery = "";
+				this.tui.requestRender();
+				return;
+			}
+
+			// Type to search - handle printable characters
+			if (data.length === 1 && data.charCodeAt(0) >= 32 && data.charCodeAt(0) < 127) {
+				this.modelSearchQuery += data;
 				this.selectedModelIndex = 0;
 				this.tui.requestRender();
 			}
@@ -292,6 +341,19 @@ export class SuperpowersSettingsComponent implements Component {
 		const current = this.currentCommandName();
 		const currentIndex = names.indexOf(current);
 		this.selectedCommand = names[(currentIndex + 1) % names.length];
+	}
+
+	/**
+	 * Get models filtered by current search query.
+	 * Matches against provider, id, and name (case-insensitive).
+	 */
+	private getFilteredModels(): SettingsModelOption[] {
+		if (!this.modelSearchQuery) return this.modelOptions;
+		const query = this.modelSearchQuery.toLowerCase();
+		return this.modelOptions.filter((m) => {
+			const searchable = `${m.provider} ${m.id} ${m.name ?? ""}`.toLowerCase();
+			return searchable.includes(query);
+		});
 	}
 
 	/**
@@ -397,10 +459,31 @@ export class SuperpowersSettingsComponent implements Component {
 			return [errorMsg];
 		}
 
-		const lines: string[] = [`Editing tier: ${this.selectedTier}`, `Current: ${tierModel(currentValue)}`, "", "Available models:"];
+		const filtered = this.getFilteredModels();
+		const MAX_VISIBLE = 15;
+		const hasMore = filtered.length > MAX_VISIBLE;
+		const visibleModels = hasMore ? filtered.slice(0, MAX_VISIBLE) : filtered;
 
-		for (let i = 0; i < this.modelOptions.length; i++) {
-			const model = this.modelOptions[i];
+		// Show search box
+		const searchLine = this.modelSearchQuery ? `Search: ${this.modelSearchQuery}_` : "Type to search...";
+
+		const lines: string[] = [
+			`Editing tier: ${this.selectedTier}`,
+			`Current: ${tierModel(currentValue)}`,
+			"",
+			searchLine,
+			`Showing ${visibleModels.length} of ${filtered.length} models${hasMore ? " (type to filter)" : ""}`,
+			"",
+		];
+
+		if (filtered.length === 0) {
+			lines.push("No models match search");
+			lines.push("", "Backspace to clear search");
+			return lines;
+		}
+
+		for (let i = 0; i < visibleModels.length; i++) {
+			const model = visibleModels[i];
 			const modelValue = modelToValue(model);
 			const label = model.name ?? modelValue;
 			const isSelected = i === this.selectedModelIndex;
@@ -424,6 +507,11 @@ export class SuperpowersSettingsComponent implements Component {
 			return;
 		}
 		try {
+			// Ensure parent directory exists
+			const configDir = path.dirname(configPath);
+			if (!fs.existsSync(configDir)) {
+				fs.mkdirSync(configDir, { recursive: true });
+			}
 			const current = fs.existsSync(configPath) ? fs.readFileSync(configPath, "utf-8") : "{}\n";
 			const next = updateSuperpowersConfigText(current, update);
 			fs.writeFileSync(configPath, next, "utf-8");
