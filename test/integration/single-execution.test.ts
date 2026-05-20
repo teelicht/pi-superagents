@@ -539,7 +539,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		const args = JSON.parse(result.finalOutput ?? "[]") as string[];
 		const extensionValues = args.map((arg, index) => (arg === "--extension" ? args[index + 1] : undefined)).filter((arg): arg is string => arg !== undefined);
 		assert.ok(
-			extensionValues.some((arg) => arg.endsWith("src/extension/index.ts")),
+			extensionValues.some((arg) => arg.split(path.sep).join("/").endsWith("src/extension/index.ts")),
 			`expected lifecycle extension in ${result.finalOutput}`,
 		);
 	});
