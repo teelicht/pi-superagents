@@ -181,12 +181,12 @@ void describe("lifecycle sidecar signals", () => {
 
 	// --- Test for unreadable sidecar (permission denied) ---
 
-	void it("returns unreadable when sidecar cannot be read due to permissions", () => {
+	void it("returns unreadable when sidecar cannot be read due to permissions", { skip: process.platform === "win32" }, () => {
 		const sessionFile = tempSessionFile();
 		const sidecar = getLifecycleSidecarPath(sessionFile);
 		writeLifecycleSignalAtomic(sessionFile, { type: "done" });
 
-		// Remove read permission
+		// Remove read permission. Windows ACL semantics do not reliably make chmod(0) unreadable.
 		fs.chmodSync(sidecar, 0o000);
 
 		try {
