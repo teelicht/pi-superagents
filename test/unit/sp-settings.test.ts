@@ -225,6 +225,48 @@ void test("SuperpowersSettingsComponent writes model tier selections and reloads
 	fs.rmSync(dir, { recursive: true, force: true });
 });
 
+void test("SuperpowersSettingsComponent selects thinking after selecting a model tier model", () => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-settings-"));
+	const configPath = path.join(dir, "config.json");
+	fs.writeFileSync(configPath, '{\n  "superagents": { "modelTiers": { "cheap": { "model": "provider/old", "thinking": "low" } } }\n}\n', "utf-8");
+
+	let config: ExtensionConfig = {
+		superagents: {
+			modelTiers: {
+				cheap: { model: "provider/old", thinking: "low" },
+			},
+		},
+	};
+	const component = new SuperpowersSettingsComponent(createTuiMock() as never, createThemeMock() as never, createState(configPath) as never, () => config, {
+		models: [createModel("provider", "new", "New Model")],
+		reloadConfig: () => {
+			config = JSON.parse(fs.readFileSync(configPath, "utf-8")) as ExtensionConfig;
+		},
+	});
+
+	component.handleInput("m");
+	component.handleInput("\r");
+	component.handleInput("\r");
+	let rendered = component.render(92).join("\n");
+	assert.match(rendered, /Select Thinking Level/);
+	assert.match(rendered, /Selected model: provider\/new/);
+	assert.match(rendered, /▸ low/);
+
+	component.handleInput("\x1b[B");
+	component.handleInput("\r");
+
+	assert.deepStrictEqual(JSON.parse(fs.readFileSync(configPath, "utf-8")), {
+		superagents: {
+			modelTiers: {
+				cheap: { model: "provider/new", thinking: "medium" },
+			},
+		},
+	});
+	rendered = component.render(92).join("\n");
+	assert.match(rendered, /cheap: provider\/new \(thinking: medium\)/);
+	fs.rmSync(dir, { recursive: true, force: true });
+});
+
 void test("SuperpowersSettingsComponent selects and navigates model tiers", () => {
 	const config: ExtensionConfig = {
 		superagents: {

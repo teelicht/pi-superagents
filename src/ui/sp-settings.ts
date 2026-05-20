@@ -16,8 +16,9 @@ import * as path from "node:path";
 import type { Theme } from "@mariozechner/pi-coding-agent";
 import type { Component, TUI } from "@mariozechner/pi-tui";
 import { matchesKey } from "@mariozechner/pi-tui";
-import type { ExtensionConfig, SubagentState } from "../shared/types.ts";
-import { setSuperpowersModelTierModel, toggleSuperpowersBoolean, toggleSuperpowersWorktrees, updateSuperpowersConfigText } from "../superpowers/config-writer.ts";
+import type { ExtensionConfig, SubagentState, ThinkingLevel } from "../shared/types.ts";
+import { setSuperpowersModelTierModel, setSuperpowersModelTierThinking, toggleSuperpowersBoolean, toggleSuperpowersWorktrees, updateSuperpowersConfigText } from "../superpowers/config-writer.ts";
+import { VALID_THINKING_LEVELS } from "../shared/thinking-levels.ts";
 import { renderFramedPanel } from "./render-helpers.ts";
 
 /**
@@ -47,7 +48,7 @@ export interface SuperpowersSettingsModelPickerOptions {
 /**
  * Settings overlay mode for navigation.
  */
-type SettingsMode = "settings" | "tier-picker" | "model-picker";
+type SettingsMode = "settings" | "tier-picker" | "model-picker" | "thinking-picker";
 
 /**
  * Default model tier names to display in the tier picker.
@@ -55,6 +56,7 @@ type SettingsMode = "settings" | "tier-picker" | "model-picker";
 const DEFAULT_MODEL_TIERS = ["cheap", "balanced", "max", "reasoning"];
 const MAX_VISIBLE_MODELS = 15;
 
+const THINKING_OPTIONS: readonly (ThinkingLevel | undefined)[] = [undefined, ...VALID_THINKING_LEVELS];
 /**
  * Convert a model option to a value string for selection.
  *
@@ -69,6 +71,7 @@ export class SuperpowersSettingsComponent implements Component {
 	private lastWriteMessage = "";
 	private selectedTier: string | undefined;
 	private selectedModelIndex = 0;
+	private selectedThinkingIndex = 0;
 	private selectedCommand: string | undefined;
 	private mode: SettingsMode = "settings";
 	private modelSearchQuery = "";
@@ -103,13 +106,15 @@ export class SuperpowersSettingsComponent implements Component {
 
 	render(width: number): string[] {
 		const mode = this.mode;
-		const title = mode === "settings" ? "Superpowers Settings" : mode === "tier-picker" ? "Select Model Tier" : "Select Model";
+		const title = mode === "settings" ? "Superpowers Settings" : mode === "tier-picker" ? "Select Model Tier" : mode === "model-picker" ? "Select Model" : "Select Thinking Level";
 		const footer =
 			mode === "settings"
 				? "c command | p plannotator | s subagents | t tdd | m model tiers | w worktrees | q close"
 				: mode === "tier-picker"
 					? "↑↓ navigate | enter select | q back"
-					: "type to search | ↑↓ navigate | enter select | esc clear | q back";
+					: mode === "model-picker"
+						? "type to search | ↑↓ navigate | enter select | esc clear | q back"
+						: "↑↓ navigate | enter select | q back";
 
 		return renderFramedPanel(title, this.renderBody(), Math.min(width, 92), this.theme, footer);
 	}
@@ -183,15 +188,17 @@ export class SuperpowersSettingsComponent implements Component {
 		// q always goes back (escape handled per-mode for search clearing)
 		if (matchesKey(data, "q")) {
 			if (this.mode === "model-picker") {
-				// Go back to tier picker, clear search
 				this.mode = "tier-picker";
 				this.modelSearchQuery = "";
 				this.selectedModelIndex = 0;
+			} else if (this.mode === "thinking-picker") {
+				this.mode = "tier-picker";
+				this.selectedThinkingIndex = 0;
 			} else {
-				// Go back to settings
 				this.mode = "settings";
 				this.selectedTier = undefined;
 				this.selectedModelIndex = 0;
+				this.selectedThinkingIndex = 0;
 			}
 			this.tui.requestRender();
 			return;
@@ -202,6 +209,7 @@ export class SuperpowersSettingsComponent implements Component {
 			this.mode = "settings";
 			this.selectedTier = undefined;
 			this.selectedModelIndex = 0;
+			this.selectedThinkingIndex = 0;
 			this.tui.requestRender();
 			return;
 		}
@@ -211,7 +219,6 @@ export class SuperpowersSettingsComponent implements Component {
 
 		// Handle navigation based on current picker mode
 		if (this.mode === "tier-picker") {
-			// Tier picker navigation
 			const currentIndex = this.selectedTier ? tiers.indexOf(this.selectedTier) : -1;
 
 			if (matchesKey(data, "up") || matchesKey(data, "k")) {
@@ -234,11 +241,9 @@ export class SuperpowersSettingsComponent implements Component {
 				this.tui.requestRender();
 			}
 		} else if (this.mode === "model-picker") {
-			// Model picker with search, capped to the same visible window rendered to users.
 			const filtered = this.getFilteredModels();
 			const visibleModels = this.getVisibleModels(filtered);
 
-			// Handle backspace for search
 			if (matchesKey(data, "backspace")) {
 				if (this.modelSearchQuery.length > 0) {
 					this.modelSearchQuery = this.modelSearchQuery.slice(0, -1);
@@ -248,7 +253,6 @@ export class SuperpowersSettingsComponent implements Component {
 				return;
 			}
 
-			// Handle clear search with Escape when search active
 			if (matchesKey(data, "escape") && this.modelSearchQuery) {
 				this.modelSearchQuery = "";
 				this.selectedModelIndex = 0;
@@ -274,18 +278,39 @@ export class SuperpowersSettingsComponent implements Component {
 				const editedTier = this.selectedTier;
 				const selectedModel = visibleModels[this.selectedModelIndex];
 				this.writeModelTier(editedTier, modelToValue(selectedModel));
-				this.mode = "tier-picker";
+				this.mode = "thinking-picker";
 				this.selectedTier = this.modelTierEntries().includes(editedTier) ? editedTier : this.firstModelTier();
 				this.selectedModelIndex = 0;
+				this.selectedThinkingIndex = this.currentThinkingIndex(editedTier);
 				this.modelSearchQuery = "";
 				this.tui.requestRender();
 				return;
 			}
 
-			// Type to search - handle printable characters
 			if (data.length === 1 && data.charCodeAt(0) >= 32 && data.charCodeAt(0) < 127) {
 				this.modelSearchQuery += data;
 				this.selectedModelIndex = 0;
+				this.tui.requestRender();
+			}
+		} else if (this.mode === "thinking-picker") {
+			if (matchesKey(data, "up") || matchesKey(data, "k")) {
+				this.selectedThinkingIndex = this.selectedThinkingIndex <= 0 ? THINKING_OPTIONS.length - 1 : this.selectedThinkingIndex - 1;
+				this.tui.requestRender();
+				return;
+			}
+
+			if (matchesKey(data, "down") || matchesKey(data, "j")) {
+				this.selectedThinkingIndex = this.selectedThinkingIndex >= THINKING_OPTIONS.length - 1 ? 0 : this.selectedThinkingIndex + 1;
+				this.tui.requestRender();
+				return;
+			}
+
+			if (matchesKey(data, "enter") && this.selectedTier) {
+				const editedTier = this.selectedTier;
+				this.writeModelTierThinking(editedTier, THINKING_OPTIONS[this.selectedThinkingIndex]);
+				this.mode = "tier-picker";
+				this.selectedTier = this.modelTierEntries().includes(editedTier) ? editedTier : this.firstModelTier();
+				this.selectedThinkingIndex = 0;
 				this.tui.requestRender();
 			}
 		}
@@ -369,10 +394,43 @@ export class SuperpowersSettingsComponent implements Component {
 	}
 
 	/**
+	 * Return the configured thinking option index for a model tier.
+	 *
+	 * @param tierName Tier to inspect in the current configuration.
+	 * @returns Index into THINKING_OPTIONS, defaulting to the explicit default option.
+	 */
+	private currentThinkingIndex(tierName: string): number {
+		const value = this.getConfig().superagents?.modelTiers?.[tierName];
+		const thinking = value && typeof value === "object" && !Array.isArray(value) ? value.thinking : undefined;
+		const index = THINKING_OPTIONS.indexOf(thinking);
+		return index >= 0 ? index : 0;
+	}
+
+	/**
+	 * Format one thinking option for picker display.
+	 *
+	 * @param thinking Thinking level value, or undefined for runtime default.
+	 * @returns Human-readable thinking label.
+	 */
+	private thinkingLabel(thinking: ThinkingLevel | undefined): string {
+		return thinking ?? "default";
+	}
+
+	/**
 	 * Write a model tier selection to config and trigger reload.
 	 */
 	private writeModelTier(tierName: string, model: string): void {
 		this.writeConfig((config) => setSuperpowersModelTierModel(config, tierName, model));
+	}
+
+	/**
+	 * Write a model tier thinking selection to config and trigger reload.
+	 *
+	 * @param tierName Tier whose thinking override should change.
+	 * @param thinking Thinking level to persist, or undefined to clear the override.
+	 */
+	private writeModelTierThinking(tierName: string, thinking: ThinkingLevel | undefined): void {
+		this.writeConfig((config) => setSuperpowersModelTierThinking(config, tierName, thinking));
 	}
 
 	/**
@@ -384,6 +442,9 @@ export class SuperpowersSettingsComponent implements Component {
 		}
 		if (this.mode === "model-picker") {
 			return this.renderModelPickerBody();
+		}
+		if (this.mode === "thinking-picker") {
+			return this.renderThinkingPickerBody();
 		}
 		return this.renderSettingsBody();
 	}
@@ -509,6 +570,26 @@ export class SuperpowersSettingsComponent implements Component {
 	}
 
 	/**
+	 * Render the thinking picker body for the selected model tier.
+	 *
+	 * @returns Lines displayed inside the framed settings panel.
+	 */
+	private renderThinkingPickerBody(): string[] {
+		const configured = this.getConfig().superagents?.modelTiers ?? {};
+		const currentValue = this.selectedTier ? configured[this.selectedTier] : undefined;
+		const lines: string[] = [`Editing tier: ${this.selectedTier}`, `Selected model: ${tierModel(currentValue)}`, `Current thinking: ${tierThinking(currentValue)}`, "", "Choose thinking level:"];
+
+		for (let i = 0; i < THINKING_OPTIONS.length; i++) {
+			const option = THINKING_OPTIONS[i];
+			const marker = i === this.selectedThinkingIndex ? "▸ " : "  ";
+			lines.push(`${marker}${this.thinkingLabel(option)}`);
+		}
+
+		lines.push("", "Enter to save thinking level", "q to go back");
+		return lines;
+	}
+
+	/**
 	 * Write config updates to the config file.
 	 */
 	private writeConfig(update: Parameters<typeof updateSuperpowersConfigText>[1]): void {
@@ -541,7 +622,22 @@ function tierModel(value: unknown): string {
 	if (typeof value === "string") return value;
 	if (value && typeof value === "object" && "model" in value) {
 		const model = (value as { model?: unknown }).model;
-		return typeof model === "string" ? model : "unknown";
+		const thinking = tierThinking(value);
+		return typeof model === "string" ? `${model}${thinking === "default" ? "" : ` (thinking: ${thinking})`}` : "unknown";
 	}
 	return "unknown";
+}
+
+/**
+ * Format the thinking value of a model tier setting.
+ *
+ * @param value Model tier setting to inspect.
+ * @returns The configured thinking level, or "default" when none is configured.
+ */
+function tierThinking(value: unknown): string {
+	if (value && typeof value === "object" && "thinking" in value) {
+		const thinking = (value as { thinking?: unknown }).thinking;
+		return typeof thinking === "string" ? thinking : "default";
+	}
+	return "default";
 }

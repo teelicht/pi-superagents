@@ -10,7 +10,7 @@
  * - none; callers perform filesystem writes
  */
 
-import type { ExtensionConfig, ModelTierSetting } from "../shared/types.ts";
+import type { ExtensionConfig, ModelTierSetting, ThinkingLevel } from "../shared/types.ts";
 
 type MutableConfig = ExtensionConfig & {
 	superagents?: NonNullable<ExtensionConfig["superagents"]>;
@@ -174,4 +174,41 @@ export function setSuperpowersModelTierModel(config: MutableConfig, tierName: st
 
 	modelTiers[normalizedTierName] = { model: normalizedModel };
 	return config;
+}
+
+/**
+ * Set or clear the thinking level for a model tier in a config object.
+ *
+ * This function updates a named tier while preserving its model. Passing
+ * `undefined` clears the explicit thinking override so runtime defaults apply.
+ * String shorthand tiers are converted to object form when setting thinking.
+ *
+ * @param config - Mutable config object to modify in place.
+ * @param tierName - Name of the model tier (e.g., "fast", "balanced").
+ * @param thinking - Thinking level to persist, or undefined to clear it.
+ * @returns The same config reference, modified.
+ * @throws Error if tierName is empty or the tier has no model to preserve.
+ */
+export function setSuperpowersModelTierThinking(config: MutableConfig, tierName: string, thinking: ThinkingLevel | undefined): MutableConfig {
+	const normalizedTierName = tierName.trim();
+	if (!normalizedTierName) throw new Error("Model tier name must be non-empty.");
+
+	const modelTiers = ensureModelTiers(config);
+	const existing = modelTiers[normalizedTierName];
+	if (typeof existing === "string") {
+		modelTiers[normalizedTierName] = thinking ? { model: existing, thinking } : { model: existing };
+		return config;
+	}
+	if (existing && typeof existing === "object" && !Array.isArray(existing)) {
+		const next = { ...existing };
+		if (thinking) {
+			next.thinking = thinking;
+		} else {
+			delete next.thinking;
+		}
+		modelTiers[normalizedTierName] = next;
+		return config;
+	}
+
+	throw new Error(`Model tier '${normalizedTierName}' has no model to preserve.`);
 }

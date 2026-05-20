@@ -80,7 +80,7 @@ These tools are registered for root Superpowers workflows and are used by the pr
 
 ## Settings Overlay
 
-`/sp-settings` opens the Superpowers settings overlay. Use `c` to select a command, then toggle supported workflow options for that command or edit model tiers from PI's authenticated model list. The model picker supports type-to-search filtering and keeps selection within the visible result window. Model tier edits are persisted to `config.json` and apply to future subagents in the current session.
+`/sp-settings` opens the Superpowers settings overlay. Use `c` to select a command, then toggle supported workflow options for that command or edit model tiers from PI's authenticated model list. The model picker supports type-to-search filtering, keeps selection within the visible result window, and then prompts for the tier thinking level. Model tier edits are persisted to `config.json` and apply to future subagents in the current session.
 
 ## Result Rendering
 

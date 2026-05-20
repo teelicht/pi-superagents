@@ -11,7 +11,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { setSuperpowersModelTierModel, toggleSuperpowersBoolean, toggleSuperpowersWorktrees, updateSuperpowersConfigText } from "../../src/superpowers/config-writer.ts";
+import { setSuperpowersModelTierModel, setSuperpowersModelTierThinking, toggleSuperpowersBoolean, toggleSuperpowersWorktrees, updateSuperpowersConfigText } from "../../src/superpowers/config-writer.ts";
 
 void describe("Superpowers config writer", () => {
 	void it("toggles useSubagents without changing other settings", () => {
@@ -145,6 +145,34 @@ void describe("Superpowers config writer", () => {
 			superagents: {
 				modelTiers: {
 					fast: { model: "b" },
+				},
+			},
+		});
+	});
+
+	void it("sets model tier thinking while preserving model", () => {
+		const updated = updateSuperpowersConfigText(
+			'{\n  "superagents": {\n    "modelTiers": {\n      "fast": { "model": "a" }\n    }\n  }\n}\n',
+			(config) => setSuperpowersModelTierThinking(config, "fast", "high"),
+		);
+		assert.deepEqual(JSON.parse(updated), {
+			superagents: {
+				modelTiers: {
+					fast: { model: "a", thinking: "high" },
+				},
+			},
+		});
+	});
+
+	void it("clears model tier thinking when default is selected", () => {
+		const updated = updateSuperpowersConfigText(
+			'{\n  "superagents": {\n    "modelTiers": {\n      "fast": { "model": "a", "thinking": "high" }\n    }\n  }\n}\n',
+			(config) => setSuperpowersModelTierThinking(config, "fast", undefined),
+		);
+		assert.deepEqual(JSON.parse(updated), {
+			superagents: {
+				modelTiers: {
+					fast: { model: "a" },
 				},
 			},
 		});
