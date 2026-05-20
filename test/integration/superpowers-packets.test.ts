@@ -137,8 +137,14 @@ void describe("superpowers packets", () => {
 	});
 
 	void it("generates expected packet paths for subagents", () => {
-		assert.equal(getPacketPath("/tmp/subagent-artifacts", "a1b2c3d4", "sp-implementer", 0), "/tmp/subagent-artifacts/packets/a1b2c3d4_0_sp-implementer_packet.md");
-		assert.equal(getPacketPath("/tmp/subagent-artifacts", "a1b2c3d4", "sp-code/review", 2), "/tmp/subagent-artifacts/packets/a1b2c3d4_2_sp-code_review_packet.md");
+		assert.equal(
+			path.normalize(getPacketPath("/tmp/subagent-artifacts", "a1b2c3d4", "sp-implementer", 0)),
+			path.normalize("/tmp/subagent-artifacts/packets/a1b2c3d4_0_sp-implementer_packet.md"),
+		);
+		assert.equal(
+			path.normalize(getPacketPath("/tmp/subagent-artifacts", "a1b2c3d4", "sp-code/review", 2)),
+			path.normalize("/tmp/subagent-artifacts/packets/a1b2c3d4_2_sp-code_review_packet.md"),
+		);
 	});
 
 	void it("cleans up nested files during stale artifact cleanup", () => {
