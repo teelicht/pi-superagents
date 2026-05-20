@@ -10,8 +10,8 @@
  * - renderFramedPanel: stable green framed panel with themed background
  */
 
-import type { Theme } from "@mariozechner/pi-coding-agent";
-import { truncateToWidth } from "@mariozechner/pi-tui";
+import type { Theme } from "@earendil-works/pi-coding-agent";
+import { truncateToWidth } from "@earendil-works/pi-tui";
 
 /** Right-pad `text` with `char` to reach `length` columns.  No-op if already ≥ `length`. */
 export function pad(text: string, length: number, char = " "): string {

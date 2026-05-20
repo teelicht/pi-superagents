@@ -11,7 +11,7 @@
  * - shared result contracts used by the TUI renderers and executor
  */
 
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { AgentToolResult } from "@earendil-works/pi-agent-core";
 import type { AgentConfig } from "../agents/agents.ts";
 import type { Details, SessionMode, SingleResult, SubagentParamsLike } from "../shared/types.ts";
 import { resolveRequestedSessionMode } from "./session-mode.ts";

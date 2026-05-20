@@ -14,7 +14,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { AgentToolResult } from "@earendil-works/pi-agent-core";
 import type { RunEntry } from "../../src/execution/run-history.ts";
 import type { Details } from "../../src/shared/types.ts";
 import type { MockPi } from "../support/helpers.ts";

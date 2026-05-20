@@ -10,8 +10,8 @@
  * - Pi TUI Text component for terminal rendering
  */
 
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
-import { type Component, Text } from "@mariozechner/pi-tui";
+import type { AgentToolResult } from "@earendil-works/pi-agent-core";
+import { type Component, Text } from "@earendil-works/pi-tui";
 import type { Details } from "../shared/types.ts";
 import { renderSubagentResultLines } from "./subagent-result-lines.ts";
 

@@ -8,13 +8,13 @@
  * - define display, error, and async types
  *
  * Important dependencies:
- * - @mariozechner/pi-ai (Message type)
- * - @mariozechner/pi-coding-agent (ExtensionContext)
+ * - @earendil-works/pi-ai (Message type)
+ * - @earendil-works/pi-coding-agent (ExtensionContext)
  * - node:os, node:path, node:fs
  */
 
-import type { Message } from "@mariozechner/pi-ai";
-import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { Message } from "@earendil-works/pi-ai";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 // ============================================================================
 // Basic Types
@@ -355,7 +355,7 @@ export interface ErrorInfo {
 export interface RunSyncOptions {
 	cwd?: string;
 	signal?: AbortSignal;
-	onUpdate?: (r: import("@mariozechner/pi-agent-core").AgentToolResult<Details>) => void;
+	onUpdate?: (r: import("@earendil-works/pi-agent-core").AgentToolResult<Details>) => void;
 	maxOutput?: MaxOutputConfig;
 	artifactsDir?: string;
 	artifactConfig?: ArtifactConfig;

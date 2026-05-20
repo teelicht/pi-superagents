@@ -42,14 +42,14 @@
   ],
   "scripts": {
     "prepublishOnly": "npm test",
-    "debug:pi-local": "node --experimental-transform-types ./scripts/local-extension-install.ts",
+    "debug:pi-local": "node --experimental-strip-types ./scripts/local-extension-install.ts",
     "qa": "biome check --write && tsc -noEmit && npm run test:all",
     "lint": "biome check --write",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:unit",
     "test:unit": "node --experimental-strip-types --test test/unit/*.test.ts",
-    "test:integration": "node --experimental-transform-types --import ./test/support/register-loader.mjs --test test/integration/*.test.ts",
-    "test:e2e": "node --experimental-transform-types --import ./test/support/register-loader.mjs --test test/e2e/*.test.ts",
+    "test:integration": "node --experimental-strip-types --import ./test/support/register-loader.mjs --test test/integration/*.test.ts",
+    "test:e2e": "node --experimental-strip-types --import ./test/support/register-loader.mjs --test test/e2e/*.test.ts",
     "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e"
   },
   "pi": {
@@ -58,19 +58,18 @@
     ]
   },
   "peerDependencies": {
-    "@mariozechner/pi-agent-core": "*",
-    "@mariozechner/pi-ai": "*",
-    "@mariozechner/pi-coding-agent": "*",
-    "@mariozechner/pi-tui": "*",
+    "@earendil-works/pi-agent-core": "*",
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
     "typebox": "*"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.13",
-    "@marcfargas/pi-test-harness": "^0.5.0",
-    "@mariozechner/pi-agent-core": "^0.73.0",
-    "@mariozechner/pi-ai": "^0.73.0",
-    "@mariozechner/pi-coding-agent": "^0.73.0",
-    "@mariozechner/pi-tui": "^0.73.0",
+    "@earendil-works/pi-agent-core": "^0.75.3",
+    "@earendil-works/pi-ai": "^0.75.3",
+    "@earendil-works/pi-coding-agent": "^0.75.3",
+    "@earendil-works/pi-tui": "^0.75.3",
     "@types/node": "^25.6.0",
     "@vitest/coverage-v8": "^4.1.4",
     "typebox": "^1.1.24",
