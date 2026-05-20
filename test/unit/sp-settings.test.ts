@@ -256,6 +256,50 @@ void test("SuperpowersSettingsComponent selects and navigates model tiers", () =
 	assert.equal(tuiMock._getRenderRequestCount(), 3);
 });
 
+void test("SuperpowersSettingsComponent keeps model picker selection within visible model window", () => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-settings-"));
+	const configPath = path.join(dir, "config.json");
+	fs.writeFileSync(configPath, '{\n  "superagents": { "modelTiers": { "cheap": { "model": "provider/model-00" } } }\n}\n', "utf-8");
+
+	let config: ExtensionConfig = {
+		superagents: {
+			modelTiers: {
+				cheap: { model: "provider/model-00" },
+			},
+		},
+	};
+	const models = Array.from({ length: 20 }, (_, index) => {
+		const id = `model-${String(index).padStart(2, "0")}`;
+		return createModel("provider", id, `Model ${index}`);
+	});
+	const component = new SuperpowersSettingsComponent(createTuiMock() as never, createThemeMock() as never, createState(configPath) as never, () => config, {
+		models,
+		reloadConfig: () => {
+			config = JSON.parse(fs.readFileSync(configPath, "utf-8")) as ExtensionConfig;
+		},
+	});
+
+	component.handleInput("m");
+	component.handleInput("\r");
+	for (let i = 0; i < 15; i++) {
+		component.handleInput("\x1b[B");
+	}
+
+	const rendered = component.render(92).join("\n");
+	assert.match(rendered, /▸ provider\/model-00/);
+	assert.doesNotMatch(rendered, /▸ provider\/model-15/);
+
+	component.handleInput("\r");
+	assert.deepStrictEqual(JSON.parse(fs.readFileSync(configPath, "utf-8")), {
+		superagents: {
+			modelTiers: {
+				cheap: { model: "provider/model-00" },
+			},
+		},
+	});
+	fs.rmSync(dir, { recursive: true, force: true });
+});
+
 void test("SuperpowersSettingsComponent reports when no models are available", () => {
 	const config: ExtensionConfig = {
 		superagents: {

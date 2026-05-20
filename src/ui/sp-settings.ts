@@ -53,6 +53,7 @@ type SettingsMode = "settings" | "tier-picker" | "model-picker";
  * Default model tier names to display in the tier picker.
  */
 const DEFAULT_MODEL_TIERS = ["cheap", "balanced", "max", "reasoning"];
+const MAX_VISIBLE_MODELS = 15;
 
 /**
  * Convert a model option to a value string for selection.
@@ -233,8 +234,9 @@ export class SuperpowersSettingsComponent implements Component {
 				this.tui.requestRender();
 			}
 		} else if (this.mode === "model-picker") {
-			// Model picker with search
+			// Model picker with search, capped to the same visible window rendered to users.
 			const filtered = this.getFilteredModels();
+			const visibleModels = this.getVisibleModels(filtered);
 
 			// Handle backspace for search
 			if (matchesKey(data, "backspace")) {
@@ -255,22 +257,22 @@ export class SuperpowersSettingsComponent implements Component {
 			}
 
 			if (matchesKey(data, "up") || matchesKey(data, "k")) {
-				if (filtered.length === 0) return;
-				this.selectedModelIndex = this.selectedModelIndex <= 0 ? filtered.length - 1 : this.selectedModelIndex - 1;
+				if (visibleModels.length === 0) return;
+				this.selectedModelIndex = this.selectedModelIndex <= 0 ? visibleModels.length - 1 : this.selectedModelIndex - 1;
 				this.tui.requestRender();
 				return;
 			}
 
 			if (matchesKey(data, "down") || matchesKey(data, "j")) {
-				if (filtered.length === 0) return;
-				this.selectedModelIndex = this.selectedModelIndex >= filtered.length - 1 ? 0 : this.selectedModelIndex + 1;
+				if (visibleModels.length === 0) return;
+				this.selectedModelIndex = this.selectedModelIndex >= visibleModels.length - 1 ? 0 : this.selectedModelIndex + 1;
 				this.tui.requestRender();
 				return;
 			}
 
-			if (matchesKey(data, "enter") && this.selectedTier && filtered.length > 0) {
+			if (matchesKey(data, "enter") && this.selectedTier && visibleModels.length > 0) {
 				const editedTier = this.selectedTier;
-				const selectedModel = filtered[this.selectedModelIndex];
+				const selectedModel = visibleModels[this.selectedModelIndex];
 				this.writeModelTier(editedTier, modelToValue(selectedModel));
 				this.mode = "tier-picker";
 				this.selectedTier = this.modelTierEntries().includes(editedTier) ? editedTier : this.firstModelTier();
@@ -354,6 +356,16 @@ export class SuperpowersSettingsComponent implements Component {
 			const searchable = `${m.provider} ${m.id} ${m.name ?? ""}`.toLowerCase();
 			return searchable.includes(query);
 		});
+	}
+
+	/**
+	 * Return the visible model window used by picker rendering and selection.
+	 *
+	 * @param models Filtered models available for the current query.
+	 * @returns At most the first visible models shown in the picker.
+	 */
+	private getVisibleModels(models: SettingsModelOption[]): SettingsModelOption[] {
+		return models.slice(0, MAX_VISIBLE_MODELS);
 	}
 
 	/**
@@ -460,9 +472,8 @@ export class SuperpowersSettingsComponent implements Component {
 		}
 
 		const filtered = this.getFilteredModels();
-		const MAX_VISIBLE = 15;
-		const hasMore = filtered.length > MAX_VISIBLE;
-		const visibleModels = hasMore ? filtered.slice(0, MAX_VISIBLE) : filtered;
+		const hasMore = filtered.length > MAX_VISIBLE_MODELS;
+		const visibleModels = this.getVisibleModels(filtered);
 
 		// Show search box
 		const searchLine = this.modelSearchQuery ? `Search: ${this.modelSearchQuery}_` : "Type to search...";
