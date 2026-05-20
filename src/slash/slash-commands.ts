@@ -132,23 +132,22 @@ async function openSuperpowersSettingsOverlay(ctx: ExtensionContext, state: Suba
 	let modelOptions: SettingsModelOption[] = [];
 	let modelRegistryError: string | undefined;
 
-	// Try to get models from the context's model registry
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	if ("modelRegistry" in ctx && (ctx as any).modelRegistry) {
-		const registry = ctx.modelRegistry as {
-			getAvailable?: () => SettingsModelOption[];
-			getError?: () => string | undefined;
-		};
-		if (registry.getAvailable) {
-			try {
-				modelOptions = registry.getAvailable() ?? [];
-			} catch {
-				modelRegistryError = "Failed to load models";
-			}
+	// Access modelRegistry from ExtensionContext (available in Pi 0.72+)
+	const registry = ctx.modelRegistry;
+	if (registry) {
+		try {
+			// getAvailable() returns Model<Api>[], map to SettingsModelOption[]
+			const models = registry.getAvailable?.() ?? [];
+			modelOptions = models.map((m) => ({
+				provider: m.provider,
+				id: m.id,
+				name: m.name,
+			}));
+		} catch {
+			modelRegistryError = "Failed to load models";
 		}
-		if (registry.getError) {
-			modelRegistryError = registry.getError();
-		}
+		// Check for models.json load errors
+		modelRegistryError = registry.getError?.() ?? modelRegistryError;
 	}
 
 	await ctx.ui.custom<void>((tui, theme, _kb, done) => {
