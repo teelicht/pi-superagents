@@ -16,9 +16,15 @@ import * as path from "node:path";
 import type { Theme } from "@mariozechner/pi-coding-agent";
 import type { Component, TUI } from "@mariozechner/pi-tui";
 import { matchesKey } from "@mariozechner/pi-tui";
-import type { ExtensionConfig, SubagentState, ThinkingLevel } from "../shared/types.ts";
-import { setSuperpowersModelTierModel, setSuperpowersModelTierThinking, toggleSuperpowersBoolean, toggleSuperpowersWorktrees, updateSuperpowersConfigText } from "../superpowers/config-writer.ts";
 import { VALID_THINKING_LEVELS } from "../shared/thinking-levels.ts";
+import type { ExtensionConfig, SubagentState, ThinkingLevel } from "../shared/types.ts";
+import {
+	setSuperpowersModelTierModel,
+	setSuperpowersModelTierThinking,
+	toggleSuperpowersBoolean,
+	toggleSuperpowersWorktrees,
+	updateSuperpowersConfigText,
+} from "../superpowers/config-writer.ts";
 import { renderFramedPanel } from "./render-helpers.ts";
 
 /**
@@ -577,7 +583,13 @@ export class SuperpowersSettingsComponent implements Component {
 	private renderThinkingPickerBody(): string[] {
 		const configured = this.getConfig().superagents?.modelTiers ?? {};
 		const currentValue = this.selectedTier ? configured[this.selectedTier] : undefined;
-		const lines: string[] = [`Editing tier: ${this.selectedTier}`, `Selected model: ${tierModel(currentValue)}`, `Current thinking: ${tierThinking(currentValue)}`, "", "Choose thinking level:"];
+		const lines: string[] = [
+			`Editing tier: ${this.selectedTier}`,
+			`Selected model: ${tierModel(currentValue)}`,
+			`Current thinking: ${tierThinking(currentValue)}`,
+			"",
+			"Choose thinking level:",
+		];
 
 		for (let i = 0; i < THINKING_OPTIONS.length; i++) {
 			const option = THINKING_OPTIONS[i];
