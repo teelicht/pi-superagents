@@ -19,7 +19,6 @@
 
 - **Validation Fixes**
   - Made Windows CI assertions path-separator independent and skipped the POSIX-only unreadable-permission lifecycle test on Windows.
-  - Formatted the thinking picker changes with Biome and verified `npm run qa` plus GitHub CI on Ubuntu and Windows.
 
 ## [0.8.3] - 2026-05-11
   
