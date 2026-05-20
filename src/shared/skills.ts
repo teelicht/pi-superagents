@@ -6,7 +6,7 @@ import { execSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { loadSkills } from "@mariozechner/pi-coding-agent";
+import { loadSkills } from "@earendil-works/pi-coding-agent";
 import { parseFrontmatter } from "../agents/frontmatter.ts";
 import { resolveImplementerSkillSet, resolveRoleSkillSet } from "../execution/superpowers-policy.ts";
 import type { ExecutionRole, ExtensionConfig, WorkflowMode } from "./types.ts";

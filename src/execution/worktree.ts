@@ -11,7 +11,7 @@ import { spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { AgentToolResult } from "@earendil-works/pi-agent-core";
 import type { Details, ExtensionConfig, TaskParam, WorkflowMode } from "../shared/types.ts";
 import { buildParallelModeError } from "./executor-validation.ts";
 import { resolveSuperagentWorktreeCreateOptions } from "./superagents-config.ts";

@@ -18,7 +18,7 @@
 
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import type { Message } from "@mariozechner/pi-ai";
+import type { Message } from "@earendil-works/pi-ai";
 import type { AgentConfig } from "../agents/agents.ts";
 import { ensureArtifactsDir, getArtifactPaths, writeArtifact, writeMetadata } from "../shared/artifacts.ts";
 import { buildSkillInjection, getPublishedExecutionSkills, resolveExecutionSkills } from "../shared/skills.ts";

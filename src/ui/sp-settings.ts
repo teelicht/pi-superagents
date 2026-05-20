@@ -13,9 +13,9 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { Theme } from "@mariozechner/pi-coding-agent";
-import type { Component, TUI } from "@mariozechner/pi-tui";
-import { matchesKey } from "@mariozechner/pi-tui";
+import type { Theme } from "@earendil-works/pi-coding-agent";
+import type { Component, TUI } from "@earendil-works/pi-tui";
+import { matchesKey } from "@earendil-works/pi-tui";
 import { VALID_THINKING_LEVELS } from "../shared/thinking-levels.ts";
 import type { ExtensionConfig, SubagentState, ThinkingLevel } from "../shared/types.ts";
 import {

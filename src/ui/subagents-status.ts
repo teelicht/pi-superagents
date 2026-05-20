@@ -11,9 +11,9 @@
  * - starts an interval timer that requests TUI re-rendering
  */
 
-import type { Theme } from "@mariozechner/pi-coding-agent";
-import type { Component, TUI } from "@mariozechner/pi-tui";
-import { matchesKey, truncateToWidth } from "@mariozechner/pi-tui";
+import type { Theme } from "@earendil-works/pi-coding-agent";
+import type { Component, TUI } from "@earendil-works/pi-tui";
+import { matchesKey, truncateToWidth } from "@earendil-works/pi-tui";
 import { globalRunHistory, type RunEntry } from "../execution/run-history.ts";
 import { formatDuration, formatTokens } from "../shared/formatters.ts";
 import { formatScrollInfo, renderFramedPanel } from "./render-helpers.ts";

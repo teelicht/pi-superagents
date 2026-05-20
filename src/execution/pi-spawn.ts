@@ -4,7 +4,7 @@
  * Determines how to invoke the Pi CLI process for subagent execution.
  * On Windows (and as a fallback) the `pi` binary may not be on PATH,
  * so this module resolves the actual Node entry-point script from the
- * installed `@mariozechner/pi-coding-agent` package and returns
+ * installed `@earendil-works/pi-coding-agent` package and returns
  * `{ command: node, args: [cliScript, ...userArgs] }` instead of
  * `{ command: "pi", args: userArgs }`.
  *
@@ -27,7 +27,7 @@ const require = createRequire(import.meta.url);
  * Walk up from the current entry-point's directory to find the Pi package root.
  *
  * Resolves the real path of `process.argv[1]`, then walks parent directories
- * looking for a `package.json` whose `name` is `@mariozechner/pi-coding-agent`.
+ * looking for a `package.json` whose `name` is `@earendil-works/pi-coding-agent`.
  *
  * @returns The absolute path to the Pi package root, or `undefined` if not found.
  */
@@ -39,7 +39,7 @@ export function resolvePiPackageRoot(): string | undefined {
 		while (dir !== path.dirname(dir)) {
 			try {
 				const pkg = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf-8")) as { name?: unknown };
-				if (pkg.name === "@mariozechner/pi-coding-agent") return dir;
+				if (pkg.name === "@earendil-works/pi-coding-agent") return dir;
 			} catch {
 				/* empty */
 			}
@@ -156,7 +156,7 @@ export function resolveWindowsPiCliScript(
 			(() => {
 				const root = deps.piPackageRoot ?? resolvePiPackageRoot();
 				if (root) return path.join(root, "package.json");
-				return require.resolve("@mariozechner/pi-coding-agent/package.json");
+				return require.resolve("@earendil-works/pi-coding-agent/package.json");
 			});
 		const packageJsonPath = resolvePackageJson();
 		const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8")) as {

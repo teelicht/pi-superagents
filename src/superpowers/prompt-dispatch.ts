@@ -11,7 +11,7 @@
  * - sends visible user messages through `sendUserMessage`
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 /** Custom message type used for hidden Superpowers root contracts. */
 export const SUPERPOWERS_CONTRACT_CUSTOM_TYPE = "superpowers-root-contract";

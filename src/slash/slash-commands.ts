@@ -19,7 +19,7 @@
  * - `ui/sp-settings` for the settings overlay
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 /**
  * Model option from the model registry.

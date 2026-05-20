@@ -21,7 +21,7 @@ import { spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { AgentToolResult } from "@earendil-works/pi-agent-core";
 import { resolveStepBehavior } from "../../src/execution/settings.ts";
 import { buildSuperpowersPacketContent, buildSuperpowersPacketPlan, injectSuperpowersPacketInstructions } from "../../src/execution/superpowers-packets.ts";
 import { cleanupOldArtifacts, getPacketPath } from "../../src/shared/artifacts.ts";
