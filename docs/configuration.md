@@ -264,7 +264,7 @@ Superpowers agents use abstract model tiers. Define tiers in your configuration:
 > [!NOTE]
 > In `config.example.json`, `creative` and `legacy` are illustrative custom tiers added to demonstrate the surface; they are not built-in tiers. `thinking` is optional in any tier definition.
 
-You can edit model tier mappings during an active PI session with `/sp-settings`. The model picker reads PI's authenticated model registry and writes the selected `provider/model` value back to `config.json`. Successful tier edits apply to future Superpowers subagents immediately; already-running subagents keep the model they were launched with.
+You can edit model tier mappings during an active PI session with `/sp-settings`. The model picker reads PI's authenticated model registry, supports type-to-search filtering by provider, ID, or display name, keeps keyboard selection within the visible result window, and writes the selected `provider/model` value back to `config.json`. Successful tier edits apply to future Superpowers subagents immediately; already-running subagents keep the model they were launched with.
 
 `/sp-settings` also edits command-scoped workflow toggles. Use `c` to select a command, then toggle `p` for Plannotator, `s` for subagents, `t` for TDD, or `w` for worktrees on that selected command preset. This avoids writing Plannotator or TDD settings into unrelated command presets.
 

@@ -68,7 +68,7 @@ Extension and shared-tool loading for subagents is independent of worktree isola
 
 See [Configuration Reference](configuration.md) for `superagents.commands.<name>.worktrees.*` config keys.
 
-The `/sp-settings` overlay also shows Superpowers model tiers and command-scoped workflow toggles. Use `c` to select a command before pressing `w`; worktree toggles are written to the selected command preset. Tier edits apply immediately to future subagents, while worktree command registration changes may still require a PI reload.
+The `/sp-settings` overlay also shows Superpowers model tiers and command-scoped workflow toggles. Use `c` to select a command before pressing `w`; worktree toggles are written to the selected command preset. Tier edits use a type-to-search model picker and apply immediately to future subagents, while worktree command registration changes may still require a PI reload.
 
 ## Release Notes
 
