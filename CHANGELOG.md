@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.9.0] - 2026-05-20
+
+- **Pi 0.72+ Model Registry Compatibility**
+  - Fixed `/sp-settings` model tier editing for newer Pi model registry objects by mapping registry models into Superagents' `{ provider, id, name }` option shape.
+  - Added type-to-search filtering for large authenticated model lists and constrained keyboard selection to the visible result window.
+  - Ensured model tier edits create the config directory when needed before writing `config.json`.
+
+- **Model Tier Thinking Configuration**
+  - Added a post-model thinking picker to `/sp-settings`; tier editing now flows from tier selection, to model selection, to thinking level selection.
+  - Supported tier thinking choices: `default`, `off`, `minimal`, `low`, `medium`, `high`, and `xhigh`.
+  - Added config writer support for setting and clearing tier-level `thinking` while preserving the selected model.
+
+- **Pi Dependency Migration**
+  - Migrated Pi development dependencies and imports from `@mariozechner/pi-*` to `@earendil-works/pi-*` `^0.75.3`.
+  - Removed the old `@marcfargas/pi-test-harness` dependency because it still pulls the legacy Pi package scope.
+  - Updated TypeScript test scripts to use Node's supported `--experimental-strip-types` flag instead of the removed `--experimental-transform-types` flag.
+
+- **Validation Fixes**
+  - Made Windows CI assertions path-separator independent and skipped the POSIX-only unreadable-permission lifecycle test on Windows.
+  - Formatted the thinking picker changes with Biome and verified `npm run qa` plus GitHub CI on Ubuntu and Windows.
+
 ## [0.8.3] - 2026-05-11
   
 - Updated pi dependencies to `^0.73.0`
