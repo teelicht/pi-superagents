@@ -111,7 +111,7 @@ Bounded role agents (delegated to subagents) support:
 The `skills` field in entrypoint agents is reserved for root lifecycle skills. These are skills with explicit trigger points (e.g., `verification-before-completion`, `receiving-code-review`, `finishing-a-development-branch`) that apply to the root session only.
 
 Superpowers skill selection is trigger-driven via `using-superpowers`. Do not preload domain skills through command config. Entrypoint `skills` are not overlay replacements — they are lifecycle/root skills with explicit trigger points.
-Command-scoped workflow toggles can be changed through `/sp-settings`; model tier edits in the same overlay use a type-to-search picker backed by PI's authenticated model registry, followed by a thinking-level picker for the tier.
+Command-scoped workflow toggles can be changed through `/sp-settings`; model tier edits in the same overlay use a type-to-search picker backed by PI's authenticated model registry. The picker accepts `q` as search text, scrolls through all filtered results rather than only the visible page, and is followed by a thinking-level picker for the tier.
 
 Bundled entrypoint assignments:
 - `agents/sp-implement.md` assigns `verification-before-completion`, `receiving-code-review`, and `finishing-a-development-branch` as root lifecycle skills.

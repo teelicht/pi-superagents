@@ -119,7 +119,7 @@ export class SuperpowersSettingsComponent implements Component {
 				: mode === "tier-picker"
 					? "↑↓ navigate | enter select | q back"
 					: mode === "model-picker"
-						? "type to search | ↑↓ navigate | enter select | esc clear | q back"
+						? "type to search | ↑↓ navigate | enter select | esc clear/back"
 						: "↑↓ navigate | enter select | q back";
 
 		return renderFramedPanel(title, this.renderBody(), Math.min(width, 92), this.theme, footer);
@@ -191,13 +191,9 @@ export class SuperpowersSettingsComponent implements Component {
 	 * Handle keyboard input in tier/model picker modes.
 	 */
 	private handlePickerInput(data: string): void {
-		// q always goes back (escape handled per-mode for search clearing)
-		if (matchesKey(data, "q")) {
-			if (this.mode === "model-picker") {
-				this.mode = "tier-picker";
-				this.modelSearchQuery = "";
-				this.selectedModelIndex = 0;
-			} else if (this.mode === "thinking-picker") {
+		// q goes back in non-search picker modes. In model-picker mode it is searchable text.
+		if (matchesKey(data, "q") && this.mode !== "model-picker") {
+			if (this.mode === "thinking-picker") {
 				this.mode = "tier-picker";
 				this.selectedThinkingIndex = 0;
 			} else {
@@ -248,7 +244,9 @@ export class SuperpowersSettingsComponent implements Component {
 			}
 		} else if (this.mode === "model-picker") {
 			const filtered = this.getFilteredModels();
-			const visibleModels = this.getVisibleModels(filtered);
+			if (filtered.length > 0 && this.selectedModelIndex >= filtered.length) {
+				this.selectedModelIndex = filtered.length - 1;
+			}
 
 			if (matchesKey(data, "backspace")) {
 				if (this.modelSearchQuery.length > 0) {
@@ -259,30 +257,35 @@ export class SuperpowersSettingsComponent implements Component {
 				return;
 			}
 
-			if (matchesKey(data, "escape") && this.modelSearchQuery) {
-				this.modelSearchQuery = "";
-				this.selectedModelIndex = 0;
+			if (matchesKey(data, "escape")) {
+				if (this.modelSearchQuery) {
+					this.modelSearchQuery = "";
+					this.selectedModelIndex = 0;
+				} else {
+					this.mode = "tier-picker";
+					this.selectedModelIndex = 0;
+				}
 				this.tui.requestRender();
 				return;
 			}
 
 			if (matchesKey(data, "up") || matchesKey(data, "k")) {
-				if (visibleModels.length === 0) return;
-				this.selectedModelIndex = this.selectedModelIndex <= 0 ? visibleModels.length - 1 : this.selectedModelIndex - 1;
+				if (filtered.length === 0) return;
+				this.selectedModelIndex = this.selectedModelIndex <= 0 ? filtered.length - 1 : this.selectedModelIndex - 1;
 				this.tui.requestRender();
 				return;
 			}
 
 			if (matchesKey(data, "down") || matchesKey(data, "j")) {
-				if (visibleModels.length === 0) return;
-				this.selectedModelIndex = this.selectedModelIndex >= visibleModels.length - 1 ? 0 : this.selectedModelIndex + 1;
+				if (filtered.length === 0) return;
+				this.selectedModelIndex = this.selectedModelIndex >= filtered.length - 1 ? 0 : this.selectedModelIndex + 1;
 				this.tui.requestRender();
 				return;
 			}
 
-			if (matchesKey(data, "enter") && this.selectedTier && visibleModels.length > 0) {
+			if (matchesKey(data, "enter") && this.selectedTier && filtered.length > 0) {
 				const editedTier = this.selectedTier;
-				const selectedModel = visibleModels[this.selectedModelIndex];
+				const selectedModel = filtered[this.selectedModelIndex];
 				this.writeModelTier(editedTier, modelToValue(selectedModel));
 				this.mode = "thinking-picker";
 				this.selectedTier = this.modelTierEntries().includes(editedTier) ? editedTier : this.firstModelTier();
@@ -390,13 +393,14 @@ export class SuperpowersSettingsComponent implements Component {
 	}
 
 	/**
-	 * Return the visible model window used by picker rendering and selection.
+	 * Return the visible model window around the current full-list selection.
 	 *
 	 * @param models Filtered models available for the current query.
-	 * @returns At most the first visible models shown in the picker.
+	 * @returns At most the visible models shown in the picker, sliding as selection moves.
 	 */
 	private getVisibleModels(models: SettingsModelOption[]): SettingsModelOption[] {
-		return models.slice(0, MAX_VISIBLE_MODELS);
+		const windowStart = Math.min(Math.max(this.selectedModelIndex - MAX_VISIBLE_MODELS + 1, 0), Math.max(models.length - MAX_VISIBLE_MODELS, 0));
+		return models.slice(windowStart, windowStart + MAX_VISIBLE_MODELS);
 	}
 
 	/**
@@ -539,7 +543,11 @@ export class SuperpowersSettingsComponent implements Component {
 		}
 
 		const filtered = this.getFilteredModels();
+		if (filtered.length > 0 && this.selectedModelIndex >= filtered.length) {
+			this.selectedModelIndex = filtered.length - 1;
+		}
 		const hasMore = filtered.length > MAX_VISIBLE_MODELS;
+		const windowStart = Math.min(Math.max(this.selectedModelIndex - MAX_VISIBLE_MODELS + 1, 0), Math.max(filtered.length - MAX_VISIBLE_MODELS, 0));
 		const visibleModels = this.getVisibleModels(filtered);
 
 		// Show search box
@@ -550,7 +558,7 @@ export class SuperpowersSettingsComponent implements Component {
 			`Current: ${tierModel(currentValue)}`,
 			"",
 			searchLine,
-			`Showing ${visibleModels.length} of ${filtered.length} models${hasMore ? " (type to filter)" : ""}`,
+			`Showing ${visibleModels.length} of ${filtered.length} models${hasMore ? ` (${windowStart + 1}-${windowStart + visibleModels.length})` : ""}`,
 			"",
 		];
 
@@ -564,14 +572,14 @@ export class SuperpowersSettingsComponent implements Component {
 			const model = visibleModels[i];
 			const modelValue = modelToValue(model);
 			const label = model.name ?? modelValue;
-			const isSelected = i === this.selectedModelIndex;
+			const isSelected = windowStart + i === this.selectedModelIndex;
 			const marker = isSelected ? "▸ " : "  ";
 			lines.push(`${marker}${modelValue} (${label})`);
 		}
 
 		lines.push("");
 		lines.push("↑↓ navigate | Enter to select");
-		lines.push("q to go back");
+		lines.push("Esc to clear search or go back");
 		return lines;
 	}
 

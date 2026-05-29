@@ -6,7 +6,7 @@
 
 - **Superpowers Workflow**: Proven pipeline for robust AI-assisted development.
 - **Role-Specific Agents**: Thin agents-layer for every phase of the development lifecycle.
-- **Model Tiers & Command Settings**: Abstract model selection (cheap, balanced, max) for each agent. One model and optional thinking level can be configured per tier. Custom tiers are possible. Models, tier thinking, and command-scoped behavior toggles can be changed through the `/sp-settings` TUI; its model picker supports type-to-search filtering for large authenticated model lists. Slash-command metadata lives in entrypoint agent frontmatter.
+- **Model Tiers & Command Settings**: Abstract model selection (cheap, balanced, max) for each agent. One model and optional thinking level can be configured per tier. Custom tiers are possible. Models, tier thinking, and command-scoped behavior toggles can be changed through the `/sp-settings` TUI; its model picker supports type-to-search filtering, including `q`, and scrolls through large authenticated model lists. Slash-command metadata lives in entrypoint agent frontmatter.
 - **Plannotator Integration**: Optional event bridge to [Plannotator](https://plannotator.ai/) for browser-based spec/plan review and approval (setting).
 - **Worktree Isolation**: Optional git worktree creation for parallel tasks to prevent filesystem conflicts. Worktree-backed parallel children are joined before cleanup; worktree policy is unchanged.
 - **Entrypoint Lifecycle Skills**: Superpowers entrypoint agents inject root lifecycle skills (verification, review-feedback, branch finishing) defined in frontmatter. .

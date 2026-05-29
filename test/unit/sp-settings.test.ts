@@ -298,7 +298,7 @@ void test("SuperpowersSettingsComponent selects and navigates model tiers", () =
 	assert.equal(tuiMock._getRenderRequestCount(), 3);
 });
 
-void test("SuperpowersSettingsComponent keeps model picker selection within visible model window", () => {
+void test("SuperpowersSettingsComponent scrolls model picker selection through the full filtered model list", () => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-settings-"));
 	const configPath = path.join(dir, "config.json");
 	fs.writeFileSync(configPath, '{\n  "superagents": { "modelTiers": { "cheap": { "model": "provider/model-00" } } }\n}\n', "utf-8");
@@ -328,18 +328,40 @@ void test("SuperpowersSettingsComponent keeps model picker selection within visi
 	}
 
 	const rendered = component.render(92).join("\n");
-	assert.match(rendered, /▸ provider\/model-00/);
-	assert.doesNotMatch(rendered, /▸ provider\/model-15/);
+	assert.match(rendered, /▸ provider\/model-15/);
+	assert.doesNotMatch(rendered, /▸ provider\/model-00/);
 
 	component.handleInput("\r");
 	assert.deepStrictEqual(JSON.parse(fs.readFileSync(configPath, "utf-8")), {
 		superagents: {
 			modelTiers: {
-				cheap: { model: "provider/model-00" },
+				cheap: { model: "provider/model-15" },
 			},
 		},
 	});
 	fs.rmSync(dir, { recursive: true, force: true });
+});
+
+void test("SuperpowersSettingsComponent allows q in model picker search", () => {
+	const config: ExtensionConfig = {
+		superagents: {
+			modelTiers: {
+				cheap: { model: "provider/alpha" },
+			},
+		},
+	};
+	const component = new SuperpowersSettingsComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, getConfigForTest(config), {
+		models: [createModel("provider", "alpha", "Alpha"), createModel("provider", "qwen-max", "Qwen Max")],
+	});
+
+	component.handleInput("m");
+	component.handleInput("\r");
+	component.handleInput("q");
+
+	const rendered = component.render(92).join("\n");
+	assert.match(rendered, /Search: q_/);
+	assert.match(rendered, /▸ provider\/qwen-max/);
+	assert.doesNotMatch(rendered, /│\s+provider\/alpha/);
 });
 
 void test("SuperpowersSettingsComponent reports when no models are available", () => {
