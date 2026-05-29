@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1] - 2026-05-29
+
+- **Model Picker Navigation Fixes**
+  - Fixed `/sp-settings` model picker navigation so keyboard selection scrolls through the full filtered model list before wrapping to the top.
+  - Allowed `q` to be typed into model picker search queries; `Esc` now clears search or returns to tier selection from the model picker.
+  - Updated model picker documentation and regression coverage for off-screen selection and `q` filtering.
+
 ## [0.9.0] - 2026-05-20
 
 - **Pi 0.72+ Model Registry Compatibility**
