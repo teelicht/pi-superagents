@@ -73,7 +73,7 @@ export interface LoadedConfigState {
  * @param userConfigDir Absolute path to the user config directory. Defaults to `packageConfigDir`.
  * @returns Object with bundled default and user config paths.
  */
-export function resolveRuntimeConfigPaths(
+function resolveRuntimeConfigPaths(
 	packageConfigDir: string,
 	userConfigDir = packageConfigDir,
 ): {
@@ -93,7 +93,7 @@ export function resolveRuntimeConfigPaths(
  * @param filePath Absolute path to the JSON file.
  * @returns Parsed JSON value or `undefined` when the file is absent.
  */
-export function readJsonConfig(filePath: string): unknown {
+function readJsonConfig(filePath: string): unknown {
 	if (!fs.existsSync(filePath)) return undefined;
 	return JSON.parse(fs.readFileSync(filePath, "utf-8"));
 }
@@ -171,7 +171,7 @@ export function loadRuntimeConfigState(packageConfigDir: string, userConfigDir =
  * @param target Optional target object to copy data into (mutated in place).
  * @returns ConfigGateState with copied data.
  */
-export function assignGate(state: LoadedConfigState, target?: ConfigGateState): ConfigGateState {
+function assignGate(state: LoadedConfigState, target?: ConfigGateState): ConfigGateState {
 	const gate = target ?? {
 		blocked: false,
 		diagnostics: [],

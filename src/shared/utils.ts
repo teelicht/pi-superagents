@@ -17,7 +17,7 @@ import type { DisplayItem, ErrorInfo, SingleResult } from "./types.ts";
 /**
  * Find a file/directory by prefix in a directory
  */
-export function findByPrefix(dir: string, prefix: string, suffix?: string): string | null {
+function findByPrefix(dir: string, prefix: string, suffix?: string): string | null {
 	if (!fs.existsSync(dir)) return null;
 	const entries = fs.readdirSync(dir).filter((entry) => entry.startsWith(prefix));
 	if (suffix) {
@@ -31,7 +31,7 @@ export function findByPrefix(dir: string, prefix: string, suffix?: string): stri
 /**
  * Write a prompt to a temporary file
  */
-export function writePrompt(agent: string, prompt: string): { dir: string; path: string } {
+function writePrompt(agent: string, prompt: string): { dir: string; path: string } {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-"));
 	const p = path.join(dir, `${agent.replace(/[^\w.-]/g, "_")}.md`);
 	fs.writeFileSync(p, prompt, { mode: 0o600 });
@@ -64,7 +64,7 @@ export function getSingleResultOutput(result: Pick<SingleResult, "finalOutput" |
 /**
  * Extract display items (text and tool calls) from messages
  */
-export function getDisplayItems(messages: Message[]): DisplayItem[] {
+function getDisplayItems(messages: Message[]): DisplayItem[] {
 	const items: DisplayItem[] = [];
 	for (const msg of messages) {
 		if (msg.role === "assistant") {

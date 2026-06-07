@@ -76,7 +76,7 @@ export interface BuildPiArgsResult {
  * @returns       - The model string with the suffix appended (e.g. `"anthropic/claude-3-5-sonnet:medium"`),
  *                  or the original model if no suffix change is needed.
  */
-export function applyThinkingSuffix(model: string | undefined, thinking: string | undefined): string | undefined {
+function applyThinkingSuffix(model: string | undefined, thinking: string | undefined): string | undefined {
 	if (!model || !thinking || thinking === "off") return model;
 	const colonIdx = model.lastIndexOf(":");
 	if (colonIdx !== -1 && isThinkingLevel(model.substring(colonIdx + 1))) return model;

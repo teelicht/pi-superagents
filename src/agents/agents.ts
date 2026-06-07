@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import type { SessionMode } from "../shared/types.ts";
 import { parseFrontmatter } from "./frontmatter.ts";
 
-export const KNOWN_FIELDS = new Set([
+const KNOWN_FIELDS = new Set([
 	"name",
 	"description",
 	"tools",

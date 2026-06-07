@@ -17,7 +17,6 @@
  */
 
 import { spawn } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import type { Message } from "@earendil-works/pi-ai";
 import type { AgentConfig } from "../agents/agents.ts";
 import { ensureArtifactsDir, getArtifactPaths, writeArtifact, writeMetadata } from "../shared/artifacts.ts";
@@ -34,6 +33,8 @@ import {
 	truncateOutput,
 } from "../shared/types.ts";
 import { detectSubagentError, extractTextFromContent, extractToolArgsPreview, getFinalOutput } from "../shared/utils.ts";
+
+const DEFAULT_LIFECYCLE_EXTENSION_ENTRY = new URL(["..", "extension", "index.ts"].join("/"), import.meta.url).pathname;
 import { createJsonlWriter } from "./jsonl-writer.ts";
 import { consumeLifecycleSignal } from "./lifecycle-signals.ts";
 import { buildPiArgs, cleanupTempDir } from "./pi-args.ts";
@@ -43,7 +44,6 @@ import { globalRunHistory } from "./run-history.ts";
 import { findMissingSubagentExtensionPath, findMissingSubagentToolPath, resolveSubagentExtensions } from "./superagents-config.ts";
 import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./superpowers-policy.ts";
 
-const SELF_EXTENSION_ENTRY = fileURLToPath(new URL("../extension/index.ts", import.meta.url));
 
 /**
  * Attach lifecycle sidecar result and derive completion envelope.
@@ -64,11 +64,13 @@ function attachLifecycle(result: SingleResult, options: RunSyncOptions): ChildRu
  *
  * @param extensions Explicit extension allowlist resolved from config and agent frontmatter.
  * @param sessionFile Optional child session file; lifecycle tools are useful only for session-backed children.
+ * @param lifecycleExtensionEntry Absolute path to this extension entrypoint, supplied by the registration layer.
  * @returns Extension allowlist with the current pi-superagents extension appended when needed.
  */
-function includeLifecycleExtension(extensions: string[], sessionFile: string | undefined): string[] {
+function includeLifecycleExtension(extensions: string[], sessionFile: string | undefined, lifecycleExtensionEntry: string | undefined): string[] {
 	if (!sessionFile) return extensions;
-	return extensions.includes(SELF_EXTENSION_ENTRY) ? extensions : [...extensions, SELF_EXTENSION_ENTRY];
+	const entry = lifecycleExtensionEntry ?? DEFAULT_LIFECYCLE_EXTENSION_ENTRY;
+	return extensions.includes(entry) ? extensions : [...extensions, entry];
 }
 
 /**
@@ -162,7 +164,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 		};
 	}
 
-	const effectiveExtensions = includeLifecycleExtension(resolveSubagentExtensions(config, agent.extensions), options.sessionFile);
+	const effectiveExtensions = includeLifecycleExtension(resolveSubagentExtensions(config, agent.extensions), options.sessionFile, options.lifecycleExtensionEntry);
 
 	const {
 		args,

@@ -35,6 +35,10 @@ When Pi starts, the extension shows a notification with the config path and exac
 
 Execution is strictly synchronous and blocking. There is no `async`, `wait`, `collect`, or `cancel` frontmatter key or config key. Lifecycle tools (`subagent_done`, `caller_ping`) are internal child-only tools registered through policy; they are not user-configurable delegation controls.
 
+## Repository Quality Configuration
+
+The repository includes `.fallowrc.json` for `npx fallow`. It keeps dead-code checks active, records dynamic entrypoint exceptions used by tests and plugin discovery, and leaves broad duplication/health findings as informational reports rather than blocking this extension's runtime configuration.
+
 ## Built-in Commands
 
 Slash commands are registered from interactive entrypoint agent frontmatter, not generated from `config.json`. The bundled defaults include behavior flags for three built-in commands:

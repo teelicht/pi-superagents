@@ -40,6 +40,8 @@ import {
 	type SessionMode,
 	type SingleResult,
 	type SubagentState,
+	type SubagentParamsLike,
+	type TaskParam,
 	type WorkflowMode,
 } from "../shared/types.ts";
 import { getSingleResultOutput, mapConcurrent } from "../shared/utils.ts";
@@ -75,35 +77,14 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
-interface TaskParam {
-	agent: string;
-	task: string;
-	cwd?: string;
-	model?: string;
-	skill?: string | string[] | boolean;
-}
-
-export interface SubagentParamsLike {
-	agent?: string;
-	task?: string;
-	tasks?: TaskParam[];
-	workflow?: WorkflowMode;
-	useTestDrivenDevelopment?: boolean;
-	worktree?: boolean;
-	sessionMode?: SessionMode;
-	cwd?: string;
-	maxOutput?: MaxOutputConfig;
-	artifacts?: boolean;
-	includeProgress?: boolean;
-	model?: string;
-	skill?: string | string[] | boolean;
-}
 
 interface ExecutorDeps {
 	state: SubagentState;
 	getConfig: () => ExtensionConfig;
 	getSubagentSessionRoot: (parentSessionFile: string | null) => string;
 	discoverAgents: (cwd: string, scope: AgentScope) => { agents: AgentConfig[] };
+	/** Absolute extension entrypoint used to expose lifecycle tools inside child sessions. */
+	lifecycleExtensionEntry?: string;
 }
 
 interface ExecutionContextData {
@@ -131,7 +112,10 @@ interface RunPlannedChildInput {
 	onUpdate?: (r: AgentToolResult<Details>) => void;
 	runId: string;
 	config: ExtensionConfig;
+	lifecycleExtensionEntry?: string;
 }
+
+const DEFAULT_LIFECYCLE_EXTENSION_ENTRY = new URL(["..", "extension", "index.ts"].join("/"), import.meta.url).pathname;
 
 /**
  * Execute a prepared child run: launch child, then clean up launch artifacts.
@@ -189,6 +173,7 @@ async function runPlannedChild(input: RunPlannedChildInput): Promise<SingleResul
 			config: input.plan.config,
 			workflow: input.plan.workflow,
 			useTestDrivenDevelopment: input.plan.useTestDrivenDevelopment,
+			lifecycleExtensionEntry: input.lifecycleExtensionEntry,
 			onUpdate: input.onUpdate,
 		});
 		return withSingleResultSessionMode(result, input.plan.sessionMode);
@@ -457,6 +442,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 					onUpdate: parallelOnUpdate,
 					runId,
 					config,
+					lifecycleExtensionEntry: deps.lifecycleExtensionEntry ?? DEFAULT_LIFECYCLE_EXTENSION_ENTRY,
 				});
 			} catch (error) {
 				return toUnexpectedChildFailure(plan, error);
@@ -606,6 +592,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 			onUpdate: onUpdate ? (progressUpdate) => onUpdate(withProgressResultSessionMode(progressUpdate, sessionMode)) : undefined,
 			runId,
 			config,
+			lifecycleExtensionEntry: deps.lifecycleExtensionEntry ?? DEFAULT_LIFECYCLE_EXTENSION_ENTRY,
 		}),
 	});
 

@@ -26,7 +26,7 @@ export function getArtifactPaths(artifactsDir: string, runId: string, agent: str
 	};
 }
 
-export function getPacketsDir(artifactsDir: string): string {
+function getPacketsDir(artifactsDir: string): string {
 	return path.join(artifactsDir, "packets");
 }
 
@@ -56,7 +56,7 @@ export function writeMetadata(filePath: string, metadata: object): void {
 	fs.writeFileSync(filePath, JSON.stringify(metadata, null, 2), "utf-8");
 }
 
-export function appendJsonl(filePath: string, line: string): void {
+function appendJsonl(filePath: string, line: string): void {
 	fs.appendFileSync(filePath, `${line}\n`);
 }
 

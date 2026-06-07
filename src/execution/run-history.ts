@@ -55,7 +55,7 @@ function getHistoryPath(): string {
  *
  * @param entry - Complete run entry with all required fields.
  */
-export function recordRun(entry: RunEntry): void {
+function recordRun(entry: RunEntry): void {
 	try {
 		const historyPath = getHistoryPath();
 		fs.mkdirSync(path.dirname(historyPath), { recursive: true });
@@ -65,7 +65,7 @@ export function recordRun(entry: RunEntry): void {
 	}
 }
 
-export function loadRunsForAgent(agent: string): RunEntry[] {
+function loadRunsForAgent(agent: string): RunEntry[] {
 	const historyPath = getHistoryPath();
 	if (!fs.existsSync(historyPath)) return [];
 	let raw: string;
@@ -106,7 +106,7 @@ export function loadRunsForAgent(agent: string): RunEntry[] {
  *
  * @returns Array of run entries, newest first.
  */
-export function loadAllRuns(): RunEntry[] {
+function loadAllRuns(): RunEntry[] {
 	const historyPath = getHistoryPath();
 	if (!fs.existsSync(historyPath)) return [];
 	let raw: string;
