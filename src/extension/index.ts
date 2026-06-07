@@ -257,6 +257,7 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 		getConfig: () => configStore.getConfig(),
 		getSubagentSessionRoot,
 		discoverAgents,
+		lifecycleExtensionEntry: fileURLToPath(import.meta.url),
 	});
 
 	/**

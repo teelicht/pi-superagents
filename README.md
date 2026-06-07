@@ -62,6 +62,10 @@ The `/sp-implement` command activates a structured workflow for task execution w
 
 Subagent execution remains conservative and synchronous for ordinary Superpowers workflows. There is intentionally no user-facing `async` or `blocking` switch in agent frontmatter, config, or tool parameters. Internal result ownership prevents duplicate delivery and lifecycle sidecars let child agents report intentional completion or a parent-help request without changing the normal delegation flow. 
 
+### Development Quality Gates
+
+Repository maintenance uses `npx fallow` for dead-code and maintainability analysis. The checked-in `.fallowrc.json` keeps true dead-code findings blocking while documenting intentional dynamic-entrypoint exceptions and treating broad duplication/health refactors as non-blocking reports.
+
 1. **Recon** (`sp-recon`): Initial codebase analysis and context gathering.
 2. **Research** (`sp-research`): Deep dive into specific APIs, libraries, or logic.
 3. **Implementation** (`sp-implementer`): Code changes guided by test-driven development (optional).

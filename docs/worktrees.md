@@ -2,6 +2,8 @@
 
 When multiple agents run in parallel against the same repository, they can clobber each other's file changes. Pi Superagents can automatically give each parallel agent its own git worktree branched from HEAD to provide perfect isolation.
 
+Development note: `npx fallow` is part of repository maintenance. Worktree-related runtime files should stay reachable through imports or documented dynamic entrypoints so Fallow does not mistake active isolation support for dead code.
+
 ## Usage
 
 Worktree isolation is optional. Enable it for the entrypoint command that launches the Superpowers workflow with `superagents.commands.<name>.worktrees.enabled`:

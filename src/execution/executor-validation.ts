@@ -122,7 +122,7 @@ export function validateExecutionInput(params: SubagentParamsLike, agents: Agent
  * @param params Raw execution parameters from the caller.
  * @returns `parallel` when tasks were provided, otherwise `single`.
  */
-export function getRequestedModeLabel(params: SubagentParamsLike): Details["mode"] {
+function getRequestedModeLabel(params: SubagentParamsLike): Details["mode"] {
 	if ((params.tasks?.length ?? 0) > 0) return "parallel";
 	if (params.agent && params.task) return "single";
 	return "single";

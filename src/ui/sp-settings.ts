@@ -69,7 +69,7 @@ const THINKING_OPTIONS: readonly (ThinkingLevel | undefined)[] = [undefined, ...
  * @param model Model option to convert.
  * @returns Formatted model value string (e.g., "provider/id").
  */
-export function modelToValue(model: SettingsModelOption): string {
+function modelToValue(model: SettingsModelOption): string {
 	return `${model.provider}/${model.id}`;
 }
 
@@ -169,8 +169,10 @@ export class SuperpowersSettingsComponent implements Component {
 		}
 	}
 
-	invalidate(): void {}
-
+	// fallow-ignore-next-line unused-class-member
+	invalidate(): void {
+		this.tui.requestRender();
+	}
 	toggleUsePlannotator(): void {
 		this.writeConfig((config) => toggleSuperpowersBoolean(config, this.currentCommandName(), "usePlannotator"));
 	}

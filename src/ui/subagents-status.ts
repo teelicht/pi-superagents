@@ -84,9 +84,11 @@ export class SubagentsStatusComponent implements Component {
 		}
 	}
 
+	// fallow-ignore-next-line unused-class-member
 	invalidate(): void {
-		this.reloadRows();
+		this.tui.requestRender();
 	}
+
 
 	dispose(): void {
 		clearInterval(this.refreshTimer);

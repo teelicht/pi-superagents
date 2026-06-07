@@ -15,8 +15,8 @@
 
 import { randomUUID } from "node:crypto";
 
-export const DEFAULT_PLANNOTATOR_REQUEST_TIMEOUT_MS = 5_000;
-export const DEFAULT_PLANNOTATOR_REVIEW_TIMEOUT_MS = 10 * 60 * 1_000;
+const DEFAULT_PLANNOTATOR_REQUEST_TIMEOUT_MS = 5_000;
+const DEFAULT_PLANNOTATOR_REVIEW_TIMEOUT_MS = 10 * 60 * 1_000;
 const DEFAULT_REJECTION_FEEDBACK = "Plan changes requested in Plannotator.";
 const REQUEST_TIMEOUT_REASON = "Plannotator did not respond to plan-review request before timeout.";
 const REVIEW_TIMEOUT_REASON = "Plannotator review-result did not arrive before timeout.";
@@ -29,12 +29,12 @@ export interface PlannotatorEventBus {
 	on(channel: string, handler: (data: unknown) => void): () => void;
 }
 
-export type PlannotatorPlanReviewResponse =
+type PlannotatorPlanReviewResponse =
 	| { status: "handled"; result: { status: "pending"; reviewId: string } }
 	| { status: "unavailable"; error?: string }
 	| { status: "error"; error: string };
 
-export interface PlannotatorPlanReviewRequest {
+interface PlannotatorPlanReviewRequest {
 	requestId: string;
 	action: "plan-review";
 	payload: {
@@ -45,7 +45,7 @@ export interface PlannotatorPlanReviewRequest {
 	respond(response: PlannotatorPlanReviewResponse): void;
 }
 
-export interface PlannotatorReviewResult {
+interface PlannotatorReviewResult {
 	reviewId: string;
 	approved: boolean;
 	feedback?: string;

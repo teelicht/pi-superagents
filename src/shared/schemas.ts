@@ -14,11 +14,11 @@ const SkillOverride = Type.Any({
 	description: "Skill name(s) to inject (comma-separated), array of strings, or boolean (false disables, true uses default)",
 });
 
-export const SuperpowersRoleNameSchema = Type.String({
+const SuperpowersRoleNameSchema = Type.String({
 	description: "Discovered agent name to execute. Typical built-in Superpowers roles are sp-recon, sp-research, sp-implementer, sp-spec-review, sp-code-review, and sp-debug.",
 });
 
-export const TaskItem = Type.Object(
+const TaskItem = Type.Object(
 	{
 		agent: SuperpowersRoleNameSchema,
 		task: Type.String({ description: "Objective for this discovered agent task." }),

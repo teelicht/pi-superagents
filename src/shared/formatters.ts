@@ -14,7 +14,7 @@ export function formatTokens(n: number): string {
 /**
  * Format usage statistics into a compact string
  */
-export function formatUsage(u: Usage, model?: string): string {
+function formatUsage(u: Usage, model?: string): string {
 	const parts: string[] = [];
 	if (u.turns) parts.push(`${u.turns} turn${u.turns > 1 ? "s" : ""}`);
 	if (u.input) parts.push(`in:${formatTokens(u.input)}`);
@@ -38,7 +38,7 @@ export function formatDuration(ms: number): string {
 /**
  * Format a tool call for display
  */
-export function formatToolCall(name: string, args: Record<string, unknown>): string {
+function formatToolCall(name: string, args: Record<string, unknown>): string {
 	switch (name) {
 		case "bash":
 			return `$ ${((args.command as string) || "").slice(0, 60)}${(args.command as string)?.length > 60 ? "..." : ""}`;

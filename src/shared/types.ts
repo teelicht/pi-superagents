@@ -376,6 +376,8 @@ export interface RunSyncOptions {
 	workflow?: WorkflowMode;
 	/** Whether to use test-driven development for implementer runs. */
 	useTestDrivenDevelopment?: boolean;
+	/** Absolute path to this extension entrypoint for child lifecycle tool injection. */
+	lifecycleExtensionEntry?: string;
 }
 
 export type ConfigDiagnosticLevel = "warning" | "error";
@@ -446,7 +448,7 @@ export const DEFAULT_ARTIFACT_CONFIG: ArtifactConfig = {
 };
 
 export const MAX_PARALLEL = 8;
-export const MAX_CONCURRENCY = 4;
+const MAX_CONCURRENCY = 4;
 export const DEFAULT_SUBAGENT_MAX_DEPTH = 2;
 
 export const DEFAULT_FORK_PREAMBLE =
@@ -502,7 +504,7 @@ export function getSubagentDepthEnv(maxDepth?: number): Record<string, string> {
 // Utility Functions
 // ============================================================================
 
-export function formatBytes(bytes: number): string {
+function formatBytes(bytes: number): string {
 	if (bytes < 1024) return `${bytes}B`;
 	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
 	return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;

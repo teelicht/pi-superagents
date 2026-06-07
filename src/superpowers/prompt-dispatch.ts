@@ -17,7 +17,7 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 export const SUPERPOWERS_CONTRACT_CUSTOM_TYPE = "superpowers-root-contract";
 
 /** Prefix that identifies visible Superpowers command summaries. */
-export const SUPERPOWERS_VISIBLE_SUMMARY_PREFIX = "Superpowers ▸";
+const SUPERPOWERS_VISIBLE_SUMMARY_PREFIX = "Superpowers ▸";
 
 /**
  * Determine whether a prompt is a visible Superpowers option summary.

@@ -132,7 +132,7 @@ function resolveCommandPreset(config: ExtensionConfig, commandName: string) {
  * @param commandName Slash command name without leading slash.
  * @returns Matching entrypoint agent, if present.
  */
-export function resolveEntrypointAgent(agents: readonly AgentConfig[] | undefined, commandName: string): AgentConfig | undefined {
+function resolveEntrypointAgent(agents: readonly AgentConfig[] | undefined, commandName: string): AgentConfig | undefined {
 	return agents?.find((agent) => agent.kind === "entrypoint" && agent.execution === "interactive" && (agent.command === commandName || agent.name === commandName));
 }
 

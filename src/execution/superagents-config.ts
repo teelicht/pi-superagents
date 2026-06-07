@@ -61,7 +61,7 @@ export function resolveSuperagentWorktreeEnabled(requested: boolean | undefined,
  * @param config Extension config containing optional Superpowers settings.
  * @returns Resolved worktree root settings for the active workflow.
  */
-export function resolveSuperagentWorktreeRuntimeOptions(workflow: WorkflowMode, config: ExtensionConfig): Omit<CreateWorktreesOptions, "agents"> {
+function resolveSuperagentWorktreeRuntimeOptions(workflow: WorkflowMode, config: ExtensionConfig): Omit<CreateWorktreesOptions, "agents"> {
 	if (workflow !== "superpowers") return {};
 
 	const worktrees = config.superagents?.commands?.["sp-implement"]?.worktrees;
@@ -162,7 +162,7 @@ export interface MissingSubagentExtensionPath {
  * @param value Configured tool name or path.
  * @returns True when the value is path-like and should be treated as a tool extension source.
  */
-export function isPathLikeToolEntry(value: string): boolean {
+function isPathLikeToolEntry(value: string): boolean {
 	return value.includes("/") || value.endsWith(".ts") || value.endsWith(".js");
 }
 

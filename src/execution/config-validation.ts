@@ -394,7 +394,7 @@ function mergeCommandPreset(defaultPreset: SuperpowersCommandPreset, preset: Sup
  * @param overrides Validated user overrides.
  * @returns Effective runtime config.
  */
-export function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfig): ExtensionConfig {
+function mergeConfig(defaults: ExtensionConfig, overrides: ExtensionConfig): ExtensionConfig {
 	const defaultSuperagents = defaults.superagents;
 	const overrideSuperagents = overrides.superagents;
 

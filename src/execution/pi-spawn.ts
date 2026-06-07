@@ -31,7 +31,7 @@ const require = createRequire(import.meta.url);
  *
  * @returns The absolute path to the Pi package root, or `undefined` if not found.
  */
-export function resolvePiPackageRoot(): string | undefined {
+function resolvePiPackageRoot(): string | undefined {
 	try {
 		const entry = process.argv[1];
 		if (!entry) return undefined;

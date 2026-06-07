@@ -20,12 +20,12 @@ export function pad(text: string, length: number, char = " "): string {
 }
 
 /** Identity row helper — returns text unchanged. Reserved for future theme-aware padding. */
-export function row(text: string, _width: number, _theme: Theme): string {
+function row(text: string, _width: number, _theme: Theme): string {
 	return text;
 }
 
 /** Render a themed dashed header: `--[ Title ]-----` */
-export function renderHeader(title: string, width: number, theme: Theme): string {
+function renderHeader(title: string, width: number, theme: Theme): string {
 	const prefix = "--[ ";
 	const suffix = " ]";
 	const dashCount = Math.max(2, width - prefix.length - title.length - suffix.length);
@@ -33,7 +33,7 @@ export function renderHeader(title: string, width: number, theme: Theme): string
 }
 
 /** Render a themed dashed footer with help text. */
-export function renderFooter(text: string, width: number, theme: Theme): string {
+function renderFooter(text: string, width: number, theme: Theme): string {
 	const dashes = "-".repeat(width);
 	return theme.fg("dim", `${dashes}\n${text}`);
 }

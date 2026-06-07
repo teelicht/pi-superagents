@@ -306,7 +306,7 @@ export function resolveSkillPath(skillName: string, cwd: string): { path: string
 	return { path: skill.filePath, source: skill.source };
 }
 
-export function readSkill(skillName: string, skillPath: string, source: SkillSource): ResolvedSkill | undefined {
+function readSkill(skillName: string, skillPath: string, source: SkillSource): ResolvedSkill | undefined {
 	try {
 		const stat = fs.statSync(skillPath);
 		const cached = skillCache.get(skillPath);
@@ -505,7 +505,7 @@ export function getAvailableSkillNames(cwd: string): Set<string> {
  * @param cwd Current working directory for skill discovery.
  * @returns Set of skill names with scope: root.
  */
-export function getRootOnlySkillNames(cwd: string): Set<string> {
+function getRootOnlySkillNames(cwd: string): Set<string> {
 	const skills = getCachedSkills(cwd);
 	return new Set(skills.filter((s) => s.scope === "root").map((s) => s.name));
 }

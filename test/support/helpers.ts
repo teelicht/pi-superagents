@@ -183,7 +183,7 @@ export function makeAgent(
  * Create a minimal ExtensionContext mock for chain execution.
  * Only provides what executeChain needs when clarify=false.
  */
-export function makeMinimalCtx(cwd: string): any {
+function makeMinimalCtx(cwd: string): any {
 	return {
 		cwd,
 		hasUI: false,
