@@ -135,51 +135,100 @@ function getGlobalNpmRoot(): string | null {
 	}
 }
 
+/**
+ * Collect skill directories exposed by installed Pi packages.
+ *
+ * @param cwd Project working directory used for project-local package roots.
+ * @returns De-duplicated absolute skill paths from configured package roots.
+ */
 function collectPackageSkillPaths(cwd: string): string[] {
+	const roots = collectConfiguredPackageRoots(cwd);
+	const packageRoots = collectPackageSkillDirectories(roots);
+	const skillPaths = packageRoots.flatMap(resolvePackageSkillMetadata);
+	return dedupeSkillPaths(skillPaths);
+}
+
+/**
+ * Build package root directories searched for Pi skill packages.
+ *
+ * @param cwd Project working directory.
+ * @returns Existing and potential node_modules roots in precedence order.
+ */
+function collectConfiguredPackageRoots(cwd: string): string[] {
 	const dirs = [path.join(cwd, CONFIG_DIR, "npm", "node_modules"), path.join(AGENT_DIR, "npm", "node_modules")];
-	// Add global npm root if available (where pi installs global packages)
 	const globalRoot = getGlobalNpmRoot();
-	if (globalRoot) {
-		dirs.push(globalRoot);
-	}
-	const results: string[] = [];
+	if (globalRoot) dirs.push(globalRoot);
+	return dirs;
+}
 
-	for (const dir of dirs) {
-		if (!fs.existsSync(dir)) continue;
-		let entries: fs.Dirent[];
-		try {
-			entries = fs.readdirSync(dir, { withFileTypes: true });
-		} catch {
-			continue;
-		}
-
-		for (const entry of entries) {
-			if (entry.name.startsWith(".")) continue;
-			if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
-
+/**
+ * Discover package directories beneath node_modules roots, including scoped packages.
+ *
+ * @param roots Node_modules roots to scan.
+ * @returns Package root directories that may contain Pi skill metadata.
+ */
+function collectPackageSkillDirectories(roots: string[]): string[] {
+	const packages: string[] = [];
+	for (const root of roots) {
+		for (const entry of readPackageDirectoryEntries(root)) {
 			if (entry.name.startsWith("@")) {
-				const scopeDir = path.join(dir, entry.name);
-				let scopeEntries: fs.Dirent[];
-				try {
-					scopeEntries = fs.readdirSync(scopeDir, { withFileTypes: true });
-				} catch {
-					continue;
-				}
-				for (const scopeEntry of scopeEntries) {
-					if (scopeEntry.name.startsWith(".")) continue;
-					if (!scopeEntry.isDirectory() && !scopeEntry.isSymbolicLink()) continue;
-					const pkgRoot = path.join(scopeDir, scopeEntry.name);
-					results.push(...getPackageSkillPaths(pkgRoot));
-				}
+				packages.push(...collectScopedPackageDirectories(root, entry.name));
 				continue;
 			}
-
-			const pkgRoot = path.join(dir, entry.name);
-			results.push(...getPackageSkillPaths(pkgRoot));
+			packages.push(path.join(root, entry.name));
 		}
 	}
+	return packages;
+}
 
-	return results;
+/**
+ * Read visible package-like entries from one directory.
+ *
+ * @param dir Directory to scan.
+ * @returns Directory or symlink entries, excluding dot-prefixed names.
+ */
+function readPackageDirectoryEntries(dir: string): fs.Dirent[] {
+	if (!fs.existsSync(dir)) return [];
+	try {
+		return fs
+			.readdirSync(dir, { withFileTypes: true })
+			.filter((entry) => !entry.name.startsWith("."))
+			.filter((entry) => entry.isDirectory() || entry.isSymbolicLink());
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * Discover package roots inside one scoped npm package directory.
+ *
+ * @param root Parent node_modules root.
+ * @param scopeName Scope entry name such as `@scope`.
+ * @returns Package roots within the scope.
+ */
+function collectScopedPackageDirectories(root: string, scopeName: string): string[] {
+	const scopeDir = path.join(root, scopeName);
+	return readPackageDirectoryEntries(scopeDir).map((entry) => path.join(scopeDir, entry.name));
+}
+
+/**
+ * Resolve skill paths declared by one package's package.json metadata.
+ *
+ * @param packageRoot Package root directory.
+ * @returns Absolute skill paths declared under `pi.skills`.
+ */
+function resolvePackageSkillMetadata(packageRoot: string): string[] {
+	return getPackageSkillPaths(packageRoot);
+}
+
+/**
+ * Remove duplicate skill paths while preserving first-seen order.
+ *
+ * @param skillPaths Candidate absolute skill paths.
+ * @returns De-duplicated skill paths.
+ */
+function dedupeSkillPaths(skillPaths: string[]): string[] {
+	return [...new Set(skillPaths)];
 }
 
 function collectSettingsSkillPaths(cwd: string): string[] {

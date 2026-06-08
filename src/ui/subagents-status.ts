@@ -13,20 +13,14 @@
 
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { Component, TUI } from "@earendil-works/pi-tui";
-import { matchesKey, truncateToWidth } from "@earendil-works/pi-tui";
+import { matchesKey } from "@earendil-works/pi-tui";
 import { globalRunHistory, type RunEntry } from "../execution/run-history.ts";
-import { formatDuration, formatTokens } from "../shared/formatters.ts";
-import { formatScrollInfo, renderFramedPanel } from "./render-helpers.ts";
+import { renderFramedPanel } from "./render-helpers.ts";
+import { buildRows, renderSubagentsStatusBody, runKey, type StatusRow } from "./subagents-status-render.ts";
 
 const DEFAULT_REFRESH_MS = 2000;
 const DEFAULT_RECENT_LIMIT = 20;
 
-interface StatusRow {
-	kind: "section" | "run";
-	label?: string;
-	run?: RunEntry;
-	runIndex?: number;
-}
 
 export interface SubagentsStatusDeps {
 	getActiveRuns?: () => RunEntry[];
@@ -144,93 +138,14 @@ export class SubagentsStatusComponent implements Component {
 	}
 
 	private renderBody(width: number): string[] {
-		if (this.rows.length === 0) return ["No runs recorded."];
-		const selected = this.selectedRun();
-		const visibleRows = this.rows.slice(this.scrollOffset, this.scrollOffset + this.viewportHeight);
-		const lines = visibleRows.map((row) => {
-			if (row.kind === "section") return this.theme.fg("success", row.label ?? "");
-			const run = row.run!;
-			return truncateToWidth(formatRunRow(run, selected === run, this.theme), width - 4);
+		return renderSubagentsStatusBody({
+			rows: this.rows,
+			selectedRun: this.selectedRun(),
+			scrollOffset: this.scrollOffset,
+			viewportHeight: this.viewportHeight,
+			width,
+			theme: this.theme,
 		});
-		const scrollInfo = formatScrollInfo(this.scrollOffset, Math.max(0, this.rows.length - (this.scrollOffset + visibleRows.length)));
-		lines.push(scrollInfo ? this.theme.fg("dim", scrollInfo) : "");
-		if (selected) lines.push(...this.renderRunDetails(selected, width - 4));
-		else lines.push(this.theme.fg("dim", "No runs selected."));
-		return lines;
-	}
-
-	private renderRunDetails(run: RunEntry, innerWidth: number): string[] {
-		const lines = [this.theme.fg("success", "Selected Details:"), `  Agent:  ${run.agent}`, `  Status: ${run.status}`, `  Model:  ${run.model ?? "unknown"}`];
-		if (run.thinking) {
-			lines.push(`  Thinking: ${run.thinking}`);
-		}
-		lines.push(`  Tokens: ${run.tokens ? formatTokens(run.tokens.total) : "0"}`, `  Time:   ${formatDuration(run.duration)}`);
-		if (run.skills?.length) {
-			lines.push(truncateToWidth(`  Skills: ${run.skills.join(", ")}`, innerWidth));
-		}
-		if (run.skillsWarning) {
-			lines.push(truncateToWidth(`  Skills warning: ${run.skillsWarning}`, innerWidth));
-		}
-		for (const step of run.steps ?? []) {
-			const duration = step.durationMs !== undefined ? ` | ${formatDuration(step.durationMs)}` : "";
-			const tokens = step.tokens ? ` | ${formatTokens(step.tokens.total)} tok` : "";
-			lines.push(truncateToWidth(`  ${step.index + 1}. ${step.agent} | ${step.status}${duration}${tokens}`, innerWidth));
-			if (step.skills?.length) {
-				lines.push(truncateToWidth(`     skills: ${step.skills.join(", ")}`, innerWidth));
-			}
-			if (step.skillsWarning) {
-				lines.push(truncateToWidth(`     skills warning: ${step.skillsWarning}`, innerWidth));
-			}
-			if (step.error) lines.push(truncateToWidth(`     ${step.error}`, innerWidth));
-		}
-		if (!run.steps || run.steps.length === 0) lines.push(this.theme.fg("dim", "  No step details available."));
-		return lines;
 	}
 }
 
-function buildRows(activeRuns: RunEntry[], recentRuns: RunEntry[]): StatusRow[] {
-	const rows: StatusRow[] = [];
-	let runIndex = 0;
-	if (activeRuns.length > 0) {
-		rows.push({ kind: "section", label: "Active" });
-		for (const run of activeRuns) rows.push({ kind: "run", run, runIndex: runIndex++ });
-	}
-	if (recentRuns.length > 0) {
-		rows.push({ kind: "section", label: "Recent" });
-		for (const run of recentRuns) rows.push({ kind: "run", run, runIndex: runIndex++ });
-	}
-	return rows;
-}
-
-function runKey(run: RunEntry): string {
-	return `${run.ts}:${run.agent}:${run.task}`;
-}
-
-/**
- * Format a run model for row-level status display.
- *
- * @param model Runtime-confirmed model id, if available.
- * @returns A compact model label with an explicit unknown fallback.
- */
-function compactModelLabel(model: string | undefined): string {
-	if (!model) return "unknown";
-	const tail = model.split("/").pop() ?? model;
-	return tail.length > 22 ? `${tail.slice(0, 19)}...` : tail;
-}
-
-/**
- * Render one run row with compact model confirmation metadata.
- *
- * @param run Run entry to summarize.
- * @param selected Whether the row is currently selected.
- * @param theme Active Pi theme for status colors.
- * @returns A single width-bounded row string before outer truncation.
- */
-function formatRunRow(run: RunEntry, selected: boolean, theme: Theme): string {
-	const prefix = selected ? theme.fg("success", ">") : " ";
-	const status = run.status === "ok" ? theme.fg("success", "OK ") : theme.fg("error", "ERR");
-	const duration = formatDuration(run.duration).padStart(6);
-	const model = compactModelLabel(run.model);
-	const task = run.task.length > 36 ? `${run.task.slice(0, 33)}...` : run.task;
-	return `${prefix} ${run.agent.padEnd(15)} | ${status} | ${duration} | ${model.padEnd(22)} | ${task}`;
-}

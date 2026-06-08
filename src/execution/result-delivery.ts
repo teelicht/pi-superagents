@@ -13,7 +13,7 @@
  */
 
 import type { ChildRunResult, CompletedDelivery, DeliveryState, ResultDeliveryError, SubagentCompletionEnvelope } from "../shared/types.ts";
-import { getSingleResultOutput } from "../shared/utils.ts";
+import { getSingleResultOutput } from "../shared/message-utils.ts";
 
 export interface RegisterChildInput {
 	id: string;
