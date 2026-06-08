@@ -35,7 +35,7 @@ type ConfigAccessor = () => ExtensionConfig;
 /**
  * Model option from the model registry.
  */
-interface SettingsModelOption {
+export interface SettingsModelOption {
 	provider: string;
 	id: string;
 	name?: string;
@@ -54,7 +54,7 @@ export interface SuperpowersSettingsModelPickerOptions {
 /**
  * Settings overlay mode for navigation.
  */
-type SettingsMode = "settings" | "tier-picker" | "model-picker" | "thinking-picker";
+export type SettingsMode = "settings" | "tier-picker" | "model-picker" | "thinking-picker";
 
 /**
  * Default model tier names to display in the tier picker.
@@ -63,6 +63,7 @@ const DEFAULT_MODEL_TIERS = ["cheap", "balanced", "max", "reasoning"];
 const MAX_VISIBLE_MODELS = 15;
 
 const THINKING_OPTIONS: readonly (ThinkingLevel | undefined)[] = [undefined, ...VALID_THINKING_LEVELS];
+
 /**
  * Convert a model option to a value string for selection.
  *
@@ -190,30 +191,20 @@ export class SuperpowersSettingsComponent implements Component {
 	}
 
 	/**
-	 * Handle keyboard input in tier/model picker modes.
+	 * Handle keyboard input in tier/model/thinking picker modes.
+	 * Dispatches to mode-specific handlers.
 	 */
 	private handlePickerInput(data: string): void {
 		// q goes back in non-search picker modes. In model-picker mode it is searchable text.
 		if (matchesKey(data, "q") && this.mode !== "model-picker") {
-			if (this.mode === "thinking-picker") {
-				this.mode = "tier-picker";
-				this.selectedThinkingIndex = 0;
-			} else {
-				this.mode = "settings";
-				this.selectedTier = undefined;
-				this.selectedModelIndex = 0;
-				this.selectedThinkingIndex = 0;
-			}
+			this.applyBackNavigation();
 			this.tui.requestRender();
 			return;
 		}
 
 		// Escape in tier-picker goes to settings
 		if (matchesKey(data, "escape") && this.mode === "tier-picker") {
-			this.mode = "settings";
-			this.selectedTier = undefined;
-			this.selectedModelIndex = 0;
-			this.selectedThinkingIndex = 0;
+			this.applyEscapeFromTierPicker();
 			this.tui.requestRender();
 			return;
 		}
@@ -223,108 +214,182 @@ export class SuperpowersSettingsComponent implements Component {
 
 		// Handle navigation based on current picker mode
 		if (this.mode === "tier-picker") {
-			const currentIndex = this.selectedTier ? tiers.indexOf(this.selectedTier) : -1;
-
-			if (matchesKey(data, "up") || matchesKey(data, "k")) {
-				const newIndex = currentIndex <= 0 ? tiers.length - 1 : currentIndex - 1;
-				this.selectedTier = tiers[newIndex];
-				this.tui.requestRender();
-				return;
-			}
-
-			if (matchesKey(data, "down") || matchesKey(data, "j")) {
-				const newIndex = currentIndex >= tiers.length - 1 ? 0 : currentIndex + 1;
-				this.selectedTier = tiers[newIndex];
-				this.tui.requestRender();
-				return;
-			}
-
-			if (matchesKey(data, "enter") && this.selectedTier) {
-				this.mode = "model-picker";
-				this.selectedModelIndex = 0;
-				this.tui.requestRender();
-			}
+			const handled = this.handleTierPickerKey(data, tiers);
+			if (handled) this.tui.requestRender();
 		} else if (this.mode === "model-picker") {
-			const filtered = this.getFilteredModels();
-			if (filtered.length > 0 && this.selectedModelIndex >= filtered.length) {
-				this.selectedModelIndex = filtered.length - 1;
-			}
-
-			if (matchesKey(data, "backspace")) {
-				if (this.modelSearchQuery.length > 0) {
-					this.modelSearchQuery = this.modelSearchQuery.slice(0, -1);
-					this.selectedModelIndex = 0;
-					this.tui.requestRender();
-				}
-				return;
-			}
-
-			if (matchesKey(data, "escape")) {
-				if (this.modelSearchQuery) {
-					this.modelSearchQuery = "";
-					this.selectedModelIndex = 0;
-				} else {
-					this.mode = "tier-picker";
-					this.selectedModelIndex = 0;
-				}
-				this.tui.requestRender();
-				return;
-			}
-
-			if (matchesKey(data, "up") || matchesKey(data, "k")) {
-				if (filtered.length === 0) return;
-				this.selectedModelIndex = this.selectedModelIndex <= 0 ? filtered.length - 1 : this.selectedModelIndex - 1;
-				this.tui.requestRender();
-				return;
-			}
-
-			if (matchesKey(data, "down") || matchesKey(data, "j")) {
-				if (filtered.length === 0) return;
-				this.selectedModelIndex = this.selectedModelIndex >= filtered.length - 1 ? 0 : this.selectedModelIndex + 1;
-				this.tui.requestRender();
-				return;
-			}
-
-			if (matchesKey(data, "enter") && this.selectedTier && filtered.length > 0) {
-				const editedTier = this.selectedTier;
-				const selectedModel = filtered[this.selectedModelIndex];
-				this.writeModelTier(editedTier, modelToValue(selectedModel));
-				this.mode = "thinking-picker";
-				this.selectedTier = this.modelTierEntries().includes(editedTier) ? editedTier : this.firstModelTier();
-				this.selectedModelIndex = 0;
-				this.selectedThinkingIndex = this.currentThinkingIndex(editedTier);
-				this.modelSearchQuery = "";
-				this.tui.requestRender();
-				return;
-			}
-
-			if (data.length === 1 && data.charCodeAt(0) >= 32 && data.charCodeAt(0) < 127) {
-				this.modelSearchQuery += data;
-				this.selectedModelIndex = 0;
-				this.tui.requestRender();
-			}
+			const handled = this.handleModelPickerKey(data);
+			if (handled) this.tui.requestRender();
 		} else if (this.mode === "thinking-picker") {
-			if (matchesKey(data, "up") || matchesKey(data, "k")) {
-				this.selectedThinkingIndex = this.selectedThinkingIndex <= 0 ? THINKING_OPTIONS.length - 1 : this.selectedThinkingIndex - 1;
-				this.tui.requestRender();
-				return;
-			}
-
-			if (matchesKey(data, "down") || matchesKey(data, "j")) {
-				this.selectedThinkingIndex = this.selectedThinkingIndex >= THINKING_OPTIONS.length - 1 ? 0 : this.selectedThinkingIndex + 1;
-				this.tui.requestRender();
-				return;
-			}
-
-			if (matchesKey(data, "enter") && this.selectedTier) {
-				const editedTier = this.selectedTier;
-				this.writeModelTierThinking(editedTier, THINKING_OPTIONS[this.selectedThinkingIndex]);
-				this.mode = "tier-picker";
-				this.selectedTier = this.modelTierEntries().includes(editedTier) ? editedTier : this.firstModelTier();
-				this.selectedThinkingIndex = 0;
-				this.tui.requestRender();
-			}
+			const handled = this.handleThinkingPickerKey(data);
+			if (handled) this.tui.requestRender();
 		}
+	}
+
+	/**
+	 * Apply back navigation when q is pressed in a picker mode.
+	 * From thinking-picker: returns to tier-picker and resets thinking index.
+	 * From other pickers: returns to settings and resets all picker state.
+	 */
+	private applyBackNavigation(): void {
+		if (this.mode === "thinking-picker") {
+			this.mode = "tier-picker";
+			this.selectedThinkingIndex = 0;
+		} else {
+			this.mode = "settings";
+			this.selectedTier = undefined;
+			this.selectedModelIndex = 0;
+			this.selectedThinkingIndex = 0;
+		}
+	}
+
+	/**
+	 * Apply escape key in tier-picker mode, returning to settings.
+	 */
+	private applyEscapeFromTierPicker(): void {
+		this.mode = "settings";
+		this.selectedTier = undefined;
+		this.selectedModelIndex = 0;
+		this.selectedThinkingIndex = 0;
+	}
+
+	/**
+	 * Handle keyboard input in tier-picker mode.
+	 *
+	 * @param data Raw input string from TUI.
+	 * @param tiers Available tier names.
+	 * @returns true if the input was handled, false otherwise.
+	 */
+	private handleTierPickerKey(data: string, tiers: string[]): boolean {
+		const currentIndex = this.selectedTier ? tiers.indexOf(this.selectedTier) : -1;
+
+		if (matchesKey(data, "up") || matchesKey(data, "k")) {
+			this.selectedTier = tiers[currentIndex <= 0 ? tiers.length - 1 : currentIndex - 1];
+			return true;
+		}
+
+		if (matchesKey(data, "down") || matchesKey(data, "j")) {
+			this.selectedTier = tiers[currentIndex >= tiers.length - 1 ? 0 : currentIndex + 1];
+			return true;
+		}
+
+		if (matchesKey(data, "enter") && this.selectedTier) {
+			this.mode = "model-picker";
+			this.selectedModelIndex = 0;
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Handle keyboard input in model-picker mode.
+	 * Handles backspace, escape, navigation, search typing, and selection.
+	 *
+	 * @param data Raw input string from TUI.
+	 * @returns true if the input was handled, false otherwise.
+	 */
+	private handleModelPickerKey(data: string): boolean {
+		const filtered = this.getFilteredModels();
+		if (filtered.length > 0 && this.selectedModelIndex >= filtered.length) {
+			this.selectedModelIndex = filtered.length - 1;
+		}
+
+		if (matchesKey(data, "backspace")) {
+			if (this.modelSearchQuery.length > 0) {
+				this.modelSearchQuery = this.modelSearchQuery.slice(0, -1);
+				this.selectedModelIndex = 0;
+				return true;
+			}
+			return false;
+		}
+
+		if (matchesKey(data, "escape")) {
+			if (this.modelSearchQuery) {
+				this.modelSearchQuery = "";
+				this.selectedModelIndex = 0;
+			} else {
+				this.mode = "tier-picker";
+				this.selectedModelIndex = 0;
+			}
+			return true;
+		}
+
+		if (matchesKey(data, "up") || matchesKey(data, "k")) {
+			if (filtered.length === 0) return false;
+			this.selectedModelIndex = this.selectedModelIndex <= 0 ? filtered.length - 1 : this.selectedModelIndex - 1;
+			return true;
+		}
+
+		if (matchesKey(data, "down") || matchesKey(data, "j")) {
+			if (filtered.length === 0) return false;
+			this.selectedModelIndex = this.selectedModelIndex >= filtered.length - 1 ? 0 : this.selectedModelIndex + 1;
+			return true;
+		}
+
+		if (matchesKey(data, "enter") && this.selectedTier && filtered.length > 0) {
+			this.applyModelSelection(filtered);
+			return true;
+		}
+
+		if (data.length === 1 && data.charCodeAt(0) >= 32 && data.charCodeAt(0) < 127) {
+			this.modelSearchQuery += data;
+			this.selectedModelIndex = 0;
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Apply model selection: write model to tier, transition to thinking picker.
+	 *
+	 * @param filteredModels The currently filtered model list.
+	 */
+	private applyModelSelection(filteredModels: SettingsModelOption[]): void {
+		const editedTier = this.selectedTier!;
+		const selectedModel = filteredModels[this.selectedModelIndex];
+		this.writeModelTier(editedTier, modelToValue(selectedModel));
+		this.mode = "thinking-picker";
+		this.selectedTier = this.modelTierEntries().includes(editedTier) ? editedTier : this.firstModelTier();
+		this.selectedModelIndex = 0;
+		this.selectedThinkingIndex = this.currentThinkingIndex(editedTier);
+		this.modelSearchQuery = "";
+	}
+
+	/**
+	 * Handle keyboard input in thinking-picker mode.
+	 *
+	 * @param data Raw input string from TUI.
+	 * @returns true if the input was handled, false otherwise.
+	 */
+	private handleThinkingPickerKey(data: string): boolean {
+		if (matchesKey(data, "up") || matchesKey(data, "k")) {
+			this.selectedThinkingIndex = this.selectedThinkingIndex <= 0 ? THINKING_OPTIONS.length - 1 : this.selectedThinkingIndex - 1;
+			return true;
+		}
+
+		if (matchesKey(data, "down") || matchesKey(data, "j")) {
+			this.selectedThinkingIndex = this.selectedThinkingIndex >= THINKING_OPTIONS.length - 1 ? 0 : this.selectedThinkingIndex + 1;
+			return true;
+		}
+
+		if (matchesKey(data, "enter") && this.selectedTier) {
+			this.applyThinkingSelection();
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Apply thinking selection: write thinking to tier, return to tier-picker.
+	 */
+	private applyThinkingSelection(): void {
+		const editedTier = this.selectedTier!;
+		this.writeModelTierThinking(editedTier, THINKING_OPTIONS[this.selectedThinkingIndex]);
+		this.mode = "tier-picker";
+		this.selectedTier = this.modelTierEntries().includes(editedTier) ? editedTier : this.firstModelTier();
+		this.selectedThinkingIndex = 0;
 	}
 
 	/**

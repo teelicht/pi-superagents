@@ -106,7 +106,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * @param message User-facing diagnostic message.
  * @param code Stable diagnostic code.
  */
-function addError(diagnostics: ConfigDiagnostic[], path: string, message: string, code = "invalid_value"): void {
+function pushConfigIssue(diagnostics: ConfigDiagnostic[], path: string, message: string, code = "invalid_value"): void {
 	diagnostics.push({ level: "error", code, path, message });
 }
 
@@ -133,11 +133,11 @@ function validateOptionalStringOrNull(diagnostics: ConfigDiagnostic[], config: R
 	if (!(key in config)) return;
 	const value = config[key];
 	if (value !== null && typeof value !== "string") {
-		addError(diagnostics, path, "must be a string or null.");
+		pushConfigIssue(diagnostics, path, "must be a string or null.");
 		return;
 	}
 	if (typeof value === "string" && !value.trim()) {
-		addError(diagnostics, path, "must be a non-empty string or null.");
+		pushConfigIssue(diagnostics, path, "must be a non-empty string or null.");
 	}
 }
 
@@ -150,21 +150,21 @@ function validateOptionalStringOrNull(diagnostics: ConfigDiagnostic[], config: R
  */
 function validateModelTier(diagnostics: ConfigDiagnostic[], value: unknown, path: string): void {
 	if (typeof value === "string") {
-		if (!value.trim()) addError(diagnostics, path, "must not be an empty string.");
+		if (!value.trim()) pushConfigIssue(diagnostics, path, "must not be an empty string.");
 		return;
 	}
 	if (!isRecord(value)) {
-		addError(diagnostics, path, "must be a model string or an object with a model field.");
+		pushConfigIssue(diagnostics, path, "must be a model string or an object with a model field.");
 		return;
 	}
 	for (const key of Object.keys(value)) {
-		if (!MODEL_TIER_KEYS.has(key)) addError(diagnostics, `${path}.${key}`, "is not a supported config key.", "unknown_key");
+		if (!MODEL_TIER_KEYS.has(key)) pushConfigIssue(diagnostics, `${path}.${key}`, "is not a supported config key.", "unknown_key");
 	}
 	if (typeof value.model !== "string" || !value.model.trim()) {
-		addError(diagnostics, `${path}.model`, "must be a non-empty string.");
+		pushConfigIssue(diagnostics, `${path}.model`, "must be a non-empty string.");
 	}
 	if ("thinking" in value && !isThinkingLevel(value.thinking as string | undefined)) {
-		addError(diagnostics, `${path}.thinking`, "must be one of off, minimal, low, medium, high, xhigh.");
+		pushConfigIssue(diagnostics, `${path}.thinking`, "must be one of off, minimal, low, medium, high, xhigh.");
 	}
 }
 
@@ -177,40 +177,40 @@ function validateModelTier(diagnostics: ConfigDiagnostic[], value: unknown, path
  */
 function validateCommandPreset(diagnostics: ConfigDiagnostic[], value: unknown, path: string): void {
 	if (!isRecord(value)) {
-		addError(diagnostics, path, "must be an object.");
+		pushConfigIssue(diagnostics, path, "must be an object.");
 		return;
 	}
 	for (const key of Object.keys(value)) {
 		if (key in REMOVED_COMMAND_PRESET_KEYS) {
 			const { code, message } = REMOVED_COMMAND_PRESET_KEYS[key];
-			addError(diagnostics, `${path}.${key}`, message, code);
+			pushConfigIssue(diagnostics, `${path}.${key}`, message, code);
 		} else if (!COMMAND_PRESET_KEYS.has(key)) {
-			addError(diagnostics, `${path}.${key}`, "is not a supported command behavior key.", "unknown_key");
+			pushConfigIssue(diagnostics, `${path}.${key}`, "is not a supported command behavior key.", "unknown_key");
 		}
 	}
 	if ("useBranches" in value && typeof value.useBranches !== "boolean") {
-		addError(diagnostics, `${path}.useBranches`, "must be a boolean.");
+		pushConfigIssue(diagnostics, `${path}.useBranches`, "must be a boolean.");
 	}
 	if ("useSubagents" in value && typeof value.useSubagents !== "boolean") {
-		addError(diagnostics, `${path}.useSubagents`, "must be a boolean.");
+		pushConfigIssue(diagnostics, `${path}.useSubagents`, "must be a boolean.");
 	}
 	if ("useTestDrivenDevelopment" in value && typeof value.useTestDrivenDevelopment !== "boolean") {
-		addError(diagnostics, `${path}.useTestDrivenDevelopment`, "must be a boolean.");
+		pushConfigIssue(diagnostics, `${path}.useTestDrivenDevelopment`, "must be a boolean.");
 	}
 	if ("usePlannotator" in value && typeof value.usePlannotator !== "boolean") {
-		addError(diagnostics, `${path}.usePlannotator`, "must be a boolean.");
+		pushConfigIssue(diagnostics, `${path}.usePlannotator`, "must be a boolean.");
 	}
 	if ("worktrees" in value && !isRecord(value.worktrees)) {
-		addError(diagnostics, `${path}.worktrees`, "must be an object.");
+		pushConfigIssue(diagnostics, `${path}.worktrees`, "must be an object.");
 	} else if ("worktrees" in value && isRecord(value.worktrees)) {
 		const worktreeKeys = Object.keys(value.worktrees);
 		for (const wtKey of worktreeKeys) {
 			if (!WORKTREE_KEYS.has(wtKey)) {
-				addError(diagnostics, `${path}.worktrees.${wtKey}`, "is not a supported config key.", "unknown_key");
+				pushConfigIssue(diagnostics, `${path}.worktrees.${wtKey}`, "is not a supported config key.", "unknown_key");
 			}
 		}
 		if ("enabled" in value.worktrees && typeof value.worktrees.enabled !== "boolean") {
-			addError(diagnostics, `${path}.worktrees.enabled`, "must be a boolean.");
+			pushConfigIssue(diagnostics, `${path}.worktrees.enabled`, "must be a boolean.");
 		}
 		validateOptionalStringOrNull(diagnostics, value.worktrees, "root", `${path}.worktrees.root`);
 	}
@@ -226,12 +226,12 @@ function validateCommandPreset(diagnostics: ConfigDiagnostic[], value: unknown, 
  */
 function validateNonEmptyStringArray(diagnostics: ConfigDiagnostic[], value: unknown, path: string, label: string): void {
 	if (!Array.isArray(value)) {
-		addError(diagnostics, path, `must be an array of non-empty ${label}.`);
+		pushConfigIssue(diagnostics, path, `must be an array of non-empty ${label}.`);
 		return;
 	}
 	value.forEach((entry, index) => {
 		if (typeof entry !== "string" || !entry.trim()) {
-			addError(diagnostics, `${path}[${index}]`, `must be a non-empty ${label}.`);
+			pushConfigIssue(diagnostics, `${path}[${index}]`, `must be a non-empty ${label}.`);
 		}
 	});
 }
@@ -244,19 +244,156 @@ function validateNonEmptyStringArray(diagnostics: ConfigDiagnostic[], value: unk
  */
 function validateInterceptSkillCommands(diagnostics: ConfigDiagnostic[], value: unknown): void {
 	if (!Array.isArray(value)) {
-		addError(diagnostics, "superagents.interceptSkillCommands", "must be an array of supported skill names.");
+		pushConfigIssue(diagnostics, "superagents.interceptSkillCommands", "must be an array of supported skill names.");
 		return;
 	}
 	value.forEach((entry, index) => {
 		if (typeof entry !== "string" || !entry.trim()) {
-			addError(diagnostics, `superagents.interceptSkillCommands[${index}]`, "must be a non-empty skill name.");
+			pushConfigIssue(diagnostics, `superagents.interceptSkillCommands[${index}]`, "must be a non-empty skill name.");
 			return;
 		}
 		if (!SUPPORTED_INTERCEPTED_SKILLS.has(entry)) {
-			addError(diagnostics, `superagents.interceptSkillCommands[${index}]`, "must be one of: brainstorming, writing-plans.");
+			pushConfigIssue(diagnostics, `superagents.interceptSkillCommands[${index}]`, "must be one of: brainstorming, writing-plans.");
 		}
 	});
 }
+
+// ---------------------------------------------------------------------------
+// Group-level validators extracted from validateConfigObject
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate top-level config object keys.
+ *
+ * @param diagnostics Mutable diagnostic accumulator.
+ * @param rawConfig Parsed user config value.
+ */
+function validateTopLevelObject(diagnostics: ConfigDiagnostic[], rawConfig: Record<string, unknown>): void {
+	for (const key of Object.keys(rawConfig)) {
+		if (key in REMOVED_GENERIC_KEYS) {
+			const { code, message } = REMOVED_GENERIC_KEYS[key];
+			pushConfigIssue(diagnostics, key, message, code);
+		} else if (!TOP_LEVEL_KEYS.has(key)) {
+			pushConfigIssue(diagnostics, key, "is not a supported config key.", "unknown_key");
+		}
+	}
+}
+
+/**
+ * Validate the superagents.commands section.
+ *
+ * @param diagnostics Mutable diagnostic accumulator.
+ * @param commands Raw commands value.
+ * @param options Validation options including discovered entrypoint command names.
+ */
+function validateCommandsSection(diagnostics: ConfigDiagnostic[], commands: unknown, options: ConfigValidationOptions): void {
+	if (!isRecord(commands)) {
+		pushConfigIssue(diagnostics, "superagents.commands", "must be an object.");
+		return;
+	}
+	const entrypointCommandSet = options.entrypointCommands ? new Set(options.entrypointCommands) : undefined;
+	for (const [commandName, commandValue] of Object.entries(commands)) {
+		if (!COMMAND_NAME_PATTERN.test(commandName)) {
+			pushConfigIssue(diagnostics, `superagents.commands.${commandName}`, "must match superpowers-<name> or sp-<name> (lowercase alphanumeric and hyphens).");
+		}
+		validateCommandPreset(diagnostics, commandValue, `superagents.commands.${commandName}`);
+		// Warn for commands that have no matching entrypoint agent
+		if (entrypointCommandSet && !entrypointCommandSet.has(commandName)) {
+			diagnostics.push({
+				level: "warning",
+				code: "unknown_entrypoint_command",
+				path: `superagents.commands.${commandName}`,
+				message: "does not match any discovered interactive entrypoint agent command. Add an entrypoint agent markdown file or remove this behavior block.",
+			});
+		}
+	}
+}
+
+/**
+ * Validate the superagents.modelTiers section.
+ *
+ * @param diagnostics Mutable diagnostic accumulator.
+ * @param modelTiers Raw model tiers value.
+ */
+function validateModelTiersSection(diagnostics: ConfigDiagnostic[], modelTiers: unknown): void {
+	if (!isRecord(modelTiers)) {
+		pushConfigIssue(diagnostics, "superagents.modelTiers", "must be an object.");
+		return;
+	}
+	for (const [tierName, tierValue] of Object.entries(modelTiers)) {
+		validateModelTier(diagnostics, tierValue, `superagents.modelTiers.${tierName}`);
+	}
+}
+
+/**
+ * Validate the superagents.extensions section.
+ *
+ * @param diagnostics Mutable diagnostic accumulator.
+ * @param extensions Raw extensions value.
+ */
+function validateExtensionsSection(diagnostics: ConfigDiagnostic[], extensions: unknown): void {
+	validateNonEmptyStringArray(diagnostics, extensions, "superagents.extensions", "extension path");
+}
+
+/**
+ * Validate the superagents.tools section.
+ *
+ * @param diagnostics Mutable diagnostic accumulator.
+ * @param tools Raw tools value.
+ */
+function validateToolsSection(diagnostics: ConfigDiagnostic[], tools: unknown): void {
+	validateNonEmptyStringArray(diagnostics, tools, "superagents.tools", "tool name or path");
+}
+
+/**
+ * Validate the superagents section.
+ *
+ * @param diagnostics Mutable diagnostic accumulator.
+ * @param superagents Raw superagents value.
+ * @param options Validation options including discovered entrypoint command names.
+ */
+function validateSuperagentsSection(diagnostics: ConfigDiagnostic[], superagents: unknown, options: ConfigValidationOptions): void {
+	if (!isRecord(superagents)) {
+		pushConfigIssue(diagnostics, "superagents", "must be an object.");
+		return;
+	}
+	for (const key of Object.keys(superagents)) {
+		if (key in REMOVED_SUPERAGENTS_KEYS) {
+			const { code, message } = REMOVED_SUPERAGENTS_KEYS[key];
+			pushConfigIssue(diagnostics, `superagents.${key}`, message, code);
+		} else if (!SUPERAGENTS_KEYS.has(key)) {
+			pushConfigIssue(diagnostics, `superagents.${key}`, "is not a supported config key.", "unknown_key");
+		}
+	}
+
+	if ("commands" in superagents) {
+		validateCommandsSection(diagnostics, superagents.commands, options);
+	}
+	if ("modelTiers" in superagents) {
+		validateModelTiersSection(diagnostics, superagents.modelTiers);
+	}
+	if ("interceptSkillCommands" in superagents) {
+		validateInterceptSkillCommands(diagnostics, superagents.interceptSkillCommands);
+	}
+	if ("extensions" in superagents) {
+		validateExtensionsSection(diagnostics, superagents.extensions);
+	}
+	if ("tools" in superagents) {
+		validateToolsSection(diagnostics, superagents.tools);
+	}
+	if ("superpowersSkills" in superagents) {
+		diagnostics.push({
+			level: "warning",
+			code: "defaults_only_key",
+			path: "superagents.superpowersSkills",
+			message: "is not user-configurable. It is defined in the bundled defaults and cannot be overridden.",
+		});
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
 /**
  * Validate user-authored config shape and values.
@@ -268,84 +405,14 @@ function validateInterceptSkillCommands(diagnostics: ConfigDiagnostic[], value: 
 export function validateConfigObject(rawConfig: unknown, options: ConfigValidationOptions = {}): ConfigValidationResult {
 	const diagnostics: ConfigDiagnostic[] = [];
 	if (!isRecord(rawConfig)) {
-		addError(diagnostics, "$", "must be a JSON object.");
+		pushConfigIssue(diagnostics, "$", "must be a JSON object.");
 		return { blocked: true, diagnostics };
 	}
 
-	for (const key of Object.keys(rawConfig)) {
-		if (key in REMOVED_GENERIC_KEYS) {
-			const { code, message } = REMOVED_GENERIC_KEYS[key];
-			addError(diagnostics, key, message, code);
-		} else if (!TOP_LEVEL_KEYS.has(key)) {
-			addError(diagnostics, key, "is not a supported config key.", "unknown_key");
-		}
-	}
+	validateTopLevelObject(diagnostics, rawConfig);
 
 	if ("superagents" in rawConfig) {
-		const superagents = rawConfig.superagents;
-		if (!isRecord(superagents)) {
-			addError(diagnostics, "superagents", "must be an object.");
-		} else {
-			for (const key of Object.keys(superagents)) {
-				if (key in REMOVED_SUPERAGENTS_KEYS) {
-					const { code, message } = REMOVED_SUPERAGENTS_KEYS[key];
-					addError(diagnostics, `superagents.${key}`, message, code);
-				} else if (!SUPERAGENTS_KEYS.has(key)) {
-					addError(diagnostics, `superagents.${key}`, "is not a supported config key.", "unknown_key");
-				}
-			}
-
-			if ("commands" in superagents) {
-				const commands = superagents.commands;
-				if (!isRecord(commands)) {
-					addError(diagnostics, "superagents.commands", "must be an object.");
-				} else {
-					const entrypointCommandSet = options.entrypointCommands ? new Set(options.entrypointCommands) : undefined;
-					for (const [commandName, commandValue] of Object.entries(commands)) {
-						if (!COMMAND_NAME_PATTERN.test(commandName)) {
-							addError(diagnostics, `superagents.commands.${commandName}`, "must match superpowers-<name> or sp-<name> (lowercase alphanumeric and hyphens).");
-						}
-						validateCommandPreset(diagnostics, commandValue, `superagents.commands.${commandName}`);
-						// Warn for commands that have no matching entrypoint agent
-						if (entrypointCommandSet && !entrypointCommandSet.has(commandName)) {
-							diagnostics.push({
-								level: "warning",
-								code: "unknown_entrypoint_command",
-								path: `superagents.commands.${commandName}`,
-								message: "does not match any discovered interactive entrypoint agent command. Add an entrypoint agent markdown file or remove this behavior block.",
-							});
-						}
-					}
-				}
-			}
-			if ("modelTiers" in superagents) {
-				const modelTiers = superagents.modelTiers;
-				if (!isRecord(modelTiers)) {
-					addError(diagnostics, "superagents.modelTiers", "must be an object.");
-				} else {
-					for (const [tierName, tierValue] of Object.entries(modelTiers)) {
-						validateModelTier(diagnostics, tierValue, `superagents.modelTiers.${tierName}`);
-					}
-				}
-			}
-			if ("interceptSkillCommands" in superagents) {
-				validateInterceptSkillCommands(diagnostics, superagents.interceptSkillCommands);
-			}
-			if ("extensions" in superagents) {
-				validateNonEmptyStringArray(diagnostics, superagents.extensions, "superagents.extensions", "extension path");
-			}
-			if ("tools" in superagents) {
-				validateNonEmptyStringArray(diagnostics, superagents.tools, "superagents.tools", "tool name or path");
-			}
-			if ("superpowersSkills" in superagents) {
-				diagnostics.push({
-					level: "warning",
-					code: "defaults_only_key",
-					path: "superagents.superpowersSkills",
-					message: "is not user-configurable. It is defined in the bundled defaults and cannot be overridden.",
-				});
-			}
-		}
+		validateSuperagentsSection(diagnostics, rawConfig.superagents, options);
 	}
 
 	return { blocked: diagnostics.some((diagnostic) => diagnostic.level === "error"), diagnostics };

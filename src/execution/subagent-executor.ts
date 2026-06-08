@@ -44,7 +44,8 @@ import {
 	type TaskParam,
 	type WorkflowMode,
 } from "../shared/types.ts";
-import { getSingleResultOutput, mapConcurrent } from "../shared/utils.ts";
+import { mapConcurrent } from "./parallel-utils.ts";
+import { getSingleResultOutput } from "../shared/message-utils.ts";
 import { runPreparedChild } from "./child-runner.ts";
 import { type PlanChildRunInput, planChildRun } from "./execution-planner.ts";
 import {

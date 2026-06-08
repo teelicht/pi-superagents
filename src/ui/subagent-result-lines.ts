@@ -14,7 +14,7 @@
 import type { AgentToolResult } from "@earendil-works/pi-agent-core";
 import { formatDuration, shortenPath } from "../shared/formatters.ts";
 import type { AgentProgress, Details, ProgressSummary, SingleResult } from "../shared/types.ts";
-import { getSingleResultOutput } from "../shared/utils.ts";
+import { getSingleResultOutput } from "../shared/message-utils.ts";
 
 interface RenderSubagentResultLinesOptions {
 	expanded: boolean;

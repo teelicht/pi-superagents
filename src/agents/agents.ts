@@ -64,104 +64,145 @@ export interface AgentDiscoveryResult {
 }
 
 function loadAgentsFromDir(dir: string, source: AgentSource): AgentConfig[] {
-	const agents: AgentConfig[] = [];
+	return findAgentSkillFiles(dir).flatMap((filePath) => {
+		const parsed = readAgentFrontmatter(filePath);
+		return parsed ? [normalizeAgentConfig(parsed, source, filePath)] : [];
+	});
+}
 
-	if (!fs.existsSync(dir)) {
-		return agents;
-	}
+/**
+ * Find readable agent markdown files in one agent directory.
+ *
+ * @param dir Directory to scan non-recursively.
+ * @returns Absolute markdown file paths for file or symlink entries; empty when missing/unreadable.
+ */
+function findAgentSkillFiles(dir: string): string[] {
+	if (!fs.existsSync(dir)) return [];
 
 	let entries: fs.Dirent[];
 	try {
 		entries = fs.readdirSync(dir, { withFileTypes: true });
 	} catch {
-		return agents;
+		return [];
 	}
 
-	for (const entry of entries) {
-		if (!entry.name.endsWith(".md")) continue;
-		if (!entry.isFile() && !entry.isSymbolicLink()) continue;
+	return entries
+		.filter((entry) => entry.name.endsWith(".md"))
+		.filter((entry) => entry.isFile() || entry.isSymbolicLink())
+		.map((entry) => path.join(dir, entry.name));
+}
 
-		const filePath = path.join(dir, entry.name);
-		let content: string;
-		try {
-			content = fs.readFileSync(filePath, "utf-8");
-		} catch {
-			continue;
-		}
-
-		const { frontmatter, body } = parseFrontmatter(content);
-
-		if (!frontmatter.name || !frontmatter.description) {
-			continue;
-		}
-
-		const rawTools = frontmatter.tools
-			?.split(",")
-			.map((t) => t.trim())
-			.filter(Boolean);
-
-		const mcpDirectTools: string[] = [];
-		const tools: string[] = [];
-		if (rawTools) {
-			for (const tool of rawTools) {
-				if (tool.startsWith("mcp:")) {
-					mcpDirectTools.push(tool.slice(4));
-				} else {
-					tools.push(tool);
-				}
-			}
-		}
-
-		const skillStr = frontmatter.skills;
-		const skills = skillStr
-			?.split(",")
-			.map((s) => s.trim())
-			.filter(Boolean);
-
-		let extensions: string[] | undefined;
-		if (frontmatter.extensions !== undefined) {
-			extensions = frontmatter.extensions
-				.split(",")
-				.map((e) => e.trim())
-				.filter(Boolean);
-		}
-
-		const extraFields: Record<string, string> = {};
-		for (const [key, value] of Object.entries(frontmatter)) {
-			if (!KNOWN_FIELDS.has(key)) extraFields[key] = value;
-		}
-
-		const parsedMaxSubagentDepth = Number(frontmatter.maxSubagentDepth);
-		const kind = frontmatter.kind === "entrypoint" || frontmatter.kind === "role" ? frontmatter.kind : undefined;
-		const execution = frontmatter.execution === "interactive" || frontmatter.execution === "headless" ? frontmatter.execution : undefined;
-
-		agents.push({
-			name: frontmatter.name,
-			description: frontmatter.description,
-			tools: tools.length > 0 ? tools : undefined,
-			mcpDirectTools: mcpDirectTools.length > 0 ? mcpDirectTools : undefined,
-			model: frontmatter.model,
-			thinking: frontmatter.thinking,
-			systemPrompt: body,
-			source,
-			filePath,
-			skills: skills && skills.length > 0 ? skills : undefined,
-			extensions,
-			interactive: frontmatter.interactive === "true",
-			maxSubagentDepth: Number.isInteger(parsedMaxSubagentDepth) && parsedMaxSubagentDepth >= 0 ? parsedMaxSubagentDepth : undefined,
-			sessionMode:
-				frontmatter["session-mode"] === "standalone" || frontmatter["session-mode"] === "lineage-only" || frontmatter["session-mode"] === "fork"
-					? frontmatter["session-mode"]
-					: undefined,
-			kind,
-			execution,
-			command: frontmatter.command,
-			entrySkill: frontmatter.entrySkill,
-			extraFields: Object.keys(extraFields).length > 0 ? extraFields : undefined,
-		});
+/**
+ * Read and parse an agent markdown file's frontmatter.
+ *
+ * @param filePath Agent markdown file path.
+ * @returns Parsed frontmatter/body when required fields exist; otherwise undefined.
+ */
+function readAgentFrontmatter(filePath: string): { frontmatter: Record<string, string>; body: string } | undefined {
+	let content: string;
+	try {
+		content = fs.readFileSync(filePath, "utf-8");
+	} catch {
+		return undefined;
 	}
 
-	return agents;
+	const parsed = parseFrontmatter(content);
+	if (!parsed.frontmatter.name || !parsed.frontmatter.description) return undefined;
+	return parsed;
+}
+
+/**
+ * Normalize parsed frontmatter into the runtime agent configuration shape.
+ *
+ * @param parsed Parsed frontmatter and markdown body.
+ * @param source Source tier used for precedence and diagnostics.
+ * @param filePath Source file path for traceability.
+ * @returns Agent configuration equivalent to the legacy inline parser.
+ */
+function normalizeAgentConfig(parsed: { frontmatter: Record<string, string>; body: string }, source: AgentSource, filePath: string): AgentConfig {
+	const { frontmatter, body } = parsed;
+	const { tools, mcpDirectTools } = splitAgentTools(frontmatter.tools);
+	const skills = parseCommaSeparatedField(frontmatter.skills);
+	const extensions = frontmatter.extensions === undefined ? undefined : parseCommaSeparatedField(frontmatter.extensions);
+	const extraFields = collectExtraAgentFields(frontmatter);
+	const parsedMaxSubagentDepth = Number(frontmatter.maxSubagentDepth);
+	const kind = frontmatter.kind === "entrypoint" || frontmatter.kind === "role" ? frontmatter.kind : undefined;
+	const execution = frontmatter.execution === "interactive" || frontmatter.execution === "headless" ? frontmatter.execution : undefined;
+
+	return {
+		name: frontmatter.name,
+		description: frontmatter.description,
+		tools: tools.length > 0 ? tools : undefined,
+		mcpDirectTools: mcpDirectTools.length > 0 ? mcpDirectTools : undefined,
+		model: frontmatter.model,
+		thinking: frontmatter.thinking,
+		systemPrompt: body,
+		source,
+		filePath,
+		skills: skills && skills.length > 0 ? skills : undefined,
+		extensions,
+		interactive: frontmatter.interactive === "true",
+		maxSubagentDepth: Number.isInteger(parsedMaxSubagentDepth) && parsedMaxSubagentDepth >= 0 ? parsedMaxSubagentDepth : undefined,
+		sessionMode: parseAgentSessionMode(frontmatter["session-mode"]),
+		kind,
+		execution,
+		command: frontmatter.command,
+		entrySkill: frontmatter.entrySkill,
+		extraFields: Object.keys(extraFields).length > 0 ? extraFields : undefined,
+	};
+}
+
+/**
+ * Split a comma-separated tools field into Pi tool names and MCP-direct names.
+ *
+ * @param toolsField Optional frontmatter tools field.
+ * @returns Separate normal and `mcp:`-prefixed tool arrays.
+ */
+function splitAgentTools(toolsField: string | undefined): { tools: string[]; mcpDirectTools: string[] } {
+	const tools: string[] = [];
+	const mcpDirectTools: string[] = [];
+	for (const tool of parseCommaSeparatedField(toolsField) ?? []) {
+		if (tool.startsWith("mcp:")) mcpDirectTools.push(tool.slice(4));
+		else tools.push(tool);
+	}
+	return { tools, mcpDirectTools };
+}
+
+/**
+ * Parse an optional comma-separated frontmatter field.
+ *
+ * @param value Raw comma-separated value.
+ * @returns Trimmed non-empty entries, or undefined when absent.
+ */
+function parseCommaSeparatedField(value: string | undefined): string[] | undefined {
+	return value
+		?.split(",")
+		.map((entry) => entry.trim())
+		.filter(Boolean);
+}
+
+/**
+ * Preserve unrecognized frontmatter fields for compatibility.
+ *
+ * @param frontmatter Parsed frontmatter key/value map.
+ * @returns Unknown fields not consumed by AgentConfig.
+ */
+function collectExtraAgentFields(frontmatter: Record<string, string>): Record<string, string> {
+	const extraFields: Record<string, string> = {};
+	for (const [key, value] of Object.entries(frontmatter)) {
+		if (!KNOWN_FIELDS.has(key)) extraFields[key] = value;
+	}
+	return extraFields;
+}
+
+/**
+ * Parse session-mode frontmatter while rejecting unsupported values.
+ *
+ * @param value Optional raw session-mode value.
+ * @returns Supported session mode, or undefined for absent/invalid values.
+ */
+function parseAgentSessionMode(value: string | undefined): SessionMode | undefined {
+	return value === "standalone" || value === "lineage-only" || value === "fork" ? value : undefined;
 }
 
 function isDirectory(p: string): boolean {
