@@ -668,7 +668,7 @@ git commit -m "chore: update pi dev dependencies for project trust api"
 - Modify: `docs/configuration.md`
 - Modify: `docs/skills.md`
 
-- [ ] **Step 1: Update README project trust note**
+- [x] **Step 1: Update README project trust note**
 
 Add this paragraph after the installation/local development section in `README.md`:
 
@@ -678,7 +678,7 @@ Add this paragraph after the installation/local development section in `README.m
 On Pi 0.79+, `pi-superagents` mirrors Pi's project-trust decision. Project-local agents, skills, skill packages, `.pi/settings.json` skill entries, and project agent frontmatter extensions are loaded only when the current Pi context reports the project as trusted. Child subagent Pi processes receive `--approve` when the parent context is trusted and `--no-approve` when it is not, so non-interactive child runs do not silently escalate trust.
 ```
 
-- [ ] **Step 2: Update skills docs**
+- [x] **Step 2: Update skills docs**
 
 In `docs/skills.md`, replace the project location bullets with trust-qualified text:
 
@@ -690,7 +690,7 @@ In `docs/skills.md`, replace the project location bullets with trust-qualified t
 
 Keep user/global bullets unchanged.
 
-- [ ] **Step 3: Update configuration docs**
+- [x] **Step 3: Update configuration docs**
 
 In `docs/configuration.md`, after the local extension/tool configuration paragraphs around lines 86-90, add:
 
@@ -704,7 +704,7 @@ Near the global tools/local extension section, add:
 Child subagent processes mirror the parent trust decision. Trusted parent contexts launch child Pi with `--approve`; untrusted parent contexts launch child Pi with `--no-approve`. Configure project-local Pi resources only for repositories you trust.
 ```
 
-- [ ] **Step 4: Run docs-adjacent tests**
+- [x] **Step 4: Run docs-adjacent tests**
 
 Run:
 
@@ -714,7 +714,7 @@ npm run test:unit -- test/unit/package-manifest.test.ts test/unit/config-validat
 
 Expected: tests pass.
 
-- [ ] **Step 5: Commit Task 6**
+- [x] **Step 5: Commit Task 6**
 
 ```bash
 git add README.md docs/configuration.md docs/skills.md
