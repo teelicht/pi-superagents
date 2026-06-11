@@ -73,4 +73,21 @@ void describe("package.json manifest", () => {
 		assert.doesNotMatch(releaseWorkflow, /run:\s*npm install/);
 		assert.doesNotMatch(testWorkflow, /run:\s*npm install/);
 	});
+
+	void it("denies nonessential transitive dependency build scripts for pnpm install", () => {
+		const workspaceConfig = readTextFile("pnpm-workspace.yaml");
+		assert.match(workspaceConfig, /^allowBuilds:\n/m);
+		assert.match(workspaceConfig, /^  '@google\/genai': false$/m);
+		assert.match(workspaceConfig, /^  protobufjs: false$/m);
+	});
+
+	void it("uses Pi 0.79.1 or newer dev dependencies for project trust APIs", () => {
+		const packageJson = readPackageJson();
+		const deps = (packageJson.devDependencies as Record<string, string> | undefined) ?? {};
+
+		assert.match(deps["@earendil-works/pi-agent-core"] ?? "", /\^0\.79\.1|>=0\.79\.1/);
+		assert.match(deps["@earendil-works/pi-ai"] ?? "", /\^0\.79\.1|>=0\.79\.1/);
+		assert.match(deps["@earendil-works/pi-coding-agent"] ?? "", /\^0\.79\.1|>=0\.79\.1/);
+		assert.match(deps["@earendil-works/pi-tui"] ?? "", /\^0\.79\.1|>=0\.79\.1/);
+	});
 });
