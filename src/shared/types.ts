@@ -378,6 +378,8 @@ export interface RunSyncOptions {
 	useTestDrivenDevelopment?: boolean;
 	/** Absolute path to this extension entrypoint for child lifecycle tool injection. */
 	lifecycleExtensionEntry?: string;
+	/** Mirrors parent project-trust decision; gates project-local skill inputs in child resolution. */
+	projectTrusted?: boolean;
 }
 
 export type ConfigDiagnosticLevel = "warning" | "error";
