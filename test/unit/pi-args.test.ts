@@ -82,4 +82,39 @@ void describe("buildPiArgs session wiring", () => {
 		// Builtin tool should be listed via --tools
 		assert.deepEqual(args.slice(args.indexOf("--tools"), args.indexOf("--tools") + 2), ["--tools", "read"]);
 	});
+
+	void it("emits --approve when the parent project is trusted", () => {
+		const { args } = buildPiArgs({
+			baseArgs: ["--mode", "json", "-p"],
+			task: "hello",
+			sessionEnabled: false,
+			projectTrusted: true,
+		});
+
+		assert.ok(args.includes("--approve"));
+		assert.equal(args.includes("--no-approve"), false);
+	});
+
+	void it("emits --no-approve when the parent project is not trusted", () => {
+		const { args } = buildPiArgs({
+			baseArgs: ["--mode", "json", "-p"],
+			task: "hello",
+			sessionEnabled: false,
+			projectTrusted: false,
+		});
+
+		assert.ok(args.includes("--no-approve"));
+		assert.equal(args.includes("--approve"), false);
+	});
+
+	void it("omits trust flags when project trust is unspecified", () => {
+		const { args } = buildPiArgs({
+			baseArgs: ["--mode", "json", "-p"],
+			task: "hello",
+			sessionEnabled: false,
+		});
+
+		assert.equal(args.includes("--approve"), false);
+		assert.equal(args.includes("--no-approve"), false);
+	});
 });
