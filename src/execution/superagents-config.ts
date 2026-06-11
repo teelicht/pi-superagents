@@ -13,6 +13,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
+import type { AgentSource } from "../agents/agents.ts";
 import type { ExtensionConfig, WorkflowMode } from "../shared/types.ts";
 import type { CreateWorktreesOptions } from "./worktree.ts";
 
@@ -89,17 +90,44 @@ export function resolveSuperagentWorktreeCreateOptions(input: { workflow: Workfl
 }
 
 /**
+ * Options controlling trust-aware extension resolution for a subagent run.
+ *
+ * @property agentSource - Source tier of the launching agent (builtin, user, or project).
+ * @property projectTrusted - Whether the parent Pi context has trusted the project; gates
+ *   project-sourced agent frontmatter extensions.
+ */
+export interface ResolveSubagentExtensionsOptions {
+	/** Source tier of the launching agent. */
+	agentSource?: AgentSource;
+	/** Whether the parent Pi context has trusted the project. */
+	projectTrusted?: boolean;
+}
+
+/**
  * Resolve the effective extensions for a subagent run.
  *
  * Combines global extensions from config with agent-specific extensions from frontmatter.
  * Global extensions are prepended before agent extensions to ensure global policy runs first.
  *
+ * When `options.agentSource === "project"` and `options.projectTrusted === false`, agent
+ * frontmatter extensions are dropped: untrusted project agents must not be allowed to inject
+ * child Pi extensions. Global extensions and the lifecycle extension remain available so the
+ * child can still run, and trusted project agents keep full extension access.
+ *
  * @param config Extension config containing optional Superpowers settings with global extensions.
  * @param agentExtensions Agent-specific extensions from frontmatter, or undefined if not specified.
+ * @param options Optional trust-aware filtering options.
  * @returns Combined extension array with global extensions first, then agent extensions.
  */
-export function resolveSubagentExtensions(config: ExtensionConfig, agentExtensions: string[] | undefined): string[] {
-	return [...(config.superagents?.extensions ?? []), ...(agentExtensions ?? [])];
+export function resolveSubagentExtensions(
+	config: ExtensionConfig,
+	agentExtensions: string[] | undefined,
+	options: ResolveSubagentExtensionsOptions = {},
+): string[] {
+	const { agentSource, projectTrusted } = options;
+	const trustGatedProjectAgent = agentSource === "project" && projectTrusted === false;
+	const effectiveAgentExtensions = trustGatedProjectAgent ? undefined : agentExtensions;
+	return [...(config.superagents?.extensions ?? []), ...(effectiveAgentExtensions ?? [])];
 }
 
 /**
