@@ -243,7 +243,14 @@ function prepareChildLaunch(runtimeCwd: string, agentName: string, task: string,
 	}
 
 	const execution = resolveChildExecutionOptions(runtimeCwd, agent, options);
-	const effectiveExtensions = includeLifecycleExtension(resolveSubagentExtensions(config, agent.extensions), options.sessionFile, options.lifecycleExtensionEntry);
+	const effectiveExtensions = includeLifecycleExtension(
+		resolveSubagentExtensions(config, agent.extensions, {
+			agentSource: agent.source,
+			projectTrusted: options.projectTrusted,
+		}),
+		options.sessionFile,
+		options.lifecycleExtensionEntry,
+	);
 	const sessionEnabled = Boolean(options.sessionFile);
 	const { args, env: sharedEnv, tempDir } = buildPiArgs({
 		baseArgs: ["--mode", "json", "-p"],
@@ -259,6 +266,7 @@ function prepareChildLaunch(runtimeCwd: string, agentName: string, task: string,
 		mcpDirectTools: agent.mcpDirectTools,
 		promptFileStem: agent.name,
 		taskFilePath: options.taskFilePath,
+		projectTrusted: options.projectTrusted,
 	});
 
 	const result: SingleResult = {

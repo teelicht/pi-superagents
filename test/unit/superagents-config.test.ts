@@ -145,6 +145,91 @@ void describe("resolveSubagentExtensions", () => {
 		const result = resolveSubagentExtensions(config, undefined);
 		assert.deepEqual(result, []);
 	});
+
+	/**
+	 * Verifies that an untrusted project agent's extensions are dropped.
+	 *
+	 * Project agent frontmatter must not be allowed to inject child Pi extensions
+	 * when the parent Pi context has not trusted the project. Global extensions
+	 * remain available so the child can still run the lifecycle sidecar.
+	 *
+	 * @returns Nothing; asserts untrusted project agent extensions are excluded.
+	 */
+	void it("excludes project agent extensions when the project is not trusted", () => {
+		const config = { superagents: { extensions: ["global-ext"] } };
+		const agentExtensions = ["project-agent-ext"];
+		const result = resolveSubagentExtensions(config, agentExtensions, {
+			agentSource: "project",
+			projectTrusted: false,
+		});
+		assert.deepEqual(result, ["global-ext"]);
+	});
+
+	/**
+	 * Verifies that a trusted project agent's extensions are included.
+	 *
+	 * When the parent Pi context trusts the project, project agent frontmatter
+	 * may add its own extensions alongside the global extensions.
+	 *
+	 * @returns Nothing; asserts trusted project agent extensions are included.
+	 */
+	void it("includes project agent extensions when the project is trusted", () => {
+		const config = { superagents: { extensions: ["global-ext"] } };
+		const agentExtensions = ["project-agent-ext"];
+		const result = resolveSubagentExtensions(config, agentExtensions, {
+			agentSource: "project",
+			projectTrusted: true,
+		});
+		assert.deepEqual(result, ["global-ext", "project-agent-ext"]);
+	});
+
+	/**
+	 * Verifies that user and builtin agent extensions are never filtered.
+	 *
+	 * The trust policy only gates project-sourced agent extensions; user and
+	 * builtin agent frontmatter should always be honored regardless of trust.
+	 *
+	 * @returns Nothing; asserts user/builtin agent extensions are always included.
+	 */
+	void it("does not filter user or builtin agent extensions by trust", () => {
+		const config = { superagents: { extensions: ["global-ext"] } };
+		const userAgentExtensions = ["user-agent-ext"];
+		const builtinAgentExtensions = ["builtin-agent-ext"];
+		assert.deepEqual(
+			resolveSubagentExtensions(config, userAgentExtensions, {
+				agentSource: "user",
+				projectTrusted: false,
+			}),
+			["global-ext", "user-agent-ext"],
+		);
+		assert.deepEqual(
+			resolveSubagentExtensions(config, builtinAgentExtensions, {
+				agentSource: "builtin",
+				projectTrusted: false,
+			}),
+			["global-ext", "builtin-agent-ext"],
+		);
+	});
+
+	/**
+	 * Verifies that omitting the options argument preserves legacy behavior.
+	 *
+	 * Callers that have not yet been updated to pass the trust options should
+	 * see no behavioral change: the function should still include agent
+	 * extensions.
+	 *
+	 * @returns Nothing; asserts no filtering when options are not provided.
+	 */
+	void it("preserves legacy behavior when options are not provided", () => {
+		const config = { superagents: { extensions: ["global-ext"] } };
+		const agentExtensions = ["project-agent-ext"];
+		assert.deepEqual(resolveSubagentExtensions(config, agentExtensions), ["global-ext", "project-agent-ext"]);
+		assert.deepEqual(resolveSubagentExtensions(config, agentExtensions, {}), ["global-ext", "project-agent-ext"]);
+		assert.deepEqual(
+			resolveSubagentExtensions(config, agentExtensions, { agentSource: "project" }),
+			["global-ext", "project-agent-ext"],
+		);
+	});
 });
 
 void describe("isSchemeLikeExtensionSource", () => {
