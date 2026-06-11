@@ -13,8 +13,7 @@ import type { SuperpowersSettingsComponent } from "../../src/ui/sp-settings.ts";
 import { SuperpowersSettingsComponent as TestedComponent } from "../../src/ui/sp-settings.ts";
 
 // Re-export helper types for testing
-export type { SettingsMode } from "../../src/ui/sp-settings.ts";
-export type { SettingsModelOption } from "../../src/ui/sp-settings.ts";
+export type { SettingsMode, SettingsModelOption } from "../../src/ui/sp-settings.ts";
 
 function createThemeMock() {
 	return {
@@ -27,7 +26,9 @@ function createThemeMock() {
 function createTuiMock() {
 	let renderRequested = 0;
 	return {
-		requestRender: () => { renderRequested++; },
+		requestRender: () => {
+			renderRequested++;
+		},
 		_getRenderRequestCount: () => renderRequested,
 	};
 }
@@ -49,13 +50,7 @@ function createModel(provider: string, id: string, name?: string) {
 
 void test("handlePickerInput helper: q key navigates back from tier-picker to settings", () => {
 	const config = { superagents: { modelTiers: { cheap: { model: "test" } } } };
-	const component = new TestedComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		() => config,
-		{ models: [createModel("test", "model")] },
-	);
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, { models: [createModel("test", "model")] });
 
 	// Enter tier-picker mode
 	component.handleInput("m");
@@ -68,13 +63,7 @@ void test("handlePickerInput helper: q key navigates back from tier-picker to se
 
 void test("handlePickerInput helper: q key navigates back from thinking-picker to tier-picker", () => {
 	const config = { superagents: { modelTiers: { cheap: { model: "test" } } } };
-	const component = new TestedComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		() => config,
-		{ models: [createModel("test", "model")] },
-	);
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, { models: [createModel("test", "model")] });
 
 	// Navigate to thinking picker
 	component.handleInput("m");
@@ -90,13 +79,7 @@ void test("handlePickerInput helper: q key navigates back from thinking-picker t
 
 void test("handlePickerInput helper: escape key in tier-picker goes to settings", () => {
 	const config = { superagents: { modelTiers: { cheap: { model: "test" } } } };
-	const component = new TestedComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		() => config,
-		{ models: [createModel("test", "model")] },
-	);
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, { models: [createModel("test", "model")] });
 
 	component.handleInput("m");
 	component.handleInput("\x1b"); // Escape
@@ -113,13 +96,7 @@ void test("handlePickerInput helper: up arrow navigates tier picker", () => {
 			},
 		},
 	};
-	const component = new TestedComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		() => config,
-		{ models: [] },
-	);
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, { models: [] });
 
 	component.handleInput("m");
 	// Should start at cheap
@@ -147,13 +124,7 @@ void test("handlePickerInput helper: k key navigates tier picker (vim-style)", (
 			},
 		},
 	};
-	const component = new TestedComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		() => config,
-		{ models: [] },
-	);
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, { models: [] });
 
 	component.handleInput("m");
 	assert.match(component.render(92).join("\n"), /▸ cheap:/);
@@ -176,13 +147,7 @@ void test("handlePickerInput helper: j key navigates tier picker (vim-style)", (
 			},
 		},
 	};
-	const component = new TestedComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		() => config,
-		{ models: [] },
-	);
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, { models: [] });
 
 	component.handleInput("m");
 	assert.match(component.render(92).join("\n"), /▸ cheap:/);
@@ -194,13 +159,7 @@ void test("handlePickerInput helper: j key navigates tier picker (vim-style)", (
 
 void test("handlePickerInput helper: enter selects tier and enters model picker", () => {
 	const config = { superagents: { modelTiers: { cheap: { model: "test" } } } };
-	const component = new TestedComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		() => config,
-		{ models: [createModel("test", "model")] },
-	);
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, { models: [createModel("test", "model")] });
 
 	component.handleInput("m");
 	component.handleInput("\r");
@@ -210,13 +169,9 @@ void test("handlePickerInput helper: enter selects tier and enters model picker"
 
 void test("handlePickerInput helper: backspace in model picker removes last search char", () => {
 	const config = { superagents: { modelTiers: { cheap: { model: "test" } } } };
-	const component = new TestedComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		() => config,
-		{ models: [createModel("test", "alpha"), createModel("test", "beta"), createModel("other", "gamma")] },
-	);
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, {
+		models: [createModel("test", "alpha"), createModel("test", "beta"), createModel("other", "gamma")],
+	});
 
 	component.handleInput("m");
 	component.handleInput("\r"); // Enter model picker
@@ -232,13 +187,7 @@ void test("handlePickerInput helper: backspace in model picker removes last sear
 
 void test("handlePickerInput helper: escape in model picker with search clears search", () => {
 	const config = { superagents: { modelTiers: { cheap: { model: "test" } } } };
-	const component = new TestedComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		() => config,
-		{ models: [createModel("test", "alpha")] },
-	);
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, { models: [createModel("test", "alpha")] });
 
 	component.handleInput("m");
 	component.handleInput("\r");
@@ -252,13 +201,7 @@ void test("handlePickerInput helper: escape in model picker with search clears s
 
 void test("handlePickerInput helper: escape in model picker without search goes to tier-picker", () => {
 	const config = { superagents: { modelTiers: { cheap: { model: "test" } } } };
-	const component = new TestedComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		() => config,
-		{ models: [createModel("test", "alpha")] },
-	);
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, { models: [createModel("test", "alpha")] });
 
 	component.handleInput("m");
 	component.handleInput("\r");
@@ -270,13 +213,9 @@ void test("handlePickerInput helper: escape in model picker without search goes 
 
 void test("handlePickerInput helper: typing adds to search query in model picker", () => {
 	const config = { superagents: { modelTiers: { cheap: { model: "test" } } } };
-	const component = new TestedComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		() => config,
-		{ models: [createModel("test", "alpha"), createModel("test", "beta")] },
-	);
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, {
+		models: [createModel("test", "alpha"), createModel("test", "beta")],
+	});
 
 	component.handleInput("m");
 	component.handleInput("\r");
@@ -293,13 +232,9 @@ void test("handlePickerInput helper: typing adds to search query in model picker
 
 void test("handlePickerInput helper: enter in model picker enters thinking picker", () => {
 	const config = { superagents: { modelTiers: { cheap: { model: "old" } } } };
-	const component = new TestedComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		() => config,
-		{ models: [createModel("provider", "new-model", "New Model")] },
-	);
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, {
+		models: [createModel("provider", "new-model", "New Model")],
+	});
 
 	component.handleInput("m");
 	component.handleInput("\r"); // Enter model picker
@@ -311,13 +246,7 @@ void test("handlePickerInput helper: enter in model picker enters thinking picke
 
 void test("handlePickerInput helper: up/down navigate in thinking picker", () => {
 	const config = { superagents: { modelTiers: { cheap: { model: "test" } } } };
-	const component = new TestedComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		() => config,
-		{ models: [createModel("test", "model")] },
-	);
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, { models: [createModel("test", "model")] });
 
 	// Navigate to thinking picker
 	component.handleInput("m");
@@ -338,13 +267,9 @@ void test("handlePickerInput helper: up/down navigate in thinking picker", () =>
 
 void test("handlePickerInput helper: enter in thinking picker returns to tier-picker", () => {
 	const config = { superagents: { modelTiers: { cheap: { model: "old" } } } };
-	const component = new TestedComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		() => config,
-		{ models: [createModel("provider", "new", "New")] },
-	);
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, {
+		models: [createModel("provider", "new", "New")],
+	});
 
 	component.handleInput("m");
 	component.handleInput("\r");
@@ -356,13 +281,9 @@ void test("handlePickerInput helper: enter in thinking picker returns to tier-pi
 
 void test("handlePickerInput helper: j/k navigate in model picker", () => {
 	const config = { superagents: { modelTiers: { cheap: { model: "test" } } } };
-	const component = new TestedComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		() => config,
-		{ models: [createModel("p", "a"), createModel("p", "b"), createModel("p", "c")] },
-	);
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, {
+		models: [createModel("p", "a"), createModel("p", "b"), createModel("p", "c")],
+	});
 
 	component.handleInput("m");
 	component.handleInput("\r");
@@ -378,13 +299,7 @@ void test("handlePickerInput helper: j/k navigate in model picker", () => {
 
 void test("handlePickerInput helper: j/k navigate in thinking picker", () => {
 	const config = { superagents: { modelTiers: { cheap: { model: "test" } } } };
-	const component = new TestedComponent(
-		createTuiMock() as never,
-		createThemeMock() as never,
-		createState() as never,
-		() => config,
-		{ models: [createModel("p", "m")] },
-	);
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, { models: [createModel("p", "m")] });
 
 	component.handleInput("m");
 	component.handleInput("\r");
