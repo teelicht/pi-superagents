@@ -6,9 +6,9 @@ Maintenance note: skill discovery helpers are exercised through dynamic tests an
 
 ## Skill Locations (project-first precedence)
 
-- **Project:** `.pi/skills/{name}/SKILL.md` and `.agents/skills/{name}/SKILL.md`
-- **Project packages:** `.pi/npm/node_modules/*` via `package.json -> pi.skills`
-- **Project settings:** `.pi/settings.json -> skills`
+- **Project, only when Pi project trust is active:** `.pi/skills/{name}/SKILL.md` and `.agents/skills/{name}/SKILL.md`
+- **Project packages, only when Pi project trust is active:** `.pi/npm/node_modules/*` via `package.json -> pi.skills`
+- **Project settings, only when Pi project trust is active:** `.pi/settings.json -> skills`
 - **User:** `~/.pi/agent/skills/{name}/SKILL.md` and `~/.agents/skills/{name}/SKILL.md`
 - **User packages:** `~/.pi/agent/npm/node_modules/*` via `package.json -> pi.skills`
 - **User settings:** `~/.pi/agent/settings.json -> skills`

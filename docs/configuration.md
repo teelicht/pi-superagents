@@ -53,6 +53,26 @@ Each built-in command has a corresponding bundled interactive entrypoint agent f
 
 Built-in command behavior can be augmented or overridden by user config. Settings in your `config.json` are deep-merged on top of the bundled defaults: any fields you specify replace the corresponding built-in values, while unspecified fields remain at their built-in defaults. To create a variant of a built-in command, reference the built-in command name in your `commands` map and override only the fields you need. Use a different command name only when you also create a matching interactive entrypoint agent.
 
+## Project Trust
+
+On Pi 0.79+, `pi-superagents` mirrors Pi's project-trust decision through `ctx.isProjectTrusted()`. The following project-local inputs load only when the current Pi context reports the project as trusted:
+
+- **Project-local agents** (`.agents/*.md`, `.pi/agents/*.md`) used for runtime subagent delegation.
+- **Project skills** — see the [Skills Reference](skills.md#skills-reference) for the full project skill path policy.
+- **Project skill packages** (`.pi/npm/node_modules/*` via `package.json -> pi.skills`).
+- **Project settings skill entries** (`.pi/settings.json -> skills`).
+- **Project agent frontmatter `extensions:`** entries. Untrusted project agents do not contribute to child Pi `--extension` flags.
+
+User-level agents, user-level skills, package-bundled agents, and global npm package skills continue to load before project trust is granted.
+
+### Child Subagent Trust Mirroring
+
+Child subagent processes mirror the parent trust decision. Trusted parent contexts launch child Pi with `--approve`; untrusted parent contexts launch child Pi with `--no-approve`. This prevents non-interactive child runs from silently escalating trust into a project the user has not approved. Configure project-local Pi resources only for repositories you trust.
+
+### Slash Command Registration
+
+Trusting a project does **not** automatically register project-local interactive entrypoint agents as slash commands. Slash command registration is wired to user-level and package-bundled entrypoint agents, so custom slash commands should continue to be installed at the user level (for example, `~/.pi/agent/agents/sp-*.md`) or as package-bundled entrypoints, even when a project is trusted. If a future version wires trusted-project command registration, this section will be updated. Until then, project trust enables runtime subagent delegation from project agents but does not expose project entrypoint agents as `/sp-...` commands.
+
 ## Configuration Keys
 
 ### `superagents`
@@ -89,6 +109,9 @@ Package and remote entries should use normal Pi `-e` source prefixes such as `np
 
 Agent frontmatter can append additional extensions per-agent using the `extensions` field, which is additive to the global list. Extensions declared in agent frontmatter are appended to the global `extensions` array at session launch.
 
+> [!NOTE]
+> Project agent frontmatter `extensions:` entries are also subject to [Project Trust](#project-trust) and are ignored when the parent Pi context has not trusted the project.
+
 ### Global Tools
 
 Configure `superagents.tools` as a global list of tool names or tool extension paths that every subagent should receive:
@@ -104,6 +127,9 @@ Configure `superagents.tools` as a global list of tool names or tool extension p
 These tools are appended after each role's normal tool policy and de-duplicated while preserving order. The bundled default config provides the common read-only baseline (`read`, `grep`, `find`, `ls`) globally, so built-in role agents only list extra tools such as `bash` or `write` in frontmatter. Existing agent `tools:` frontmatter still defines that agent's baseline extras; `superagents.tools` saves you from repeating common additions. Path-like entries such as `./tools/shared-tool.ts` are passed to child Pi as tool extensions using Pi's normal `--extension` handling.
 
 Bounded Superpowers roles still cannot receive delegation tools such as `subagent` through this setting; those entries are filtered by policy for bounded roles. Child lifecycle tools (`subagent_done`, `caller_ping`) remain managed by the runtime.
+
+> [!NOTE]
+> Child subagent trust mirroring is governed by [Project Trust](#project-trust): trusted parent contexts launch child Pi with `--approve`; untrusted parent contexts launch child Pi with `--no-approve`.
 
 ### Entrypoint Agent Frontmatter
 

@@ -34,6 +34,18 @@ To remove:
 pi remove npm:@teelicht/pi-superagents
 ```
 
+For local development, use the package shortcut for the repository-local installer:
+
+```bash
+npm run install:local
+```
+
+## Project Trust
+
+On Pi 0.79+, `pi-superagents` mirrors Pi's project-trust decision. Project-local agents, skills, skill packages, `.pi/settings.json` skill entries, and project agent frontmatter extensions are loaded only when the current Pi context reports the project as trusted. Child subagent Pi processes receive `--approve` when the parent context is trusted and `--no-approve` when it is not, so non-interactive child runs do not silently escalate trust.
+
+Trusting a project enables runtime subagent delegation from project agents but does not automatically register project-local interactive entrypoint agents as slash commands. Custom slash commands should be installed as user-level (`~/.pi/agent/agents/sp-*.md`) or package-bundled entrypoint agents. See [Project Trust](docs/configuration.md#project-trust) in the Configuration reference for the full trust-gated inputs list and slash command registration caveats, and the [Skills Reference](docs/skills.md#skills-reference) for the project skill path policy.
+
 ## Execution Model
 
 Subagent execution is synchronous and blocking. The `subagent` tool does not accept `async`, `wait`, `collect`, or `cancel` parameters. Lifecycle tools (`subagent_done`, `caller_ping`) are registered as internal child-only tools through policy; they are not general-purpose delegation tools.
