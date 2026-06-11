@@ -19,7 +19,7 @@ import { randomUUID } from "node:crypto";
 import * as path from "node:path";
 import type { AgentToolResult } from "@earendil-works/pi-agent-core";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { AgentConfig, AgentScope } from "../agents/agents.ts";
+import type { AgentConfig } from "../agents/agents.ts";
 import { getArtifactsDir } from "../shared/artifacts.ts";
 import { getPublishedExecutionSkills, normalizeSkillInput, resolveExecutionSkills } from "../shared/skills.ts";
 import { extractThinkingSuffix, toThinkingLevel } from "../shared/thinking-levels.ts";
@@ -79,11 +79,34 @@ import {
 // ---------------------------------------------------------------------------
 
 
+
+/**
+ * Read the parent Pi project-trust decision from the extension context.
+ *
+ * Uses a typed-optional lookup so the build succeeds against the current Pi
+ * 0.75 type surface where `isProjectTrusted` is not yet declared; once Pi 0.79+
+ * is the minimum, this helper can be removed in favor of `ctx.isProjectTrusted()`.
+ *
+ * @param ctx Pi extension context.
+ * @returns True when the project is trusted; defaults to true for compatibility.
+ */
+function isProjectTrusted(ctx: ExtensionContext): boolean {
+	const candidate = (ctx as unknown as { isProjectTrusted?: () => boolean }).isProjectTrusted;
+	if (typeof candidate === "function") {
+		try {
+			return candidate.call(ctx) !== false;
+		} catch {
+			return true;
+		}
+	}
+	return true;
+}
+
 interface ExecutorDeps {
 	state: SubagentState;
 	getConfig: () => ExtensionConfig;
 	getSubagentSessionRoot: (parentSessionFile: string | null) => string;
-	discoverAgents: (cwd: string, scope: AgentScope) => { agents: AgentConfig[] };
+	discoverAgents: (cwd: string, options?: { includeProject?: boolean }) => { agents: AgentConfig[] };
 	/** Absolute extension entrypoint used to expose lifecycle tools inside child sessions. */
 	lifecycleExtensionEntry?: string;
 }
@@ -698,7 +721,8 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 
 		const parentSessionFile = ctx.sessionManager.getSessionFile() ?? null;
 		deps.state.currentSessionId = parentSessionFile ?? `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-		const agents = deps.discoverAgents(ctx.cwd, "both").agents;
+		const projectTrusted = isProjectTrusted(ctx);
+		const agents = deps.discoverAgents(ctx.cwd, { includeProject: projectTrusted }).agents;
 		const runId = randomUUID().slice(0, 8);
 		const hasTasks = (params.tasks?.length ?? 0) > 0;
 		const hasSingle = Boolean(params.agent && params.task);

@@ -5,6 +5,8 @@
  * - verify skills resolve from project-local and user-global `.agents` folders
  * - verify agents resolve from project-local and user-global `.agents` folders
  * - preserve existing path resolution behavior during the src-layout refactor
+ * - verify project-local agent discovery is skipped when includeProject is false
+ *   (Pi project trust policy)
  */
 
 import * as assert from "node:assert";
@@ -26,20 +28,22 @@ interface DiscoveredAgent {
 
 interface AgentDiscoveryResult {
 	agents: DiscoveredAgent[];
+	projectAgentsDir: string | null;
 }
 
 interface AgentDiscoveryAllResult {
 	builtin: DiscoveredAgent[];
 	user: DiscoveredAgent[];
 	project: DiscoveredAgent[];
+	projectDir: string | null;
 }
 
 interface ResolvedSkill {
 	path: string;
 }
 
-let discoverAgents: ((cwd: string) => AgentDiscoveryResult) | undefined;
-let discoverAgentsAll: ((cwd: string) => AgentDiscoveryAllResult) | undefined;
+let discoverAgents: ((cwd: string, options?: { includeProject?: boolean }) => AgentDiscoveryResult) | undefined;
+let discoverAgentsAll: ((cwd: string, options?: { includeProject?: boolean }) => AgentDiscoveryAllResult) | undefined;
 let resolveSkillPath: ((skillName: string, cwd: string) => ResolvedSkill | null | undefined) | undefined;
 let clearSkillCache: (() => void) | undefined;
 let discoverAvailableSkills: ((cwd: string) => Array<{ name: string; source: string; description?: string }>) | undefined;
@@ -216,5 +220,74 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 		const agent = result.agents.find((candidate) => candidate.name === "sp-debug");
 		assert.ok(agent, "expected built-in sp-debug agent");
 		assert.deepStrictEqual(agent?.skills, ["systematic-debugging"]);
+	});
+
+	void test("skips project agents when project inputs are not trusted", () => {
+		assertModulesLoaded();
+
+		const isolatedCwd = fs.mkdtempSync(path.join(tempRoot, "untrusted-agents-"));
+		const agentsDir = path.join(isolatedCwd, ".agents");
+		fs.mkdirSync(agentsDir, { recursive: true });
+		fs.writeFileSync(path.join(agentsDir, "untrusted-agent.md"), "---\nname: untrusted-agent\ndescription: Untrusted agent\n---\nAgent content");
+
+		const result = discoverAgentsAll!(isolatedCwd, { includeProject: false });
+
+		assert.equal(result.project.length, 0);
+		assert.equal(result.builtin.length > 0, true);
+		assert.strictEqual(result.projectDir, null);
+	});
+
+	void test("includes project agents when project inputs are trusted", () => {
+		assertModulesLoaded();
+
+		const isolatedCwd = fs.mkdtempSync(path.join(tempRoot, "trusted-agents-"));
+		const agentsDir = path.join(isolatedCwd, ".agents");
+		fs.mkdirSync(agentsDir, { recursive: true });
+		fs.writeFileSync(path.join(agentsDir, "trusted-agent.md"), "---\nname: trusted-agent\ndescription: Trusted agent\n---\nAgent content");
+
+		const result = discoverAgentsAll!(isolatedCwd, { includeProject: true });
+		const agent = result.project.find((candidate) => candidate.name === "trusted-agent");
+
+		assert.ok(agent);
+		assert.strictEqual(agent?.filePath, path.join(agentsDir, "trusted-agent.md"));
+	});
+
+	void test("discoverAgents excludes project agent from merged list when project inputs are not trusted", () => {
+		assertModulesLoaded();
+
+		const isolatedCwd = fs.mkdtempSync(path.join(tempRoot, "untrusted-merged-agents-"));
+		const agentsDir = path.join(isolatedCwd, ".agents");
+		fs.mkdirSync(agentsDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(agentsDir, "untrusted-merged-agent.md"),
+			"---\nname: untrusted-merged-agent\ndescription: Untrusted merged agent\n---\nAgent content",
+		);
+
+		const result = discoverAgents!(isolatedCwd, { includeProject: false });
+
+		assert.strictEqual(
+			result.agents.find((candidate) => candidate.name === "untrusted-merged-agent"),
+			undefined,
+		);
+		assert.strictEqual(result.projectAgentsDir, null);
+	});
+
+	void test("discoverAgents includes project agent in merged list when project inputs are trusted", () => {
+		assertModulesLoaded();
+
+		const isolatedCwd = fs.mkdtempSync(path.join(tempRoot, "trusted-merged-agents-"));
+		const agentsDir = path.join(isolatedCwd, ".agents");
+		fs.mkdirSync(agentsDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(agentsDir, "trusted-merged-agent.md"),
+			"---\nname: trusted-merged-agent\ndescription: Trusted merged agent\n---\nAgent content",
+		);
+
+		const result = discoverAgents!(isolatedCwd, { includeProject: true });
+		const agent = result.agents.find((candidate) => candidate.name === "trusted-merged-agent");
+
+		assert.ok(agent, "expected project agent to be present in merged agents list");
+		assert.strictEqual(agent?.filePath, path.join(agentsDir, "trusted-merged-agent.md"));
+		assert.strictEqual(result.projectAgentsDir, agentsDir);
 	});
 });
