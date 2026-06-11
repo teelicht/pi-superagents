@@ -53,6 +53,11 @@ export interface BuildPiArgsInput {
 	systemPrompt?: string | null;
 	mcpDirectTools?: string[];
 	promptFileStem?: string;
+	/**
+	 * Mirrors the parent Pi project-trust decision into child non-interactive Pi runs.
+	 * true emits --approve, false emits --no-approve, undefined leaves Pi defaults unchanged.
+	 */
+	projectTrusted?: boolean;
 }
 
 /**
@@ -111,6 +116,12 @@ export function buildPiArgs(input: BuildPiArgsInput): BuildPiArgsResult {
 		if (!input.sessionEnabled) {
 			args.push("--no-session");
 		}
+	}
+
+	if (input.projectTrusted === true) {
+		args.push("--approve");
+	} else if (input.projectTrusted === false) {
+		args.push("--no-approve");
 	}
 
 	const modelArg = applyThinkingSuffix(input.model, input.thinking);
