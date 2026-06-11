@@ -727,7 +727,7 @@ git commit -m "docs: describe project trust handling"
 - Verify all modified files
 - Remove unintended untracked `pnpm-lock.yaml` unless the project intentionally adopts pnpm lockfiles
 
-- [ ] **Step 1: Check working tree**
+- [x] **Step 1: Check working tree**
 
 Run:
 
@@ -737,7 +737,7 @@ git status --short
 
 Expected: only intentional tracked changes after task commits, plus no unintended `pnpm-lock.yaml` unless explicitly accepted.
 
-- [ ] **Step 2: Run typecheck**
+- [x] **Step 2: Run typecheck**
 
 Run:
 
@@ -747,7 +747,7 @@ npm run typecheck
 
 Expected: TypeScript exits 0.
 
-- [ ] **Step 3: Run full unit test suite**
+- [x] **Step 3: Run full unit test suite**
 
 Run:
 
@@ -757,7 +757,7 @@ npm run test:unit
 
 Expected: all unit tests pass.
 
-- [ ] **Step 4: Run full QA if time permits**
+- [x] **Step 4: Run full QA if time permits**
 
 Run:
 
@@ -767,7 +767,7 @@ npm run qa
 
 Expected: Biome, typecheck, and all tests pass. If `qa` reformats files, inspect the diff and keep only intentional formatting changes.
 
-- [ ] **Step 5: Final diff review**
+- [x] **Step 5: Final diff review**
 
 Run:
 
