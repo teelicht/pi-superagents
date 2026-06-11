@@ -12,8 +12,8 @@
  * - state is in-memory and scoped to the current executor call/runtime instance
  */
 
-import type { ChildRunResult, CompletedDelivery, DeliveryState, ResultDeliveryError, SubagentCompletionEnvelope } from "../shared/types.ts";
 import { getSingleResultOutput } from "../shared/message-utils.ts";
+import type { ChildRunResult, CompletedDelivery, DeliveryState, ResultDeliveryError, SubagentCompletionEnvelope } from "../shared/types.ts";
 
 export interface RegisterChildInput {
 	id: string;

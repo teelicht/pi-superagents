@@ -77,8 +77,8 @@ void describe("package.json manifest", () => {
 	void it("denies nonessential transitive dependency build scripts for pnpm install", () => {
 		const workspaceConfig = readTextFile("pnpm-workspace.yaml");
 		assert.match(workspaceConfig, /^allowBuilds:\n/m);
-		assert.match(workspaceConfig, /^  '@google\/genai': false$/m);
-		assert.match(workspaceConfig, /^  protobufjs: false$/m);
+		assert.match(workspaceConfig, /^ {2}'@google\/genai': false$/m);
+		assert.match(workspaceConfig, /^ {2}protobufjs: false$/m);
 	});
 
 	void it("uses Pi 0.79.1 or newer dev dependencies for project trust APIs", () => {

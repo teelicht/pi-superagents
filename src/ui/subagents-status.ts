@@ -21,7 +21,6 @@ import { buildRows, renderSubagentsStatusBody, runKey, type StatusRow } from "./
 const DEFAULT_REFRESH_MS = 2000;
 const DEFAULT_RECENT_LIMIT = 20;
 
-
 export interface SubagentsStatusDeps {
 	getActiveRuns?: () => RunEntry[];
 	getRecentRuns?: (limit: number) => RunEntry[];
@@ -82,7 +81,6 @@ export class SubagentsStatusComponent implements Component {
 	invalidate(): void {
 		this.tui.requestRender();
 	}
-
 
 	dispose(): void {
 		clearInterval(this.refreshTimer);
@@ -148,4 +146,3 @@ export class SubagentsStatusComponent implements Component {
 		});
 	}
 }
-

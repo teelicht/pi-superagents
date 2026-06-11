@@ -20,8 +20,10 @@ import { spawn } from "node:child_process";
 import type { Message } from "@earendil-works/pi-ai";
 import type { AgentConfig } from "../agents/agents.ts";
 import { ensureArtifactsDir, getArtifactPaths, writeArtifact, writeMetadata } from "../shared/artifacts.ts";
+import { detectSubagentError, extractTextFromContent, getFinalOutput } from "../shared/message-utils.ts";
 import { buildSkillInjection, getPublishedExecutionSkills, resolveExecutionSkills } from "../shared/skills.ts";
 import { extractThinkingSuffix, toThinkingLevel } from "../shared/thinking-levels.ts";
+import { extractToolArgsPreview } from "../shared/tool-utils.ts";
 import {
 	type AgentProgress,
 	type ArtifactPaths,
@@ -32,10 +34,9 @@ import {
 	type SingleResult,
 	truncateOutput,
 } from "../shared/types.ts";
-import { detectSubagentError, extractTextFromContent, getFinalOutput } from "../shared/message-utils.ts";
-import { extractToolArgsPreview } from "../shared/tool-utils.ts";
 
 const DEFAULT_LIFECYCLE_EXTENSION_ENTRY = new URL(["..", "extension", "index.ts"].join("/"), import.meta.url).pathname;
+
 import { createJsonlWriter } from "./jsonl-writer.ts";
 import { consumeLifecycleSignal } from "./lifecycle-signals.ts";
 import { buildPiArgs, cleanupTempDir } from "./pi-args.ts";
@@ -44,7 +45,6 @@ import { deriveCompletionEnvelope } from "./result-delivery.ts";
 import { globalRunHistory } from "./run-history.ts";
 import { findMissingSubagentExtensionPath, findMissingSubagentToolPath, resolveSubagentExtensions } from "./superagents-config.ts";
 import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./superpowers-policy.ts";
-
 
 /**
  * Attach lifecycle sidecar result and derive completion envelope.
@@ -235,11 +235,7 @@ function prepareChildLaunch(runtimeCwd: string, agentName: string, task: string,
 
 	const missingTool = findMissingSubagentToolPath(runtimeCwd, config.superagents?.tools, agent.tools);
 	if (missingTool) {
-		return createLaunchErrorResult(
-			agentName,
-			task,
-			`Tool path from ${missingTool.source} does not exist: ${missingTool.configuredPath} (resolved to ${missingTool.resolvedPath})`,
-		);
+		return createLaunchErrorResult(agentName, task, `Tool path from ${missingTool.source} does not exist: ${missingTool.configuredPath} (resolved to ${missingTool.resolvedPath})`);
 	}
 
 	const execution = resolveChildExecutionOptions(runtimeCwd, agent, options);
@@ -252,7 +248,11 @@ function prepareChildLaunch(runtimeCwd: string, agentName: string, task: string,
 		options.lifecycleExtensionEntry,
 	);
 	const sessionEnabled = Boolean(options.sessionFile);
-	const { args, env: sharedEnv, tempDir } = buildPiArgs({
+	const {
+		args,
+		env: sharedEnv,
+		tempDir,
+	} = buildPiArgs({
 		baseArgs: ["--mode", "json", "-p"],
 		task,
 		sessionEnabled,

@@ -168,10 +168,7 @@ function collectPackageSkillPaths(cwd: string, options: SkillDiscoveryOptions = 
  */
 function collectConfiguredPackageRoots(cwd: string, options: SkillDiscoveryOptions = {}): string[] {
 	const includeProject = options.includeProject ?? true;
-	const dirs = [
-		...(includeProject ? [path.join(cwd, CONFIG_DIR, "npm", "node_modules")] : []),
-		path.join(AGENT_DIR, "npm", "node_modules"),
-	];
+	const dirs = [...(includeProject ? [path.join(cwd, CONFIG_DIR, "npm", "node_modules")] : []), path.join(AGENT_DIR, "npm", "node_modules")];
 	const globalRoot = getGlobalNpmRoot();
 	if (globalRoot) dirs.push(globalRoot);
 	return dirs;
@@ -251,9 +248,7 @@ function collectSettingsSkillPaths(cwd: string, options: SkillDiscoveryOptions =
 	const includeProject = options.includeProject ?? true;
 	const results: string[] = [];
 	const settingsFiles = [
-		...(includeProject
-			? [{ file: path.join(cwd, CONFIG_DIR, "settings.json"), base: path.join(cwd, CONFIG_DIR) }]
-			: []),
+		...(includeProject ? [{ file: path.join(cwd, CONFIG_DIR, "settings.json"), base: path.join(cwd, CONFIG_DIR) }] : []),
 		{ file: path.join(AGENT_DIR, "settings.json"), base: AGENT_DIR },
 	];
 
@@ -338,12 +333,7 @@ function chooseHigherPrioritySkill(existing: CachedSkillEntry | undefined, candi
 function getCachedSkills(cwd: string, options: SkillDiscoveryOptions = {}): CachedSkillEntry[] {
 	const includeProject = options.includeProject ?? true;
 	const now = Date.now();
-	if (
-		loadSkillsCache &&
-		loadSkillsCache.cwd === cwd &&
-		loadSkillsCache.includeProject === includeProject &&
-		now - loadSkillsCache.timestamp < LOAD_SKILLS_CACHE_TTL_MS
-	) {
+	if (loadSkillsCache && loadSkillsCache.cwd === cwd && loadSkillsCache.includeProject === includeProject && now - loadSkillsCache.timestamp < LOAD_SKILLS_CACHE_TTL_MS) {
 		return loadSkillsCache.skills;
 	}
 
@@ -550,7 +540,10 @@ export function normalizeSkillInput(input: string | string[] | boolean | undefin
 	];
 }
 
-export function discoverAvailableSkills(cwd: string, options: SkillDiscoveryOptions = {}): Array<{
+export function discoverAvailableSkills(
+	cwd: string,
+	options: SkillDiscoveryOptions = {},
+): Array<{
 	name: string;
 	source: SkillSource;
 	description?: string;

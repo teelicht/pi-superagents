@@ -21,6 +21,7 @@ import type { AgentToolResult } from "@earendil-works/pi-agent-core";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { AgentConfig } from "../agents/agents.ts";
 import { getArtifactsDir } from "../shared/artifacts.ts";
+import { getSingleResultOutput } from "../shared/message-utils.ts";
 import { getPublishedExecutionSkills, normalizeSkillInput, resolveExecutionSkills } from "../shared/skills.ts";
 import { extractThinkingSuffix, toThinkingLevel } from "../shared/thinking-levels.ts";
 import {
@@ -39,13 +40,11 @@ import {
 	resolveCurrentMaxSubagentDepth,
 	type SessionMode,
 	type SingleResult,
-	type SubagentState,
 	type SubagentParamsLike,
+	type SubagentState,
 	type TaskParam,
 	type WorkflowMode,
 } from "../shared/types.ts";
-import { mapConcurrent } from "./parallel-utils.ts";
-import { getSingleResultOutput } from "../shared/message-utils.ts";
 import { runPreparedChild } from "./child-runner.ts";
 import { type PlanChildRunInput, planChildRun } from "./execution-planner.ts";
 import {
@@ -58,7 +57,7 @@ import {
 	withSessionModeDetails,
 	withSingleResultSessionMode,
 } from "./executor-validation.ts";
-import { aggregateParallelOutputs } from "./parallel-utils.ts";
+import { aggregateParallelOutputs, mapConcurrent } from "./parallel-utils.ts";
 import { createResultDeliveryStore } from "./result-delivery.ts";
 import { createSessionLaunchResolver, resolveRequestedSessionMode, type SessionLaunchManager } from "./session-mode.ts";
 import { resolveStepBehavior } from "./settings.ts";
@@ -77,8 +76,6 @@ import {
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-
 
 /**
  * Read the parent Pi project-trust decision from the extension context.

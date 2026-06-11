@@ -225,10 +225,7 @@ void describe("resolveSubagentExtensions", () => {
 		const agentExtensions = ["project-agent-ext"];
 		assert.deepEqual(resolveSubagentExtensions(config, agentExtensions), ["global-ext", "project-agent-ext"]);
 		assert.deepEqual(resolveSubagentExtensions(config, agentExtensions, {}), ["global-ext", "project-agent-ext"]);
-		assert.deepEqual(
-			resolveSubagentExtensions(config, agentExtensions, { agentSource: "project" }),
-			["global-ext", "project-agent-ext"],
-		);
+		assert.deepEqual(resolveSubagentExtensions(config, agentExtensions, { agentSource: "project" }), ["global-ext", "project-agent-ext"]);
 	});
 });
 

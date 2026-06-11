@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
+import type { AgentConfig } from "../../src/agents/agents.ts";
 import { buildPiArgs } from "../../src/execution/pi-args.ts";
 import { getChildRunnerExports } from "../support/child-runner-helpers.ts";
 import type { MockPi } from "../support/helpers.ts";
 import { createMockPi, createTempDir, removeTempDir } from "../support/helpers.ts";
-import type { AgentConfig } from "../../src/agents/agents.ts";
 
 /**
  * Extracts extension argument values from the full args array.
@@ -166,13 +166,7 @@ void describe("child-runner prepared child args", () => {
 		error?: string;
 		messages: Array<{ role: string; content: Array<{ type: string; text?: string }> }>;
 	}
-	let runPreparedChild: (
-		runtimeCwd: string,
-		agents: AgentConfig[],
-		agentName: string,
-		task: string,
-		options: Record<string, unknown>,
-	) => Promise<CapturedResult>;
+	let runPreparedChild: (runtimeCwd: string, agents: AgentConfig[], agentName: string, task: string, options: Record<string, unknown>) => Promise<CapturedResult>;
 
 	before(async () => {
 		mockPi = createMockPi();
@@ -205,7 +199,9 @@ void describe("child-runner prepared child args", () => {
 	async function runAndCaptureArgs(agent: AgentConfig, options: Record<string, unknown> = {}): Promise<string[]> {
 		mockPi.onCall({ echoArgs: true });
 		const result = await runPreparedChild(tempDir, [agent], agent.name, "Task", { runId: "args-capture", ...options });
-		if (result.exitCode !== 0) { throw new Error("child exited with code " + result.exitCode + ": " + (result.error ?? "unknown error")); }
+		if (result.exitCode !== 0) {
+			throw new Error("child exited with code " + result.exitCode + ": " + (result.error ?? "unknown error"));
+		}
 		const assistant = result.messages.find((message) => message.role === "assistant");
 		const text = assistant?.content.find((part) => part.type === "text")?.text ?? "[]";
 		return JSON.parse(text) as string[];

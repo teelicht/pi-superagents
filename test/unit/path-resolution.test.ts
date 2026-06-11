@@ -46,9 +46,7 @@ let discoverAgents: ((cwd: string, options?: { includeProject?: boolean }) => Ag
 let discoverAgentsAll: ((cwd: string, options?: { includeProject?: boolean }) => AgentDiscoveryAllResult) | undefined;
 let resolveSkillPath: ((skillName: string, cwd: string, options?: { includeProject?: boolean }) => ResolvedSkill | null | undefined) | undefined;
 let clearSkillCache: (() => void) | undefined;
-let discoverAvailableSkills:
-	| ((cwd: string, options?: { includeProject?: boolean }) => Array<{ name: string; source: string; description?: string }>)
-	| undefined;
+let discoverAvailableSkills: ((cwd: string, options?: { includeProject?: boolean }) => Array<{ name: string; source: string; description?: string }>) | undefined;
 let moduleLoadError: unknown;
 
 const originalHome = process.env.HOME;
@@ -260,10 +258,7 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 		const isolatedCwd = fs.mkdtempSync(path.join(tempRoot, "untrusted-merged-agents-"));
 		const agentsDir = path.join(isolatedCwd, ".agents");
 		fs.mkdirSync(agentsDir, { recursive: true });
-		fs.writeFileSync(
-			path.join(agentsDir, "untrusted-merged-agent.md"),
-			"---\nname: untrusted-merged-agent\ndescription: Untrusted merged agent\n---\nAgent content",
-		);
+		fs.writeFileSync(path.join(agentsDir, "untrusted-merged-agent.md"), "---\nname: untrusted-merged-agent\ndescription: Untrusted merged agent\n---\nAgent content");
 
 		const result = discoverAgents!(isolatedCwd, { includeProject: false });
 
@@ -280,10 +275,7 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 		const isolatedCwd = fs.mkdtempSync(path.join(tempRoot, "trusted-merged-agents-"));
 		const agentsDir = path.join(isolatedCwd, ".agents");
 		fs.mkdirSync(agentsDir, { recursive: true });
-		fs.writeFileSync(
-			path.join(agentsDir, "trusted-merged-agent.md"),
-			"---\nname: trusted-merged-agent\ndescription: Trusted merged agent\n---\nAgent content",
-		);
+		fs.writeFileSync(path.join(agentsDir, "trusted-merged-agent.md"), "---\nname: trusted-merged-agent\ndescription: Trusted merged agent\n---\nAgent content");
 
 		const result = discoverAgents!(isolatedCwd, { includeProject: true });
 		const agent = result.agents.find((candidate) => candidate.name === "trusted-merged-agent");
@@ -313,10 +305,7 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 		const isolatedCwd = fs.mkdtempSync(path.join(tempRoot, "untrusted-discover-skills-"));
 		const skillsDir = path.join(isolatedCwd, ".agents", "skills");
 		fs.mkdirSync(skillsDir, { recursive: true });
-		fs.writeFileSync(
-			path.join(skillsDir, "untrusted-discover-skill.md"),
-			"---\nname: untrusted-discover-skill\ndescription: Untrusted discoverable skill\n---\nSkill content",
-		);
+		fs.writeFileSync(path.join(skillsDir, "untrusted-discover-skill.md"), "---\nname: untrusted-discover-skill\ndescription: Untrusted discoverable skill\n---\nSkill content");
 
 		clearSkillCache!();
 		const skills = discoverAvailableSkills!(isolatedCwd, { includeProject: false });
@@ -334,10 +323,7 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 		const isolatedCwd = fs.mkdtempSync(path.join(tempRoot, "trusted-discover-skills-"));
 		const skillsDir = path.join(isolatedCwd, ".agents", "skills");
 		fs.mkdirSync(skillsDir, { recursive: true });
-		fs.writeFileSync(
-			path.join(skillsDir, "trusted-discover-skill.md"),
-			"---\nname: trusted-discover-skill\ndescription: Trusted discoverable skill\n---\nSkill content",
-		);
+		fs.writeFileSync(path.join(skillsDir, "trusted-discover-skill.md"), "---\nname: trusted-discover-skill\ndescription: Trusted discoverable skill\n---\nSkill content");
 
 		clearSkillCache!();
 		const skills = discoverAvailableSkills!(isolatedCwd, { includeProject: true });

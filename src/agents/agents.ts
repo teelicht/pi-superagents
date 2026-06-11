@@ -270,7 +270,10 @@ export function discoverAgents(cwd: string, options: AgentDiscoveryOptions = {})
 	return { agents, projectAgentsDir };
 }
 
-export function discoverAgentsAll(cwd: string, options: AgentDiscoveryOptions = {}): {
+export function discoverAgentsAll(
+	cwd: string,
+	options: AgentDiscoveryOptions = {},
+): {
 	builtin: AgentConfig[];
 	user: AgentConfig[];
 	project: AgentConfig[];

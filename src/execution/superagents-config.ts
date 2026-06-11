@@ -119,11 +119,7 @@ export interface ResolveSubagentExtensionsOptions {
  * @param options Optional trust-aware filtering options.
  * @returns Combined extension array with global extensions first, then agent extensions.
  */
-export function resolveSubagentExtensions(
-	config: ExtensionConfig,
-	agentExtensions: string[] | undefined,
-	options: ResolveSubagentExtensionsOptions = {},
-): string[] {
+export function resolveSubagentExtensions(config: ExtensionConfig, agentExtensions: string[] | undefined, options: ResolveSubagentExtensionsOptions = {}): string[] {
 	const { agentSource, projectTrusted } = options;
 	const trustGatedProjectAgent = agentSource === "project" && projectTrusted === false;
 	const effectiveAgentExtensions = trustGatedProjectAgent ? undefined : agentExtensions;
