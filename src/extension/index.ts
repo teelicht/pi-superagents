@@ -124,18 +124,20 @@ function _ensureAccessibleDir(dirPath: string): void {
  * Discover interactive entrypoint command names from agent markdown files.
  *
  * Inputs/outputs:
- * - discovers agents via discoverAgents(cwd)
+ * - discovers agents via discoverAgents(cwd, { includeProject })
  * - filters for kind=entrypoint, execution=interactive
  * - extracts command name from agent.command ?? agent.name
  *
  * Invariants:
  * - only returns command names for agents that have a command field
+ * - when includeProject is false, project-local entrypoint agents are not returned
  *
  * @param cwd Current working directory for agent discovery.
+ * @param includeProject Whether to include project-local entrypoint agents.
  * @returns Array of discovered interactive entrypoint command names.
  */
-function discoverEntrypointCommandNames(cwd: string): string[] {
-	return discoverAgents(cwd)
+function discoverEntrypointCommandNames(cwd: string, includeProject: boolean): string[] {
+	return discoverAgents(cwd, { includeProject })
 		.agents.filter((agent) => agent.kind === "entrypoint" && agent.execution === "interactive")
 		.map((agent) => agent.command ?? agent.name)
 		.filter((commandName): commandName is string => Boolean(commandName));
@@ -244,7 +246,7 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 
 	// Create runtime config store with callback that uses live session baseCwd
 	// for stale command detection (avoids reliance on process.cwd() which may be wrong)
-	const configStore = createRuntimeConfigStore(resolvePackageRoot(extensionEntryDir), resolveUserConfigDir(), () => discoverEntrypointCommandNames(state.baseCwd));
+	const configStore = createRuntimeConfigStore(resolvePackageRoot(extensionEntryDir), resolveUserConfigDir(), () => discoverEntrypointCommandNames(state.baseCwd, false));
 
 	// Trigger initial load so gate state reflects the session cwd
 	configStore.reloadConfig();
@@ -501,6 +503,7 @@ Bounded role agents are not allowed to call subagents.`,
 		state,
 		() => configStore.getConfig(),
 		() => configStore.reloadConfig(),
+		false,
 	);
 	const skillCommandPromptDispatcher = createSuperpowersPromptDispatcher(pi);
 

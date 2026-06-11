@@ -216,12 +216,14 @@ function registerSuperpowersCommand(
  * @param state Shared extension state for config gate checks.
  * @param configSource Effective extension config for default resolution.
  * @param reloadConfig Optional callback to reload config after settings changes.
+ * @param projectTrusted Whether project-local entrypoint agents should be loaded. Defaults to true.
  */
-export function registerSlashCommands(pi: ExtensionAPI, state: SubagentState, configSource: ConfigSource, reloadConfig?: () => void): void {
+
+export function registerSlashCommands(pi: ExtensionAPI, state: SubagentState, configSource: ConfigSource, reloadConfig?: () => void, projectTrusted: boolean = true): void {
 	const dispatcher = createSuperpowersPromptDispatcher(pi);
 
 	// Register commands from discovered interactive entrypoint agents
-	const entrypointAgents = discoverAgents(state.baseCwd).agents.filter(
+	const entrypointAgents = discoverAgents(state.baseCwd, { includeProject: projectTrusted }).agents.filter(
 		(agent) => agent.kind === "entrypoint" && agent.execution === "interactive" && (agent.command ?? agent.name),
 	);
 	for (const entrypointAgent of entrypointAgents) {

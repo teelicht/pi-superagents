@@ -230,10 +230,27 @@ function findNearestProjectAgentsDir(cwd: string): string | null {
 
 const BUILTIN_AGENTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../agents");
 
-export function discoverAgents(cwd: string): AgentDiscoveryResult {
+/**
+ * Options controlling agent discovery scope.
+ */
+export interface AgentDiscoveryOptions {
+	/**
+	 * Whether project-local .agents and .pi/agents should be loaded.
+	 * Defaults to true for compatibility.
+	 *
+	 * When false, the `projectDir` (or `projectAgentsDir`) field on the
+	 * discovery result is always `null` and no project agents are merged
+	 * into the returned agents list. Used to enforce the Pi project trust
+	 * policy: project-local definitions are only loaded for trusted inputs.
+	 */
+	includeProject?: boolean;
+}
+
+export function discoverAgents(cwd: string, options: AgentDiscoveryOptions = {}): AgentDiscoveryResult {
+	const includeProject = options.includeProject ?? true;
 	const userDirOld = path.join(os.homedir(), ".pi", "agent", "agents");
 	const userDirNew = path.join(os.homedir(), ".agents");
-	const projectAgentsDir = findNearestProjectAgentsDir(cwd);
+	const projectAgentsDir = includeProject ? findNearestProjectAgentsDir(cwd) : null;
 
 	const builtinAgents = loadAgentsFromDir(BUILTIN_AGENTS_DIR, "builtin");
 
@@ -253,16 +270,17 @@ export function discoverAgents(cwd: string): AgentDiscoveryResult {
 	return { agents, projectAgentsDir };
 }
 
-export function discoverAgentsAll(cwd: string): {
+export function discoverAgentsAll(cwd: string, options: AgentDiscoveryOptions = {}): {
 	builtin: AgentConfig[];
 	user: AgentConfig[];
 	project: AgentConfig[];
 	userDir: string;
 	projectDir: string | null;
 } {
+	const includeProject = options.includeProject ?? true;
 	const userDirOld = path.join(os.homedir(), ".pi", "agent", "agents");
 	const userDirNew = path.join(os.homedir(), ".agents");
-	const projectDir = findNearestProjectAgentsDir(cwd);
+	const projectDir = includeProject ? findNearestProjectAgentsDir(cwd) : null;
 
 	const builtin = loadAgentsFromDir(BUILTIN_AGENTS_DIR, "builtin");
 	const user = [...loadAgentsFromDir(userDirOld, "user"), ...loadAgentsFromDir(userDirNew, "user")];
