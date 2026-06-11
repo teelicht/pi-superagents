@@ -178,6 +178,7 @@ function resolveChildExecutionOptions(runtimeCwd: string, agent: AgentConfig, op
 		config,
 		useTestDrivenDevelopment,
 		skills: configuredSkills,
+		includeProject: options.projectTrusted ?? true,
 	});
 	const resolvedSkillNames = getPublishedExecutionSkills(resolvedSkills);
 	const skillsWarning = missingSkills.length > 0 ? `Skills not found: ${missingSkills.join(", ")}` : undefined;

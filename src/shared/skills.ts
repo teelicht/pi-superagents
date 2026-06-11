@@ -13,6 +13,18 @@ import type { ExecutionRole, ExtensionConfig, WorkflowMode } from "./types.ts";
 
 export type SkillSource = "project" | "user" | "project-package" | "user-package" | "project-settings" | "user-settings" | "extension" | "builtin" | "unknown";
 
+/**
+ * Options controlling project-local skill input discovery.
+ *
+ * When `includeProject` is false, project-local `.pi/skills`, `.agents/skills`,
+ * `.pi/settings.json` skill entries, and `.pi/npm/node_modules/*` package skills
+ * are excluded. User/global skill paths remain available in both modes.
+ */
+export interface SkillDiscoveryOptions {
+	/** Whether project-local .pi/.agents skill inputs should be loaded. Defaults to true for compatibility. */
+	includeProject?: boolean;
+}
+
 export interface ResolvedSkill {
 	name: string;
 	path: string;
@@ -61,7 +73,7 @@ interface PiLoadSkillsCompatOptions {
 const skillCache = new Map<string, SkillCacheEntry>();
 const MAX_CACHE_SIZE = 50;
 
-let loadSkillsCache: { cwd: string; skills: CachedSkillEntry[]; timestamp: number } | null = null;
+let loadSkillsCache: { cwd: string; includeProject: boolean; skills: CachedSkillEntry[]; timestamp: number } | null = null;
 const LOAD_SKILLS_CACHE_TTL_MS = 5000;
 
 const CONFIG_DIR = ".pi";
@@ -141,8 +153,8 @@ function getGlobalNpmRoot(): string | null {
  * @param cwd Project working directory used for project-local package roots.
  * @returns De-duplicated absolute skill paths from configured package roots.
  */
-function collectPackageSkillPaths(cwd: string): string[] {
-	const roots = collectConfiguredPackageRoots(cwd);
+function collectPackageSkillPaths(cwd: string, options: SkillDiscoveryOptions = {}): string[] {
+	const roots = collectConfiguredPackageRoots(cwd, options);
 	const packageRoots = collectPackageSkillDirectories(roots);
 	const skillPaths = packageRoots.flatMap(resolvePackageSkillMetadata);
 	return dedupeSkillPaths(skillPaths);
@@ -154,8 +166,12 @@ function collectPackageSkillPaths(cwd: string): string[] {
  * @param cwd Project working directory.
  * @returns Existing and potential node_modules roots in precedence order.
  */
-function collectConfiguredPackageRoots(cwd: string): string[] {
-	const dirs = [path.join(cwd, CONFIG_DIR, "npm", "node_modules"), path.join(AGENT_DIR, "npm", "node_modules")];
+function collectConfiguredPackageRoots(cwd: string, options: SkillDiscoveryOptions = {}): string[] {
+	const includeProject = options.includeProject ?? true;
+	const dirs = [
+		...(includeProject ? [path.join(cwd, CONFIG_DIR, "npm", "node_modules")] : []),
+		path.join(AGENT_DIR, "npm", "node_modules"),
+	];
 	const globalRoot = getGlobalNpmRoot();
 	if (globalRoot) dirs.push(globalRoot);
 	return dirs;
@@ -231,10 +247,13 @@ function dedupeSkillPaths(skillPaths: string[]): string[] {
 	return [...new Set(skillPaths)];
 }
 
-function collectSettingsSkillPaths(cwd: string): string[] {
+function collectSettingsSkillPaths(cwd: string, options: SkillDiscoveryOptions = {}): string[] {
+	const includeProject = options.includeProject ?? true;
 	const results: string[] = [];
 	const settingsFiles = [
-		{ file: path.join(cwd, CONFIG_DIR, "settings.json"), base: path.join(cwd, CONFIG_DIR) },
+		...(includeProject
+			? [{ file: path.join(cwd, CONFIG_DIR, "settings.json"), base: path.join(cwd, CONFIG_DIR) }]
+			: []),
 		{ file: path.join(AGENT_DIR, "settings.json"), base: AGENT_DIR },
 	];
 
@@ -262,16 +281,27 @@ function collectSettingsSkillPaths(cwd: string): string[] {
 	return results;
 }
 
-function buildSkillPaths(cwd: string): string[] {
+function buildSkillPaths(cwd: string, options: SkillDiscoveryOptions = {}): string[] {
+	const includeProject = options.includeProject ?? true;
 	const defaultSkillPaths = [
-		path.join(cwd, CONFIG_DIR, "skills"),
-		path.join(cwd, ".agents", "skills"),
+		...(includeProject ? [path.join(cwd, CONFIG_DIR, "skills"), path.join(cwd, ".agents", "skills")] : []),
 		path.join(AGENT_DIR, "skills"),
 		path.join(os.homedir(), ".agents", "skills"),
 	];
-	const packagePaths = collectPackageSkillPaths(cwd);
-	const settingsPaths = collectSettingsSkillPaths(cwd);
+	const packagePaths = collectPackageSkillPaths(cwd, options);
+	const settingsPaths = collectSettingsSkillPaths(cwd, options);
 	return [...new Set([...defaultSkillPaths, ...packagePaths, ...settingsPaths])];
+}
+
+/**
+ * Test-only helper that exposes the full skill path list for a workspace.
+ *
+ * @param cwd Project working directory.
+ * @param options Discovery options (e.g. project trust flag).
+ * @returns De-duplicated skill paths used by the loader, including user/global paths.
+ */
+export function buildSkillPathsForTest(cwd: string, options: SkillDiscoveryOptions = {}): string[] {
+	return buildSkillPaths(cwd, options);
 }
 
 function inferSkillSource(sourceInfo: { source: string; scope: string }, filePath: string, cwd: string): SkillSource {
@@ -305,13 +335,19 @@ function chooseHigherPrioritySkill(existing: CachedSkillEntry | undefined, candi
 	return candidate.order < existing.order ? candidate : existing;
 }
 
-function getCachedSkills(cwd: string): CachedSkillEntry[] {
+function getCachedSkills(cwd: string, options: SkillDiscoveryOptions = {}): CachedSkillEntry[] {
+	const includeProject = options.includeProject ?? true;
 	const now = Date.now();
-	if (loadSkillsCache && loadSkillsCache.cwd === cwd && now - loadSkillsCache.timestamp < LOAD_SKILLS_CACHE_TTL_MS) {
+	if (
+		loadSkillsCache &&
+		loadSkillsCache.cwd === cwd &&
+		loadSkillsCache.includeProject === includeProject &&
+		now - loadSkillsCache.timestamp < LOAD_SKILLS_CACHE_TTL_MS
+	) {
 		return loadSkillsCache.skills;
 	}
 
-	const skillPaths = buildSkillPaths(cwd);
+	const skillPaths = buildSkillPaths(cwd, { includeProject });
 	const loadSkillsCompat = loadSkills as (options: PiLoadSkillsCompatOptions) => ReturnType<typeof loadSkills>;
 	const loaded = loadSkillsCompat(buildLoadSkillsOptionsForPi({ cwd, skillPaths }));
 	const dedupedByName = new Map<string, CachedSkillEntry>();
@@ -344,12 +380,12 @@ function getCachedSkills(cwd: string): CachedSkillEntry[] {
 	}
 
 	const skills = [...dedupedByName.values()].sort((a, b) => a.order - b.order);
-	loadSkillsCache = { cwd, skills, timestamp: now };
+	loadSkillsCache = { cwd, includeProject, skills, timestamp: now };
 	return skills;
 }
 
-export function resolveSkillPath(skillName: string, cwd: string): { path: string; source: SkillSource } | undefined {
-	const skills = getCachedSkills(cwd);
+export function resolveSkillPath(skillName: string, cwd: string, options: SkillDiscoveryOptions = {}): { path: string; source: SkillSource } | undefined {
+	const skills = getCachedSkills(cwd, options);
 	const skill = skills.find((s) => s.name === skillName);
 	if (!skill) return undefined;
 	return { path: skill.filePath, source: skill.source };
@@ -384,7 +420,7 @@ function readSkill(skillName: string, skillPath: string, source: SkillSource): R
 	}
 }
 
-export function resolveSkills(skillNames: string[], cwd: string): { resolved: ResolvedSkill[]; missing: string[] } {
+export function resolveSkills(skillNames: string[], cwd: string, options: SkillDiscoveryOptions = {}): { resolved: ResolvedSkill[]; missing: string[] } {
 	const resolved: ResolvedSkill[] = [];
 	const missing: string[] = [];
 
@@ -392,7 +428,7 @@ export function resolveSkills(skillNames: string[], cwd: string): { resolved: Re
 		const trimmed = name.trim();
 		if (!trimmed) continue;
 
-		const location = resolveSkillPath(trimmed, cwd);
+		const location = resolveSkillPath(trimmed, cwd, options);
 		if (!location) {
 			missing.push(trimmed);
 			continue;
@@ -419,6 +455,10 @@ export function resolveSkills(skillNames: string[], cwd: string): { resolved: Re
  * Invariants:
  * - `skills: false` disables all configured skills for this execution
  * - Superpowers roles reuse the same validation and implementer-mode injection in sync and async paths
+ * - `includeProject` is the project-trust gate for skill inputs; it defaults to `true`
+ *   for compatibility, so callers must pass `false` explicitly to suppress
+ *   project-local `.pi/skills`, `.agents/skills`, `.pi/settings.json` skill entries,
+ *   and project-local package skills when project inputs are not trusted
  *
  * Failure modes:
  * - throws when Superpowers policy rejects the selected skills for the role
@@ -430,10 +470,13 @@ export function resolveExecutionSkills(input: {
 	config?: ExtensionConfig;
 	useTestDrivenDevelopment?: boolean;
 	skills?: string[] | false;
+	/** Whether project-local skill inputs should be loaded. Defaults to true for compatibility. */
+	includeProject?: boolean;
 }): ExecutionSkillResolution {
+	const discoveryOptions: SkillDiscoveryOptions = { includeProject: input.includeProject ?? true };
 	const configuredSkills = input.skills === false ? [] : (input.skills ?? []);
-	const availableSkills = getAvailableSkillNames(input.cwd);
-	const rootOnlySkills = getRootOnlySkillNames(input.cwd);
+	const availableSkills = getAvailableSkillNames(input.cwd, discoveryOptions);
+	const rootOnlySkills = getRootOnlySkillNames(input.cwd, discoveryOptions);
 	const skillNames =
 		input.role === "sp-implementer"
 			? resolveImplementerSkillSet({
@@ -462,7 +505,7 @@ export function resolveExecutionSkills(input: {
 					availableSkills,
 					rootOnlySkills,
 				});
-	const { resolved, missing } = resolveSkills(skillNames, input.cwd);
+	const { resolved, missing } = resolveSkills(skillNames, input.cwd, discoveryOptions);
 	return {
 		skillNames,
 		resolvedSkills: resolved,
@@ -507,13 +550,13 @@ export function normalizeSkillInput(input: string | string[] | boolean | undefin
 	];
 }
 
-export function discoverAvailableSkills(cwd: string): Array<{
+export function discoverAvailableSkills(cwd: string, options: SkillDiscoveryOptions = {}): Array<{
 	name: string;
 	source: SkillSource;
 	description?: string;
 	scope?: "root" | "agent";
 }> {
-	const skills = getCachedSkills(cwd);
+	const skills = getCachedSkills(cwd, options);
 	return skills
 		.map((s) => ({
 			name: s.name,
@@ -531,8 +574,8 @@ export function discoverAvailableSkills(cwd: string): Array<{
  * @param name Skill name to resolve.
  * @returns Resolved skill or undefined when unavailable.
  */
-export function resolveAvailableSkill(cwd: string, name: string): ResolvedSkill | undefined {
-	const location = resolveSkillPath(name, cwd);
+export function resolveAvailableSkill(cwd: string, name: string, options: SkillDiscoveryOptions = {}): ResolvedSkill | undefined {
+	const location = resolveSkillPath(name, cwd, options);
 	if (!location) return undefined;
 	return readSkill(name, location.path, location.source);
 }
@@ -543,8 +586,8 @@ export function resolveAvailableSkill(cwd: string, name: string): ResolvedSkill 
  * Uses the shared cached discovery path so callers can validate overlays
  * without paying for repeated full skill resolution.
  */
-export function getAvailableSkillNames(cwd: string): Set<string> {
-	return new Set(getCachedSkills(cwd).map((skill) => skill.name));
+export function getAvailableSkillNames(cwd: string, options: SkillDiscoveryOptions = {}): Set<string> {
+	return new Set(getCachedSkills(cwd, options).map((skill) => skill.name));
 }
 
 /**
@@ -554,11 +597,18 @@ export function getAvailableSkillNames(cwd: string): Set<string> {
  * @param cwd Current working directory for skill discovery.
  * @returns Set of skill names with scope: root.
  */
-function getRootOnlySkillNames(cwd: string): Set<string> {
-	const skills = getCachedSkills(cwd);
+function getRootOnlySkillNames(cwd: string, options: SkillDiscoveryOptions = {}): Set<string> {
+	const skills = getCachedSkills(cwd, options);
 	return new Set(skills.filter((s) => s.scope === "root").map((s) => s.name));
 }
 
+/**
+ * Reset every in-memory skill cache so the next discovery call rebuilds from disk.
+ *
+ * Clears both the per-skill `skillCache` (file-mtime-keyed resolved skill content
+ * cache) and the `loadSkillsCache` (cwd+`includeProject`-keyed loader result cache).
+ * Use after trust, cwd, or filesystem state changes to force a fresh discovery pass.
+ */
 export function clearSkillCache(): void {
 	skillCache.clear();
 	loadSkillsCache = null;

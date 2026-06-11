@@ -44,9 +44,11 @@ interface ResolvedSkill {
 
 let discoverAgents: ((cwd: string, options?: { includeProject?: boolean }) => AgentDiscoveryResult) | undefined;
 let discoverAgentsAll: ((cwd: string, options?: { includeProject?: boolean }) => AgentDiscoveryAllResult) | undefined;
-let resolveSkillPath: ((skillName: string, cwd: string) => ResolvedSkill | null | undefined) | undefined;
+let resolveSkillPath: ((skillName: string, cwd: string, options?: { includeProject?: boolean }) => ResolvedSkill | null | undefined) | undefined;
 let clearSkillCache: (() => void) | undefined;
-let discoverAvailableSkills: ((cwd: string) => Array<{ name: string; source: string; description?: string }>) | undefined;
+let discoverAvailableSkills:
+	| ((cwd: string, options?: { includeProject?: boolean }) => Array<{ name: string; source: string; description?: string }>)
+	| undefined;
 let moduleLoadError: unknown;
 
 const originalHome = process.env.HOME;
@@ -289,5 +291,58 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 		assert.ok(agent, "expected project agent to be present in merged agents list");
 		assert.strictEqual(agent?.filePath, path.join(agentsDir, "trusted-merged-agent.md"));
 		assert.strictEqual(result.projectAgentsDir, agentsDir);
+	});
+
+	void test("skips project skills when project inputs are not trusted", () => {
+		assertModulesLoaded();
+
+		const isolatedCwd = fs.mkdtempSync(path.join(tempRoot, "untrusted-skills-"));
+		const skillsDir = path.join(isolatedCwd, ".agents", "skills");
+		fs.mkdirSync(skillsDir, { recursive: true });
+		fs.writeFileSync(path.join(skillsDir, "untrusted-skill.md"), "---\nname: untrusted-skill\ndescription: test desc\n---\nSkill content");
+
+		clearSkillCache!();
+		const resolved = resolveSkillPath!("untrusted-skill", isolatedCwd, { includeProject: false });
+
+		assert.equal(resolved, undefined);
+	});
+
+	void test("discoverAvailableSkills excludes project skill entries when project inputs are not trusted", () => {
+		assertModulesLoaded();
+
+		const isolatedCwd = fs.mkdtempSync(path.join(tempRoot, "untrusted-discover-skills-"));
+		const skillsDir = path.join(isolatedCwd, ".agents", "skills");
+		fs.mkdirSync(skillsDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(skillsDir, "untrusted-discover-skill.md"),
+			"---\nname: untrusted-discover-skill\ndescription: Untrusted discoverable skill\n---\nSkill content",
+		);
+
+		clearSkillCache!();
+		const skills = discoverAvailableSkills!(isolatedCwd, { includeProject: false });
+
+		assert.strictEqual(
+			skills.find((skill) => skill.name === "untrusted-discover-skill"),
+			undefined,
+			"expected project skill to be absent from discoverAvailableSkills when includeProject is false",
+		);
+	});
+
+	void test("discoverAvailableSkills includes project skill entries when project inputs are trusted", () => {
+		assertModulesLoaded();
+
+		const isolatedCwd = fs.mkdtempSync(path.join(tempRoot, "trusted-discover-skills-"));
+		const skillsDir = path.join(isolatedCwd, ".agents", "skills");
+		fs.mkdirSync(skillsDir, { recursive: true });
+		fs.writeFileSync(
+			path.join(skillsDir, "trusted-discover-skill.md"),
+			"---\nname: trusted-discover-skill\ndescription: Trusted discoverable skill\n---\nSkill content",
+		);
+
+		clearSkillCache!();
+		const skills = discoverAvailableSkills!(isolatedCwd, { includeProject: true });
+		const found = skills.find((skill) => skill.name === "trusted-discover-skill");
+
+		assert.ok(found, "expected project skill to appear in discoverAvailableSkills when includeProject is true");
 	});
 });

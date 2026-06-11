@@ -123,6 +123,8 @@ interface ExecutionContextData {
 	artifactsDir: string;
 	workflow: WorkflowMode;
 	useTestDrivenDevelopment: boolean;
+	/** Mirrors parent project-trust decision; gates project-local skill inputs. */
+	projectTrusted: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -137,6 +139,8 @@ interface RunPlannedChildInput {
 	runId: string;
 	config: ExtensionConfig;
 	lifecycleExtensionEntry?: string;
+	/** Mirrors parent project-trust decision; gates project-local skill inputs in the child runner. */
+	projectTrusted?: boolean;
 }
 
 const DEFAULT_LIFECYCLE_EXTENSION_ENTRY = new URL(["..", "extension", "index.ts"].join("/"), import.meta.url).pathname;
@@ -198,6 +202,7 @@ async function runPlannedChild(input: RunPlannedChildInput): Promise<SingleResul
 			workflow: input.plan.workflow,
 			useTestDrivenDevelopment: input.plan.useTestDrivenDevelopment,
 			lifecycleExtensionEntry: input.lifecycleExtensionEntry,
+			projectTrusted: input.projectTrusted,
 			onUpdate: input.onUpdate,
 		});
 		return withSingleResultSessionMode(result, input.plan.sessionMode);
@@ -375,6 +380,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 				config,
 				useTestDrivenDevelopment,
 				skills: configuredSkills,
+				includeProject: data.projectTrusted,
 			});
 			const tierModel = resolveModelForAgent({
 				workflow,
@@ -467,6 +473,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 					runId,
 					config,
 					lifecycleExtensionEntry: deps.lifecycleExtensionEntry ?? DEFAULT_LIFECYCLE_EXTENSION_ENTRY,
+					projectTrusted: data.projectTrusted,
 				});
 			} catch (error) {
 				return toUnexpectedChildFailure(plan, error);
@@ -617,6 +624,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 			runId,
 			config,
 			lifecycleExtensionEntry: deps.lifecycleExtensionEntry ?? DEFAULT_LIFECYCLE_EXTENSION_ENTRY,
+			projectTrusted: data.projectTrusted,
 		}),
 	});
 
@@ -775,6 +783,7 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			artifactsDir,
 			workflow: params.workflow ?? "superpowers",
 			useTestDrivenDevelopment: params.useTestDrivenDevelopment ?? false,
+			projectTrusted,
 		};
 
 		try {
