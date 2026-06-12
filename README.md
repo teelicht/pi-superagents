@@ -37,7 +37,7 @@ pi remove npm:@teelicht/pi-superagents
 For local development, use the package shortcut for the repository-local installer:
 
 ```bash
-npm run install:local
+pnpm run install:local
 ```
 
 ## Project Trust
@@ -76,7 +76,7 @@ Subagent execution remains conservative and synchronous for ordinary Superpowers
 
 ### Development Quality Gates
 
-Repository maintenance uses `npx fallow` for dead-code and maintainability analysis. The checked-in `.fallowrc.json` keeps true dead-code findings blocking while documenting intentional dynamic-entrypoint exceptions and treating broad duplication/health refactors as non-blocking reports.
+Repository maintenance uses `pnpm exec fallow` for dead-code and maintainability analysis. The checked-in `.fallowrc.json` keeps true dead-code findings blocking while documenting intentional dynamic-entrypoint exceptions and treating broad duplication/health refactors as non-blocking reports.
 
 1. **Recon** (`sp-recon`): Initial codebase analysis and context gathering.
 2. **Research** (`sp-research`): Deep dive into specific APIs, libraries, or logic.

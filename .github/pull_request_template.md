@@ -26,10 +26,10 @@ Describe what this PR changes and why.
 
 ## Validation
 
-- [ ] `npm ci`
-- [ ] `npm run typecheck`
-- [ ] `npx biome check .`
-- [ ] `npm run test:all`
+- [ ] `pnpm install --frozen-lockfile`
+- [ ] `pnpm run typecheck`
+- [ ] `pnpm exec biome check .`
+- [ ] `pnpm run test:all`
 - [ ] `npm pack --dry-run --json`
 - [ ] Manual Pi install/smoke test performed, if applicable
 
