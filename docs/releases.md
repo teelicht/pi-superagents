@@ -6,7 +6,7 @@ This guide describes how maintainers publish `@teelicht/pi-superagents` through 
 
 Releases are driven by a published GitHub Release. The release must use a git tag named `vX.Y.Z`, and that tag must match the version in `package.json`.
 
-Publishing is performed only by GitHub Actions. The committed `package-lock.json` is part of the release contract: CI and release jobs install with `npm ci` so dependency resolution is reproducible and fails fast when `package.json` and the lockfile drift.
+Publishing is performed only by GitHub Actions. The committed `pnpm-lock.yaml` is part of the release contract: CI and release jobs install with `pnpm install --frozen-lockfile` so dependency resolution is reproducible and fails fast when `package.json` and the lockfile drift.
 
 The project does not currently produce a compiled build artifact. The package ships TypeScript source and runtime assets directly, so the release gate uses `npm pack --dry-run --json` to verify the npm tarball contents instead of running a separate build.
 
@@ -27,15 +27,15 @@ The workflow relies on GitHub OIDC through `id-token: write`; no long-lived `NPM
 
 1. Start from an up-to-date `main` branch.
 2. Choose the next semantic version.
-3. Update `package.json` and `package-lock.json` to the same version.
+3. Update the version in `package.json`.
 4. Add a matching entry to `CHANGELOG.md`.
 5. Run the local release checks:
 
 ```bash
-npm ci
-npm run typecheck
-npx biome check .
-npm run test:all
+pnpm install --frozen-lockfile
+pnpm run typecheck
+pnpm exec biome check .
+pnpm run test:all
 npm pack --dry-run --json
 ```
 
@@ -55,7 +55,7 @@ Then draft a GitHub Release for the same tag. Use the `CHANGELOG.md` entry as th
 
 When the GitHub Release is published, `.github/workflows/release.yml` runs these gates before npm publish:
 
-- install dependencies with `npm ci` from the committed lockfile
+- install dependencies with pnpm from the committed lockfile
 - verify the tag matches `package.json`
 - run typecheck, lint, all tests, and package-content verification
 - publish normal releases to npm with the explicit `latest` dist-tag

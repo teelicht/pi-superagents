@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.9.2] - 2026-06-12
 
 - **Pi 0.79 Project Trust Support**
   - Mirrored parent project-trust decisions into child Pi runs with `--approve` for trusted projects and `--no-approve` for untrusted projects.

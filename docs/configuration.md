@@ -37,7 +37,7 @@ Execution is strictly synchronous and blocking. There is no `async`, `wait`, `co
 
 ## Repository Quality Configuration
 
-The repository includes `.fallowrc.json` for `npx fallow`. It keeps dead-code checks active, records dynamic entrypoint exceptions used by tests and plugin discovery, and leaves broad duplication/health findings as informational reports rather than blocking this extension's runtime configuration.
+The repository includes `.fallowrc.json` for `pnpm exec fallow`. It keeps dead-code checks active, records dynamic entrypoint exceptions used by tests and plugin discovery, and leaves broad duplication/health findings as informational reports rather than blocking this extension's runtime configuration.
 
 ## Built-in Commands
 
@@ -333,7 +333,7 @@ If Plannotator is unavailable, Superpowers falls back to in-chat approval.
 
 Maintainer release automation lives in `.github/workflows/release.yml` and uses npm Trusted Publishing. It does not require local configuration keys or npm tokens in `config.json`.
 
-Before changing package metadata, install behavior, or default configuration files, check the [Release Process](releases.md). Release candidates must keep `package.json`, `package-lock.json`, `CHANGELOG.md`, and the npm package contents aligned.
+Before changing package metadata, install behavior, or default configuration files, check the [Release Process](releases.md). Release candidates must keep `package.json`, `pnpm-lock.yaml`, `CHANGELOG.md`, and the npm package contents aligned.
 
 ## Superpowers Skills
 

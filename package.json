@@ -1,6 +1,7 @@
 {
   "name": "@teelicht/pi-superagents",
-  "version": "0.9.1",
+  "version": "0.9.2",
+  "packageManager": "pnpm@11.6.0",
   "description": "Pi extension for Superpowers workflows: recon, research, implementation, review, and debug",
   "author": "Thomas Lichtenecker",
   "license": "MIT",
@@ -41,17 +42,17 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "prepublishOnly": "npm test",
+    "prepublishOnly": "pnpm test",
     "debug:pi-local": "node --experimental-strip-types ./scripts/local-extension-install.ts",
-    "install:local": "npm run debug:pi-local",
-    "qa": "biome check --write && tsc -noEmit && npm run test:all",
+    "install:local": "pnpm run debug:pi-local",
+    "qa": "biome check --write && tsc --noEmit && pnpm run test:all",
     "lint": "biome check --write",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:unit",
+    "test": "pnpm run test:unit",
     "test:unit": "node --experimental-strip-types --test test/unit/*.test.ts",
     "test:integration": "node --experimental-strip-types --import ./test/support/register-loader.mjs --test test/integration/*.test.ts",
     "test:e2e": "node --experimental-strip-types --import ./test/support/register-loader.mjs --test test/e2e/*.test.ts",
-    "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e"
+    "test:all": "pnpm run test:unit && pnpm run test:integration && pnpm run test:e2e"
   },
   "pi": {
     "extensions": [
