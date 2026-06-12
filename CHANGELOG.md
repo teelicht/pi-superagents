@@ -8,6 +8,7 @@
   - Updated Pi development dependencies to `^0.79.1` and documented project-trust behavior in README/configuration/skills docs.
   - Added pnpm build-script policy for nonessential transitive dependencies (`@google/genai`, `protobufjs`).
 - General refactoring following `npx fallow` findings
+- Standardize project tooling on `pnpm`
 
 
 ## [0.9.1] - 2026-05-29
