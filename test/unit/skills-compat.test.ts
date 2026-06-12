@@ -8,6 +8,7 @@
  */
 
 import assert from "node:assert/strict";
+import path from "node:path";
 import { describe, it } from "node:test";
 import { buildLoadSkillsOptionsForPi, buildSkillPathsForTest } from "../../src/shared/skills.ts";
 
@@ -30,18 +31,20 @@ void describe("PI skill loader compatibility", () => {
 
 void describe("buildSkillPathsForTest trust policy", () => {
 	void it("excludes project-local skill paths when project inputs are not trusted", () => {
-		const paths = buildSkillPathsForTest("/repo", { includeProject: false });
+		const projectRoot = path.resolve("repo");
+		const paths = buildSkillPathsForTest(projectRoot, { includeProject: false });
 
-		assert.equal(paths.includes("/repo/.pi/skills"), false);
-		assert.equal(paths.includes("/repo/.agents/skills"), false);
-		assert.ok(paths.some((entry) => entry.endsWith("/.pi/agent/skills")));
-		assert.ok(paths.some((entry) => entry.endsWith("/.agents/skills")));
+		assert.equal(paths.includes(path.join(projectRoot, ".pi", "skills")), false);
+		assert.equal(paths.includes(path.join(projectRoot, ".agents", "skills")), false);
+		assert.ok(paths.some((entry) => entry.endsWith(path.join(".pi", "agent", "skills"))));
+		assert.ok(paths.some((entry) => entry.endsWith(path.join(".agents", "skills"))));
 	});
 
 	void it("includes project-local skill paths when project inputs are trusted", () => {
-		const paths = buildSkillPathsForTest("/repo", { includeProject: true });
+		const projectRoot = path.resolve("repo");
+		const paths = buildSkillPathsForTest(projectRoot, { includeProject: true });
 
-		assert.ok(paths.includes("/repo/.pi/skills"));
-		assert.ok(paths.includes("/repo/.agents/skills"));
+		assert.ok(paths.includes(path.join(projectRoot, ".pi", "skills")));
+		assert.ok(paths.includes(path.join(projectRoot, ".agents", "skills")));
 	});
 });
