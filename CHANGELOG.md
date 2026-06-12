@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+- **Pi 0.79 Project Trust Support**
+  - Mirrored parent project-trust decisions into child Pi runs with `--approve` for trusted projects and `--no-approve` for untrusted projects.
+  - Trust-gated project-local agents, skills, skill packages, `.pi/settings.json` skill entries, and project agent frontmatter extensions.
+  - Updated Pi development dependencies to `^0.79.1` and documented project-trust behavior in README/configuration/skills docs.
+  - Added pnpm build-script policy for nonessential transitive dependencies (`@google/genai`, `protobufjs`).
+
 ## [0.9.1] - 2026-05-29
 
 - **Model Picker Navigation Fixes**
