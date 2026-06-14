@@ -12,7 +12,6 @@
 - **Entrypoint Lifecycle Skills**: Superpowers entrypoint agents inject root lifecycle skills (verification, review-feedback, branch finishing) defined in frontmatter. .
 - **Subagent Extension & Tool Defaults**: Subagents run with implicit Pi extension discovery disabled by default; configure `superagents.extensions` with local paths or Pi `-e` source specs, and `superagents.tools` with shared tool names or tool extension paths. The bundled defaults provide the common read-only tools globally so agent frontmatter only lists role-specific extras.
 
-
 ## Installation
 
 ```bash
@@ -74,17 +73,7 @@ The `/sp-implement` command activates a structured workflow for task execution w
 
 Subagent execution remains conservative and synchronous for ordinary Superpowers workflows. There is intentionally no user-facing `async` or `blocking` switch in agent frontmatter, config, or tool parameters. Internal result ownership prevents duplicate delivery and lifecycle sidecars let child agents report intentional completion or a parent-help request without changing the normal delegation flow. 
 
-### Development Quality Gates
-
-Repository maintenance uses `pnpm exec fallow` for dead-code and maintainability analysis. The checked-in `.fallowrc.json` keeps true dead-code findings blocking while documenting intentional dynamic-entrypoint exceptions and treating broad duplication/health refactors as non-blocking reports.
-
-1. **Recon** (`sp-recon`): Initial codebase analysis and context gathering.
-2. **Research** (`sp-research`): Deep dive into specific APIs, libraries, or logic.
-3. **Implementation** (`sp-implementer`): Code changes guided by test-driven development (optional).
-4. **Review** (`sp-code-review`): Automated review of changes against project standards.
-5. **Debug** (`sp-debug`): Root cause analysis and fix verification for regressions.
-
-Subagent-driven development keeps implementer and reviewer reports inline in the Pi conversation. Bounded roles default to `lineage-only` - they see a curated work brief rather than the full parent conversation history. The runtime does not create repo-root packet files such as `implementer-report.md`, `spec-review.md`, `code-review.md`, `debug-brief.md`, or `task-brief.md`; those names are ignored if an older prompt or manual run creates them.
+Subagent-driven development keeps implementer and reviewer reports inline in the Pi conversation. Bounded roles default to `lineage-only` - they see a curated work brief rather than the full parent conversation history.
 
 Run history is persisted at `~/.pi/agent/run-history.jsonl` for `/subagents-status`. Inline subagent rows and the status overlay show the model reported by the child Pi execution loop and, when available, the effective thinking level used for that run. Set `PI_SUPERAGENTS_RUN_HISTORY_PATH` to isolate that file for tests or sandboxed sessions.
 
