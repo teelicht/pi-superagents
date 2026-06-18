@@ -28,7 +28,7 @@ jobs:
           ref: ${{ github.event.release.tag_name }}
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
