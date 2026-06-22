@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.9.3] - 2026-06-22
+
+- **Compaction Durability**
+  - Re-arms the Superpowers root contract after context compaction so the model retains lifecycle-trigger awareness across long autonomous runs.
+  - Opt-in: activates only after a Superpowers command (`/sp-*` or intercepted `/skill:brainstorming` / `/skill:writing-plans`) has been dispatched; normal sessions are unaffected.
+  - Sizes re-injection by compaction flow: full contract for threshold auto-compaction, trimmed reminder for overflow recovery, minimal one-line pointer for manual `/compact`.
+- **Model Tier Hardening**
+  - Subagent launches now hard-stop with a clear error when an agent references a reserved model tier (`cheap`, `balanced`, `max`, `reasoning`) or a configured tier key that has no usable `model` — the literal tier name is never passed to Pi as a model id.
+  - Centralized model resolution in `resolveEffectiveModel` removes duplicated fallback logic across the single and parallel execution paths.
+  - Moved the built-in tier name list to `superpowers-policy.ts` as the single source of truth (`RESERVED_MODEL_TIERS`), imported by the settings overlay.
+- **Subagent Tool Naming Bridge**
+  - The `subagent` tool description now identifies itself as the tool the upstream Superpowers skills reference (provided by pi-superagents, the pi-subagents-compatible fork) and states its actual capabilities (synchronous single, parallel, and forked-context dispatch — no async, chain, or resume/status), so models connect the skill reference to this tool.
+- Bumped Pi development dependencies to `^0.79.10`.
+
 ## [0.9.2] - 2026-06-12
 
 - **Pi 0.79 Project Trust Support**

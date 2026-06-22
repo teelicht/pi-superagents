@@ -44,7 +44,7 @@ import { getPiSpawnCommand } from "./pi-spawn.ts";
 import { deriveCompletionEnvelope } from "./result-delivery.ts";
 import { globalRunHistory } from "./run-history.ts";
 import { findMissingSubagentExtensionPath, findMissingSubagentToolPath, resolveSubagentExtensions } from "./superagents-config.ts";
-import { inferExecutionRole, resolveModelForAgent, resolveRoleTools } from "./superpowers-policy.ts";
+import { inferExecutionRole, resolveEffectiveModel, resolveRoleTools } from "./superpowers-policy.ts";
 
 /**
  * Attach lifecycle sidecar result and derive completion envelope.
@@ -106,6 +106,8 @@ interface ResolvedChildExecutionOptions {
 	resolvedSkillNames?: string[];
 	skillsWarning?: string;
 	systemPrompt: string;
+	/** Set when the agent references a model tier with no usable configuration; halts the launch. */
+	unresolvedTier?: string;
 }
 
 /**
@@ -156,14 +158,10 @@ function resolveChildExecutionOptions(runtimeCwd: string, agent: AgentConfig, op
 	const useTestDrivenDevelopment = options.useTestDrivenDevelopment ?? false;
 	const config = options.config ?? {};
 	const role = inferExecutionRole(agent.name);
-	const tierModel = resolveModelForAgent({
-		workflow,
-		agentModel: agent.model,
-		config,
-	});
-	const effectiveModel = options.modelOverride ?? tierModel?.model ?? agent.model;
+	const resolvedModel = resolveEffectiveModel({ agentModel: agent.model, modelOverride: options.modelOverride, config });
+	const effectiveModel = resolvedModel.model;
 	const hasModelOverride = options.modelOverride !== undefined;
-	const launchThinking = extractThinkingSuffix(effectiveModel) ?? toThinkingLevel(agent.thinking, tierModel?.thinking, hasModelOverride);
+	const launchThinking = extractThinkingSuffix(effectiveModel) ?? toThinkingLevel(agent.thinking, resolvedModel.thinking, hasModelOverride);
 	const effectiveTools = resolveRoleTools({
 		workflow,
 		role,
@@ -189,7 +187,7 @@ function resolveChildExecutionOptions(runtimeCwd: string, agent: AgentConfig, op
 		systemPrompt = systemPrompt ? `${systemPrompt}\n\n${skillInjection}` : skillInjection;
 	}
 
-	return { workflow, effectiveModel, launchThinking, effectiveTools, skillNames, resolvedSkillNames, skillsWarning, systemPrompt };
+	return { workflow, effectiveModel, launchThinking, effectiveTools, skillNames, resolvedSkillNames, skillsWarning, systemPrompt, unresolvedTier: resolvedModel.unresolvedTier };
 }
 
 /**
@@ -239,6 +237,13 @@ function prepareChildLaunch(runtimeCwd: string, agentName: string, task: string,
 	}
 
 	const execution = resolveChildExecutionOptions(runtimeCwd, agent, options);
+	if (execution.unresolvedTier) {
+		return createLaunchErrorResult(
+			agentName,
+			task,
+			`Model tier '${execution.unresolvedTier}' is not configured. Set superagents.modelTiers.${execution.unresolvedTier} in config.json before launching this agent.`,
+		);
+	}
 	const effectiveExtensions = includeLifecycleExtension(
 		resolveSubagentExtensions(config, agent.extensions, {
 			agentSource: agent.source,

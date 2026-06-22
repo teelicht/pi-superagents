@@ -63,7 +63,7 @@ import { createSessionLaunchResolver, resolveRequestedSessionMode, type SessionL
 import { resolveStepBehavior } from "./settings.ts";
 import { resolveSuperagentWorktreeEnabled } from "./superagents-config.ts";
 import { buildSuperpowersPacketPlan, injectSuperpowersPacketInstructions } from "./superpowers-packets.ts";
-import { resolveModelForAgent } from "./superpowers-policy.ts";
+import { resolveEffectiveModel } from "./superpowers-policy.ts";
 import {
 	buildParallelWorktreeSuffix,
 	buildParallelWorktreeTaskCwdError,
@@ -379,15 +379,11 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 				skills: configuredSkills,
 				includeProject: data.projectTrusted,
 			});
-			const tierModel = resolveModelForAgent({
-				workflow,
-				agentModel: agentConfigs[index].model,
-				config,
-			});
-			const provisionalModel = modelOverrides[index] ?? tierModel?.model ?? agentConfigs[index].model;
+			const resolvedModel = resolveEffectiveModel({ agentModel: agentConfigs[index].model, modelOverride: modelOverrides[index], config });
+			const provisionalModel = resolvedModel.model;
 			const hasModelOverride = modelOverrides[index] !== undefined;
 			// Extract thinking suffix from model first (matching child-runner behavior), then fall back to config-based resolution
-			const provisionalThinking = extractThinkingSuffix(provisionalModel) ?? toThinkingLevel(agentConfigs[index].thinking, tierModel?.thinking, hasModelOverride);
+			const provisionalThinking = extractThinkingSuffix(provisionalModel) ?? toThinkingLevel(agentConfigs[index].thinking, resolvedModel.thinking, hasModelOverride);
 			return {
 				index,
 				agent: task.agent,

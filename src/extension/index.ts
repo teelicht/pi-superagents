@@ -455,6 +455,8 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 		label: "Subagent",
 		description: `Delegate bounded work to Superpowers role subagents.
 
+This is the \`subagent\` tool the Superpowers skills reference (provided by pi-superagents, the pi-subagents-compatible fork). Supports synchronous single, parallel, and forked-context dispatch only — no async, chain, or resume/status workflows.
+
 Use this tool only inside a Superpowers workflow when selected skills call for delegation.
 
 SINGLE: { agent: "sp-recon", task: "Inspect the auth flow" }

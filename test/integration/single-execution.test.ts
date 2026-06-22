@@ -422,6 +422,48 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		assertModelArg(second.messages, "anthropic/claude-opus-4.6");
 	});
 
+	void it("halts before spawning when a reserved model tier is not configured", async () => {
+		mockPi.onCall({ echoArgs: true });
+		const agents = [makeAgent("sp-recon", { model: "cheap" })];
+
+		const result = await runPreparedChild(tempDir, agents, "sp-recon", "Inspect the auth flow", {
+			workflow: "superpowers",
+			config: { superagents: { modelTiers: { balanced: { model: "openai/gpt-5.4" } } } },
+		});
+
+		assert.equal(result.exitCode, 1);
+		assert.ok(result.error?.includes("'cheap'"), `error should name the unresolved tier: ${result.error}`);
+		assert.ok(result.error?.includes("modelTiers.cheap"), `error should point at the config key: ${result.error}`);
+		assert.equal(mockPi.callCount(), 0, "child pi must not be spawned for an unresolved tier");
+	});
+
+	void it("halts before spawning when a configured tier has an empty model", async () => {
+		mockPi.onCall({ echoArgs: true });
+		const agents = [makeAgent("sp-recon", { model: "creative" })];
+
+		const result = await runPreparedChild(tempDir, agents, "sp-recon", "Inspect the auth flow", {
+			workflow: "superpowers",
+			config: { superagents: { modelTiers: { creative: { model: "" } } } },
+		});
+
+		assert.equal(result.exitCode, 1);
+		assert.ok(result.error?.includes("'creative'"), `error should name the unresolved custom tier: ${result.error}`);
+		assert.equal(mockPi.callCount(), 0, "child pi must not be spawned for a malformed tier");
+	});
+
+	void it("launches with the configured model when the reserved cheap tier is provided", async () => {
+		mockPi.onCall({ echoArgs: true });
+		const agents = [makeAgent("sp-recon", { model: "cheap" })];
+
+		const result = await runPreparedChild(tempDir, agents, "sp-recon", "Inspect the auth flow", {
+			workflow: "superpowers",
+			config: { superagents: { modelTiers: { cheap: { model: "openai/gpt-4o-mini", thinking: "low" } } } },
+		});
+
+		assert.equal(result.exitCode, 0);
+		assertModelArg(result.messages, "openai/gpt-4o-mini:low");
+	});
+
 	void it("tracks usage from message events", async () => {
 		mockPi.onCall({ output: "Done" });
 		const agents = makeAgentConfigs(["echo"]);

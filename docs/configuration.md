@@ -291,6 +291,8 @@ Superpowers agents use abstract model tiers. Define tiers in your configuration:
 
 **Supported thinking levels:** `off`, `minimal`, `low`, `medium`, `high`, `xhigh`. The `thinking` key is optional.
 
+The reserved tier names `cheap`, `balanced`, `max`, and `reasoning` are always treated as tier references by Superpowers agents. If an agent declares one of these (or any key present in `modelTiers`) and the corresponding entry is missing or has an empty `model`, the subagent launch is halted before spawning with an error naming the tier and the `modelTiers` key to fix — the literal tier name is never passed to Pi as a model id.
+
 > [!NOTE]
 > In `config.example.json`, `creative` and `legacy` are illustrative custom tiers added to demonstrate the surface; they are not built-in tiers. `thinking` is optional in any tier definition.
 
