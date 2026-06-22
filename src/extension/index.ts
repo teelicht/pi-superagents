@@ -29,6 +29,7 @@ import { buildSuperpowersVisiblePromptSummary } from "../superpowers/root-prompt
 import { buildResolvedSkillEntryPrompt, parseSkillCommandInput, shouldInterceptSkillCommand } from "../superpowers/skill-entry.ts";
 import { parseSuperpowersWorkflowArgs, resolveSuperpowersRunProfile } from "../superpowers/workflow-profile.ts";
 import { renderSubagentResult } from "../ui/render.ts";
+import { registerCompactionDurabilityHandlers } from "./compaction-durability.ts";
 import { createRuntimeConfigStore } from "./config-store.ts";
 
 /**
@@ -315,26 +316,19 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 			}
 
 			if (result.status === "rejected") {
-				return createTextToolResult(`Plannotator requested plan changes:
-${result.feedback}`);
+				return createTextToolResult(`Plannotator requested plan changes:\n${result.feedback}`);
 			}
 
 			if (ctx.hasUI) {
 				ctx.ui.notify(`Plannotator unavailable: ${result.reason}. Falling back to text-based approval.`, "warning");
 			}
-			return createTextToolResult(
-				`Plannotator unavailable: ${result.reason}
-Continue with the normal text-based Superpowers approval flow.`,
-			);
+			return createTextToolResult(`Plannotator unavailable: ${result.reason}\nContinue with the normal text-based Superpowers approval flow.`);
 		} catch (error) {
 			const reason = error instanceof Error ? error.message : String(error);
 			if (ctx.hasUI) {
 				ctx.ui.notify(`Plannotator unavailable: ${reason}. Falling back to text-based approval.`, "warning");
 			}
-			return createTextToolResult(
-				`Plannotator unavailable: ${reason}
-Continue with the normal text-based Superpowers approval flow.`,
-			);
+			return createTextToolResult(`Plannotator unavailable: ${reason}\nContinue with the normal text-based Superpowers approval flow.`);
 		}
 	}
 
@@ -368,26 +362,19 @@ Continue with the normal text-based Superpowers approval flow.`,
 			}
 
 			if (result.status === "rejected") {
-				return createTextToolResult(`Plannotator requested saved spec changes:
-${result.feedback}`);
+				return createTextToolResult(`Plannotator requested saved spec changes:\n${result.feedback}`);
 			}
 
 			if (ctx.hasUI) {
 				ctx.ui.notify(`Plannotator unavailable: ${result.reason}. Falling back to text-based spec review.`, "warning");
 			}
-			return createTextToolResult(
-				`Plannotator unavailable: ${result.reason}
-Continue with the normal text-based Superpowers review flow.`,
-			);
+			return createTextToolResult(`Plannotator unavailable: ${result.reason}\nContinue with the normal text-based Superpowers review flow.`);
 		} catch (error) {
 			const reason = error instanceof Error ? error.message : String(error);
 			if (ctx.hasUI) {
 				ctx.ui.notify(`Plannotator unavailable: ${reason}. Falling back to text-based spec review.`, "warning");
 			}
-			return createTextToolResult(
-				`Plannotator unavailable: ${reason}
-Continue with the normal text-based Superpowers review flow.`,
-			);
+			return createTextToolResult(`Plannotator unavailable: ${reason}\nContinue with the normal text-based Superpowers review flow.`);
 		}
 	}
 
@@ -509,6 +496,9 @@ Bounded role agents are not allowed to call subagents.`,
 		() => configStore.reloadConfig(),
 		false,
 	);
+	// Register compaction-durability handlers (session_compact, context, agent_end)
+	// so Superpowers opt-in survives context compaction.
+	registerCompactionDurabilityHandlers(pi, state, { cwd: () => state.baseCwd });
 	const skillCommandPromptDispatcher = createSuperpowersPromptDispatcher(pi);
 
 	/**
@@ -564,6 +554,14 @@ Bounded role agents are not allowed to call subagents.`,
 			return { action: "handled" as const };
 		}
 
+		// Arm the compaction-durability opt-in flag at dispatch time so the
+		// session_compact/context re-injection handlers can re-arm the root
+		// contract after compaction.
+		state.superpowersActive = true;
+		state.compactionSizing = null;
+		state.rootLifecycleSkillNames = profile.rootLifecycleSkillNames ?? [];
+		state.rootPromptProfile = profile;
+
 		// Send the prompt to the agent with only flags visible in chat.
 		skillCommandPromptDispatcher.send(
 			buildSuperpowersVisiblePromptSummary({
@@ -609,6 +607,12 @@ Bounded role agents are not allowed to call subagents.`,
 
 	pi.on("session_start", (_event, ctx) => {
 		resetSessionState(ctx);
+		// Reset the compaction-durability opt-in flag at session start so
+		// Superpowers state is never carried across sessions.
+		state.superpowersActive = false;
+		state.compactionSizing = null;
+		state.rootLifecycleSkillNames = [];
+		state.rootPromptProfile = null;
 		if (state.configGate.message && ctx.hasUI && configDiagnosticNotifiedForSession !== state.currentSessionId) {
 			configDiagnosticNotifiedForSession = state.currentSessionId;
 			ctx.ui.notify(state.configGate.message, state.configGate.blocked ? "error" : "warning");

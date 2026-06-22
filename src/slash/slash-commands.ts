@@ -76,8 +76,14 @@ function notifyIfConfigBlocked(state: SubagentState, ctx: ExtensionContext): boo
  * @param dispatcher Prompt dispatcher that pairs visible summaries with hidden contracts.
  * @param ctx Current extension context.
  * @param profile Resolved Superpowers run profile.
+ * @param state Shared extension state; mutated to arm the compaction-durability opt-in flag.
  */
-function sendSkillEntryPrompt(dispatcher: ReturnType<typeof createSuperpowersPromptDispatcher>, ctx: ExtensionContext, profile: ResolvedSuperpowersRunProfile): void {
+function sendSkillEntryPrompt(
+	dispatcher: ReturnType<typeof createSuperpowersPromptDispatcher>,
+	ctx: ExtensionContext,
+	profile: ResolvedSuperpowersRunProfile,
+	state: SubagentState,
+): void {
 	const promptResult = buildResolvedSkillEntryPrompt({
 		cwd: ctx.cwd,
 		profile,
@@ -88,6 +94,14 @@ function sendSkillEntryPrompt(dispatcher: ReturnType<typeof createSuperpowersPro
 		if (ctx.hasUI) ctx.ui.notify(promptResult.error, "error");
 		return;
 	}
+
+	// Arm the compaction-durability opt-in flag at dispatch time so the
+	// session_compact/context re-injection handlers can re-arm the root
+	// contract after compaction.
+	state.superpowersActive = true;
+	state.compactionSizing = null;
+	state.rootLifecycleSkillNames = profile.rootLifecycleSkillNames ?? [];
+	state.rootPromptProfile = profile;
 
 	const wasIdle = ctx.isIdle();
 	dispatcher.send(
@@ -195,7 +209,7 @@ function registerSuperpowersCommand(
 				parsed,
 				entrypointAgent,
 			});
-			sendSkillEntryPrompt(dispatcher, ctx, profile);
+			sendSkillEntryPrompt(dispatcher, ctx, profile, state);
 			return Promise.resolve();
 		},
 	});
