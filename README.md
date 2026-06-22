@@ -12,6 +12,28 @@
 - **Entrypoint Lifecycle Skills**: Superpowers entrypoint agents inject root lifecycle skills (verification, review-feedback, branch finishing) defined in frontmatter. .
 - **Subagent Extension & Tool Defaults**: Subagents run with implicit Pi extension discovery disabled by default; configure `superagents.extensions` with local paths or Pi `-e` source specs, and `superagents.tools` with shared tool names or tool extension paths. The bundled defaults provide the common read-only tools globally so agent frontmatter only lists role-specific extras.
 
+## Compaction Durability
+
+During long autonomous Superpowers runs, pi may compact the session context
+(auto-compaction at the context threshold, or overflow recovery). The
+Superpowers extension automatically re-arms the root contract after
+compaction so the model retains lifecycle-trigger awareness
+(`verification-before-completion`, `receiving-code-review`,
+`finishing-a-development-branch`).
+
+This behavior is **opt-in**: it only activates after a Superpowers command
+(`/sp-*` or an intercepted `/skill:brainstorming` / `/skill:writing-plans`)
+has been dispatched. Normal sessions without a Superpowers command are
+unaffected.
+
+The re-injection is sized by the compaction flow:
+
+- **Threshold** (auto-compaction): full root contract re-injected.
+- **Overflow** (context window exceeded): trimmed reminder only, to avoid
+  re-overflow on the automatic retry.
+- **Manual** (`/compact`): minimal one-line pointer, respecting the user's
+  intent to reclaim context.
+
 ## Installation
 
 ```bash

@@ -10,11 +10,13 @@
  * Important dependencies:
  * - @earendil-works/pi-ai (Message type)
  * - @earendil-works/pi-coding-agent (ExtensionContext)
+ * - ../superpowers/workflow-profile.ts (ResolvedSuperpowersRunProfile, type-only)
  * - node:os, node:path, node:fs
  */
 
 import type { Message } from "@earendil-works/pi-ai";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ResolvedSuperpowersRunProfile } from "../superpowers/workflow-profile.ts";
 
 // ============================================================================
 // Basic Types
@@ -329,6 +331,14 @@ export interface SubagentState {
 	currentSessionId: string | null;
 	lastUiContext: ExtensionContext | null;
 	configGate: ConfigGateState;
+	/** Opt-in gate: true only after a Superpowers command has fired this session. */
+	superpowersActive: boolean;
+	/** Last compaction's sizing class, set by session_compact, read by context. Null when no compaction has occurred. */
+	compactionSizing: "full" | "trimmed" | "pointer" | null;
+	/** Root lifecycle skill names, captured at command fire for the trimmed/pointer reminder. */
+	rootLifecycleSkillNames: string[];
+	/** Resolved run profile, captured at command fire for full-sizing re-injection. Skill content is re-resolved at compaction time, not snapshotted. */
+	rootPromptProfile: ResolvedSuperpowersRunProfile | null;
 }
 
 // ============================================================================
