@@ -242,6 +242,10 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 		currentSessionId: null,
 		lastUiContext: null,
 		configGate: { blocked: false, diagnostics: [], message: "", configPath: undefined, examplePath: undefined },
+		superpowersActive: false,
+		compactionSizing: null,
+		rootLifecycleSkillNames: [],
+		rootPromptProfile: null,
 	};
 
 	// Create runtime config store with callback that uses live session baseCwd
