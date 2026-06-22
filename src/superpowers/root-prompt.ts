@@ -8,6 +8,7 @@
  * - keep Superpowers skill selection authoritative instead of forcing recon first
  * - render entry skill content for brainstorming flows
  * - provide generic Plannotator contract for applicable workflows
+ * - build compaction-durability reminders so the workflow can be re-armed after compaction
  *
  * Important side effects:
  * - none; callers resolve skill file content before invoking this module
@@ -88,6 +89,18 @@ function buildEntrySkillBlock(input: SuperpowersRootPromptInput): string {
 }
 
 /**
+ * Trigger-point descriptions for known root lifecycle skills.
+ *
+ * Used by both the initial root-prompt lifecycle block and the compaction
+ * reminder so trigger wording stays consistent across both paths.
+ */
+const LIFECYCLE_TRIGGER_BY_SKILL: Record<string, string> = {
+	"verification-before-completion": "Before claiming complete, fixed, passing, or ready: invoke `verification-before-completion`.",
+	"receiving-code-review": "When receiving or acting on review feedback: invoke `receiving-code-review`.",
+	"finishing-a-development-branch": "After implementation is complete and verification passes: invoke `finishing-a-development-branch`.",
+};
+
+/**
  * Build root lifecycle skill content and trigger hints for implementation entrypoints.
  *
  * @param rootLifecycleSkills Resolved root lifecycle skills from entrypoint agent frontmatter.
@@ -96,12 +109,9 @@ function buildEntrySkillBlock(input: SuperpowersRootPromptInput): string {
 function buildRootLifecycleSkillsBlock(rootLifecycleSkills: SuperpowersRootPromptSkill[] | undefined): string {
 	if (!rootLifecycleSkills || rootLifecycleSkills.length === 0) return "";
 
-	const triggerBySkillName: Record<string, string> = {
-		"verification-before-completion": "Before claiming complete, fixed, passing, or ready: invoke `verification-before-completion`.",
-		"receiving-code-review": "When receiving or acting on review feedback: invoke `receiving-code-review`.",
-		"finishing-a-development-branch": "After implementation is complete and verification passes: invoke `finishing-a-development-branch`.",
-	};
-	const triggerLines = rootLifecycleSkills.map((skill) => `- ${triggerBySkillName[skill.name] ?? `Invoke \`${skill.name}\` at the trigger point described in its skill content.`}`);
+	const triggerLines = rootLifecycleSkills.map(
+		(skill) => `- ${LIFECYCLE_TRIGGER_BY_SKILL[skill.name] ?? `Invoke \`${skill.name}\` at the trigger point described in its skill content.`}`,
+	);
 
 	return [
 		"Root lifecycle skills:",
@@ -110,6 +120,41 @@ function buildRootLifecycleSkillsBlock(rootLifecycleSkills: SuperpowersRootPromp
 		"Required lifecycle triggers:",
 		...triggerLines,
 		...rootLifecycleSkills.flatMap((skill) => ["", `Name: ${skill.name}`, `Path: ${skill.path}`, "```markdown", skill.content, "```"]),
+	].join("\n");
+}
+
+/**
+ * Build a compaction-durability reminder for trimmed or pointer sizing.
+ *
+ * Produces a hidden reminder containing lifecycle-skill trigger names so the
+ * model can re-arm its workflow after compaction without the full root
+ * contract. Used by the `context`-event re-injection handler for `overflow`
+ * (trimmed) and `manual` (pointer) compaction reasons.
+ *
+ * @param skillNames Root lifecycle skill names from the active entrypoint.
+ * @param sizing "trimmed" (overflow — full reminder) or "pointer" (manual — minimal one-liner).
+ * @returns Reminder text wrapped in an EXTREMELY_IMPORTANT marker block.
+ */
+export function buildCompactionReminder(skillNames: string[], sizing: "trimmed" | "pointer"): string {
+	const triggerLines = skillNames.map((name) => `- ${LIFECYCLE_TRIGGER_BY_SKILL[name] ?? `Invoke \`${name}\` at its trigger point.`}`);
+	if (sizing === "pointer") {
+		return [
+			"<EXTREMELY_IMPORTANT>",
+			"superpowers:compaction-reminder",
+			"",
+			"Superpowers workflow still active. Invoke lifecycle skills at their trigger points:",
+			...triggerLines,
+			"</EXTREMELY_IMPORTANT>",
+		].join("\n");
+	}
+	return [
+		"<EXTREMELY_IMPORTANT>",
+		"superpowers:compaction-reminder",
+		"",
+		"You are mid-Superpowers-run. Context was compacted. Re-arm your workflow:",
+		...triggerLines,
+		"- Resume your current task using the kept context above.",
+		"</EXTREMELY_IMPORTANT>",
 	].join("\n");
 }
 

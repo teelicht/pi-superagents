@@ -7,11 +7,12 @@
  * - verify presence-based contract emission
  * - verify skill entry and lifecycle skill rendering
  * - verify generic Plannotator contract
+ * - verify compaction-durability reminder sizing for trimmed and pointer re-injection
  */
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildSuperpowersRootPrompt, buildSuperpowersVisiblePromptSummary } from "../../src/superpowers/root-prompt.ts";
+import { buildCompactionReminder, buildSuperpowersRootPrompt, buildSuperpowersVisiblePromptSummary } from "../../src/superpowers/root-prompt.ts";
 
 void describe("Superpowers root prompt", () => {
 	void it("bootstraps using-superpowers and enables delegation when configured", () => {
@@ -251,5 +252,29 @@ void describe("Superpowers root prompt", () => {
 		assert.doesNotMatch(summary, /useSubagents/);
 		assert.doesNotMatch(summary, /useTestDrivenDevelopment/);
 		assert.doesNotMatch(summary, /worktrees/);
+	});
+
+	void it("builds a trimmed compaction reminder with lifecycle trigger names", () => {
+		const reminder = buildCompactionReminder(["verification-before-completion", "receiving-code-review", "finishing-a-development-branch"], "trimmed");
+		assert.match(reminder, /superpowers:compaction-reminder/);
+		assert.match(reminder, /You are mid-Superpowers-run/);
+		assert.match(reminder, /verification-before-completion/);
+		assert.match(reminder, /receiving-code-review/);
+		assert.match(reminder, /finishing-a-development-branch/);
+		assert.match(reminder, /Resume your current task/);
+	});
+
+	void it("builds a pointer compaction reminder in minimal one-line form", () => {
+		const reminder = buildCompactionReminder(["verification-before-completion", "finishing-a-development-branch"], "pointer");
+		assert.match(reminder, /superpowers:compaction-reminder/);
+		assert.match(reminder, /Superpowers workflow still active/);
+		assert.match(reminder, /verification-before-completion/);
+		assert.match(reminder, /finishing-a-development-branch/);
+		assert.doesNotMatch(reminder, /You are mid-Superpowers-run/);
+	});
+
+	void it("uses fallback trigger text for unknown skill names in compaction reminder", () => {
+		const reminder = buildCompactionReminder(["custom-skill"], "trimmed");
+		assert.match(reminder, /Invoke `custom-skill` at its trigger point/);
 	});
 });
