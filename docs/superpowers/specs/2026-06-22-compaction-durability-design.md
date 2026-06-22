@@ -140,11 +140,13 @@ export interface SubagentState {
 	compactionSizing: "full" | "trimmed" | "pointer" | null;
 	/** Root lifecycle skill names, for the trimmed/pointer reminder. */
 	rootLifecycleSkillNames: string[];
+	/** Persisted root-prompt input for full-sizing re-injection (see open question 2). */
+	rootPromptInput: SuperpowersRootPromptInput | null;
 }
 ```
 
 Initialization in `registerSubagentExtension` extends to:
-`superpowersActive: false, compactionSizing: null, rootLifecycleSkillNames: []`.
+`superpowersActive: false, compactionSizing: null, rootLifecycleSkillNames: [], rootPromptInput: null`.
 
 ### 2. Opt-in trigger (command dispatch sites)
 
@@ -156,6 +158,7 @@ in `src/slash/slash-commands.ts` and the intercepted-`/skill:` path in
 state.superpowersActive = true;
 state.compactionSizing = null;
 state.rootLifecycleSkillNames = (profile.rootLifecycleSkills ?? []).map(s => s.name);
+state.rootPromptInput = input; // for full-sizing re-injection; see open question 2
 ```
 
 This is the entire opt-in surface. No `/sp-*` and no `/skill:` → the flag is never set true →
@@ -190,7 +193,7 @@ pi.on("context", (event) => {
 
 	const sizing = state.compactionSizing ?? "full"; // default full if no compaction yet
 	const content = sizing === "full"
-		? buildSuperpowersRootPrompt(lastInput)        // shared with initial path
+		? buildSuperpowersRootPrompt(state.rootPromptInput!)  // persisted at command fire; see open question 2
 		: buildCompactionReminder(state.rootLifecycleSkillNames, sizing); // trimmed/pointer
 	if (!content) return;
 
