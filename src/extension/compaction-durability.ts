@@ -100,17 +100,28 @@ export interface CompactionDurabilityDeps {
  * @param deps Dependencies (cwd accessor for skill re-resolution).
  */
 export function registerCompactionDurabilityHandlers(pi: ExtensionAPI, state: SubagentState, _deps: CompactionDurabilityDeps): void {
-	pi.on("session_compact", (event: { reason?: string; willRetry?: boolean }) => {
+	// NOTE: the `event` parameters are intentionally left unannotated so the
+	// ExtensionAPI.on overloads infer the precise event types
+	// (SessionCompactEvent / ContextEvent). Inline annotations defeat overload
+	// resolution and produce TS2769 ("No overload matches this call").
+	pi.on("session_compact", (event) => {
 		try {
 			if (!state.superpowersActive) return;
 			state.superpowersActive = true;
-			state.compactionSizing = resolveCompactionSizing(event.reason ?? "manual");
+			// SessionCompactEvent does not expose `reason` as a top-level field
+			// (the real shape carries it through compactionEntry.details). The
+			// brief's handler contract reads `event.reason` and the unit tests
+			// pass a plain object that satisfies that shape, so a narrow cast
+			// keeps the runtime contract intact without re-annotating the
+			// parameter (which would defeat ExtensionAPI.on overload resolution).
+			const reason = (event as { reason?: string }).reason ?? "manual";
+			state.compactionSizing = resolveCompactionSizing(reason);
 		} catch {
 			// Never break compaction — leave state as-is.
 		}
 	});
 
-	pi.on("context", (event: { messages: unknown[] }) => {
+	pi.on("context", (event) => {
 		try {
 			if (!state.superpowersActive) return;
 			if (event.messages.some(messageContainsBootstrap)) return;
@@ -133,8 +144,12 @@ export function registerCompactionDurabilityHandlers(pi: ExtensionAPI, state: Su
 
 			if (!content) return;
 
+			// The injected custom message must satisfy the CustomMessage /
+			// AgentMessage shape, which requires a `timestamp` field. We use
+			// Date.now() so the injected entry is timestamped at injection time.
 			const message = {
 				role: "custom" as const,
+				timestamp: Date.now(),
 				...buildSuperpowersContractMessage(content),
 			};
 			const insertAt = firstNonCompactionSummaryIndex(event.messages);
