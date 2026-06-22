@@ -108,13 +108,9 @@ export function registerCompactionDurabilityHandlers(pi: ExtensionAPI, state: Su
 		try {
 			if (!state.superpowersActive) return;
 			state.superpowersActive = true;
-			// SessionCompactEvent does not expose `reason` as a top-level field
-			// (the real shape carries it through compactionEntry.details). The
-			// brief's handler contract reads `event.reason` and the unit tests
-			// pass a plain object that satisfies that shape, so a narrow cast
-			// keeps the runtime contract intact without re-annotating the
-			// parameter (which would defeat ExtensionAPI.on overload resolution).
-			const reason = (event as { reason?: string }).reason ?? "manual";
+			// SessionCompactEvent.reason is typed ("manual" | "threshold" | "overflow")
+			// at top level as of @earendil-works/pi-coding-agent 0.79.10 (PR #5962).
+			const reason = event.reason;
 			state.compactionSizing = resolveCompactionSizing(reason);
 		} catch {
 			// Never break compaction — leave state as-is.
