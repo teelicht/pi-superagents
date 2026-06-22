@@ -16,6 +16,29 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 /** Custom message type used for hidden Superpowers root contracts. */
 export const SUPERPOWERS_CONTRACT_CUSTOM_TYPE = "superpowers-root-contract";
 
+/**
+ * Build the hidden Superpowers contract message shape.
+ *
+ * Shared by the `before_agent_start` initial-bootstrap path and the
+ * `context`-event compaction re-injection path so both produce the same
+ * custom-type hidden message. Callers wrap the returned object in their
+ * respective event-return shapes.
+ *
+ * @param content Contract or reminder text to inject as hidden model context.
+ * @returns Custom message object with the Superpowers contract type and display disabled.
+ */
+export function buildSuperpowersContractMessage(content: string): {
+	customType: string;
+	content: string;
+	display: boolean;
+} {
+	return {
+		customType: SUPERPOWERS_CONTRACT_CUSTOM_TYPE,
+		content,
+		display: false,
+	};
+}
+
 /** Prefix that identifies visible Superpowers command summaries. */
 const SUPERPOWERS_VISIBLE_SUMMARY_PREFIX = "Superpowers ▸";
 
@@ -51,11 +74,7 @@ export function createSuperpowersPromptDispatcher(pi: Pick<ExtensionAPI, "on" | 
 			const hiddenContract = pendingHiddenContracts.shift();
 			if (!hiddenContract) return undefined;
 			return {
-				message: {
-					customType: SUPERPOWERS_CONTRACT_CUSTOM_TYPE,
-					content: hiddenContract,
-					display: false,
-				},
+				message: buildSuperpowersContractMessage(hiddenContract),
 			};
 		});
 	}

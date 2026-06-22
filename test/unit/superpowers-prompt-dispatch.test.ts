@@ -9,7 +9,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createSuperpowersPromptDispatcher, SUPERPOWERS_CONTRACT_CUSTOM_TYPE } from "../../src/superpowers/prompt-dispatch.ts";
+import { buildSuperpowersContractMessage, createSuperpowersPromptDispatcher, SUPERPOWERS_CONTRACT_CUSTOM_TYPE } from "../../src/superpowers/prompt-dispatch.ts";
 
 type BeforeAgentStartHandler = (event: { prompt: string }) =>
 	| {
@@ -63,5 +63,12 @@ void describe("Superpowers prompt dispatcher", () => {
 				options: { deliverAs: "followUp" },
 			},
 		]);
+	});
+
+	void it("buildSuperpowersContractMessage produces the hidden contract message shape", () => {
+		const message = buildSuperpowersContractMessage("contract text");
+		assert.equal(message.customType, SUPERPOWERS_CONTRACT_CUSTOM_TYPE);
+		assert.equal(message.content, "contract text");
+		assert.equal(message.display, false);
 	});
 });
