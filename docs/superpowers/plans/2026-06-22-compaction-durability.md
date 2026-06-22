@@ -34,7 +34,7 @@
 **Interfaces:**
 - Produces: `buildCompactionReminder(skillNames: string[], sizing: "trimmed" | "pointer"): string` — exported from `src/superpowers/root-prompt.ts`. Task 4's `context` handler uses this for trimmed/pointer sizing.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add these tests to the end of the `describe("Superpowers root prompt", ...)` block in `test/unit/superpowers-root-prompt.test.ts`:
 
@@ -76,12 +76,12 @@ Also add `buildCompactionReminder` to the existing import on line 14:
 import { buildCompactionReminder, buildSuperpowersRootPrompt, buildSuperpowersVisiblePromptSummary } from "../../src/superpowers/root-prompt.ts";
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm run test:unit -- --test-name-pattern="compaction reminder"`
 Expected: FAIL — `buildCompactionReminder` is not exported (import error).
 
-- [ ] **Step 3: Extract `triggerBySkillName` to module level and add `buildCompactionReminder`**
+- [x] **Step 3: Extract `triggerBySkillName` to module level and add `buildCompactionReminder`**
 
 In `src/superpowers/root-prompt.ts`, move the `triggerBySkillName` const from inside `buildRootLifecycleSkillsBlock` (currently around line 99) to module level, just above `buildRootLifecycleSkillsBlock`. Then update `buildRootLifecycleSkillsBlock` to reference the module-level constant instead of re-declaring it.
 
@@ -148,22 +148,22 @@ export function buildCompactionReminder(skillNames: string[], sizing: "trimmed" 
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm run test:unit -- --test-name-pattern="compaction reminder"`
 Expected: PASS — all three new tests pass.
 
-- [ ] **Step 5: Run full unit suite to verify no regressions**
+- [x] **Step 5: Run full unit suite to verify no regressions**
 
 Run: `pnpm run test:unit`
 Expected: PASS — all existing root-prompt tests still pass (the `triggerBySkillName` extraction doesn't change behavior).
 
-- [ ] **Step 6: Lint**
+- [x] **Step 6: Lint**
 
 Run: `pnpm run lint`
 Expected: No errors.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/superpowers/root-prompt.ts test/unit/superpowers-root-prompt.test.ts
@@ -186,7 +186,7 @@ trimmed (overflow) and pointer (manual) re-injection sizing."
 **Interfaces:**
 - Produces: `buildSuperpowersContractMessage(content: string): { customType: string; content: string; display: boolean }` — exported from `src/superpowers/prompt-dispatch.ts`. Task 4's `context` handler uses this for the shared message shape.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add this test to the end of the `describe("Superpowers prompt dispatcher", ...)` block in `test/unit/superpowers-prompt-dispatch.test.ts`:
 
@@ -205,12 +205,12 @@ Add `buildSuperpowersContractMessage` to the import on line 12:
 import { buildSuperpowersContractMessage, createSuperpowersPromptDispatcher, SUPERPOWERS_CONTRACT_CUSTOM_TYPE } from "../../src/superpowers/prompt-dispatch.ts";
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm run test:unit -- --test-name-pattern="buildSuperpowersContractMessage"`
 Expected: FAIL — `buildSuperpowersContractMessage` is not exported.
 
-- [ ] **Step 3: Extract the factory and refactor the handler**
+- [x] **Step 3: Extract the factory and refactor the handler**
 
 In `src/superpowers/prompt-dispatch.ts`, add the factory function after the `SUPERPOWERS_CONTRACT_CUSTOM_TYPE` constant (around line 17):
 
@@ -252,22 +252,22 @@ Refactor the `before_agent_start` handler (around line 49-60) to use the factory
 	});
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm run test:unit -- --test-name-pattern="buildSuperpowersContractMessage"`
 Expected: PASS.
 
-- [ ] **Step 5: Run full unit suite to verify no regressions**
+- [x] **Step 5: Run full unit suite to verify no regressions**
 
 Run: `pnpm run test:unit`
 Expected: PASS — the existing dispatcher tests still pass (the refactor preserves behavior).
 
-- [ ] **Step 6: Lint**
+- [x] **Step 6: Lint**
 
 Run: `pnpm run lint`
 Expected: No errors.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/superpowers/prompt-dispatch.ts test/unit/superpowers-prompt-dispatch.test.ts
@@ -290,7 +290,7 @@ compaction re-injection path. No behavior change."
 **Interfaces:**
 - Produces: `SubagentState` gains `superpowersActive`, `compactionSizing`, `rootLifecycleSkillNames`, `rootPromptProfile`. Tasks 4–5 rely on these fields.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `test/unit/subagent-state.test.ts`:
 
@@ -349,12 +349,12 @@ void describe("SubagentState compaction-durability fields", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm run test:unit -- --test-name-pattern="compaction-durability fields"`
 Expected: FAIL — TypeScript compile error: `superpowersActive` etc. do not exist on `SubagentState`.
 
-- [ ] **Step 3: Add the type import and fields to `SubagentState`**
+- [x] **Step 3: Add the type import and fields to `SubagentState`**
 
 In `src/shared/types.ts`, add a type-only import near the top (after line 17, the existing `ExtensionContext` import):
 
@@ -381,7 +381,7 @@ export interface SubagentState {
 }
 ```
 
-- [ ] **Step 4: Update state initialization in `src/extension/index.ts`**
+- [x] **Step 4: Update state initialization in `src/extension/index.ts`**
 
 In `registerSubagentExtension` (around line 240), extend the `state` object:
 
@@ -398,22 +398,22 @@ In `registerSubagentExtension` (around line 240), extend the `state` object:
 	};
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm run test:unit -- --test-name-pattern="compaction-durability fields"`
 Expected: PASS.
 
-- [ ] **Step 6: Run full unit suite + type check**
+- [x] **Step 6: Run full unit suite + type check**
 
 Run: `pnpm run test:unit`
 Expected: PASS — no regressions. The type-only import is erased at runtime so no circular-dependency issues.
 
-- [ ] **Step 7: Lint**
+- [x] **Step 7: Lint**
 
 Run: `pnpm run lint`
 Expected: No errors.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/shared/types.ts src/extension/index.ts test/unit/subagent-state.test.ts
@@ -439,7 +439,7 @@ names only; content is re-resolved at compaction time."
 - Produces: `firstNonCompactionSummaryIndex(messages: unknown[]): number` — insertion-point helper.
 - Produces: `registerCompactionDurabilityHandlers(pi, state, deps): void` — registers `session_compact`, `context`, and `agent_end` handlers. Task 5 calls this from `index.ts`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `test/unit/compaction-durability.test.ts`:
 
@@ -533,12 +533,12 @@ void describe("firstNonCompactionSummaryIndex", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm run test:unit -- --test-name-pattern="resolveCompactionSizing|messageContainsBootstrap|firstNonCompactionSummaryIndex"`
 Expected: FAIL — module `src/extension/compaction-durability.ts` does not exist.
 
-- [ ] **Step 3: Create the helpers module**
+- [x] **Step 3: Create the helpers module**
 
 Create `src/extension/compaction-durability.ts`:
 
@@ -709,22 +709,22 @@ export function registerCompactionDurabilityHandlers(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm run test:unit -- --test-name-pattern="resolveCompactionSizing|messageContainsBootstrap|firstNonCompactionSummaryIndex"`
 Expected: PASS — all helper tests pass.
 
-- [ ] **Step 5: Run full unit suite**
+- [x] **Step 5: Run full unit suite**
 
 Run: `pnpm run test:unit`
 Expected: PASS — no regressions.
 
-- [ ] **Step 6: Lint**
+- [x] **Step 6: Lint**
 
 Run: `pnpm run lint`
 Expected: No errors.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/extension/compaction-durability.ts test/unit/compaction-durability.test.ts
@@ -750,7 +750,7 @@ content at runtime via buildResolvedSkillEntryPrompt for full sizing."
 - Consumes: `registerCompactionDurabilityHandlers` from Task 4; `SubagentState` fields from Task 3; `buildCompactionReminder` from Task 1.
 - Produces: a fully wired compaction-durability layer that activates on `/sp-*`/`/skill:` dispatch and re-injects after compaction.
 
-- [ ] **Step 1: Write the failing integration tests**
+- [x] **Step 1: Write the failing integration tests**
 
 Create `test/integration/compaction-durability.test.ts`:
 
@@ -914,14 +914,14 @@ void describe("compaction-durability lifecycle", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm run test:integration -- --test-name-pattern="compaction-durability lifecycle"`
 Expected: FAIL — `registerCompactionDurabilityHandlers` is not yet called from `index.ts`, and the opt-in flag is never set at dispatch sites. (The handler tests themselves should pass from Task 4, but the wiring isn't in place — this test validates the handler registration directly, so it should actually pass. If it passes, the wiring tests are validated at the handler level; the index.ts wiring is verified by the full suite passing in Step 6.)
 
 Note: If these tests pass already (because they test the handler registration directly, not the index.ts wiring), proceed — the index.ts wiring is validated by the full integration suite in Step 6.
 
-- [ ] **Step 3: Register handlers in `src/extension/index.ts`**
+- [x] **Step 3: Register handlers in `src/extension/index.ts`**
 
 Add the import near the top of `src/extension/index.ts` (after the existing `createRuntimeConfigStore` import, around line 32):
 
@@ -935,7 +935,7 @@ In `registerSubagentExtension`, after the existing `pi.on("session_shutdown", ..
 	registerCompactionDurabilityHandlers(pi, state, { cwd: () => state.baseCwd });
 ```
 
-- [ ] **Step 4: Update `session_start` to reset the opt-in flag**
+- [x] **Step 4: Update `session_start` to reset the opt-in flag**
 
 In `src/extension/index.ts`, the existing `session_start` handler (around line 606) currently calls `resetSessionState(ctx)`. Add the opt-in reset after it:
 
@@ -951,7 +951,7 @@ In `src/extension/index.ts`, the existing `session_start` handler (around line 6
 	});
 ```
 
-- [ ] **Step 5: Set the opt-in flag at the intercepted `/skill:` dispatch site**
+- [x] **Step 5: Set the opt-in flag at the intercepted `/skill:` dispatch site**
 
 In `src/extension/index.ts`, the `input` handler's intercepted-skill path (around line 563, after `buildResolvedSkillEntryPrompt` succeeds and before `skillCommandPromptDispatcher.send`), add the opt-in flag:
 
@@ -968,7 +968,7 @@ In `src/extension/index.ts`, the `input` handler's intercepted-skill path (aroun
 
 (Insert the four `state.*` lines between the `if ("error" in promptResult) { ... }` block and the `skillCommandPromptDispatcher.send` call.)
 
-- [ ] **Step 6: Set the opt-in flag at the `/sp-*` dispatch site in `src/slash/slash-commands.ts`**
+- [x] **Step 6: Set the opt-in flag at the `/sp-*` dispatch site in `src/slash/slash-commands.ts`**
 
 In `src/slash/slash-commands.ts`, the `sendSkillEntryPrompt` function (around line 80) needs `state` passed in. Update its signature and add the opt-in flag before `dispatcher.send`:
 
@@ -1008,22 +1008,22 @@ Update all call sites of `sendSkillEntryPrompt` to pass `state`. Find each call 
 
 (Search for `sendSkillEntryPrompt(` in `src/slash/slash-commands.ts` and add `, state` before the closing `)` at each call site.)
 
-- [ ] **Step 7: Run the integration tests**
+- [x] **Step 7: Run the integration tests**
 
 Run: `pnpm run test:integration -- --test-name-pattern="compaction-durability"`
 Expected: PASS.
 
-- [ ] **Step 8: Run the full test suite**
+- [x] **Step 8: Run the full test suite**
 
 Run: `pnpm run test:unit && pnpm run test:integration`
 Expected: PASS — no regressions in existing tests. The `sendSkillEntryPrompt` signature change is covered by the existing `slash-commands.test.ts`.
 
-- [ ] **Step 9: Lint**
+- [x] **Step 9: Lint**
 
 Run: `pnpm run lint`
 Expected: No errors.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add src/extension/index.ts src/slash/slash-commands.ts test/integration/compaction-durability.test.ts
@@ -1047,11 +1047,11 @@ receives state to set the flag at dispatch time."
 **Interfaces:**
 - Consumes: the completed feature from Tasks 1–5.
 
-- [ ] **Step 1: Read the current README and docs/skills.md**
+- [x] **Step 1: Read the current README and docs/skills.md**
 
 Run: `read README.md` and `read docs/skills.md` to find the right insertion points.
 
-- [ ] **Step 2: Add compaction-durability note to README.md**
+- [x] **Step 2: Add compaction-durability note to README.md**
 
 Add a section in the features or behavior area of `README.md`:
 
@@ -1078,7 +1078,7 @@ The re-injection is sized by the compaction flow:
   intent to reclaim context.
 ```
 
-- [ ] **Step 3: Add lifecycle-skill re-arm note to docs/skills.md**
+- [x] **Step 3: Add lifecycle-skill re-arm note to docs/skills.md**
 
 Add to `docs/skills.md` in the lifecycle-skills section:
 
@@ -1094,12 +1094,12 @@ the original command. The re-injection is sized by the compaction reason
 in sessions where a Superpowers command has been explicitly activated.
 ```
 
-- [ ] **Step 4: Lint**
+- [x] **Step 4: Lint**
 
 Run: `pnpm run lint`
 Expected: No errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add README.md docs/skills.md
