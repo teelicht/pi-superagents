@@ -122,6 +122,16 @@ Bundled entrypoint assignments:
 Bundled role assignments:
 - `agents/sp-debug.md` assigns `systematic-debugging` to the bounded debug role.
 
+### Re-arming after compaction
+
+When pi compacts the session context mid-Superpowers-run, the extension
+re-injects the lifecycle-skill trigger points so the model can continue
+invoking `verification-before-completion`, `receiving-code-review`, and
+`finishing-a-development-branch` at their trigger points without re-running
+the original command. The re-injection is sized by the compaction reason
+(threshold = full, overflow = trimmed, manual = pointer) and only occurs
+in sessions where a Superpowers command has been explicitly activated.
+
 ## Child Lifecycle Tools
 
 Child lifecycle tools (`subagent_done`, `caller_ping`) may be available to bounded roles through the tool policy for semantic completion signaling and parent request handling. These are internal child-only tools; they are not general-purpose delegation tools and are not listed in the parameters API.
