@@ -9,7 +9,7 @@
  */
 
 import { CHILD_LIFECYCLE_TOOLS, DELEGATION_TOOLS, READ_ONLY_TOOLS } from "../shared/tool-registry.ts";
-import type { ExecutionRole, ExtensionConfig, ModelTierConfig, WorkflowMode } from "../shared/types.ts";
+import type { ExecutionRole, ExtensionConfig, ModelTierConfig, ThinkingLevel, WorkflowMode } from "../shared/types.ts";
 import { getSuperagentSettings } from "./superagents-config.ts";
 
 export interface ResolvedRoleModel {
@@ -91,6 +91,78 @@ export function resolveModelForAgent(input: { workflow: WorkflowMode; agentModel
 	const tier = normalizeConfiguredTier(input.agentModel);
 	if (!tier) return undefined;
 	return resolveTierModelSetting(settings, tier);
+}
+
+/**
+ * Built-in model tier names that are always treated as tier references.
+ *
+ * Agents declare one of these names (e.g. `model: cheap`) in frontmatter to
+ * reference a configured tier rather than a concrete model id. When such a
+ * reference cannot be resolved at launch time the run is halted with a clear
+ * error instead of silently passing the literal tier name to Pi.
+ *
+ * Also reused by the settings overlay as the fallback tier list shown when no
+ * tiers are configured, keeping a single source of truth for tier names.
+ */
+export const RESERVED_MODEL_TIERS: readonly string[] = ["cheap", "balanced", "max", "reasoning"];
+
+const RESERVED_TIER_SET: ReadonlySet<string> = new Set(RESERVED_MODEL_TIERS);
+
+/**
+ * Effective model resolution result.
+ *
+ * - `model` plus optional `thinking` when a concrete model was resolved.
+ * - `unresolvedTier` when the agent referenced a tier that has no usable
+ *   configuration. Callers must halt the launch rather than fall back to the
+ *   literal tier name.
+ */
+export interface ResolvedEffectiveModel {
+	model?: string;
+	thinking?: ThinkingLevel;
+	unresolvedTier?: string;
+}
+
+/**
+ * Determine whether an agent model value is an unambiguous tier reference.
+ *
+ * A value is a tier reference when it names a reserved built-in tier or a key
+ * that is present in the configured `modelTiers` map. Configured keys are
+ * included so malformed custom tiers (e.g. an empty `model`) are caught too.
+ *
+ * @param agentModel Agent frontmatter `model` value.
+ * @param config Extension config containing optional `superagents.modelTiers`.
+ * @returns True when the value must resolve through tier configuration.
+ */
+function isTierReference(agentModel: string | undefined, config: ExtensionConfig): boolean {
+	if (!agentModel) return false;
+	if (RESERVED_TIER_SET.has(agentModel)) return true;
+	return Object.hasOwn(config.superagents?.modelTiers ?? {}, agentModel);
+}
+
+/**
+ * Resolve the effective model for a child launch, refusing to emit a literal tier name.
+ *
+ * Inputs/outputs:
+ * - accepts the agent frontmatter `model`, an optional runtime override, and config
+ * - returns `{ model, thinking }` for a concrete or resolved-tier model
+ * - returns `{ unresolvedTier }` when the agent references a tier with no usable config
+ *
+ * Invariants:
+ * - a runtime `modelOverride` always wins and is returned as-is
+ * - non-tier concrete model ids pass through unchanged (no warning, no halt)
+ * - the literal tier name is never returned as `model`; an unresolved reference
+ *   surfaces as `unresolvedTier` so callers can halt with a clear error
+ *
+ * Failure modes:
+ * - reserved or configured tier names with missing/empty configuration resolve
+ *   to `{ unresolvedTier }` instead of silently falling back to the tier name
+ */
+export function resolveEffectiveModel(input: { agentModel?: string; modelOverride?: string; config: ExtensionConfig }): ResolvedEffectiveModel {
+	if (input.modelOverride !== undefined) return { model: input.modelOverride };
+	const tierModel = resolveModelForAgent({ workflow: "superpowers", agentModel: input.agentModel, config: input.config });
+	if (tierModel) return { model: tierModel.model, thinking: tierModel.thinking };
+	if (isTierReference(input.agentModel, input.config)) return { unresolvedTier: input.agentModel };
+	return input.agentModel !== undefined ? { model: input.agentModel } : {};
 }
 
 /**

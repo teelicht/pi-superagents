@@ -81,6 +81,7 @@ skills: verification-before-completion
 ---
 ```
 
+The `subagent` tool is the one the upstream Superpowers skills reference as "subagent from pi-subagents". Pi-superagents is the pi-subagents-compatible fork; the tool description states this and its actual capabilities (synchronous single, parallel, and forked-context dispatch — no async, chain, or resume/status) so models connect the skill reference to this tool.
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | Yes | Agent identifier used by the `subagent` tool or matching entrypoint name |

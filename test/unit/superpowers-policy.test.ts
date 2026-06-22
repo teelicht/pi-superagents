@@ -12,7 +12,15 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { inferExecutionRole, resolveImplementerSkillSet, resolveModelForAgent, resolveRoleSkillSet, resolveRoleTools } from "../../src/execution/superpowers-policy.ts";
+import {
+	inferExecutionRole,
+	RESERVED_MODEL_TIERS,
+	resolveEffectiveModel,
+	resolveImplementerSkillSet,
+	resolveModelForAgent,
+	resolveRoleSkillSet,
+	resolveRoleTools,
+} from "../../src/execution/superpowers-policy.ts";
 import { CHILD_LIFECYCLE_TOOLS, READ_ONLY_TOOLS } from "../../src/shared/tool-registry.ts";
 
 void describe("superpowers policy", () => {
@@ -379,5 +387,63 @@ void describe("superpowers policy", () => {
 		assert.deepEqual(resolveModelForAgent({ workflow: "superpowers", agentModel: "balanced", config: secondConfig }), {
 			model: "anthropic/claude-opus-4.6",
 		});
+	});
+});
+
+void describe("resolveEffectiveModel", () => {
+	void it("exposes the reserved built-in tier names", () => {
+		assert.deepEqual([...RESERVED_MODEL_TIERS], ["cheap", "balanced", "max", "reasoning"]);
+	});
+
+	void it("returns the configured model and thinking when a reserved tier resolves", () => {
+		const config = { superagents: { modelTiers: { cheap: { model: "openai/gpt-4o-mini", thinking: "low" } } } } as const;
+		assert.deepEqual(resolveEffectiveModel({ agentModel: "cheap", config }), {
+			model: "openai/gpt-4o-mini",
+			thinking: "low",
+		});
+	});
+
+	void it("marks a reserved tier as unresolved when no modelTiers are configured", () => {
+		assert.deepEqual(resolveEffectiveModel({ agentModel: "cheap", config: {} }), { unresolvedTier: "cheap" });
+	});
+
+	void it("marks a reserved tier as unresolved when config.superagents is absent", () => {
+		assert.deepEqual(resolveEffectiveModel({ agentModel: "cheap", config: {} }), { unresolvedTier: "cheap" });
+	});
+
+	void it("marks a configured tier key as unresolved when its model is empty", () => {
+		const config = { superagents: { modelTiers: { creative: { model: "" } } } };
+		assert.deepEqual(resolveEffectiveModel({ agentModel: "creative", config }), { unresolvedTier: "creative" });
+	});
+
+	void it("resolves a custom tier when its model is configured", () => {
+		const config = { superagents: { modelTiers: { creative: { model: "anthropic/claude-opus-4.6", thinking: "high" } } } } as const;
+		assert.deepEqual(resolveEffectiveModel({ agentModel: "creative", config }), {
+			model: "anthropic/claude-opus-4.6",
+			thinking: "high",
+		});
+	});
+
+	void it("lets a runtime model override win over a reserved tier", () => {
+		const config = { superagents: { modelTiers: { cheap: { model: "openai/gpt-4o-mini" } } } };
+		assert.deepEqual(resolveEffectiveModel({ agentModel: "cheap", modelOverride: "anthropic/claude-sonnet", config }), {
+			model: "anthropic/claude-sonnet",
+		});
+	});
+
+	void it("lets a runtime model override win even when the tier would be unresolved", () => {
+		assert.deepEqual(resolveEffectiveModel({ agentModel: "cheap", modelOverride: "anthropic/claude-sonnet", config: {} }), {
+			model: "anthropic/claude-sonnet",
+		});
+	});
+
+	void it("passes a non-tier concrete model string through unchanged", () => {
+		assert.deepEqual(resolveEffectiveModel({ agentModel: "anthropic/claude-sonnet", config: {} }), {
+			model: "anthropic/claude-sonnet",
+		});
+	});
+
+	void it("returns no model when the agent declares no model and nothing is configured", () => {
+		assert.deepEqual(resolveEffectiveModel({ agentModel: undefined, config: {} }), {});
 	});
 });

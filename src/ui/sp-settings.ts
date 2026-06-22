@@ -16,6 +16,7 @@ import * as path from "node:path";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { Component, TUI } from "@earendil-works/pi-tui";
 import { matchesKey } from "@earendil-works/pi-tui";
+import { RESERVED_MODEL_TIERS } from "../execution/superpowers-policy.ts";
 import { VALID_THINKING_LEVELS } from "../shared/thinking-levels.ts";
 import type { ExtensionConfig, SubagentState, ThinkingLevel } from "../shared/types.ts";
 import {
@@ -56,10 +57,6 @@ export interface SuperpowersSettingsModelPickerOptions {
  */
 export type SettingsMode = "settings" | "tier-picker" | "model-picker" | "thinking-picker";
 
-/**
- * Default model tier names to display in the tier picker.
- */
-const DEFAULT_MODEL_TIERS = ["cheap", "balanced", "max", "reasoning"];
 const MAX_VISIBLE_MODELS = 15;
 
 const THINKING_OPTIONS: readonly (ThinkingLevel | undefined)[] = [undefined, ...VALID_THINKING_LEVELS];
@@ -259,7 +256,7 @@ export class SuperpowersSettingsComponent implements Component {
 	 * @param tiers Available tier names.
 	 * @returns true if the input was handled, false otherwise.
 	 */
-	private handleTierPickerKey(data: string, tiers: string[]): boolean {
+	private handleTierPickerKey(data: string, tiers: readonly string[]): boolean {
 		const currentIndex = this.selectedTier ? tiers.indexOf(this.selectedTier) : -1;
 
 		if (matchesKey(data, "up") || matchesKey(data, "k")) {
@@ -396,12 +393,12 @@ export class SuperpowersSettingsComponent implements Component {
 	 * Get model tier entries to display.
 	 * Returns configured tier names, falling back to defaults.
 	 */
-	private modelTierEntries(): string[] {
+	private modelTierEntries(): readonly string[] {
 		const configuredTiers = this.getConfig().superagents?.modelTiers;
 		if (configuredTiers) {
 			return Object.keys(configuredTiers);
 		}
-		return DEFAULT_MODEL_TIERS;
+		return RESERVED_MODEL_TIERS;
 	}
 
 	/**

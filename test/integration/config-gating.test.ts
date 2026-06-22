@@ -214,4 +214,24 @@ void describe("extension config gating", { skip: !available ? "extension not imp
 
 		assert.equal(notifications.length, 1, "config diagnostic must not be repeated for the same session");
 	});
+
+	void it("subagent tool description bridges the pi-subagents naming gap the skills cite", async () => {
+		// The upstream Superpowers skill (using-superpowers/references/pi-tools.md) tells agents to
+		// "use subagent from pi-subagents". This package is the pi-subagents-compatible fork, so the
+		// tool description must explicitly identify itself as that tool and set correct capability
+		// expectations — otherwise the model hesitates or expects async/chain/resume workflows.
+		const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-tool-desc-home-"));
+		tempDirs.push(home);
+		setTestHome(home);
+
+		const mock = createPiMock();
+		registerSubagentExtension!(mock.pi as never);
+
+		const tool = mock.tools.get("subagent");
+		assert.ok(tool, "subagent tool must be registered at extension load");
+		const description = (tool as { description?: string }).description ?? "";
+		assert.match(description, /pi-subagents/, "description must reference the pi-subagents package name the skills cite");
+		assert.match(description, /skills reference/, "description must state this is the tool the skills reference");
+		assert.match(description, /no async, chain, or resume/, "description must set correct capability expectations");
+	});
 });
