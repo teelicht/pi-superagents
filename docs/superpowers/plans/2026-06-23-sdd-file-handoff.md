@@ -216,7 +216,7 @@ Net code reduction; no behavior change for built-in roles."
 - Consumes: the SDD skill's `implementer-prompt.md` and `task-reviewer-prompt.md` conventions (paths in the task text).
 - Produces: bounded-agent frontmatter whose body instructs reading/writing handoff files by path.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `test/unit/agent-prompts.test.ts`:
 
@@ -256,12 +256,12 @@ void describe("bounded role agent prompts", () => {
 });
 ```
 
-- [ ] **Step 2: Run the test — expect FAIL**
+- [x] **Step 2: Run the test — expect FAIL**
 
 Run: `node --experimental-strip-types --test test/unit/agent-prompts.test.ts`
 Expected: FAIL (current prompts say "implement exactly one extracted plan task" / "investigate the provided debug brief", not path-based handoff language).
 
-- [ ] **Step 3: Rewrite `agents/sp-implementer.md`**
+- [x] **Step 3: Rewrite `agents/sp-implementer.md`**
 
 Keep the frontmatter (`name`, `description`, `model: cheap`, `tools: bash, write`, `maxSubagentDepth: 0`, `session-mode: lineage-only`). Replace the body with:
 
@@ -276,7 +276,7 @@ You are a bounded implementer for one Superpowers task.
 - Return status: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`.
 ```
 
-- [ ] **Step 4: Rewrite `agents/sp-spec-review.md` and `agents/sp-code-review.md`**
+- [x] **Step 4: Rewrite `agents/sp-spec-review.md` and `agents/sp-code-review.md`**
 
 Keep each frontmatter (`model: balanced`, `maxSubagentDepth: 0`, `session-mode: lineage-only`). Replace each body with (the only difference is the role focus line):
 
@@ -302,7 +302,7 @@ You are the Superpowers code-quality reviewer for one bounded task.
 - Return one of: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`.
 ```
 
-- [ ] **Step 5: Fix `agents/sp-debug.md` wording**
+- [x] **Step 5: Fix `agents/sp-debug.md` wording**
 
 Keep frontmatter (`model: max`, `tools: bash`, `skills: systematic-debugging`, `maxSubagentDepth: 0`, `session-mode: lineage-only`). Replace the body with:
 
@@ -317,12 +317,12 @@ You are the Superpowers debug role for one bounded failure investigation.
 - Return one of: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`.
 ```
 
-- [ ] **Step 6: Run the test — expect PASS**
+- [x] **Step 6: Run the test — expect PASS**
 
 Run: `node --experimental-strip-types --test test/unit/agent-prompts.test.ts`
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add agents/sp-implementer.md agents/sp-spec-review.md agents/sp-code-review.md agents/sp-debug.md test/unit/agent-prompts.test.ts
