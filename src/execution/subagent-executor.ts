@@ -62,7 +62,6 @@ import { createResultDeliveryStore } from "./result-delivery.ts";
 import { createSessionLaunchResolver, resolveRequestedSessionMode, type SessionLaunchManager } from "./session-mode.ts";
 import { resolveStepBehavior } from "./settings.ts";
 import { resolveSuperagentWorktreeEnabled } from "./superagents-config.ts";
-import { buildSuperpowersPacketPlan, injectSuperpowersPacketInstructions } from "./superpowers-packets.ts";
 import { resolveEffectiveModel } from "./superpowers-policy.ts";
 import {
 	buildParallelWorktreeSuffix,
@@ -252,20 +251,14 @@ function publishParallelProgressUpdate(input: {
  * @param agentConfig Agent frontmatter and defaults for the child.
  * @param skillOverride Optional runtime skill override after normalization.
  * @param modelOverride Optional runtime model override.
- * @returns Effective step behavior after applying Superpowers packet defaults.
+ * @returns Effective step behavior for the child.
  */
 function resolveChildBehavior(agentConfig: AgentConfig, skillOverride: string[] | false | undefined, modelOverride: string | undefined): ReturnType<typeof resolveStepBehavior> {
-	const packetDefaults = buildSuperpowersPacketPlan(agentConfig.name as ExecutionRole);
-	return resolveStepBehavior(
-		agentConfig,
-		{
-			reads: undefined,
-			progress: undefined,
-			skills: skillOverride,
-			model: modelOverride,
-		},
-		packetDefaults,
-	);
+	return resolveStepBehavior(agentConfig, {
+		progress: undefined,
+		skills: skillOverride,
+		model: modelOverride,
+	});
 }
 
 /**
@@ -361,7 +354,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 	const skillOverrides: (string[] | false | undefined)[] = tasks.map((t) => normalizeSkillInput(t.skill));
 	const behaviors = agentConfigs.map((agentConfig, i) => resolveChildBehavior(agentConfig, skillOverrides[i], modelOverrides[i]));
 	const sessionModes = agentConfigs.map((agentConfig) => resolveAgentSessionMode(params, agentConfig));
-	const taskTexts = tasks.map((t, i) => injectSuperpowersPacketInstructions(t.task, behaviors[i]));
+	const taskTexts = tasks.map((t) => t.task);
 	const liveResults: (SingleResult | undefined)[] = Array(tasks.length).fill(undefined) as (SingleResult | undefined)[];
 	const { setup: worktreeSetup, errorResult } = createParallelWorktreeSetup(effectiveWorktree, effectiveCwd, runId, tasks, workflow, config);
 	if (errorResult) return errorResult;
@@ -568,8 +561,7 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 	const currentMaxSubagentDepth = resolveCurrentMaxSubagentDepth(config.maxSubagentDepth);
 	const maxSubagentDepth = resolveChildMaxSubagentDepth(currentMaxSubagentDepth, agentConfig.maxSubagentDepth);
 
-	const behavior = resolveChildBehavior(agentConfig, skillOverride, modelOverride);
-	const taskText = injectSuperpowersPacketInstructions(params.task!, behavior);
+	const taskText = params.task!;
 	const runtimeCwd = params.cwd ?? ctx.cwd;
 	const childId = `${runId}:0:${params.agent}`;
 
