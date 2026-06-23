@@ -266,6 +266,30 @@ function buildTaskTrackingContract(): string {
 }
 
 /**
+ * Build the file-handoff contract block for the root session.
+ *
+ * Teaches the controller to use the subagent-driven-development skill's file
+ * handoff (brief/report/diff by path) when delegating to the bounded sp-* roles,
+ * and to clean up those files with `rm -f` after a DONE review. The extension
+ * performs no cleanup itself.
+ *
+ * @returns Prompt block for the file-handoff contract.
+ */
+function buildFileHandoffContract(): string {
+	return [
+		"File Handoff Contract:",
+		"For bounded role agents (sp-implementer, sp-spec-review, sp-code-review):",
+		"Use the subagent-driven-development skill's file handoff — do not paste requirements inline.",
+		'- Before each sp-implementer dispatch, run the skill\'s `scripts/task-brief PLAN N`; put the printed brief path in the dispatch ("read this first — it is your requirements").',
+		'- Name the implementer\'s report file after the brief (task-<N>-brief.md → task-<N>-report.md) and put that report path in the dispatch ("write your full report here").',
+		"- Before each sp-spec-review / sp-code-review dispatch, run the skill's `scripts/review-package BASE HEAD`; put the printed diff path, plus the brief and report paths, in the dispatch. Reviewers read all three by path.",
+		"- Cleanup is your job, not the extension's: after a reviewer reports DONE (approved), `rm -f` that task's brief, report, and diff. Keep them on DONE_WITH_CONCERNS, NEEDS_CONTEXT, or BLOCKED — fix and re-dispatch loops reuse them.",
+		"- Never remove `progress.md` (the SDD ledger); it persists until finishing-a-development-branch.",
+		"- sp-debug, sp-recon, and sp-research do not use the file handoff; dispatch them with the task inline.",
+	].join("\n");
+}
+
+/**
  * Build the complete root-session prompt for a Superpowers slash command.
  *
  * @param input Resolved run profile plus optional skill content.
@@ -310,6 +334,8 @@ export function buildSuperpowersRootPrompt(input: SuperpowersRootPromptInput): s
 	}
 	if (input.useSubagents === true) {
 		sections.push(buildTaskTrackingContract());
+		sections.push("");
+		sections.push(buildFileHandoffContract());
 		sections.push("");
 	}
 	if (input.usePlannotatorReview !== undefined) {
