@@ -70,7 +70,6 @@ function resolveSuperagentWorktreeRuntimeOptions(workflow: WorkflowMode, config:
 
 	if (worktrees?.root) {
 		options.rootDir = worktrees.root;
-		options.requireIgnoredRoot = true;
 	}
 
 	return options;

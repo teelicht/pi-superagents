@@ -2,6 +2,8 @@
 
 When multiple agents run in parallel against the same repository, they can clobber each other's file changes. Pi Superagents can automatically give each parallel agent its own git worktree branched from HEAD to provide perfect isolation.
 
+> **Relationship to the `using-git-worktrees` skill:** that skill guides the root-session agent in setting up *one* isolated workspace for its own feature work (detect existing isolation, prefer native tools, fall back to `git worktree add`, verify `.gitignore`). This extension's worktree isolation is a separate concern: it programmatically creates *N* parallel worktrees for concurrent subagent runs. The runtime now mirrors the skill's directory convention (default `.worktrees/` at the repository root) and its `.gitignore` safety rule (auto-append when not ignored), so the two layers do not diverge.
+
 Development note: `pnpm exec fallow` is part of repository maintenance. Worktree-related runtime files should stay reachable through imports or documented dynamic entrypoints so Fallow does not mistake active isolation support for dead code.
 
 ## Usage
@@ -54,12 +56,12 @@ Extension and shared-tool loading for subagents is independent of worktree isola
 - Working tree must be clean (no uncommitted changes). Commit or stash before running parallel tasks.
 - `node_modules/` is symlinked into each worktree when it is safe to do so, avoiding unnecessary dependency installs.
 - Worktree runs use the shared parallel `cwd`. Task-level `cwd` overrides must be omitted or match that shared `cwd`.
-- A configured project-local `worktrees.root` must be ignored by git, such as through `.gitignore`.
+- A configured project-local `worktrees.root` is ignored automatically: if it is not in `.gitignore`, the runtime appends it (the `using-git-worktrees` skill's safety rule). The default `.worktrees/` root is likewise appended when first used.
 
 ## Internals
 
-1. `git worktree add` creates a temporary worktree per agent in the system temp directory.
-2. If the resolved command behavior sets `worktrees.root`, worktrees are created under that directory instead of the system temp directory.
+1. `git worktree add` creates a worktree per agent under the worktree root directory, which defaults to `.worktrees/` at the repository root (mirroring the `using-git-worktrees` skill's directory convention).
+2. If the resolved command behavior sets `worktrees.root`, worktrees are created under that directory instead of `.worktrees/`. An existing `.worktrees/` or `worktrees/` directory is reused when no root is configured.
 3. Each agent runs in its worktree's cwd.
 4. Before diff capture, synthetic helper paths created by Pi Superagents, such as a safe `node_modules` symlink, are removed.
 5. After execution, `git add -A && git diff --cached` captures all changes.

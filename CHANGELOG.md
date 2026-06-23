@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- **Worktree Skill Alignment**
+  - Parallel worktree isolation now defaults to the `using-git-worktrees` skill's directory convention: `.worktrees/` at the repository root (existing `.worktrees/` or `worktrees/` is reused; an explicit `worktrees.root` still wins).
+  - A project-local worktree root that is not ignored is now auto-appended to `.gitignore` (the skill's safety rule) instead of aborting. The append is left unstaged; the repo-root case still hard-errors.
+  - `docs/worktrees.md` now distinguishes the extension's parallel worktree isolation from the `using-git-worktrees` skill (root-session agent setup).
+
 - **SDD File-Handoff Alignment**
   - The bounded SDD role agents (`sp-implementer`, `sp-spec-review`, `sp-code-review`) now use the `subagent-driven-development` skill's file handoff: they read the task brief and review-package diff and write the implementer report by path, matching the skill's `scripts/task-brief` / `scripts/review-package` convention under the gitignored `.superpowers/sdd/` workspace. `sp-debug` dropped its misleading "debug brief" wording for packet-aligned language.
   - The root prompt teaches the controller to run the skill's handoff scripts and to clean up brief/report/diff files with `rm -f` after a `DONE` review (`progress.md` is preserved until `finishing-a-development-branch`). The extension performs no cleanup itself.

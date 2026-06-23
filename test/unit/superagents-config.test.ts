@@ -93,7 +93,6 @@ void describe("superagents config helpers", () => {
 			{
 				agents: ["sp-implementer", "sp-code-review"],
 				rootDir: ".worktrees",
-				requireIgnoredRoot: true,
 			},
 		);
 	});
