@@ -27,3 +27,6 @@ debug-brief.md
 # agent config
 .agents/
 skills-lock.json
+
+# Tasks
+.pi/tasks/
