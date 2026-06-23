@@ -49,39 +49,24 @@ function git(cwd: string, args: string[]): void {
 
 void describe("superpowers packets", () => {
 	/**
-	 * Verifies the implementer role reads Superpowers packet names without writing reports.
+	 * Verifies the implementer role uses inert packet defaults without legacy read filenames.
 	 */
-	void it("uses task and review packet names instead of context.md/plan.md/progress.md", () => {
+	void it("uses inert packet defaults instead of legacy read filenames like task-brief.md", () => {
 		const packets = buildSuperpowersPacketPlan("sp-implementer");
-		assert.deepEqual(packets.reads, ["task-brief.md"]);
+		assert.deepEqual(packets.reads, []);
 		assert.equal(packets.output, false);
 		assert.equal(packets.progress, false);
 	});
 
 	/**
-	 * Verifies the built-in review and debug roles receive their canonical packet defaults.
+	 * Verifies every built-in role uses inert packet defaults without legacy read filenames.
 	 */
-	void it("maps review, debug, and default roles to the expected packet defaults", () => {
-		assert.deepEqual(buildSuperpowersPacketPlan("sp-spec-review"), {
-			reads: ["task-brief.md", "implementer-report.md"],
-			output: false,
-			progress: false,
-		});
-		assert.deepEqual(buildSuperpowersPacketPlan("sp-code-review"), {
-			reads: ["task-brief.md", "spec-review.md"],
-			output: false,
-			progress: false,
-		});
-		assert.deepEqual(buildSuperpowersPacketPlan("sp-debug"), {
-			reads: ["debug-brief.md"],
-			output: false,
-			progress: false,
-		});
-		assert.deepEqual(buildSuperpowersPacketPlan("sp-recon"), {
-			reads: [],
-			output: false,
-			progress: false,
-		});
+	void it("maps all built-in roles to inert packet defaults without legacy read filenames", () => {
+		const inert = { reads: [], output: false, progress: false };
+		assert.deepEqual(buildSuperpowersPacketPlan("sp-spec-review"), inert);
+		assert.deepEqual(buildSuperpowersPacketPlan("sp-code-review"), inert);
+		assert.deepEqual(buildSuperpowersPacketPlan("sp-debug"), inert);
+		assert.deepEqual(buildSuperpowersPacketPlan("sp-recon"), inert);
 	});
 
 	/**
@@ -110,15 +95,17 @@ void describe("superpowers packets", () => {
 	});
 
 	/**
-	 * Verifies injectSuperpowersPacketInstructions adds read packet filenames without write targets.
+	 * Verifies injectSuperpowersPacketInstructions adds no legacy read filenames now that packet defaults are inert.
 	 */
-	void it("injects packet filenames into task text for implementer role", () => {
+	void it("does not inject legacy packet read filenames into task text for implementer role", () => {
 		const packets = buildSuperpowersPacketPlan("sp-implementer");
 		const behavior = resolveStepBehavior({ name: "sp-implementer", description: "I", systemPrompt: "...", source: "builtin", filePath: "/tmp" }, {}, packets);
 		const task = injectSuperpowersPacketInstructions("Implement the selected task.", behavior);
-		assert.ok(task.includes("task-brief.md"), "should reference task-brief.md");
+		assert.equal(task, "Implement the selected task.", "should not append any read instructions");
+		assert.ok(!task.includes("[Read from:"), "should not inject [Read from:] instruction");
+		assert.ok(!task.includes("task-brief.md"), "should not reference legacy task-brief.md");
 		assert.ok(!task.includes("[Write to:"), "should not inject [Write to:] instruction");
-		assert.ok(!task.includes("implementer-report.md"), "should not reference implementer-report.md");
+		assert.ok(!task.includes("implementer-report.md"), "should not reference legacy implementer-report.md");
 		assert.ok(!task.includes("plan.md"), "should not reference legacy plan.md");
 		assert.ok(!task.includes("progress.md"), "should not reference legacy progress.md");
 	});
@@ -268,7 +255,7 @@ void describe("superpowers packets in real execution paths", {
 		};
 	}
 
-	void it("injects superpowers packet instructions into foreground single tasks", async () => {
+	void it("does not inject legacy packet read filenames into foreground single tasks", async () => {
 		mockPi.onCall({ output: "Implemented task" });
 		const agents = [
 			{
@@ -297,7 +284,7 @@ void describe("superpowers packets in real execution paths", {
 		assert.equal(result.details.mode, "single");
 		assert.ok(result.details.results.length > 0, "should have results");
 		const taskText = result.details.results[0].task;
-		assert.ok(taskText.includes("task-brief.md"), `task should reference task-brief.md: ${taskText}`);
+		assert.ok(!taskText.includes("task-brief.md"), `task should not reference legacy task-brief.md: ${taskText}`);
 		assert.ok(!taskText.includes("[Write to:"), `should not inject [Write to:] instruction: ${taskText}`);
 		assert.ok(!taskText.includes("implementer-report.md"), `task should not reference output file: ${taskText}`);
 		assert.ok(!taskText.includes("plan.md"), `task should not reference legacy plan.md: ${taskText}`);
@@ -401,7 +388,7 @@ This skill should resolve from params.cwd.`,
 		assert.ok(result.details.results[0].skills?.includes("child-only-skill"), "single-task result should publish skills resolved from params.cwd");
 	});
 
-	void it("injects superpowers packet instructions into foreground parallel tasks", async () => {
+	void it("does not inject legacy packet read filenames into foreground parallel tasks", async () => {
 		mockPi.onCall({ output: "Async implemented task" });
 		const agents = [
 			{
@@ -430,13 +417,13 @@ This skill should resolve from params.cwd.`,
 		assert.ok(result.details.results.length > 0, "should have results");
 		// Packet instructions are injected into each parallel task's text
 		const taskText = result.details.results[0].task;
-		assert.ok(taskText.includes("task-brief.md"), `task should reference task-brief.md: ${taskText}`);
+		assert.ok(!taskText.includes("task-brief.md"), `task should not reference legacy task-brief.md: ${taskText}`);
 		assert.ok(!taskText.includes("[Write to:"), `should not inject [Write to:] instruction: ${taskText}`);
 		assert.ok(!taskText.includes("implementer-report.md"), `task should not reference output file: ${taskText}`);
 		assert.ok(!taskText.includes("plan.md"), `task should not reference legacy plan.md: ${taskText}`);
 	});
 
-	void it("applies packet defaults over agent frontmatter defaults for parallel tasks", async () => {
+	void it("applies inert packet defaults for parallel tasks without legacy read guidance", async () => {
 		mockPi.onCall({ output: "Async review complete" });
 		const agents = [
 			{
@@ -463,9 +450,11 @@ This skill should resolve from params.cwd.`,
 		assert.ok(!result.isError, JSON.stringify(result.content));
 		assert.equal(result.details.mode, "parallel");
 		assert.ok(result.details.results.length > 0, "should have results");
-		// Packet defaults inject only read guidance and never output targets.
+		// Packet defaults are inert: the runtime packet file is the input brief and outputs are inline.
 		const taskText = result.details.results[0].task;
-		assert.ok(taskText.includes("task-brief.md"), `packet reads should override agent defaults: ${taskText}`);
+		assert.equal(taskText, "Implement the selected task.", `task should not append any read/write guidance: ${taskText}`);
+		assert.ok(!taskText.includes("[Read from:"), `packet should not inject read guidance: ${taskText}`);
+		assert.ok(!taskText.includes("task-brief.md"), `task should not reference legacy task-brief.md: ${taskText}`);
 		assert.ok(!taskText.includes("[Write to:"), `packet output should stay inline: ${taskText}`);
 		assert.ok(!taskText.includes("implementer-report.md"), `packet output should not write files: ${taskText}`);
 	});

@@ -60,7 +60,7 @@ Child processes can emit lifecycle signals (`subagent_done`, `caller_ping`) thro
 
 When `artifacts` is enabled, Pi Superagents stores debugging input, output, JSONL, and metadata files in the session artifact directory. These artifacts are separate from the repository working tree and replace the older file-handoff pattern that wrote `implementer-report.md`, `spec-review.md`, or `code-review.md` into the project root.
 
-Work briefs for bounded roles are also delivered as packet files under `<session-artifacts-dir>/packets/`. The runtime creates these packets before launching the child, passes the packet path to the child as its input brief, and cleans them up automatically when the child exits.
+Work briefs for bounded roles are also delivered as packet files under `<session-artifacts-dir>/packets/`. The runtime creates these packets before launching the child, passes the packet path to the child as its input brief, and cleans them up automatically when the child exits. Built-in roles inject no `[Read from:]` references to legacy handoff filenames (`task-brief.md`, `debug-brief.md`, `implementer-report.md`, `spec-review.md`); the packet file is the brief and findings return inline through Pi tool results.
 
 ## Review Bridge Tools
 

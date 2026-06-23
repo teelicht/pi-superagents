@@ -2,9 +2,9 @@
  * Superpowers packet conventions for command-scoped role execution.
  *
  * Responsibilities:
- * - map built-in Superpowers roles to their canonical read packet filenames
  * - provide a single source of truth for packet read/progress defaults
- * - avoid fallback to legacy context/plan/progress conventions in the command path
+ * - keep built-in role packet defaults inert (the runtime packet file is the brief; findings return inline)
+ * - avoid fallback to legacy handoff-file conventions in the command path
  */
 
 import type { ExecutionRole, SessionMode } from "../shared/types.ts";
@@ -40,44 +40,27 @@ export function injectSuperpowersPacketInstructions(task: string, behavior: Reso
  *
  * Invariants:
  * - Superpowers packet defaults never enable progress tracking
- * - unknown or non-packet roles fall back to no reads and no output
+ * - all built-in roles return inert defaults (no reads, no output)
+ * - the runtime packet file is the input brief; findings return inline through Pi tool results
+ * - legacy handoff filenames (task-brief.md, debug-brief.md, implementer-report.md,
+ *   spec-review.md) are never written by the runtime, so no `[Read from:]` references are
+ *   injected by built-in defaults. The `reads` channel stays available for explicit step
+ *   overrides supplied by callers, but built-in roles no longer populate it.
  *
  * Failure modes:
- * - none; unsupported roles intentionally return an inert default
+ * - none; all roles intentionally return an inert default
  */
 export function buildSuperpowersPacketPlan(role: ExecutionRole): SuperpowersPacketPlan {
-	switch (role) {
-		case "sp-implementer":
-			return {
-				reads: ["task-brief.md"],
-				output: false,
-				progress: false,
-			};
-		case "sp-spec-review":
-			return {
-				reads: ["task-brief.md", "implementer-report.md"],
-				output: false,
-				progress: false,
-			};
-		case "sp-code-review":
-			return {
-				reads: ["task-brief.md", "spec-review.md"],
-				output: false,
-				progress: false,
-			};
-		case "sp-debug":
-			return {
-				reads: ["debug-brief.md"],
-				output: false,
-				progress: false,
-			};
-		default:
-			return {
-				reads: [],
-				output: false,
-				progress: false,
-			};
-	}
+	// All built-in Superpowers roles receive their input brief as the runtime-authored
+	// packet file (see execution-planner.ts) and return findings inline through Pi tool
+	// results. Legacy handoff filenames were a pre-inline convention and are no longer
+	// authored, so referencing them would point subagents at files that never exist.
+	void role;
+	return {
+		reads: [],
+		output: false,
+		progress: false,
+	};
 }
 
 export function buildSuperpowersPacketContent(input: { agent: string; sessionMode: SessionMode; task: string; useTestDrivenDevelopment: boolean }): string {
