@@ -1,59 +1,63 @@
 # SDD File-Handoff Alignment for Bounded Role Agents — Design Spec
 
 **Date:** 2026-06-23
-**Status:** Draft (brainstorming output, pending review)
-**Related:** `subagent-driven-development` skill, `docs/superpowers/specs/2026-06-22-compaction-durability-design.md`, prior fix in `src/execution/superpowers-packets.ts`
+**Status:** Approved (Plannotator review 2026-06-23); revised to simplify per maintainer steer — cleanup moved to the controller, extension cleanup machinery removed.
+**Related:** `subagent-driven-development` skill; prior fix `src/execution/superpowers-packets.ts` (2026-06-23, commit `6437605`).
 
 ## Purpose
 
-Stop sending contradicting messages to bounded Superpowers role agents. Today the
-extension delivers a subagent's input brief as a runtime-authored **packet file** (passed as
-the child prompt via `taskFilePath`) and expects findings **inline** through Pi tool results,
-while the `obra/superpowers` `subagent-driven-development` (SDD) skill prescribes a **file
-handoff**: the controller runs `scripts/task-brief` and `scripts/review-package`, hands the
-resulting file **paths** to a general-purpose subagent, and the implementer writes a **report
-file** the reviewer reads. The bounded role agents (`sp-implementer`, `sp-spec-review`,
-`sp-code-review`, `sp-debug`) carry brief-assuming language inherited from the skills
-("investigate the provided debug brief", "implement exactly one extracted plan task") that
-does not match how the extension actually delivers context.
+Stop sending contradicting messages to bounded Superpowers role agents. The extension
+delivers a subagent's input as a runtime-authored **packet file** (the child prompt) and
+expects findings **inline**, while the `obra/superpowers` `subagent-driven-development` (SDD)
+skill prescribes a **file handoff**: the controller runs `scripts/task-brief` and
+`scripts/review-package`, hands the resulting file **paths** to the subagent, and the
+implementer writes a **report file** the reviewer reads. The bounded role agents
+(`sp-implementer`, `sp-spec-review`, `sp-code-review`, `sp-debug`) carry brief-assuming
+language ("investigate the provided debug brief", "implement exactly one extracted plan
+task") that does not match how the extension delivers context.
 
-A prior change (`superpowers-packets.ts`, 2026-06-23) removed vestigial `[Read from:]`
-references to handoff files the runtime never authors. This spec completes the alignment by
-**adopting the skills' file-handoff convention for the bounded SDD roles**, so the files the
-agents are told to read/write are the files the controller actually generates, at the paths
-the skills prescribe — and by **cleaning those files up** once the consuming subagent reports
-successful completion, something the skills themselves do not do.
+A prior fix removed vestigial `[Read from:]` references to handoff files the runtime never
+authors. This spec completes the alignment by **adopting the skills' file-handoff convention
+for the bounded SDD roles** — and, per the maintainer steer, by **not** rebuilding that
+convention in the extension. The skills own file handling; the extension gets out of the way
+and lets the controller drive the file lifecycle, including the cleanup the skills omit.
+
+## Guiding principle
+
+The SDD skill already ships the scripts that create the artifacts (`scripts/task-brief`,
+`scripts/review-package`, `scripts/sdd-workspace`) and already teaches the controller to run
+them. The extension must not build a parallel mechanism. **This change should make the
+extension smaller, not bigger.** Cleanup is a file op the controller performs with `rm -f`,
+the same way it already runs the skills' bash scripts.
 
 ## Goals
 
 1. **Faithful file handoff.** `sp-implementer`, `sp-spec-review`, and `sp-code-review` read
-   and write the exact artifacts the SDD skill prescribes (`task-<N>-brief.md`,
-   `task-<N>-report.md`, `review-<base7>..<head7>.diff`) at the skills' prescribed location
-   (`.superpowers/sdd/`), addressed by path in the dispatch prompt.
+   and write the SDD artifacts (`task-<N>-brief.md`, `task-<N>-report.md`,
+   `review-<base7>..<head7>.diff`) at the skills' prescribed location (`.superpowers/sdd/`),
+   addressed by path in the dispatch prompt.
 2. **No contradicting messages.** Bounded role agent prompts speak the skills' file-handoff
    dialect; the files referenced exist at the named paths because the controller generates
    them with the skills' own scripts.
-3. **Automatic cleanup on success.** The extension deletes handoff files once the subagent
-   that consumes them reports **successful completion** (SDD status `DONE`), without the
-   controller managing cleanup. Files survive non-success outcomes (`DONE_WITH_CONCERNS`,
-   `NEEDS_CONTEXT`, `BLOCKED`) for re-use in fix/re-dispatch loops.
-4. **Preserve the extension's value.** Model tiers, bounded tool scoping, and lifecycle tools
-   remain attached to the bounded role agents; only the brief/report delivery channel changes.
+3. **Cleanup on success, controller-driven.** The controller removes brief/report/diff after
+   a successful (`DONE`) review. The extension adds **no** cleanup code.
+4. **Simplify the codebase.** Remove the now-dead packet read/write injection apparatus left
+   by the prior fix. Net TypeScript reduction; no new tool surface, types, or runtime logic.
 
 ## Non-Goals
 
-- **No new delegation model.** Bounded role agents dispatched via the `subagent` tool stay;
-   we do not switch to general-purpose template dispatch (that was the rejected Approach B).
-- **No change to `progress.md`.** The SDD progress ledger is controller-owned and must
-   survive until `finishing-a-development-branch`; it is never a cleanup target. Its cleanup
-   is out of scope.
-- **No change to `sp-recon` / `sp-research`.** The skills give these roles no file handoff;
-   they keep the existing packet-as-prompt, inline-output model unchanged.
+- **No extension cleanup machinery.** No `cleanupFiles` tool parameter, no lifecycle `status`
+  field, no `subagent_done` change, no deletion logic in `finalizeChildResult`. (The prior
+  draft's §4–§5 proposed these; rejected as overcomplicated — the controller handles cleanup
+  like every other file op.)
+- **No change to `progress.md`.** The SDD ledger is controller-owned, persists until
+  `finishing-a-development-branch`, and is never a cleanup target.
+- **No change to `sp-recon` / `sp-research`.** The skills give these roles no file handoff.
 - **No `sp-debug` file handoff.** `systematic-debugging` is a process skill with no
-   delegation/file convention; `sp-debug` keeps packet/inline delivery. Only its misleading
-   "debug brief" wording is fixed.
-- **No async execution.** Subagent execution stays synchronous and blocking per the
-   extension's execution model.
+  delegation/file convention; `sp-debug` keeps packet/inline delivery. Wording fix only.
+- **No async execution.** Subagent execution stays synchronous and blocking.
+- **Never modify skill files** (per `AGENTS.md`). The cleanup rule lives in the extension's
+  root contract, not in the skills.
 
 ## Background: what the skills prescribe
 
@@ -67,16 +71,11 @@ successful completion, something the skills themselves do not do.
 | Progress ledger | controller appends one line per completed task | `.superpowers/sdd/progress.md` | controller (compaction recovery) — **persistent** |
 
 `scripts/sdd-workspace` resolves `.superpowers/sdd/` against the git working-tree root and
-writes a self-ignoring `.gitignore` so the directory stays out of `git status`. The skills
-**do not clean up** briefs, reports, or diff packages — they accumulate until manual
-deletion or `git clean -fdx` (which the skill warns destroys the ledger). Implementer and
-reviewer are **general-purpose** subagents dispatched with filled `implementer-prompt.md` /
-`task-reviewer-prompt.md` templates carrying the file paths.
-
-The extension's current model differs: bounded role agents with fixed prompts, a
-runtime-authored packet file as the prompt, inline outputs. This spec bridges the two by
-keeping the bounded agents but making their prompts and the controller's dispatch use the
-skills' file paths.
+writes a self-ignoring `.gitignore` (`*\n`) so the directory stays out of `git status`. The
+skills **do not clean up** briefs, reports, or diff packages — they accumulate until manual
+deletion or `git clean -fdx` (which the skill warns destroys the ledger). The controller is
+already taught to run the scripts and fill the paths; this spec adds only the cleanup rule
+and the bounded-role prompt alignment.
 
 ## Design
 
@@ -84,7 +83,7 @@ skills' file paths.
 
 | Agent | Skill precedent | Change |
 |---|---|---|
-| `sp-implementer` | `implementer-prompt.md` | **Adopt** file handoff: read brief by path, write report by path |
+| `sp-implementer` | `implementer-prompt.md` | **Adopt**: read brief by path, write report by path |
 | `sp-spec-review` | `task-reviewer-prompt.md` (spec half) | **Adopt**: read brief + report + diff by path, return verdict |
 | `sp-code-review` | `task-reviewer-prompt.md` (quality half) | **Adopt**: same three inputs, return verdict |
 | `sp-debug` | none (`systematic-debugging` is process-only) | **Wording fix only**: packet/inline stays; drop "debug brief" language |
@@ -93,117 +92,68 @@ skills' file paths.
 The spec/quality reviewer split is preserved: both reviewers read the same three handoff
 files; they remain separate bounded agents for distinct model tiers and prompt focus.
 
-### 2. File flow (matches the skills exactly)
+### 2. File flow (controller-driven, matches the skills exactly)
 
-For each task `N`, the **root controller** — taught by a new root-prompt contract block (see
-§6) — performs the SDD skill's existing handoff:
+For each task `N`, the **root controller** performs the SDD skill's existing handoff. The
+extension does none of this; it only carries the controller's dispatch text (§3) and teaches
+the cleanup rule (§5):
 
 1. Run `scripts/task-brief PLAN N` → `.superpowers/sdd/task-<N>-brief.md`.
-2. Dispatch `sp-implementer` with a task string containing: the brief path ("read this
-   first — it is your requirements"), the report path ("write your full report here"), and
-   scene-setting context (where the task fits, interfaces from earlier tasks). The
-   implementer reads the brief, implements, writes the report, returns status + commit +
-   one-line test summary only.
+2. Dispatch `sp-implementer` with a task string containing the brief path ("read this
+   first"), the report path ("write your full report here"), and scene-setting context.
 3. Run `scripts/review-package BASE HEAD` → `.superpowers/sdd/review-<base7>..<head7>.diff`.
-4. Dispatch `sp-spec-review` and/or `sp-code-review` with the brief path, report path, diff
-   path, and global constraints. Reviewers read by path and return the two-verdict report.
+4. Dispatch `sp-spec-review` / `sp-code-review` with the brief, report, and diff paths plus
+   global constraints. Reviewers read by path and return the verdict.
 
-The controller, not the extension, runs the scripts and fills the paths. The extension's
-role is to (a) carry those paths in the dispatch and (b) clean up the files on success (§4).
-
-### 3. Dispatch vehicle — the packet file stays, its content changes
+### 3. Dispatch vehicle — the packet file stays, its content is the controller's dispatch
 
 The runtime packet file (`<runId>_<idx>_<agent>_packet.md` under
-`<session-artifacts-dir>/packets/`, written by `execution-planner.ts:85`) remains the
-**dispatch-prompt vehicle**: it is passed to the child as its prompt via `taskFilePath`. Its
-content changes to carry the file-handoff dispatch instructions — the brief path, the report
-path, and scene-setting context — plus the existing session-mode and TDD-mode lines and the
-"Use only the information in this packet" guard.
+`<session-artifacts-dir>/packets/`, written by `execution-planner.ts`) remains the
+dispatch-prompt vehicle: it is passed to the child as its prompt via `taskFilePath`. Its
+content is the controller's dispatch text — the brief path, the report path, scene-setting
+context — plus the existing session-mode and TDD-mode lines and the "Use only the
+information in this packet" guard.
 
 This matches the skills precisely: the dispatch prompt contains the brief **path** and
 context; the brief **file** holds the full task text. The packet is the dispatch; the brief
 is the requirements. No contradiction. `buildSuperpowersPacketContent` needs no structural
-change — it already embeds the task text, which is now the file-handoff dispatch string the
-controller authored.
+change — it already embeds the task text.
 
-### 4. Cleanup mechanism — `cleanupFiles` on the `subagent` tool, deleted on success
+### 4. Cleanup — controller-driven, no extension machinery
 
-A new optional parameter on the `subagent` tool: **`cleanupFiles: string[]`** — file paths
-the extension deletes **iff the consuming child reports SDD status `DONE`**. The controller
-declares the files; the extension performs the deletion at finalization. Non-`DONE` outcomes
-leave the files in place.
+The root contract (§5) teaches the controller: after a reviewer reports `DONE` (approved),
+run `rm -f` on that task's brief, report, and diff paths; never remove `progress.md`; keep
+the files on `DONE_WITH_CONCERNS` / `NEEDS_CONTEXT` / `BLOCKED` for the fix/re-dispatch loop.
 
-**Terminal-consumer rule** (resolves the shared-file question): a file is listed for cleanup
-only on the dispatch of its **terminal consumer**:
+The extension provides **no** `cleanupFiles` parameter and **no** deletion logic. Rationale:
 
-| File | Terminal consumer | Deleted on |
-|---|---|---|
-| `task-<N>-brief.md` | reviewer | reviewer `DONE` |
-| `task-<N>-report.md` | reviewer | reviewer `DONE` |
-| `review-<…>.diff` | reviewer | reviewer `DONE` |
+- The controller already runs bash scripts (`task-brief`, `review-package`) and already
+  decides review outcomes from reviewer text — adding `rm -f` after approval is the same
+  reliability tier, not a new one.
+- `.superpowers/sdd/.gitignore` makes the scratch directory non-polluting, so imperfect
+  cleanup is low-risk (files never enter `git status` or commits).
+- `rm -f` tolerates missing files, so a double-cleanup or a stale path is a no-op.
 
-The implementer dispatch therefore **omits** `cleanupFiles`, so the brief and report survive
-for the reviewer. Fix/re-review dispatches also omit `cleanupFiles` until the final
-re-review returns `DONE` (approved); a `DONE_WITH_CONCERNS` review (findings) keeps the files
-for the next fix loop. This realizes the rule literally: the file is deleted once the
-subagent using it reports successful completion, with the reviewer as the terminal user of
-the shared files.
+This removes the prior draft's §4 (`cleanupFiles`) and §5 (lifecycle `status` field)
+entirely — the single biggest simplification.
 
-Deletion is best-effort and non-fatal: a missing file or a failed `rmSync` is logged at debug
-level and never fails the run (mirroring `removeArtifactFile` in `shared/artifacts.ts`).
-
-### 5. Success detection — a `status` field on the lifecycle `done` signal (new)
-
-**Problem.** The extension cannot today distinguish `DONE` (approved / successful) from
-`DONE_WITH_CONCERNS` (findings): both produce `exitCode === 0`, and
-`deriveCompletionEnvelope` (`result-delivery.ts:96`) maps both to envelope status
-`"completed"`. The lifecycle `done` signal (`DoneLifecycleSignal` in `types.ts:189`) carries
-only `{ type: "done"; outputTokens? }` — no task status. Yet the cleanup rule hinges on this
-distinction (delete on `DONE`, keep on `DONE_WITH_CONCERNS`).
-
-**Design.** Extend the structured lifecycle channel (not text parsing):
-
-- `DoneLifecycleSignal` gains an optional `status` field with SDD protocol values:
-  `"done" | "done_with_concerns" | "needs_context" | "blocked"`.
-- The `subagent_done` child lifecycle tool gains an optional `status` parameter that the
-  bounded SDD role agents are taught to call with their terminal status (e.g.
-  `subagent_done({ status: "done" })`).
-- `normalizeLifecycleSignal` (`lifecycle-signals.ts:42`) validates and preserves the field.
-- `cleanupFiles` deletion fires **iff** the consumed lifecycle signal is
-  `{ type: "done", status: "done" }` (a positive success signal).
-
-**Safe default.** If no status-bearing `done` signal is consumed (sidecar missing, or the
-agent exited without calling `subagent_done`), **no `cleanupFiles` are deleted** — the files
-are kept. Destructive cleanup never happens without a positive success signal. The
-controller can still re-dispatch or clean up manually.
-
-**Why structured, not text parsing.** The SDD skill does mandate a "Status: DONE | …" line in
-the report, so text parsing is feasible, but the lifecycle channel is already the
-extension's structured completion signal, already validated, and already consumed in
-`finalizeChildResult`. Adding a field there is cleaner and more robust than regex over
-free-form model text, and the bounded agent prompts are being rewritten anyway (§7) so
-teaching the `subagent_done({ status })` call is natural. Text parsing is explicitly
-**rejected** as the primary mechanism.
-
-### 6. Root prompt contract — teach the controller the handoff
+### 5. Root prompt contract — reinforce the skill's handoff for bounded roles + cleanup
 
 `src/superpowers/root-prompt.ts` gains a "File Handoff Contract" block (emitted when
-`useSubagents === true`) that teaches the root controller, for SDD task execution:
+`useSubagents === true`) that, for SDD task execution with the bounded `sp-*` roles:
 
-- Before each implementer dispatch, run `scripts/task-brief PLAN N` and pass the printed
-  brief path in the `sp-implementer` task string.
-- After implementer `DONE`, run `scripts/review-package BASE HEAD` and pass the printed diff
-  path plus the brief and report paths in the `sp-spec-review` / `sp-code-review` task
-  strings.
-- On the (final, approving) reviewer dispatch, pass `cleanupFiles` with the brief, report,
-  and diff paths so the extension deletes them on `DONE`. Omit `cleanupFiles` on implementer
-  and fix/re-review dispatches that are not the terminal consumer.
-- Keep `progress.md` for the ledger; never pass it as `cleanupFiles`.
+- Reinforces the SDD skill's handoff: run `scripts/task-brief` before each implementer
+  dispatch and `scripts/review-package` before each reviewer dispatch; pass the printed paths
+  in the `sp-*` task strings.
+- States the **terminal-consumer cleanup rule**: after a reviewer reports `DONE`, `rm -f`
+  the brief, report, and diff for that task; omit cleanup on implementer dispatch and on
+  non-approving re-reviews so fix loops keep their inputs.
+- Forbids removing `progress.md` (the ledger).
 
-The block references the skills' scripts by their skill-relative path and states the
-terminal-consumer rule once, so the controller does not re-derive it.
+The block references the skills' scripts by their skill-relative paths and states the
+cleanup rule once, so the controller does not re-derive it.
 
-### 7. Bounded role agent prompt changes
+### 6. Bounded role agent prompt changes
 
 - **`sp-implementer.md`**: rewrite to "Read your task brief at the path given in your task;
   write your full report to the report path given in your task; return only status, commits,
@@ -212,69 +162,69 @@ terminal-consumer rule once, so the controller does not re-derive it.
   implementer's report, and the review-package diff at the paths given in your task; return
   the spec-compliance / code-quality verdict." Mirror `task-reviewer-prompt.md`.
 - **`sp-debug.md`**: replace "Investigate the provided debug brief" with packet-aligned
-  wording ("Investigate the failure described in your task packet"); remove any
-  brief-file implication. No file handoff, no `cleanupFiles`.
-- The three handoff roles (`sp-implementer`, `sp-spec-review`, `sp-code-review`): teach the
-  `subagent_done({ status })` call so the lifecycle signal carries the terminal SDD status for
-  cleanup gating. `sp-debug` adopts the same call for uniformity per Open Question 3
-  (recommended yes; pending review confirmation).
-  terminal SDD status for cleanup gating.
+  wording ("Investigate the failure described in your task packet"); remove any brief-file
+  implication. No file handoff.
 
-### 8. Tool / schema / type changes
+No `subagent_done({ status })` teaching — that mechanism is removed (no lifecycle status
+field). Bounded agents keep their existing `DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT |
+BLOCKED` terminal-status text, which the controller reads to decide cleanup, exactly as it
+already reads it to decide fix loops.
 
-- `subagent` tool schema: add optional `cleanupFiles?: string[]` (array of absolute file
-  paths). Validate each entry is a non-empty string; reject otherwise with a clear error
-  before launch (matching existing preflight validation style).
-- `RunSyncOptions` (`types.ts:365`): add `cleanupFiles?: string[]`.
-- `PlanChildRunInput` / `PlannedChildRun` (`execution-planner.ts`): carry `cleanupFiles`
-  through to `runPreparedChild`.
-- `DoneLifecycleSignal` (`types.ts:189`): add `status?: SddTaskStatus`.
-- New type `SddTaskStatus = "done" | "done_with_concerns" | "needs_context" | "blocked"`.
-- `subagent_done` tool: add optional `status` parameter; write it into the lifecycle signal.
-- `finalizeChildResult` (`child-runner.ts`): after deriving the completion envelope, if
-  `options.cleanupFiles` is set AND the consumed lifecycle signal is
-  `{ type: "done", status: "done" }`, delete each path best-effort.
+### 7. Code simplification — remove the dead injection apparatus
+
+The prior fix made `buildSuperpowersPacketPlan` return inert `reads: []` and made
+`injectSuperpowersPacketInstructions` a no-op. With the controller now passing file paths in
+the task text, the reads/output/progress injection path is fully dead. Remove it:
+
+- Delete `injectSuperpowersPacketInstructions` and its two call sites in
+  `subagent-executor.ts` (use the raw task text directly).
+- Remove the `reads` field from `SuperpowersPacketPlan`, `ResolvedStepBehavior`,
+  `StepOverrides`, and `PacketDefaults`, and the `reads` handling in `resolveStepBehavior`.
+- Assess `output` / `progress` in the plan: if also unused after the call-site removal,
+  remove them too and simplify or delete `buildSuperpowersPacketPlan`. If still referenced,
+  keep only the live fields.
+- Update tests: drop the `reads`-override-precedence case and any `reads` assertions; keep
+  the "no `[Read from:]`" / "no `[Write to:]`" / "no `implementer-report.md` on disk" guards
+  from the prior fix green.
+
+**Net impact:** four markdown prompt rewrites + one root-prompt block (additions); removal of
+`injectSuperpowersPacketInstructions`, its call sites, and the `reads` field across
+`superpowers-packets.ts` / `settings.ts` / `subagent-executor.ts` (deletions). No new
+TypeScript types, no new tool parameters, no new runtime logic. The extension shrinks.
 
 ## Edge cases and safety
 
-- **Shared files deleted by terminal consumer only.** Implementer dispatch omits
-  `cleanupFiles`; only the approving reviewer deletes brief + report + diff. A reviewer
-  `DONE_WITH_CONCERNS` keeps them for the fix loop.
-- **No success signal ⇒ no deletion.** Missing/malformed/stale sidecar, or agent that exits
-  without `subagent_done({ status: "done" })`, leaves files intact. Safe default.
-- **Worktree isolation.** `scripts/sdd-workspace` resolves `.superpowers/sdd/` against the
-  working-tree root, so each parallel worktree gets its own scratch dir; cleanup paths are
+- **Cleanup reliability = review-loop reliability.** The controller already decides whether
+  a reviewer's report mandates a fix loop from the reviewer's text; deciding to `rm -f` after
+  an approving `DONE` is the same signal read. `.gitignore` makes the scratch non-polluting,
+  so a missed cleanup is cosmetic, not dangerous.
+- **Non-success ⇒ files stay.** On `DONE_WITH_CONCERNS` / `NEEDS_CONTEXT` / `BLOCKED` the
+  controller does not `rm`, so fix and re-dispatch loops keep their inputs.
+- **`progress.md` protected.** The root contract forbids removing it; it is never in an `rm`
+  command the controller issues for handoff cleanup.
+- **Worktree isolation.** `scripts/sdd-workspace` resolves `.superpowers/sdd/` per
+  working-tree root, so each parallel worktree gets its own scratch dir; `rm -f` paths are
   absolute and scoped to that worktree. No cross-worktree deletion.
-- **Path validation.** `cleanupFiles` entries are validated as non-empty strings pre-launch.
-  The extension deletes only the exact paths declared; it never globs or infers siblings.
-- **`progress.md` never cleaned.** It is not in any `cleanupFiles` declaration; the root
-  contract forbids passing it.
-- **Best-effort deletion.** Missing files and `rmSync` failures are non-fatal (debug log).
+- **Best-effort.** `rm -f` tolerates missing files; a stale or already-removed path is a
+  no-op.
 
 ## Testing strategy
 
-- **Unit**: `DoneLifecycleSignal` carries `status`; `normalizeLifecycleSignal` preserves and
-  rejects malformed values; `cleanupFiles` deletion fires only on `status: "done"`.
-- **Integration** (`superpowers-packets.test.ts` style): reviewer dispatch with
-  `cleanupFiles` + a `done`/`status:"done"` lifecycle sidecar deletes the files; a
-  `done_with_concerns` sidecar leaves them; a missing sidecar leaves them; implementer
-  dispatch without `cleanupFiles` never deletes.
-- **Integration**: bounded agent prompts for `sp-implementer`/`sp-spec-review`/
-  `sp-code-review` instruct reading/writing by path; `sp-debug` no longer references a
-  debug-brief file.
-- **Existing tests**: the prior inert-packet-defaults tests stay green (no `[Read from:]`
-  injection regression).
+- **Root prompt**: assert the File Handoff Contract block is present when `useSubagents` is
+  true (scripts referenced, paths-in-dispatch, `rm -f` after `DONE` review, `progress.md`
+  protected) and absent otherwise.
+- **Agent prompts**: assert `sp-implementer` / `sp-spec-review` / `sp-code-review` instruct
+  reading/writing by path; assert `sp-debug` no longer references a debug-brief file.
+- **Dead injection removed**: assert `injectSuperpowersPacketInstructions` is gone (or a
+  no-op pass-through) and no `[Read from:]` / `[Write to:]` is injected; the prior
+  inert-packet-defaults guards stay green.
+- **No cleanup-machinery tests**: none added — the mechanism does not exist.
 
 ## Open questions for review
 
-1. **`cleanupFiles` naming/placement.** Is an explicit caller-declared array on the
-   `subagent` tool the right surface, or should cleanup be inferred from a `reads`/`writes`
-   declaration on the role? (Recommendation: explicit `cleanupFiles` — simplest, no path
-   inference, caller stays in control of which paths.)
-2. **Status values.** Adopt the four SDD tokens verbatim
-   (`done`/`done_with_concerns`/`needs_context`/`blocked`), or a smaller set
-   (`done`/`not_done`)? (Recommendation: the four tokens, to match the skill exactly and let
-   the envelope carry richer completion metadata for `/subagents-status`.)
-3. **`sp-debug` `subagent_done({ status })`.** Should `sp-debug` also adopt the status call
-   for consistency even though it has no file handoff? (Recommendation: yes — uniform
-   lifecycle status benefits `/subagents-status` and future gates at no cleanup cost.)
+1. **How far to strip the dead apparatus.** Remove `reads` fully (confident it is unused);
+  remove `output` / `progress` only if the plan confirms no live consumer. (Recommendation:
+  maximal safe removal — that is the simplification the maintainer asked for.)
+2. **Cleanup instruction form.** Teach `rm -f <paths>` directly in the root contract, or
+  ship a tiny extension helper script? (Recommendation: direct `rm -f` — no new artifact,
+  `rm -f` already tolerates missing files.)
