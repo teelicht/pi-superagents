@@ -28,6 +28,8 @@
   - The root prompt teaches the controller to run the skill's handoff scripts and to clean up brief/report/diff files with `rm -f` after a `DONE` review (`progress.md` is preserved until `finishing-a-development-branch`). The extension performs no cleanup itself.
   - Removed the dead `injectSuperpowersPacketInstructions` / `buildSuperpowersPacketPlan` / `reads` / `output` packet-injection apparatus — net code reduction; `resolveStepBehavior` keeps its live `skills` path.
 - Bumped Pi development dependencies to `^0.79.10`.
+- **CI**
+  - Dropped `windows-latest` from the test workflow matrix; CI now runs on `ubuntu-latest` only.
 
 ## [0.9.2] - 2026-06-12
 
