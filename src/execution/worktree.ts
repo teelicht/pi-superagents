@@ -57,7 +57,6 @@ export interface CreateWorktreesOptions {
 	agents?: string[];
 	setupHook?: WorktreeSetupHookConfig;
 	rootDir?: string;
-	requireIgnoredRoot?: boolean;
 }
 
 interface ResolvedWorktreeSetupHook {
@@ -177,8 +176,11 @@ function buildWorktreeBranch(runId: string, index: number): string {
 }
 
 /**
- * Builds the filesystem path for a worktree under either the configured root
- * or the operating system temp directory when no override is provided.
+ * Builds the filesystem path for a worktree under a resolved root directory.
+ *
+ * The root is resolved by the caller via `resolveWorktreeRootDir`, which mirrors
+ * the `using-git-worktrees` skill's directory-selection priority (configured root
+ * → existing `.worktrees/` → existing `worktrees/` → default `.worktrees/`).
  *
  * @param runId Unique identifier for the current worktree batch.
  * @param index Zero-based worktree index within the batch.
@@ -199,6 +201,28 @@ function buildWorktreePath(runId: string, index: number, rootDir?: string): stri
 function resolveConfiguredWorktreeRoot(repoRoot: string, configuredRoot: string | undefined): string | undefined {
 	if (!configuredRoot) return undefined;
 	return path.isAbsolute(configuredRoot) ? path.resolve(configuredRoot) : path.resolve(repoRoot, configuredRoot);
+}
+
+/**
+ * Resolve the worktree root directory for a parallel batch.
+ *
+ * Mirrors the `using-git-worktrees` skill's directory-selection priority: an
+ * explicit configured root wins; otherwise an existing `.worktrees/` or
+ * `worktrees/` directory at the repository root is reused, defaulting to
+ * `.worktrees/`.
+ *
+ * @param repoRoot Absolute repository root.
+ * @param configuredRoot Optional configured root from `superagents.commands.<name>.worktrees.root`.
+ * @returns Absolute worktree root directory.
+ */
+function resolveWorktreeRootDir(repoRoot: string, configuredRoot: string | undefined): string {
+	const configured = resolveConfiguredWorktreeRoot(repoRoot, configuredRoot);
+	if (configured) return configured;
+	for (const candidate of [".worktrees", "worktrees"]) {
+		const candidatePath = path.join(repoRoot, candidate);
+		if (fs.existsSync(candidatePath)) return candidatePath;
+	}
+	return path.join(repoRoot, ".worktrees");
 }
 
 /**
@@ -374,23 +398,39 @@ function runWorktreeSetupHook(hook: ResolvedWorktreeSetupHook, input: WorktreeSe
 }
 
 /**
- * Ensures a configured project-local worktree root is ignored by git before it
- * is used, preventing new worktree directories from polluting repository status.
+ * Ensure a project-local worktree root is ignored by git before it is used.
+ *
+ * Mirrors the `using-git-worktrees` skill's safety rule: if the root is inside
+ * the repository and not ignored, append it to `.gitignore` rather than aborting.
+ * The skill also commits the change; a runtime cannot commit on the user's
+ * behalf, so the append is left unstaged (worktrees are ephemeral and removed
+ * before the user would commit).
  *
  * @param repoRoot Absolute repository root for the current checkout.
- * @param rootDir Absolute configured worktree root.
- * @throws {Error} When the configured root is inside the repository and not ignored.
+ * @param rootDir Absolute worktree root.
+ * @throws {Error} When the root is the repository root, or when appending to
+ *   `.gitignore` does not make git ignore it (e.g. a tracked path).
  */
-function assertProjectLocalRootIgnored(repoRoot: string, rootDir: string): void {
+function ensureProjectLocalRootIgnored(repoRoot: string, rootDir: string): void {
 	const canonicalRepoRoot = normalizePathForComparison(resolveCanonicalPath(repoRoot));
 	const canonicalRootDir = normalizePathForComparison(resolveCanonicalPath(rootDir));
 	const relativeRoot = path.relative(canonicalRepoRoot, canonicalRootDir);
 	const isProjectLocal = relativeRoot === "" || relativeRoot === "." || (!relativeRoot.startsWith("..") && !path.isAbsolute(relativeRoot));
 	if (!isProjectLocal) return;
 	const gitRelativeRoot = (relativeRoot || ".").split(path.sep).join("/");
-	const result = runGit(repoRoot, ["check-ignore", "-q", "--", gitRelativeRoot]);
-	if (result.status !== 0) {
-		throw new Error(`Configured worktree root must be ignored by git: ${gitRelativeRoot}`);
+	if (gitRelativeRoot === "." || gitRelativeRoot === "") {
+		throw new Error("worktree root cannot be the repository root");
+	}
+	const check = runGit(repoRoot, ["check-ignore", "-q", "--", gitRelativeRoot]);
+	if (check.status === 0) return;
+	// Skill action: append the worktree root to .gitignore so it stays out of git status.
+	const gitignorePath = path.join(repoRoot, ".gitignore");
+	const entry = gitRelativeRoot.endsWith("/") ? gitRelativeRoot : `${gitRelativeRoot}/`;
+	const existing = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, "utf-8") : "";
+	const lines = existing.split(/\r?\n/);
+	if (!lines.includes(entry) && !lines.includes(gitRelativeRoot)) {
+		const sep = existing.length > 0 && !existing.endsWith("\n") ? "\n" : "";
+		fs.writeFileSync(gitignorePath, `${existing}${sep}${entry}\n`, "utf-8");
 	}
 }
 
@@ -602,16 +642,12 @@ function hasWorktreeChanges(diff: WorktreeDiff): boolean {
  */
 export function createWorktrees(cwd: string, runId: string, count: number, options?: CreateWorktreesOptions): WorktreeSetup {
 	const repo = resolveRepoState(cwd);
-	const rootDir = resolveConfiguredWorktreeRoot(repo.toplevel, options?.rootDir);
+	const rootDir = resolveWorktreeRootDir(repo.toplevel, options?.rootDir);
 	const setupHook = resolveWorktreeSetupHook(repo.toplevel, options?.setupHook);
 	const worktrees: WorktreeInfo[] = [];
 
-	if (rootDir && options?.requireIgnoredRoot) {
-		assertProjectLocalRootIgnored(repo.toplevel, rootDir);
-	}
-	if (rootDir) {
-		fs.mkdirSync(rootDir, { recursive: true });
-	}
+	ensureProjectLocalRootIgnored(repo.toplevel, rootDir);
+	fs.mkdirSync(rootDir, { recursive: true });
 
 	try {
 		for (let index = 0; index < count; index++) {
