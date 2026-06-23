@@ -2,9 +2,8 @@
  * Integration coverage for Superpowers packet defaults.
  *
  * Responsibilities:
- * - verify the command-scoped packet reads used by Superpowers roles
+ * - verify packet instruction behavior in sync executor foreground/parallel paths
  * - guard against fallback to legacy context/plan/progress conventions
- * - verify packet instruction injection in sync executor foreground/parallel paths
  *
  * Notes on test hermeticity:
  * - `PI_SUBAGENT_DEPTH` / `PI_SUBAGENT_MAX_DEPTH` are saved and restored so tests
@@ -23,7 +22,7 @@ import * as path from "node:path";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
 import type { AgentToolResult } from "@earendil-works/pi-agent-core";
 import { resolveStepBehavior } from "../../src/execution/settings.ts";
-import { buildSuperpowersPacketContent, buildSuperpowersPacketPlan, injectSuperpowersPacketInstructions } from "../../src/execution/superpowers-packets.ts";
+import { buildSuperpowersPacketContent } from "../../src/execution/superpowers-packets.ts";
 import { cleanupOldArtifacts, getPacketPath } from "../../src/shared/artifacts.ts";
 import { getAvailableSkillNames } from "../../src/shared/skills.ts";
 import type { Details } from "../../src/shared/types.ts";
@@ -49,30 +48,10 @@ function git(cwd: string, args: string[]): void {
 
 void describe("superpowers packets", () => {
 	/**
-	 * Verifies the implementer role uses inert packet defaults without legacy read filenames.
+	 * Verifies explicit step skill overrides win over agent defaults and that the
+	 * resolved behavior carries through `model` unchanged when no override is set.
 	 */
-	void it("uses inert packet defaults instead of legacy read filenames like task-brief.md", () => {
-		const packets = buildSuperpowersPacketPlan("sp-implementer");
-		assert.deepEqual(packets.reads, []);
-		assert.equal(packets.output, false);
-		assert.equal(packets.progress, false);
-	});
-
-	/**
-	 * Verifies every built-in role uses inert packet defaults without legacy read filenames.
-	 */
-	void it("maps all built-in roles to inert packet defaults without legacy read filenames", () => {
-		const inert = { reads: [], output: false, progress: false };
-		assert.deepEqual(buildSuperpowersPacketPlan("sp-spec-review"), inert);
-		assert.deepEqual(buildSuperpowersPacketPlan("sp-code-review"), inert);
-		assert.deepEqual(buildSuperpowersPacketPlan("sp-debug"), inert);
-		assert.deepEqual(buildSuperpowersPacketPlan("sp-recon"), inert);
-	});
-
-	/**
-	 * Verifies packet defaults sit between explicit step overrides and inert defaults.
-	 */
-	void it("prefers explicit step overrides, then packet defaults, then disabled defaults", () => {
+	void it("prefers explicit step skill overrides, then agent defaults", () => {
 		const behavior = resolveStepBehavior(
 			{
 				name: "sp-implementer",
@@ -80,47 +59,15 @@ void describe("superpowers packets", () => {
 				systemPrompt: "Implement one task.",
 				source: "builtin",
 				filePath: "/tmp/sp-implementer.md",
+				skills: ["default-skill"],
 			},
 			{
-				reads: ["custom-task.md"],
-			},
-			{
-				reads: ["task-brief.md"],
-				progress: false,
+				skills: ["override-skill"],
 			},
 		);
 
-		assert.deepEqual(behavior.reads, ["custom-task.md"]);
-		assert.equal(behavior.progress, false);
-	});
-
-	/**
-	 * Verifies injectSuperpowersPacketInstructions adds no legacy read filenames now that packet defaults are inert.
-	 */
-	void it("does not inject legacy packet read filenames into task text for implementer role", () => {
-		const packets = buildSuperpowersPacketPlan("sp-implementer");
-		const behavior = resolveStepBehavior({ name: "sp-implementer", description: "I", systemPrompt: "...", source: "builtin", filePath: "/tmp" }, {}, packets);
-		const task = injectSuperpowersPacketInstructions("Implement the selected task.", behavior);
-		assert.equal(task, "Implement the selected task.", "should not append any read instructions");
-		assert.ok(!task.includes("[Read from:"), "should not inject [Read from:] instruction");
-		assert.ok(!task.includes("task-brief.md"), "should not reference legacy task-brief.md");
-		assert.ok(!task.includes("[Write to:"), "should not inject [Write to:] instruction");
-		assert.ok(!task.includes("implementer-report.md"), "should not reference legacy implementer-report.md");
-		assert.ok(!task.includes("plan.md"), "should not reference legacy plan.md");
-		assert.ok(!task.includes("progress.md"), "should not reference legacy progress.md");
-	});
-
-	/**
-	 * Verifies injectSuperpowersPacketInstructions does not mutate legacy agent task text.
-	 */
-	void it("does not inject into tasks whose agents have no superpowers packet defaults", () => {
-		const task = "Do something with context.md";
-		// sp-recon has output: false, meaning no injection expected
-		const packets = buildSuperpowersPacketPlan("sp-recon");
-		const behavior = resolveStepBehavior({ name: "sp-recon", description: "R", systemPrompt: "...", source: "builtin", filePath: "/tmp" }, {}, packets);
-		const injected = injectSuperpowersPacketInstructions(task, behavior);
-		// sp-recon output is false, so no output file instruction should be injected
-		assert.ok(!injected.includes("debug-brief.md"), "should not force debug-brief.md output");
+		assert.deepEqual(behavior.skills, ["override-skill"]);
+		assert.deepEqual(behavior.model, undefined);
 	});
 
 	void it("generates expected packet paths for subagents", () => {
