@@ -95,6 +95,35 @@ void describe("worktree", () => {
 		}
 	});
 
+	void it("createWorktrees defaults to .worktrees/ at the repository root when no root is configured", () => {
+		const repoDir = createRepo("pi-worktree-default-root-");
+		let setup: WorktreeSetup | undefined;
+		try {
+			setup = createWorktrees(repoDir, "default-root", 1);
+			assert.match(setup.worktrees[0].path, /\.worktrees[\\/]/);
+			assert.ok(fs.existsSync(path.join(repoDir, ".worktrees")), "default .worktrees/ root should be created");
+		} finally {
+			if (setup) cleanupWorktrees(setup);
+			cleanupRepo(repoDir);
+		}
+	});
+
+	void it("createWorktrees appends the default worktree root to .gitignore when it is not ignored", () => {
+		const repoDir = createRepo("pi-worktree-auto-ignore-");
+		let setup: WorktreeSetup | undefined;
+		try {
+			// createRepo seeds .gitignore with node_modules/ only; .worktrees is not ignored yet
+			setup = createWorktrees(repoDir, "auto-ignore", 1);
+			const gitignore = fs.readFileSync(path.join(repoDir, ".gitignore"), "utf-8");
+			assert.match(gitignore, /\.worktrees/);
+			const check = spawnSync("git", ["-C", repoDir, "check-ignore", "-q", "--", ".worktrees"], { encoding: "utf-8" });
+			assert.equal(check.status, 0, ".worktrees should be ignored after auto-append");
+		} finally {
+			if (setup) cleanupWorktrees(setup);
+			cleanupRepo(repoDir);
+		}
+	});
+
 	void it("createWorktrees uses a configured project-local worktree root when provided", () => {
 		const repoDir = createRepo("pi-worktree-configured-root-");
 		let setup: WorktreeSetup | undefined;
@@ -106,7 +135,6 @@ void describe("worktree", () => {
 
 			setup = createWorktrees(repoDir, "configured", 1, {
 				rootDir: path.join(repoDir, ".worktrees"),
-				requireIgnoredRoot: true,
 			});
 			assert.match(setup.worktrees[0].path, /\.worktrees/);
 		} finally {
@@ -115,42 +143,41 @@ void describe("worktree", () => {
 		}
 	});
 
-	void it("createWorktrees rejects using the repository root when ignored roots are required", () => {
+	void it("createWorktrees rejects using the repository root as the worktree root", () => {
 		const repoDir = createRepo("pi-worktree-repo-root-");
 		try {
 			assert.throws(
 				() =>
 					createWorktrees(repoDir, "repo-root", 1, {
 						rootDir: repoDir,
-						requireIgnoredRoot: true,
 					}),
-				/Configured worktree root must be ignored by git/i,
+				/worktree root cannot be the repository root/i,
 			);
 		} finally {
 			cleanupRepo(repoDir);
 		}
 	});
 
-	void it("createWorktrees rejects symlinked absolute roots that resolve inside the repository", {
+	void it("createWorktrees auto-ignores a symlinked project-local root that resolves inside the repository", {
 		skip: process.platform === "win32" ? "Symlink behavior differs on Windows CI environments." : undefined,
 	}, () => {
 		const repoDir = createRepo("pi-worktree-symlinked-root-");
 		const actualRoot = path.join(repoDir, "local-worktrees");
 		const symlinkParent = fs.mkdtempSync(path.join(os.tmpdir(), "pi-worktree-symlink-parent-"));
 		const symlinkRoot = path.join(symlinkParent, "worktrees-link");
+		let setup: WorktreeSetup | undefined;
 		try {
 			fs.mkdirSync(actualRoot, { recursive: true });
 			fs.symlinkSync(actualRoot, symlinkRoot);
 
-			assert.throws(
-				() =>
-					createWorktrees(repoDir, "symlinked-root", 1, {
-						rootDir: symlinkRoot,
-						requireIgnoredRoot: true,
-					}),
-				/Configured worktree root must be ignored by git/i,
-			);
+			setup = createWorktrees(repoDir, "symlinked-root", 1, {
+				rootDir: symlinkRoot,
+			});
+			assert.ok(fs.existsSync(setup.worktrees[0].path), "worktree should be created under the symlinked root");
+			const gitignore = fs.readFileSync(path.join(repoDir, ".gitignore"), "utf-8");
+			assert.match(gitignore, /local-worktrees/);
 		} finally {
+			if (setup) cleanupWorktrees(setup);
 			try {
 				fs.rmSync(symlinkParent, { recursive: true, force: true });
 			} catch {

@@ -1,7 +1,6 @@
 # @teelicht/pi-superagents
 
-[Pi agent-harness](https://pi.dev) extension to support [superpowers](https://skills.sh/obra/superpowers) workflows using subagents.
-
+[Pi agent-harness](https://pi.dev) extension to support [Superpowers](https://github.com/obra/superpowers) workflows using subagents. The official Superpowers Pi package injects the Superpowers skills into every session. By contrast, the pi-superagents extension leaves it up to the user to decide when Superpowers should be used.
 ## Features
 
 - **Superpowers Workflow**: Proven pipeline for robust AI-assisted development.
@@ -12,28 +11,6 @@
 - **Entrypoint Lifecycle Skills**: Superpowers entrypoint agents inject root lifecycle skills (verification, review-feedback, branch finishing) defined in frontmatter. .
 - **Subagent Extension & Tool Defaults**: Subagents run with implicit Pi extension discovery disabled by default; configure `superagents.extensions` with local paths or Pi `-e` source specs, and `superagents.tools` with shared tool names or tool extension paths. The bundled defaults provide the common read-only tools globally so agent frontmatter only lists role-specific extras.
 
-## Compaction Durability
-
-During long autonomous Superpowers runs, pi may compact the session context
-(auto-compaction at the context threshold, or overflow recovery). The
-Superpowers extension automatically re-arms the root contract after
-compaction so the model retains lifecycle-trigger awareness
-(`verification-before-completion`, `receiving-code-review`,
-`finishing-a-development-branch`).
-
-This behavior is **opt-in**: it only activates after a Superpowers command
-(`/sp-*` or an intercepted `/skill:brainstorming` / `/skill:writing-plans`)
-has been dispatched. Normal sessions without a Superpowers command are
-unaffected.
-
-The re-injection is sized by the compaction flow:
-
-- **Threshold** (auto-compaction): full root contract re-injected.
-- **Overflow** (context window exceeded): trimmed reminder only, to avoid
-  re-overflow on the automatic retry.
-- **Manual** (`/compact`): minimal one-line pointer, respecting the user's
-  intent to reclaim context.
-
 ## Installation
 
 ```bash
@@ -41,7 +18,7 @@ pi install npm:@teelicht/pi-superagents
 ```
 
 > [!NOTE]
-> This tool requires the `superpowers` skills to be installed. Easy installation via [https://skills.sh/obra/superpowers](https://skills.sh/obra/superpowers).
+> This tool requires the `superpowers` skills to be installed. Install them via [https://skills.sh/obra/superpowers](https://skills.sh/obra/superpowers). Do NOT install them for Pi specifically as the Superpowers git repo suggests! This would inject superpowers into EVERY agent session.
 
 On install, `pi-superagents` creates `config.json` from the bundled defaults:
 
