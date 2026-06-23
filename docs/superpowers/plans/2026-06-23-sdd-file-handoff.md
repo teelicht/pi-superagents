@@ -455,19 +455,19 @@ rm -f cleanup after a DONE review, with progress.md protected."
 - Modify: `docs/configuration.md`
 - Modify: `CHANGELOG.md`
 
-- [ ] **Step 1: Update `docs/skills.md` Role Output section**
+- [x] **Step 1: Update `docs/skills.md` Role Output section**
 
 State that the bounded SDD roles (`sp-implementer`, `sp-spec-review`, `sp-code-review`) read and write the skill's handoff files by path (brief/report/diff under `.superpowers/sdd/`), that the controller cleans them up with `rm -f` after a `DONE` review, and that `sp-debug`/`sp-recon`/`sp-research` keep inline delivery. Keep the existing "no `[Read from:]` injection" wording from the prior fix.
 
-- [ ] **Step 2: Update `docs/parameters.md` packet section**
+- [x] **Step 2: Update `docs/parameters.md` packet section**
 
 Note that the packet file carries the controller's dispatch text (including file-handoff paths); the extension injects no `[Read from:]`/`[Write to:]` references; brief/report/diff files are authored by the SDD skill's scripts and cleaned up by the controller.
 
-- [ ] **Step 3: Update `docs/configuration.md` Inline Role Output section**
+- [x] **Step 3: Update `docs/configuration.md` Inline Role Output section**
 
 Reflect that the handoff roles read/write by path and the controller owns cleanup (`rm -f` after `DONE`); `progress.md` persists until branch finish.
 
-- [ ] **Step 4: Add CHANGELOG entry**
+- [x] **Step 4: Add CHANGELOG entry**
 
 Under `## [Unreleased]` (create the section if the prior entry was released), add:
 
@@ -478,7 +478,7 @@ Under `## [Unreleased]` (create the section if the prior entry was released), ad
   - Removed the dead `injectSuperpowersPacketInstructions` / `buildSuperpowersPacketPlan` / `reads` / `output` apparatus — net code reduction.
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/skills.md docs/parameters.md docs/configuration.md CHANGELOG.md
