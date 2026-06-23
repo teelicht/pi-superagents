@@ -2,19 +2,11 @@
 
 ## [Unreleased]
 
-- **Worktree Skill Alignment**
-  - Parallel worktree isolation now defaults to the `using-git-worktrees` skill's directory convention: `.worktrees/` at the repository root (existing `.worktrees/` or `worktrees/` is reused; an explicit `worktrees.root` still wins).
-  - A project-local worktree root that is not ignored is now auto-appended to `.gitignore` (the skill's safety rule) instead of aborting. The append is left unstaged; the repo-root case still hard-errors.
-  - `docs/worktrees.md` now distinguishes the extension's parallel worktree isolation from the `using-git-worktrees` skill (root-session agent setup).
-
-- **SDD File-Handoff Alignment**
-  - The bounded SDD role agents (`sp-implementer`, `sp-spec-review`, `sp-code-review`) now use the `subagent-driven-development` skill's file handoff: they read the task brief and review-package diff and write the implementer report by path, matching the skill's `scripts/task-brief` / `scripts/review-package` convention under the gitignored `.superpowers/sdd/` workspace. `sp-debug` dropped its misleading "debug brief" wording for packet-aligned language.
-  - The root prompt teaches the controller to run the skill's handoff scripts and to clean up brief/report/diff files with `rm -f` after a `DONE` review (`progress.md` is preserved until `finishing-a-development-branch`). The extension performs no cleanup itself.
-  - Removed the dead `injectSuperpowersPacketInstructions` / `buildSuperpowersPacketPlan` / `reads` / `output` packet-injection apparatus — net code reduction; `resolveStepBehavior` keeps its live `skills` path.
 
 
 
-## [0.9.3] - 2026-06-23
+
+## [0.10.0] - 2026-06-23
 
 - **Compaction Durability**
   - Re-arms the Superpowers root contract after context compaction so the model retains lifecycle-trigger awareness across long autonomous runs.
@@ -27,6 +19,14 @@
   - The `subagent` tool description now identifies itself as the tool the upstream Superpowers skills reference (provided by pi-superagents, the pi-subagents-compatible fork) and states its actual capabilities (synchronous single, parallel, and forked-context dispatch — no async, chain, or resume/status), so models connect the skill reference to this tool.
 - **Inline Packet Delivery Consistency**
   - Removed `[Read from:]` references to legacy handoff filenames (`task-brief.md`, `debug-brief.md`, `implementer-report.md`, `spec-review.md`) that built-in Superpowers role packet defaults injected into bounded subagent task text.
+- **Worktree Skill Alignment**
+  - Parallel worktree isolation now defaults to the `using-git-worktrees` skill's directory convention: `.worktrees/` at the repository root (existing `.worktrees/` or `worktrees/` is reused; an explicit `worktrees.root` still wins).
+  - A project-local worktree root that is not ignored is now auto-appended to `.gitignore` (the skill's safety rule) instead of aborting. The append is left unstaged; the repo-root case still hard-errors.
+  - `docs/worktrees.md` now distinguishes the extension's parallel worktree isolation from the `using-git-worktrees` skill (root-session agent setup).
+- **SDD File-Handoff Alignment**
+  - The bounded agents (`sp-implementer`, `sp-spec-review`, `sp-code-review`) now use the `subagent-driven-development` skill's file handoff: they read the task brief and review-package diff and write the implementer report by path, matching the skill's `scripts/task-brief` / `scripts/review-package` convention under the gitignored `.superpowers/sdd/` workspace. `sp-debug` dropped its misleading "debug brief" wording for packet-aligned language.
+  - The root prompt teaches the controller to run the skill's handoff scripts and to clean up brief/report/diff files with `rm -f` after a `DONE` review (`progress.md` is preserved until `finishing-a-development-branch`). The extension performs no cleanup itself.
+  - Removed the dead `injectSuperpowersPacketInstructions` / `buildSuperpowersPacketPlan` / `reads` / `output` packet-injection apparatus — net code reduction; `resolveStepBehavior` keeps its live `skills` path.
 - Bumped Pi development dependencies to `^0.79.10`.
 
 ## [0.9.2] - 2026-06-12
