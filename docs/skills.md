@@ -149,7 +149,7 @@ Inline subagent result rows show each run's compact runtime-confirmed model labe
 
 ## Role Output
 
-Skills and role prompts should return findings in the assistant response. Pi Superagents forwards that response through the `subagent` tool result and preserves optional debug artifacts outside the repository. Skills should not ask bounded roles to write handoff files like `implementer-report.md`, `spec-review.md`, or `code-review.md`. Skills should assume bounded Superpowers roles receive curated packet input, not inherited parent-session history, because built-in bounded roles default to `session-mode: lineage-only`.
+Skills and role prompts should return findings in the assistant response. Pi Superagents forwards that response through the `subagent` tool result and preserves optional debug artifacts outside the repository. Skills should not ask bounded roles to read or write legacy handoff files like `task-brief.md`, `debug-brief.md`, `implementer-report.md`, `spec-review.md`, or `code-review.md`. The runtime authors a curated packet file as the input brief and injects no `[Read from:]` references to those filenames, because built-in bounded roles default to `session-mode: lineage-only`.
 
 Subagent results are rendered as compact inline lines in the Pi conversation. Collapsed view shows the agent name, compact runtime-confirmed model label, task, status, and current tool activity. Expanded view reveals model, thinking level when available, skills, recent tools, output preview, errors, and artifact paths. This keeps long-running Superpowers workflows readable without scrolling through verbose output.
 

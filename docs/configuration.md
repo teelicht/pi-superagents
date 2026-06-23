@@ -185,7 +185,7 @@ Command metadata (`description`, `entrySkill`) was moved to entrypoint agent fro
 
 ## Inline Role Output
 
-Superpowers role agents return their findings through Pi tool results. The runtime no longer configures packet output files, so `sp-implementer`, `sp-spec-review`, `sp-code-review`, and `sp-debug` do not create repo-root handoff files during normal subagent-driven development.
+Superpowers role agents return their findings through Pi tool results. The runtime no longer configures packet output files, so `sp-implementer`, `sp-spec-review`, `sp-code-review`, and `sp-debug` do not create repo-root handoff files during normal subagent-driven development. Symmetrically, built-in role packet defaults inject no `[Read from:]` references to legacy input handoff files (`task-brief.md`, `debug-brief.md`, `implementer-report.md`, `spec-review.md`); the runtime-authored packet file is the input brief, so those references pointed at files that were never written.
 
 Execution artifacts are still available when `artifacts` is enabled. Those files are written to the session artifact directory for debugging and truncation recovery, not to the repository root.
 
