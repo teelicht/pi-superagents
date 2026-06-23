@@ -346,12 +346,12 @@ SDD skill's scripts and addressed by path in the dispatch."
 - Consumes: `SuperpowersRootPromptInput.useSubagents`.
 - Produces: a "File Handoff Contract" section in the root prompt when `useSubagents === true`.
 
-- [ ] **Step 1: Locate or create the root-prompt test file**
+- [x] **Step 1: Locate or create the root-prompt test file**
 
 Run: `ls test/integration/root-prompt.test.ts test/unit/root-prompt.test.ts 2>/dev/null`
 If neither exists, create `test/unit/root-prompt.test.ts`. If one exists, add to it. (The repo has integration tests for slash commands; confirm there is no existing root-prompt unit test before creating.)
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 ```ts
 import assert from "node:assert/strict";
@@ -382,12 +382,12 @@ void describe("root prompt file handoff contract", () => {
 });
 ```
 
-- [ ] **Step 3: Run the test — expect FAIL**
+- [x] **Step 3: Run the test — expect FAIL**
 
 Run: `node --experimental-strip-types --test test/unit/root-prompt.test.ts`
 Expected: FAIL (`File Handoff Contract` not present).
 
-- [ ] **Step 4: Add `buildFileHandoffContract` and wire it into `buildSuperpowersRootPrompt`**
+- [x] **Step 4: Add `buildFileHandoffContract` and wire it into `buildSuperpowersRootPrompt`**
 
 In `src/superpowers/root-prompt.ts`, add the builder near the other `build*Contract` helpers:
 
@@ -425,12 +425,12 @@ if (input.useSubagents === true) {
 }
 ```
 
-- [ ] **Step 5: Run the test — expect PASS**
+- [x] **Step 5: Run the test — expect PASS**
 
 Run: `node --experimental-strip-types --test test/unit/root-prompt.test.ts`
 Expected: PASS.
 
-- [ ] **Step 6: Run full suite, typecheck, lint, commit**
+- [x] **Step 6: Run full suite, typecheck, lint, commit**
 
 Run: `pnpm typecheck && pnpm run test:all && npx biome check src/superpowers/root-prompt.ts test/unit/root-prompt.test.ts`
 Expected: clean and green.
