@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- **SDD File-Handoff Alignment**
+  - The bounded SDD role agents (`sp-implementer`, `sp-spec-review`, `sp-code-review`) now use the `subagent-driven-development` skill's file handoff: they read the task brief and review-package diff and write the implementer report by path, matching the skill's `scripts/task-brief` / `scripts/review-package` convention under the gitignored `.superpowers/sdd/` workspace. `sp-debug` dropped its misleading "debug brief" wording for packet-aligned language.
+  - The root prompt teaches the controller to run the skill's handoff scripts and to clean up brief/report/diff files with `rm -f` after a `DONE` review (`progress.md` is preserved until `finishing-a-development-branch`). The extension performs no cleanup itself.
+  - Removed the dead `injectSuperpowersPacketInstructions` / `buildSuperpowersPacketPlan` / `reads` / `output` packet-injection apparatus — net code reduction; `resolveStepBehavior` keeps its live `skills` path.
+
 
 
 ## [0.9.3] - 2026-06-23
