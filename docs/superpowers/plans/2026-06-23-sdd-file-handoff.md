@@ -34,7 +34,7 @@
 
 **Rationale (verified):** `injectSuperpowersPacketInstructions` only reads `behavior.reads` (always `[]` → no-op). `behaviors[i]` is consumed at only `subagent-executor.ts:364` (inject — dead) and `:371` (`behaviors[index].skills` — live). `SuperpowersPacketPlan.output` is never read. `buildSuperpowersPacketPlan` only produces dead defaults.
 
-- [ ] **Step 1: Update tests to the post-removal state**
+- [x] **Step 1: Update tests to the post-removal state**
 
 In `test/integration/superpowers-packets.test.ts`:
 
@@ -56,12 +56,12 @@ void it("prefers explicit step skill overrides, then agent defaults", () => {
 
 5. Keep the executor-path tests (`"does not inject legacy packet read filenames into foreground single/parallel tasks"`, `"applies inert packet defaults for parallel tasks without legacy read guidance"`) unchanged — they assert no `task-brief.md` / no `[Read from:]` / no `[Write to:]` in the dispatched task text and must stay green.
 
-- [ ] **Step 2: Run tests — expect green (code unchanged still satisfies skills override)**
+- [x] **Step 2: Run tests — expect green (code unchanged still satisfies skills override)**
 
 Run: `node --experimental-strip-types --import ./test/support/register-loader.mjs --test test/integration/superpowers-packets.test.ts`
 Expected: PASS (the rewritten skills test passes against current `resolveStepBehavior`; deleted tests no longer run).
 
-- [ ] **Step 3: Delete `injectSuperpowersPacketInstructions` and `buildSuperpowersPacketPlan` from `superpowers-packets.ts`**
+- [x] **Step 3: Delete `injectSuperpowersPacketInstructions` and `buildSuperpowersPacketPlan` from `superpowers-packets.ts`**
 
 Replace the whole file with:
 
@@ -102,7 +102,7 @@ export function buildSuperpowersPacketContent(input: { agent: string; sessionMod
 
 This deletes `SuperpowersPacketPlan`, `buildSuperpowersPacketPlan`, `injectSuperpowersPacketInstructions`, and the `ResolvedStepBehavior` import.
 
-- [ ] **Step 4: Strip `reads` from `settings.ts` behavior types**
+- [x] **Step 4: Strip `reads` from `settings.ts` behavior types**
 
 Edit `src/execution/settings.ts`:
 
@@ -146,7 +146,7 @@ export function resolveStepBehavior(agentConfig: AgentConfig, stepOverrides: Ste
 
 (Update the JSDoc `@returns` line to "effective progress/skill/model behavior".)
 
-- [ ] **Step 5: Drop the inject call sites and `buildSuperpowersPacketPlan` use in `subagent-executor.ts`**
+- [x] **Step 5: Drop the inject call sites and `buildSuperpowersPacketPlan` use in `subagent-executor.ts`**
 
 1. Remove `injectSuperpowersPacketInstructions` and `buildSuperpowersPacketPlan` from the import at the top of `src/execution/subagent-executor.ts` (keep other imports from that module if any; after Task 1 the module only exports `buildSuperpowersPacketContent`, which this file may not import — remove the import line entirely if nothing remains).
 2. Simplify `resolveChildBehavior` to stop building packet defaults (delete the `buildSuperpowersPacketPlan` call and the `reads` field in the overrides object):
@@ -180,12 +180,12 @@ const taskText = params.task!;
 
 (If `resolveChildBehavior` is now used only by the parallel path, keep it; do not delete it — parallel `behaviors[index].skills` at the `configuredSkills` line still depends on it.)
 
-- [ ] **Step 6: Run typecheck and the packet suite**
+- [x] **Step 6: Run typecheck and the packet suite**
 
 Run: `pnpm typecheck && node --experimental-strip-types --import ./test/support/register-loader.mjs --test test/integration/superpowers-packets.test.ts`
 Expected: typecheck clean; packet tests PASS (executor-path no-injection guards still green).
 
-- [ ] **Step 7: Run the full suite, lint changed files, commit**
+- [x] **Step 7: Run the full suite, lint changed files, commit**
 
 Run: `pnpm run test:all && npx biome check src/execution/superpowers-packets.ts src/execution/settings.ts src/execution/subagent-executor.ts test/integration/superpowers-packets.test.ts`
 Expected: all tests pass; Biome clean.
