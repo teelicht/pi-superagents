@@ -5,7 +5,7 @@
  * - verify reason → sizing mapping
  * - verify bootstrap-marker idempotency detection
  * - verify compaction-summary insertion-point calculation
- * - verify registered session_compact / context / agent_end handlers behave
+ * - verify registered session_compact / context / agent_settled handlers behave
  *   correctly against a mock pi with a fake SubagentState and fake deps
  *   (no real sockets or live skill filesystem resolution exercised)
  */
@@ -95,13 +95,14 @@ void describe("registerCompactionDurabilityHandlers", () => {
 		};
 	}
 
-	void it("registers one handler each for session_compact, context, and agent_end", () => {
+	void it("registers one handler each for session_compact, context, and agent_settled", () => {
 		const { pi, handlers } = createMockPi();
 		const state = createFakeState();
 		registerCompactionDurabilityHandlers(pi, state, { cwd: () => state.baseCwd });
 		assert.ok(handlers.has("session_compact"));
 		assert.ok(handlers.has("context"));
-		assert.ok(handlers.has("agent_end"));
+		assert.ok(handlers.has("agent_settled"));
+		assert.equal(handlers.has("agent_end"), false);
 	});
 
 	void it("session_compact sets compactionSizing from reason when active", () => {
@@ -218,11 +219,11 @@ void describe("registerCompactionDurabilityHandlers", () => {
 		assert.equal(result, undefined);
 	});
 
-	void it("agent_end clears the opt-in flag", () => {
+	void it("agent_settled clears the opt-in flag", () => {
 		const { pi, handlers } = createMockPi();
 		const state = createFakeState({ superpowersActive: true });
 		registerCompactionDurabilityHandlers(pi, state, { cwd: () => state.baseCwd });
-		handlers.get("agent_end")?.({ messages: [] });
+		handlers.get("agent_settled")?.({});
 		assert.equal(state.superpowersActive, false);
 	});
 });

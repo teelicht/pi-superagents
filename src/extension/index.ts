@@ -498,7 +498,7 @@ Bounded role agents are not allowed to call subagents.`,
 		() => configStore.reloadConfig(),
 		false,
 	);
-	// Register compaction-durability handlers (session_compact, context, agent_end)
+	// Register compaction-durability handlers (session_compact, context, agent_settled)
 	// so Superpowers opt-in survives context compaction.
 	registerCompactionDurabilityHandlers(pi, state, { cwd: () => state.baseCwd });
 	const skillCommandPromptDispatcher = createSuperpowersPromptDispatcher(pi);

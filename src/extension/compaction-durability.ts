@@ -5,7 +5,7 @@
  * - map session_compact reason to a sizing class (full/trimmed/pointer)
  * - detect existing bootstrap markers for idempotent re-injection
  * - find the insertion point after leading compactionSummary messages
- * - register session_compact, context, and agent_end handlers that re-arm
+ * - register session_compact, context, and agent_settled handlers that re-arm
  *   the Superpowers root contract after compaction, gated by SubagentState
  *
  * Important dependencies:
@@ -90,7 +90,7 @@ export interface CompactionDurabilityDeps {
  *   sets compactionSizing from event.reason.
  * - context: re-injects the bootstrap sized by compactionSizing, with
  *   idempotency marker scan and insertion after compactionSummary messages.
- * - agent_end: consumes the opt-in flag after each turn.
+ * - agent_settled: consumes the opt-in flag after all automatic continuations.
  *
  * All handlers are fail-soft: errors are caught and never break compaction
  * or the LLM call.
@@ -100,17 +100,14 @@ export interface CompactionDurabilityDeps {
  * @param deps Dependencies (cwd accessor for skill re-resolution).
  */
 export function registerCompactionDurabilityHandlers(pi: ExtensionAPI, state: SubagentState, _deps: CompactionDurabilityDeps): void {
-	// NOTE: the `event` parameters are intentionally left unannotated so the
-	// ExtensionAPI.on overloads infer the precise event types
-	// (SessionCompactEvent / ContextEvent). Inline annotations defeat overload
-	// resolution and produce TS2769 ("No overload matches this call").
+	// NOTE: the `event` parameters are intentionally left unannotated so
+	// ExtensionAPI.on overloads infer their precise event types. Inline
+	// annotations defeat overload resolution and produce TS2769.
 	pi.on("session_compact", (event) => {
 		try {
 			if (!state.superpowersActive) return;
 			state.superpowersActive = true;
-			// SessionCompactEvent.reason is typed ("manual" | "threshold" | "overflow")
-			// at top level as of @earendil-works/pi-coding-agent 0.79.10 (PR #5962).
-			const reason = event.reason;
+			const { reason } = event;
 			state.compactionSizing = resolveCompactionSizing(reason);
 		} catch {
 			// Never break compaction — leave state as-is.
@@ -157,11 +154,11 @@ export function registerCompactionDurabilityHandlers(pi: ExtensionAPI, state: Su
 		}
 	});
 
-	pi.on("agent_end", () => {
+	pi.on("agent_settled", () => {
 		try {
 			state.superpowersActive = false;
 		} catch {
-			// Best effort — never break agent_end.
+			// Best effort — never break agent settlement.
 		}
 	});
 }
