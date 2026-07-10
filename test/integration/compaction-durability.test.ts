@@ -5,7 +5,7 @@
  * - verify opt-in gate: no injection without a Superpowers command
  * - verify session_compact reason → sizing → context injection
  * - verify idempotency (no double-injection)
- * - verify agent_end consumes the opt-in flag
+ * - verify agent_settled consumes the opt-in flag
  * - verify session_start resets the opt-in flag
  * - verify non-opted-in compaction stays unarmed
  * - verify the wiring in extension/index.ts and slash/slash-commands.ts
@@ -142,12 +142,12 @@ void describe("compaction-durability handlers", () => {
 		assert.equal((result.messages[2] as { role: string }).role, "custom");
 	});
 
-	void it("agent_end consumes the opt-in flag", () => {
+	void it("agent_settled consumes the opt-in flag", () => {
 		const { handlers, pi } = createPiMock();
 		const state = createState({ superpowersActive: true });
 		registerCompactionDurabilityHandlers(pi, state, { cwd: () => "/tmp" });
 
-		fireHandler(handlers, "agent_end", {});
+		fireHandler(handlers, "agent_settled", {});
 		assert.equal(state.superpowersActive, false);
 	});
 
@@ -166,7 +166,7 @@ void describe("compaction-durability handlers", () => {
 // Wiring-level tests: validate the extension registers the handlers AND
 // sets the opt-in flag at both dispatch sites (intercepted /skill: in
 // extension/index.ts and /sp-* in slash/slash-commands.ts), resets it in
-// session_start, and consumes it in agent_end. These tests load the real
+// session_start, and consumes it in agent_settled. These tests load the real
 // extension with a mock pi and observe behavior end-to-end.
 // ============================================================================
 
@@ -280,11 +280,12 @@ void describe("compaction-durability wiring", () => {
 		clearSkillCache();
 	});
 
-	void it("registers session_compact/context/agent_end handlers on extension load", async () => {
+	void it("registers session_compact/context/agent_settled handlers on extension load", async () => {
 		const { mock } = await loadExtensionWithBrainstormConfig(tempDirs, { superagents: {} });
 		assert.ok(mock.lifecycle.get("session_compact")?.[0], "expected session_compact handler to be registered");
 		assert.ok(mock.lifecycle.get("context")?.[0], "expected context handler to be registered");
-		assert.ok(mock.lifecycle.get("agent_end")?.[0], "expected agent_end handler to be registered");
+		assert.ok(mock.lifecycle.get("agent_settled")?.[0], "expected agent_settled handler to be registered");
+		assert.equal(mock.lifecycle.has("agent_end"), false);
 	});
 
 	void it("/sp-brainstorm dispatch arms full re-injection after threshold compaction", async () => {
@@ -432,7 +433,7 @@ void describe("compaction-durability wiring", () => {
 		assert.equal(result, undefined, "expected context to no-op after session_start reset");
 	});
 
-	void it("agent_end consumes the opt-in flag", async () => {
+	void it("agent_settled consumes the opt-in flag", async () => {
 		const { mock, cwd } = await loadExtensionWithBrainstormConfig(tempDirs, {
 			superagents: {
 				commands: { "sp-brainstorm": { usePlannotator: false } },
@@ -442,9 +443,9 @@ void describe("compaction-durability wiring", () => {
 		assert.ok(cmd);
 		await cmd.handler("design middleware", createWiringCtx(cwd));
 
-		const agentEnd = mock.lifecycle.get("agent_end")?.[0];
-		assert.ok(agentEnd, "expected agent_end handler to be registered");
-		agentEnd({});
+		const agentSettled = mock.lifecycle.get("agent_settled")?.[0];
+		assert.ok(agentSettled, "expected agent_settled handler to be registered");
+		agentSettled({});
 
 		const sessionCompact = mock.lifecycle.get("session_compact")?.[0];
 		assert.ok(sessionCompact);
@@ -453,7 +454,7 @@ void describe("compaction-durability wiring", () => {
 		const contextHandler = mock.lifecycle.get("context")?.[0];
 		assert.ok(contextHandler);
 		const result = (contextHandler as CtxHandler)({ messages: [{ role: "user" }] });
-		assert.equal(result, undefined, "expected context to no-op after agent_end consume");
+		assert.equal(result, undefined, "expected context to no-op after agent_settled consume");
 	});
 
 	void it("no opt-in: session_compact is a no-op and context returns undefined", async () => {

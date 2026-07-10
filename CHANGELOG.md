@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Updated Pi development dependencies and required Pi host version to `^0.80.6`; Superpowers now clears compaction-durability state on Pi's `agent_settled` lifecycle event, preserving reinjection through retries and follow-ups.
+
 
 
 
