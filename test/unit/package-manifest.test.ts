@@ -61,7 +61,7 @@ void describe("package.json manifest", () => {
 		});
 	});
 
-	void it("uses frozen pnpm installs in GitHub Actions release and CI workflows", () => {
+	void it("uses frozen pnpm installs and current setup actions in GitHub workflows", () => {
 		const packageJson = readPackageJson();
 		assert.equal(packageJson.packageManager, "pnpm@11.6.0");
 		assert.ok(fs.existsSync(path.resolve("pnpm-lock.yaml")), "pnpm-lock.yaml should be committed");
@@ -70,7 +70,8 @@ void describe("package.json manifest", () => {
 		const testWorkflow = readTextFile(".github/workflows/test.yml");
 
 		for (const workflow of [releaseWorkflow, testWorkflow]) {
-			assert.match(workflow, /uses:\s*pnpm\/action-setup@v4/);
+			assert.match(workflow, /uses:\s*actions\/checkout@v7/);
+			assert.match(workflow, /uses:\s*pnpm\/action-setup@v6/);
 			assert.match(workflow, /cache:\s*"?pnpm"?/);
 			assert.match(workflow, /run:\s*pnpm install --frozen-lockfile/);
 			assert.doesNotMatch(workflow, /run:\s*npm (?:ci|install|run)/);
