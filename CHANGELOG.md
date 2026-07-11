@@ -1,12 +1,13 @@
 # Changelog
 
-## [Unreleased]
+## [0.11.0] - 2026-07-10
 
-- Updated Pi development dependencies and required Pi host version to `^0.80.6`; Superpowers now clears compaction-durability state on Pi's `agent_settled` lifecycle event, preserving reinjection through retries and follow-ups.
-
-
-
-
+- **Pi 0.80.6 Lifecycle Support**
+  - Updated Pi development dependencies and the required Pi host version to `^0.80.6`.
+  - Clears Superpowers compaction-durability state on Pi's `agent_settled` lifecycle event, preserving reinjection through retries and follow-ups.
+- **Dependency Maintenance**
+  - Updated non-Pi development dependencies to their latest releases, including Biome 2.5, Vitest 4.1.10, TypeBox 1.3, Node 26 types, TypeScript 7, and Fallow 3.
+  - Updated GitHub Actions dependencies to `actions/checkout@v7` and `pnpm/action-setup@v6`.
 
 ## [0.10.0] - 2026-06-23
 
