@@ -19,7 +19,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { isThinkingLevel } from "../shared/thinking-levels.ts";
+import { extractThinkingSuffix } from "../shared/thinking-levels.ts";
 
 const TASK_ARG_LIMIT = 8000;
 
@@ -75,6 +75,10 @@ export interface BuildPiArgsResult {
  * Appends a thinking-level suffix to a model identifier when the suffix differs
  * from what is already present.
  *
+ * Presence of any non-empty colon-separated suffix is detected via
+ * `extractThinkingSuffix`, so the function does not validate that the suffix
+ * is a Pi-supported level. Pi handles unknown levels at runtime.
+ *
  * @param model   - The model string (e.g. `"anthropic/claude-3-5-sonnet"`).  May include an existing
  *                  thinking suffix separated by `:`.
  * @param thinking - Desired thinking level (e.g. `"medium"`).  Ignored if `"off"` or `undefined`.
@@ -83,8 +87,7 @@ export interface BuildPiArgsResult {
  */
 function applyThinkingSuffix(model: string | undefined, thinking: string | undefined): string | undefined {
 	if (!model || !thinking || thinking === "off") return model;
-	const colonIdx = model.lastIndexOf(":");
-	if (colonIdx !== -1 && isThinkingLevel(model.substring(colonIdx + 1))) return model;
+	if (extractThinkingSuffix(model) !== undefined) return model;
 	return `${model}:${thinking}`;
 }
 
