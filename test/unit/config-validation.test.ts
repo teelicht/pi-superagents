@@ -162,7 +162,54 @@ void describe("config validation", () => {
 				"superagents.commands.sp-test.worktrees.enabled",
 				"superagents.modelTiers.max.model",
 			],
-			// Note: thinking is intentionally NOT validated here — Pi validates it at runtime.
+			// Thinking names are intentionally not validated here — Pi validates them at runtime.
+		);
+	});
+
+	void it("accepts every string model tier thinking value", () => {
+		const result = validateConfigObject({
+			superagents: {
+				modelTiers: {
+					future: {
+						model: "provider/model",
+						thinking: "future-level",
+					},
+				},
+			},
+		});
+
+		assert.equal(result.blocked, false);
+		assert.deepEqual(result.diagnostics, []);
+	});
+
+	void it("rejects non-string model tier thinking values", () => {
+		const result = validateConfigObject({
+			superagents: {
+				modelTiers: {
+					numeric: {
+						model: "provider/model",
+						thinking: 1,
+					},
+					boolean: {
+						model: "provider/model",
+						thinking: false,
+					},
+					nullable: {
+						model: "provider/model",
+						thinking: null,
+					},
+					object: {
+						model: "provider/model",
+						thinking: {},
+					},
+				},
+			},
+		});
+
+		assert.equal(result.blocked, true);
+		assert.deepEqual(
+			result.diagnostics.map((diagnostic) => diagnostic.path),
+			["superagents.modelTiers.numeric.thinking", "superagents.modelTiers.boolean.thinking", "superagents.modelTiers.nullable.thinking", "superagents.modelTiers.object.thinking"],
 		);
 	});
 

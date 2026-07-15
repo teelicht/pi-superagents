@@ -235,7 +235,7 @@ void test("SuperpowersSettingsComponent writes model tier selections and reloads
 	fs.rmSync(dir, { recursive: true, force: true });
 });
 
-void test("SuperpowersSettingsComponent uses the selected model's Pi thinking levels", () => {
+void test("SuperpowersSettingsComponent uses each selected model's Pi thinking levels", () => {
 	const config: ExtensionConfig = {
 		superagents: {
 			modelTiers: { cheap: { model: "provider/old" } },
@@ -243,20 +243,31 @@ void test("SuperpowersSettingsComponent uses the selected model's Pi thinking le
 	};
 
 	const component = new SuperpowersSettingsComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, getConfigForTest(config), {
-		models: [createModel("provider", "limited", "Limited", ["off", "minimal"])],
+		models: [createModel("provider", "limited", "Limited", ["off", "minimal"]), createModel("provider", "expansive", "Expansive", ["high", "xhigh"])],
 	});
 
 	component.handleInput("m");
 	component.handleInput("\r");
+	assert.match(component.render(92).join("\n"), /▸ provider\/limited/);
 	component.handleInput("\r");
 
-	const rendered = component.render(92).join("\n");
+	let rendered = component.render(92).join("\n");
 	assert.match(rendered, /off/);
 	assert.match(rendered, /minimal/);
-	assert.doesNotMatch(rendered, /medium/);
 	assert.doesNotMatch(rendered, /high/);
 	assert.doesNotMatch(rendered, /xhigh/);
-	assert.doesNotMatch(rendered, /max/);
+
+	component.handleInput("q");
+	component.handleInput("\r");
+	component.handleInput("\x1b[B");
+	assert.match(component.render(92).join("\n"), /▸ provider\/expansive/);
+	component.handleInput("\r");
+
+	rendered = component.render(92).join("\n");
+	assert.match(rendered, /high/);
+	assert.match(rendered, /xhigh/);
+	assert.doesNotMatch(rendered, /off/);
+	assert.doesNotMatch(rendered, /minimal/);
 });
 
 void test("SuperpowersSettingsComponent selects thinking after selecting a model tier model", () => {
