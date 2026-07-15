@@ -20,6 +20,7 @@
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { getSupportedThinkingLevels } from "@earendil-works/pi-ai";
 
 /**
  * Model option from the model registry.
@@ -28,6 +29,7 @@ interface SettingsModelOption {
 	provider: string;
 	id: string;
 	name?: string;
+	thinkingLevels: readonly ThinkingLevel[];
 }
 
 /**
@@ -49,7 +51,7 @@ function readConfig(source: ConfigSource): ExtensionConfig {
 import type { AgentConfig } from "../agents/agents.ts";
 import { discoverAgents } from "../agents/agents.ts";
 import { resolveAvailableSkill, resolveSkills } from "../shared/skills.ts";
-import type { ExtensionConfig, SubagentState } from "../shared/types.ts";
+import type { ExtensionConfig, SubagentState, ThinkingLevel } from "../shared/types.ts";
 import { createSuperpowersPromptDispatcher } from "../superpowers/prompt-dispatch.ts";
 import { buildSuperpowersVisiblePromptSummary } from "../superpowers/root-prompt.ts";
 import { buildResolvedSkillEntryPrompt } from "../superpowers/skill-entry.ts";
@@ -156,6 +158,7 @@ async function openSuperpowersSettingsOverlay(ctx: ExtensionContext, state: Suba
 				provider: m.provider,
 				id: m.id,
 				name: m.name,
+				thinkingLevels: getSupportedThinkingLevels(m),
 			}));
 		} catch {
 			modelRegistryError = "Failed to load models";

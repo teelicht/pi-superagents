@@ -17,7 +17,6 @@ import type { Theme } from "@earendil-works/pi-coding-agent";
 import type { Component, TUI } from "@earendil-works/pi-tui";
 import { matchesKey } from "@earendil-works/pi-tui";
 import { RESERVED_MODEL_TIERS } from "../execution/superpowers-policy.ts";
-import { VALID_THINKING_LEVELS } from "../shared/thinking-levels.ts";
 import type { ExtensionConfig, SubagentState, ThinkingLevel } from "../shared/types.ts";
 import {
 	setSuperpowersModelTierModel,
@@ -40,6 +39,7 @@ export interface SettingsModelOption {
 	provider: string;
 	id: string;
 	name?: string;
+	thinkingLevels: readonly ThinkingLevel[];
 }
 
 /**
@@ -59,8 +59,6 @@ export type SettingsMode = "settings" | "tier-picker" | "model-picker" | "thinki
 
 const MAX_VISIBLE_MODELS = 15;
 
-const THINKING_OPTIONS: readonly (ThinkingLevel | undefined)[] = [undefined, ...VALID_THINKING_LEVELS];
-
 /**
  * Convert a model option to a value string for selection.
  *
@@ -79,6 +77,7 @@ export class SuperpowersSettingsComponent implements Component {
 	private selectedCommand: string | undefined;
 	private mode: SettingsMode = "settings";
 	private modelSearchQuery = "";
+	private thinkingOptions: readonly (ThinkingLevel | undefined)[] = [undefined];
 	private readonly tui: TUI;
 	private readonly theme: Theme;
 	private readonly state: SubagentState;
@@ -345,6 +344,7 @@ export class SuperpowersSettingsComponent implements Component {
 	private applyModelSelection(filteredModels: SettingsModelOption[]): void {
 		const editedTier = this.selectedTier!;
 		const selectedModel = filteredModels[this.selectedModelIndex];
+		this.thinkingOptions = [undefined, ...selectedModel.thinkingLevels];
 		this.writeModelTier(editedTier, modelToValue(selectedModel));
 		this.mode = "thinking-picker";
 		this.selectedTier = this.modelTierEntries().includes(editedTier) ? editedTier : this.firstModelTier();
@@ -361,12 +361,12 @@ export class SuperpowersSettingsComponent implements Component {
 	 */
 	private handleThinkingPickerKey(data: string): boolean {
 		if (matchesKey(data, "up") || matchesKey(data, "k")) {
-			this.selectedThinkingIndex = this.selectedThinkingIndex <= 0 ? THINKING_OPTIONS.length - 1 : this.selectedThinkingIndex - 1;
+			this.selectedThinkingIndex = this.selectedThinkingIndex <= 0 ? this.thinkingOptions.length - 1 : this.selectedThinkingIndex - 1;
 			return true;
 		}
 
 		if (matchesKey(data, "down") || matchesKey(data, "j")) {
-			this.selectedThinkingIndex = this.selectedThinkingIndex >= THINKING_OPTIONS.length - 1 ? 0 : this.selectedThinkingIndex + 1;
+			this.selectedThinkingIndex = this.selectedThinkingIndex >= this.thinkingOptions.length - 1 ? 0 : this.selectedThinkingIndex + 1;
 			return true;
 		}
 
@@ -383,7 +383,7 @@ export class SuperpowersSettingsComponent implements Component {
 	 */
 	private applyThinkingSelection(): void {
 		const editedTier = this.selectedTier!;
-		this.writeModelTierThinking(editedTier, THINKING_OPTIONS[this.selectedThinkingIndex]);
+		this.writeModelTierThinking(editedTier, this.thinkingOptions[this.selectedThinkingIndex]);
 		this.mode = "tier-picker";
 		this.selectedTier = this.modelTierEntries().includes(editedTier) ? editedTier : this.firstModelTier();
 		this.selectedThinkingIndex = 0;
@@ -471,12 +471,12 @@ export class SuperpowersSettingsComponent implements Component {
 	 * Return the configured thinking option index for a model tier.
 	 *
 	 * @param tierName Tier to inspect in the current configuration.
-	 * @returns Index into THINKING_OPTIONS, defaulting to the explicit default option.
+	 * @returns Index into the active thinking options, defaulting to the explicit default option.
 	 */
 	private currentThinkingIndex(tierName: string): number {
 		const value = this.getConfig().superagents?.modelTiers?.[tierName];
 		const thinking = value && typeof value === "object" && !Array.isArray(value) ? value.thinking : undefined;
-		const index = THINKING_OPTIONS.indexOf(thinking);
+		const index = this.thinkingOptions.indexOf(thinking);
 		return index >= 0 ? index : 0;
 	}
 
@@ -663,8 +663,8 @@ export class SuperpowersSettingsComponent implements Component {
 			"Choose thinking level:",
 		];
 
-		for (let i = 0; i < THINKING_OPTIONS.length; i++) {
-			const option = THINKING_OPTIONS[i];
+		for (let i = 0; i < this.thinkingOptions.length; i++) {
+			const option = this.thinkingOptions[i];
 			const marker = i === this.selectedThinkingIndex ? "▸ " : "  ";
 			lines.push(`${marker}${this.thinkingLabel(option)}`);
 		}

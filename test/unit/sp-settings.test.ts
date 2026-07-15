@@ -14,7 +14,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { test } from "node:test";
-import type { ExtensionConfig } from "../../src/shared/types.ts";
+import type { ExtensionConfig, ThinkingLevel } from "../../src/shared/types.ts";
 import { SuperpowersSettingsComponent } from "../../src/ui/sp-settings.ts";
 
 function createThemeMock() {
@@ -44,10 +44,20 @@ interface ModelOption {
 	provider: string;
 	id: string;
 	name?: string;
+	thinkingLevels: readonly ThinkingLevel[];
 }
 
-function createModel(provider: string, id: string, name?: string): ModelOption {
-	return { provider, id, name };
+/**
+ * Create a model registry option for settings tests.
+ *
+ * @param provider Model provider name.
+ * @param id Model id.
+ * @param name Optional display name.
+ * @param thinkingLevels Thinking levels available for the model.
+ * @returns A model option used by the settings picker.
+ */
+function createModel(provider: string, id: string, name?: string, thinkingLevels: readonly ThinkingLevel[] = ["off"]): ModelOption {
+	return { provider, id, name, thinkingLevels };
 }
 
 function createState(configPath?: string) {
@@ -225,6 +235,30 @@ void test("SuperpowersSettingsComponent writes model tier selections and reloads
 	fs.rmSync(dir, { recursive: true, force: true });
 });
 
+void test("SuperpowersSettingsComponent uses the selected model's Pi thinking levels", () => {
+	const config: ExtensionConfig = {
+		superagents: {
+			modelTiers: { cheap: { model: "provider/old" } },
+		},
+	};
+
+	const component = new SuperpowersSettingsComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, getConfigForTest(config), {
+		models: [createModel("provider", "limited", "Limited", ["off", "minimal"])],
+	});
+
+	component.handleInput("m");
+	component.handleInput("\r");
+	component.handleInput("\r");
+
+	const rendered = component.render(92).join("\n");
+	assert.match(rendered, /off/);
+	assert.match(rendered, /minimal/);
+	assert.doesNotMatch(rendered, /medium/);
+	assert.doesNotMatch(rendered, /high/);
+	assert.doesNotMatch(rendered, /xhigh/);
+	assert.doesNotMatch(rendered, /max/);
+});
+
 void test("SuperpowersSettingsComponent selects thinking after selecting a model tier model", () => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-settings-"));
 	const configPath = path.join(dir, "config.json");
@@ -238,7 +272,7 @@ void test("SuperpowersSettingsComponent selects thinking after selecting a model
 		},
 	};
 	const component = new SuperpowersSettingsComponent(createTuiMock() as never, createThemeMock() as never, createState(configPath) as never, () => config, {
-		models: [createModel("provider", "new", "New Model")],
+		models: [createModel("provider", "new", "New Model", ["off", "low", "medium"])],
 		reloadConfig: () => {
 			config = JSON.parse(fs.readFileSync(configPath, "utf-8")) as ExtensionConfig;
 		},
