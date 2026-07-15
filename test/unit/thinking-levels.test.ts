@@ -9,12 +9,10 @@
  *
  * Important dependencies:
  * - src/shared/thinking-levels.ts (module under test)
- * - src/shared/types.ts (ThinkingLevel type, used only for the pass-through cast)
  */
 
 import * as assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { ThinkingLevel } from "../../src/shared/types.ts";
 import { extractThinkingSuffix, toThinkingLevel } from "../../src/shared/thinking-levels.ts";
 
 void describe("toThinkingLevel", () => {
@@ -46,7 +44,7 @@ void describe("toThinkingLevel", () => {
 	});
 
 	void it("passes configured values through for Pi to validate", () => {
-		assert.strictEqual(toThinkingLevel("future-level" as ThinkingLevel, "medium", false), "future-level");
+		assert.strictEqual(toThinkingLevel("future-level", "medium", false), "future-level");
 	});
 });
 

@@ -61,7 +61,7 @@
 
 - **Model Tier Thinking Configuration**
   - Added a post-model thinking picker to `/sp-settings`; tier editing now flows from tier selection, to model selection, to thinking level selection.
-  - Supported tier thinking choices: `default`, `off`, `minimal`, `low`, `medium`, `high`, and `xhigh`.
+  - The `/sp-settings` thinking picker uses the levels Pi reports for the selected model. The extension maintains no thinking-level allowlist; configured values are passed to Pi for runtime validation.
   - Added config writer support for setting and clearing tier-level `thinking` while preserving the selected model.
 
 - **Pi Dependency Migration**

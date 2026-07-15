@@ -11,7 +11,8 @@
  * - none; this module is pure and safe to use from tests and extension startup
  */
 
-import { isThinkingLevel } from "../shared/thinking-levels.ts";
+// Thinking-level validation is deferred to pi (parseArgs/main), so this module
+// no longer imports the thinking-level recognizer. See validateModelTier.
 import type { ConfigDiagnostic, ExtensionConfig, ModelTierSetting, SuperpowersCommandPreset } from "../shared/types.ts";
 
 export interface ConfigValidationOptions {
@@ -163,9 +164,9 @@ function validateModelTier(diagnostics: ConfigDiagnostic[], value: unknown, path
 	if (typeof value.model !== "string" || !value.model.trim()) {
 		pushConfigIssue(diagnostics, `${path}.model`, "must be a non-empty string.");
 	}
-	if ("thinking" in value && !isThinkingLevel(value.thinking as string | undefined)) {
-		pushConfigIssue(diagnostics, `${path}.thinking`, "must be one of off, minimal, low, medium, high, xhigh.");
-	}
+	// Thinking level is intentionally not validated here: Pi validates it at runtime
+	// (parseArgs/main emit a diagnostic for unknown levels). Validating here would
+	// require maintaining a list that can drift behind pi's supported levels.
 }
 
 /**

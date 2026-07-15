@@ -32,18 +32,14 @@ import type { ThinkingLevel } from "./types.ts";
  * Pi can validate it at runtime. Keeping precedence without a local allowlist
  * means the extension can never silently reject a level Pi later supports.
  *
- * @param thinking Agent thinking value; any defined value passes through.
- * @param tierThinking Tier thinking value; used as fallback when no model override.
+ * @param thinking Agent thinking string; any defined value passes through.
+ * @param tierThinking Tier thinking string; used as fallback when no model override.
  * @param hasModelOverride Whether a runtime model override is active.
- * @returns The resolved thinking level, or undefined.
+ * @returns The resolved value typed for Pi, or undefined.
  */
-export function toThinkingLevel(
-	thinking: ThinkingLevel | undefined,
-	tierThinking: ThinkingLevel | undefined,
-	hasModelOverride: boolean,
-): ThinkingLevel | undefined {
-	if (thinking !== undefined) return thinking;
-	return hasModelOverride ? undefined : tierThinking;
+export function toThinkingLevel(thinking: string | undefined, tierThinking: string | undefined, hasModelOverride: boolean): ThinkingLevel | undefined {
+	if (thinking !== undefined) return thinking as ThinkingLevel;
+	return hasModelOverride ? undefined : (tierThinking as ThinkingLevel | undefined);
 }
 
 /**

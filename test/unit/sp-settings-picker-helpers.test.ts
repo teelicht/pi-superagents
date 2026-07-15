@@ -9,7 +9,7 @@
 
 import * as assert from "node:assert";
 import { test } from "node:test";
-import type { SuperpowersSettingsComponent } from "../../src/ui/sp-settings.ts";
+import type { ThinkingLevel } from "../../src/shared/types.ts";
 import { SuperpowersSettingsComponent as TestedComponent } from "../../src/ui/sp-settings.ts";
 
 // Re-export helper types for testing
@@ -44,8 +44,17 @@ function createState(configPath?: string) {
 	};
 }
 
-function createModel(provider: string, id: string, name?: string) {
-	return { provider, id, name };
+/**
+ * Create one model option with the thinking levels supplied by the mocked Pi registry.
+ *
+ * @param provider Model provider name.
+ * @param id Model identifier.
+ * @param name Optional display name.
+ * @param thinkingLevels Pi-reported thinking levels for this model.
+ * @returns A complete settings model option.
+ */
+function createModel(provider: string, id: string, name?: string, thinkingLevels: readonly ThinkingLevel[] = []) {
+	return { provider, id, name, thinkingLevels };
 }
 
 void test("handlePickerInput helper: q key navigates back from tier-picker to settings", () => {
@@ -246,7 +255,9 @@ void test("handlePickerInput helper: enter in model picker enters thinking picke
 
 void test("handlePickerInput helper: up/down navigate in thinking picker", () => {
 	const config = { superagents: { modelTiers: { cheap: { model: "test" } } } };
-	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, { models: [createModel("test", "model")] });
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, {
+		models: [createModel("test", "model", undefined, ["off", "minimal"])],
+	});
 
 	// Navigate to thinking picker
 	component.handleInput("m");
@@ -299,7 +310,9 @@ void test("handlePickerInput helper: j/k navigate in model picker", () => {
 
 void test("handlePickerInput helper: j/k navigate in thinking picker", () => {
 	const config = { superagents: { modelTiers: { cheap: { model: "test" } } } };
-	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, { models: [createModel("p", "m")] });
+	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, {
+		models: [createModel("p", "m", undefined, ["off"])],
+	});
 
 	component.handleInput("m");
 	component.handleInput("\r");

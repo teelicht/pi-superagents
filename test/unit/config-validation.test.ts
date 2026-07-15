@@ -132,7 +132,7 @@ void describe("config validation", () => {
 		);
 	});
 
-	void it("blocks wrong primitive types and invalid enum values in command presets", () => {
+	void it("blocks wrong primitive types and empty model ids", () => {
 		const result = validateConfigObject({
 			superagents: {
 				commands: {
@@ -161,8 +161,8 @@ void describe("config validation", () => {
 				"superagents.commands.sp-test.useTestDrivenDevelopment",
 				"superagents.commands.sp-test.worktrees.enabled",
 				"superagents.modelTiers.max.model",
-				"superagents.modelTiers.max.thinking",
 			],
+			// Note: thinking is intentionally NOT validated here — Pi validates it at runtime.
 		);
 	});
 

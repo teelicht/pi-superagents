@@ -8,12 +8,14 @@
  * - define display, error, and async types
  *
  * Important dependencies:
+ * - @earendil-works/pi-agent-core (ThinkingLevel type)
  * - @earendil-works/pi-ai (Message type)
  * - @earendil-works/pi-coding-agent (ExtensionContext)
  * - ../superpowers/workflow-profile.ts (ResolvedSuperpowersRunProfile, type-only)
  * - node:os, node:path, node:fs
  */
 
+import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { Message } from "@earendil-works/pi-ai";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { ResolvedSuperpowersRunProfile } from "../superpowers/workflow-profile.ts";
@@ -46,7 +48,7 @@ export interface Usage {
 
 export type WorkflowMode = "superpowers";
 
-export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
+export type { ThinkingLevel };
 
 export type SessionMode = "standalone" | "lineage-only" | "fork";
 
