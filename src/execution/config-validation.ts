@@ -164,9 +164,11 @@ function validateModelTier(diagnostics: ConfigDiagnostic[], value: unknown, path
 	if (typeof value.model !== "string" || !value.model.trim()) {
 		pushConfigIssue(diagnostics, `${path}.model`, "must be a non-empty string.");
 	}
-	// Thinking level is intentionally not validated here: Pi validates it at runtime
-	// (parseArgs/main emit a diagnostic for unknown levels). Validating here would
-	// require maintaining a list that can drift behind pi's supported levels.
+	if ("thinking" in value && typeof value.thinking !== "string") {
+		pushConfigIssue(diagnostics, `${path}.thinking`, "must be a string.");
+	}
+	// Thinking level names are intentionally not validated here: Pi validates them
+	// at runtime. An allowlist here could drift behind Pi's supported levels.
 }
 
 /**
