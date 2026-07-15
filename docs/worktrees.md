@@ -2,6 +2,8 @@
 
 When multiple agents run in parallel against the same repository, they can clobber each other's file changes. Pi Superagents can automatically give each parallel agent its own git worktree branched from HEAD to provide perfect isolation.
 
+This reference targets Pi `^0.80.7`.
+
 > **Relationship to the `using-git-worktrees` skill:** that skill guides the root-session agent in setting up *one* isolated workspace for its own feature work (detect existing isolation, prefer native tools, fall back to `git worktree add`, verify `.gitignore`). This extension's worktree isolation is a separate concern: it programmatically creates *N* parallel worktrees for concurrent subagent runs. The runtime now mirrors the skill's directory convention (default `.worktrees/` at the repository root) and its `.gitignore` safety rule (auto-append when not ignored), so the two layers do not diverge.
 
 Development note: `pnpm exec fallow` is part of repository maintenance. Worktree-related runtime files should stay reachable through imports or documented dynamic entrypoints so Fallow does not mistake active isolation support for dead code.

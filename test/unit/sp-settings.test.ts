@@ -108,6 +108,19 @@ void test("SuperpowersSettingsComponent renders settings in a framed panel", () 
 	assert.match(rendered, /useTestDrivenDevelopment: true/);
 });
 
+void test("SuperpowersSettingsComponent ignores q and closes with escape", () => {
+	let closeCount = 0;
+	const component = new SuperpowersSettingsComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => ({}), {
+		onClose: () => closeCount++,
+	});
+
+	component.handleInput("q");
+	assert.equal(closeCount, 0);
+
+	component.handleInput("\x1b");
+	assert.equal(closeCount, 1);
+});
+
 void test("SuperpowersSettingsComponent writes setting toggles to selected command", () => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-settings-"));
 	const configPath = path.join(dir, "config.json");
@@ -257,7 +270,7 @@ void test("SuperpowersSettingsComponent uses each selected model's Pi thinking l
 	assert.doesNotMatch(rendered, /high/);
 	assert.doesNotMatch(rendered, /xhigh/);
 
-	component.handleInput("q");
+	component.handleInput("\x1b");
 	component.handleInput("\r");
 	component.handleInput("\x1b[B");
 	assert.match(component.render(92).join("\n"), /▸ provider\/expansive/);

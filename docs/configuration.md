@@ -2,6 +2,8 @@
 
 `@teelicht/pi-superagents` loads configuration in two layers: **bundled defaults** and **user overrides**.
 
+This reference targets Pi `^0.80.7`.
+
 Bundled defaults ship inside the package and provide sensible baseline values. User overrides live in:
 
 ```text

@@ -1,6 +1,9 @@
 # @teelicht/pi-superagents
 
 [Pi agent-harness](https://pi.dev) extension to support [Superpowers](https://github.com/obra/superpowers) workflows using subagents. The official Superpowers Pi package injects the Superpowers skills into every session. By contrast, the pi-superagents extension leaves it up to the user to decide when Superpowers should be used.
+
+Current compatibility target: Pi `^0.80.7`.
+
 ## Features
 
 - **Superpowers Workflow**: Proven pipeline for robust AI-assisted development.

@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.11.1] - 2026-07-15
+
+- **Pi-Owned Thinking Levels**
+  - Removed the extension's static thinking-level allowlist; `/sp-settings` now uses Pi's per-model supported levels, and Pi validates configured level names at runtime.
+- **Consistent Settings Navigation**
+  - Standardized `/sp-settings` close and back navigation on Escape while keeping `q` available as model-search text.
+- **Dependency Maintenance**
+  - Updated Pi development dependencies and the required Pi host version to `^0.80.7`; Pi's 0.80.7 extension API changes require no source compatibility changes in this extension.
+  - Confirmed the open Dependabot transitive dependency updates are already superseded by the pnpm dependency graph, avoiding stale package-lock downgrades.
+
 ## [0.11.0] - 2026-07-10
 
 - **Pi 0.80.6 Lifecycle Support**

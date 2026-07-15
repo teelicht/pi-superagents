@@ -2,6 +2,8 @@
 
 These are the parameters the **LLM agent** passes when it calls the `subagent` tool. These parameters are used to delegate work to Superpowers role agents.
 
+This reference targets Pi `^0.80.7`.
+
 Maintenance note: static analysis runs with `pnpm exec fallow`; keep documented tool parameters and shared parameter types exported only when they are part of runtime or test-facing API.
 
 ## Tool Parameters
