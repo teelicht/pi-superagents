@@ -264,8 +264,8 @@ void test("SuperpowersSettingsComponent uses each selected model's Pi thinking l
 	component.handleInput("\r");
 
 	rendered = component.render(92).join("\n");
-	assert.match(rendered, /high/);
-	assert.match(rendered, /xhigh/);
+	assert.match(rendered, /^│ {3}high +│$/m);
+	assert.match(rendered, /^│ {3}xhigh +│$/m);
 	assert.doesNotMatch(rendered, /off/);
 	assert.doesNotMatch(rendered, /minimal/);
 });
