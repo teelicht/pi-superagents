@@ -2,6 +2,8 @@
 
 Skills are specialized instructions loaded from `SKILL.md` files and injected into the agent's system prompt.
 
+This reference targets Pi `^0.80.7`.
+
 Maintenance note: skill discovery helpers are exercised through dynamic tests and plugin entrypoints. `.fallowrc.json` documents the small export surface that remains intentionally available for those dynamic paths.
 
 ## Skill Locations (project-first precedence)

@@ -85,19 +85,19 @@ void describe("package.json manifest", () => {
 		assert.match(workspaceConfig, /^ {2}protobufjs: false$/m);
 	});
 
-	void it("uses Pi 0.80.6 dev dependencies for agent_settled lifecycle APIs", () => {
+	void it("uses Pi 0.80.7 development dependencies", () => {
 		const packageJson = readPackageJson();
 		const deps = (packageJson.devDependencies as Record<string, string> | undefined) ?? {};
 
-		assert.equal(deps["@earendil-works/pi-agent-core"], "^0.80.6");
-		assert.equal(deps["@earendil-works/pi-ai"], "^0.80.6");
-		assert.equal(deps["@earendil-works/pi-coding-agent"], "^0.80.6");
-		assert.equal(deps["@earendil-works/pi-tui"], "^0.80.6");
+		assert.equal(deps["@earendil-works/pi-agent-core"], "^0.80.7");
+		assert.equal(deps["@earendil-works/pi-ai"], "^0.80.7");
+		assert.equal(deps["@earendil-works/pi-coding-agent"], "^0.80.7");
+		assert.equal(deps["@earendil-works/pi-tui"], "^0.80.7");
 	});
 
 	void it("requires a Pi host that emits agent_settled", () => {
 		const packageJson = readPackageJson();
 		const peers = (packageJson.peerDependencies as Record<string, string> | undefined) ?? {};
-		assert.equal(peers["@earendil-works/pi-coding-agent"], "^0.80.6");
+		assert.equal(peers["@earendil-works/pi-coding-agent"], "^0.80.7");
 	});
 });

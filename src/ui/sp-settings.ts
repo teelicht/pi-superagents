@@ -112,12 +112,12 @@ export class SuperpowersSettingsComponent implements Component {
 		const title = mode === "settings" ? "Superpowers Settings" : mode === "tier-picker" ? "Select Model Tier" : mode === "model-picker" ? "Select Model" : "Select Thinking Level";
 		const footer =
 			mode === "settings"
-				? "c command | p plannotator | s subagents | t tdd | m model tiers | w worktrees | q close"
+				? "c command | p plannotator | s subagents | t tdd | m model tiers | w worktrees | esc close"
 				: mode === "tier-picker"
-					? "↑↓ navigate | enter select | q back"
+					? "↑↓ navigate | enter select | esc back"
 					: mode === "model-picker"
 						? "type to search | ↑↓ navigate | enter select | esc clear/back"
-						: "↑↓ navigate | enter select | q back";
+						: "↑↓ navigate | enter select | esc back";
 
 		return renderFramedPanel(title, this.renderBody(), Math.min(width, 92), this.theme, footer);
 	}
@@ -130,7 +130,7 @@ export class SuperpowersSettingsComponent implements Component {
 		}
 
 		// Settings mode input handling
-		if (matchesKey(data, "escape") || matchesKey(data, "q") || matchesKey(data, "ctrl+c")) {
+		if (matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) {
 			this.done();
 			return;
 		}
@@ -191,16 +191,9 @@ export class SuperpowersSettingsComponent implements Component {
 	 * Dispatches to mode-specific handlers.
 	 */
 	private handlePickerInput(data: string): void {
-		// q goes back in non-search picker modes. In model-picker mode it is searchable text.
-		if (matchesKey(data, "q") && this.mode !== "model-picker") {
+		// Model-picker handles Escape separately so it can clear an active search first.
+		if (matchesKey(data, "escape") && this.mode !== "model-picker") {
 			this.applyBackNavigation();
-			this.tui.requestRender();
-			return;
-		}
-
-		// Escape in tier-picker goes to settings
-		if (matchesKey(data, "escape") && this.mode === "tier-picker") {
-			this.applyEscapeFromTierPicker();
 			this.tui.requestRender();
 			return;
 		}
@@ -222,7 +215,7 @@ export class SuperpowersSettingsComponent implements Component {
 	}
 
 	/**
-	 * Apply back navigation when q is pressed in a picker mode.
+	 * Apply Escape back navigation in a non-search picker mode.
 	 * From thinking-picker: returns to tier-picker and resets thinking index.
 	 * From other pickers: returns to settings and resets all picker state.
 	 */
@@ -236,16 +229,6 @@ export class SuperpowersSettingsComponent implements Component {
 			this.selectedModelIndex = 0;
 			this.selectedThinkingIndex = 0;
 		}
-	}
-
-	/**
-	 * Apply escape key in tier-picker mode, returning to settings.
-	 */
-	private applyEscapeFromTierPicker(): void {
-		this.mode = "settings";
-		this.selectedTier = undefined;
-		this.selectedModelIndex = 0;
-		this.selectedThinkingIndex = 0;
 	}
 
 	/**

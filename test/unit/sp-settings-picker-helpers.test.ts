@@ -57,42 +57,35 @@ function createModel(provider: string, id: string, name?: string, thinkingLevels
 	return { provider, id, name, thinkingLevels };
 }
 
-void test("handlePickerInput helper: q key navigates back from tier-picker to settings", () => {
+void test("handlePickerInput helper: tier-picker ignores q and uses escape to go back", () => {
 	const config = { superagents: { modelTiers: { cheap: { model: "test" } } } };
 	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, { models: [createModel("test", "model")] });
 
-	// Enter tier-picker mode
 	component.handleInput("m");
 	assert.match(component.render(92).join("\n"), /Select Model Tier/);
 
-	// Press q - should go back to settings
 	component.handleInput("q");
+	assert.match(component.render(92).join("\n"), /Select Model Tier/);
+
+	component.handleInput("\x1b");
 	assert.match(component.render(92).join("\n"), /Superpowers Settings/);
 });
 
-void test("handlePickerInput helper: q key navigates back from thinking-picker to tier-picker", () => {
+void test("handlePickerInput helper: thinking-picker ignores q and uses escape to go back", () => {
 	const config = { superagents: { modelTiers: { cheap: { model: "test" } } } };
 	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, { models: [createModel("test", "model")] });
 
-	// Navigate to thinking picker
 	component.handleInput("m");
 	component.handleInput("\r"); // Select tier
 	assert.match(component.render(92).join("\n"), /Select Model/);
 	component.handleInput("\r"); // Select model
 	assert.match(component.render(92).join("\n"), /Select Thinking Level/);
 
-	// Press q - should go back to tier-picker
 	component.handleInput("q");
+	assert.match(component.render(92).join("\n"), /Select Thinking Level/);
+
+	component.handleInput("\x1b");
 	assert.match(component.render(92).join("\n"), /Select Model Tier/);
-});
-
-void test("handlePickerInput helper: escape key in tier-picker goes to settings", () => {
-	const config = { superagents: { modelTiers: { cheap: { model: "test" } } } };
-	const component = new TestedComponent(createTuiMock() as never, createThemeMock() as never, createState() as never, () => config, { models: [createModel("test", "model")] });
-
-	component.handleInput("m");
-	component.handleInput("\x1b"); // Escape
-	assert.match(component.render(92).join("\n"), /Superpowers Settings/);
 });
 
 void test("handlePickerInput helper: up arrow navigates tier picker", () => {

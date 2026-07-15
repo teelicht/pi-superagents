@@ -14,30 +14,24 @@
       }
     },
     "extensions": [
-      "npm:@sting8k/pi-vcc",
-      "npm:@tomooshi/caveman-milk-pi",
-      "npm:@tomooshi/condensed-milk-pi"
+      "npm:@sting8k/pi-vcc"
     ],
     "tools": ["read", "grep", "find", "ls"],
     "modelTiers": {
       "cheap": {
-        "model": "opencode-go/minimax-m2.7",
-        "thinking": "low"
+        "model": "opencode-go/minimax-m3"
       },
       "balanced": {
-        "model": "opencode-go/glm-5.1",
-        "thinking": "medium"
+        "model": "opencode-go/glm-5.2",
+        "thinking": "high"
       },
       "max": {
-        "model": "openai/gpt-5.4",
+        "model": "openai/gpt-5.5",
         "thinking": "high"
       },
       "creative": {
-        "model": "anthropic/claude-opus-4.6",
+        "model": "anthropic/claude-opus-4.8",
         "thinking": "high"
-      },
-      "legacy": {
-        "model": "openai/gpt-4o"
       }
     },
     "interceptSkillCommands": []
