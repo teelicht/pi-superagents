@@ -289,14 +289,16 @@ Superpowers agents use abstract model tiers. Define tiers in your configuration:
 }
 ```
 
-**Supported thinking levels:** `off`, `minimal`, `low`, `medium`, `high`, `xhigh`. The `thinking` key is optional.
+The `/sp-settings` thinking picker uses the levels Pi reports for the selected model. The extension maintains no thinking-level allowlist; configured values are passed to Pi for runtime validation.
+
+The `thinking` key is optional.
 
 The reserved tier names `cheap`, `balanced`, `max`, and `reasoning` are always treated as tier references by Superpowers agents. If an agent declares one of these (or any key present in `modelTiers`) and the corresponding entry is missing or has an empty `model`, the subagent launch is halted before spawning with an error naming the tier and the `modelTiers` key to fix — the literal tier name is never passed to Pi as a model id.
 
 > [!NOTE]
 > In `config.example.json`, `creative` and `legacy` are illustrative custom tiers added to demonstrate the surface; they are not built-in tiers. `thinking` is optional in any tier definition.
 
-You can edit model tier mappings during an active PI session with `/sp-settings`. The model picker reads PI's authenticated model registry, supports type-to-search filtering by provider, ID, or display name (including names containing `q`), scrolls keyboard selection through the full filtered model list, then asks for the tier thinking level (`default`, `off`, `minimal`, `low`, `medium`, `high`, or `xhigh`). Successful tier edits write the selected `provider/model` and optional `thinking` value to `config.json` and apply to future Superpowers subagents immediately; already-running subagents keep the model they were launched with.
+You can edit model tier mappings during an active PI session with `/sp-settings`. The model picker reads PI's authenticated model registry, supports type-to-search filtering by provider, ID, or display name (including names containing `q`), scrolls keyboard selection through the full filtered model list, then asks for the tier thinking level. Successful tier edits write the selected `provider/model` and optional `thinking` value to `config.json` and apply to future Superpowers subagents immediately; already-running subagents keep the model they were launched with.
 
 `/sp-settings` also edits command-scoped workflow toggles. Use `c` to select a command, then toggle `p` for Plannotator, `s` for subagents, `t` for TDD, or `w` for worktrees on that selected command preset. This avoids writing Plannotator or TDD settings into unrelated command presets.
 

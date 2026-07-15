@@ -11,6 +11,8 @@
 - **Entrypoint Lifecycle Skills**: Superpowers entrypoint agents inject root lifecycle skills (verification, review-feedback, branch finishing) defined in frontmatter. .
 - **Subagent Extension & Tool Defaults**: Subagents run with implicit Pi extension discovery disabled by default; configure `superagents.extensions` with local paths or Pi `-e` source specs, and `superagents.tools` with shared tool names or tool extension paths. The bundled defaults provide the common read-only tools globally so agent frontmatter only lists role-specific extras.
 
+The `/sp-settings` thinking picker uses the levels Pi reports for the selected model. The extension maintains no thinking-level allowlist; configured values are passed to Pi for runtime validation.
+
 ## Installation
 
 ```bash
