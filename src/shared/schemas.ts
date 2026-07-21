@@ -15,7 +15,7 @@ const SkillOverride = Type.Any({
 });
 
 const SuperpowersRoleNameSchema = Type.String({
-	description: "Discovered agent name to execute. Typical built-in Superpowers roles are sp-recon, sp-research, sp-implementer, sp-spec-review, sp-code-review, and sp-debug.",
+	description: "Discovered agent name to execute. Typical built-in Superpowers roles are sp-recon, sp-research, sp-implementer, sp-review, and sp-debug.",
 });
 
 const TaskItem = Type.Object(
@@ -25,6 +25,7 @@ const TaskItem = Type.Object(
 		cwd: Type.Optional(Type.String()),
 		model: Type.Optional(Type.String({ description: "Override model for this discovered agent task." })),
 		skill: Type.Optional(SkillOverride),
+		resumeSession: Type.Optional(Type.String({ description: "Prior pi-superagents sp-implementer session file to continue for a synchronous review-fix dispatch." })),
 	},
 	{ additionalProperties: false },
 );
@@ -63,6 +64,7 @@ export const SubagentParams = Type.Object(
 		includeProgress: Type.Optional(Type.Boolean({ description: "Include detailed step-by-step progress in the tool output." })),
 		skill: Type.Optional(SkillOverride),
 		model: Type.Optional(Type.String({ description: "Override the model for this discovered agent execution." })),
+		resumeSession: Type.Optional(Type.String({ description: "Prior pi-superagents sp-implementer session file to continue for a synchronous review-fix dispatch." })),
 	},
 	{
 		additionalProperties: false,

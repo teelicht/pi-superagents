@@ -88,10 +88,10 @@ void describe("superagents config helpers", () => {
 						},
 					},
 				},
-				agents: ["sp-implementer", "sp-code-review"],
+				agents: ["sp-implementer", "sp-review"],
 			}),
 			{
-				agents: ["sp-implementer", "sp-code-review"],
+				agents: ["sp-implementer", "sp-review"],
 				rootDir: ".worktrees",
 			},
 		);

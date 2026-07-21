@@ -278,16 +278,16 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 				},
 			],
 		});
-		const agents = [makeAgent("sp-code-review", { model: "balanced" })];
+		const agents = [makeAgent("sp-review", { model: "max" })];
 
-		const result = await runPreparedChild(tempDir, agents, "sp-code-review", "History task", {
+		const result = await runPreparedChild(tempDir, agents, "sp-review", "History task", {
 			workflow: "superpowers",
 			runId: "history-confirmation",
 			onUpdate: (update: AgentToolResult<Details>) => updates.push(update),
 			config: {
 				superagents: {
 					modelTiers: {
-						balanced: {
+						max: {
 							model: "configured/provider-model",
 							thinking: "medium",
 						},
@@ -308,7 +308,7 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 		assert.equal(lastUpdate.details?.results?.[0]?.progress?.model, "runtime/provider-model");
 		assert.equal(lastUpdate.details?.results?.[0]?.progress?.thinking, "medium");
 
-		const historyRun = globalRunHistory.getRecent(10).find((run: RunEntry) => run.agent === "sp-code-review" && run.task === "History task") as RunEntry | undefined;
+		const historyRun = globalRunHistory.getRecent(10).find((run: RunEntry) => run.agent === "sp-review" && run.task === "History task") as RunEntry | undefined;
 		assert.equal(historyRun?.model, "runtime/provider-model");
 		assert.equal(historyRun?.thinking, "medium");
 	});
@@ -346,14 +346,14 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 
 	void it("applies superpowers tier thinking when the tier config provides it", async () => {
 		mockPi.onCall({ echoArgs: true });
-		const agents = [makeAgent("sp-code-review", { model: "balanced" })];
+		const agents = [makeAgent("sp-review", { model: "max" })];
 
-		const result = await runPreparedChild(tempDir, agents, "sp-code-review", "Review task", {
+		const result = await runPreparedChild(tempDir, agents, "sp-review", "Review task", {
 			workflow: "superpowers",
 			config: {
 				superagents: {
 					modelTiers: {
-						balanced: {
+						max: {
 							model: "openai/gpt-5.4",
 							thinking: "medium",
 						},
@@ -368,14 +368,14 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 
 	void it("agent frontmatter thinking takes precedence over tier thinking", async () => {
 		mockPi.onCall({ echoArgs: true });
-		const agents = [makeAgent("sp-code-review", { model: "balanced", thinking: "high" })];
+		const agents = [makeAgent("sp-review", { model: "max", thinking: "high" })];
 
-		const result = await runPreparedChild(tempDir, agents, "sp-code-review", "Review task", {
+		const result = await runPreparedChild(tempDir, agents, "sp-review", "Review task", {
 			workflow: "superpowers",
 			config: {
 				superagents: {
 					modelTiers: {
-						balanced: {
+						max: {
 							model: "openai/gpt-5.4",
 							thinking: "medium",
 						},
@@ -390,29 +390,29 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 	});
 
 	void it("uses changed model tier config for later single executions", async () => {
-		const agents = [makeAgent("sp-code-review", { model: "balanced" })];
+		const agents = [makeAgent("sp-review", { model: "max" })];
 
 		mockPi.onCall({ echoArgs: true });
-		const first = await runPreparedChild(tempDir, agents, "sp-code-review", "first", {
+		const first = await runPreparedChild(tempDir, agents, "sp-review", "first", {
 			workflow: "superpowers",
 			runId: "first",
 			config: {
 				superagents: {
 					modelTiers: {
-						balanced: { model: "openai/gpt-5.4" },
+						max: { model: "openai/gpt-5.4" },
 					},
 				},
 			},
 		});
 
 		mockPi.onCall({ echoArgs: true });
-		const second = await runPreparedChild(tempDir, agents, "sp-code-review", "second", {
+		const second = await runPreparedChild(tempDir, agents, "sp-review", "second", {
 			workflow: "superpowers",
 			runId: "second",
 			config: {
 				superagents: {
 					modelTiers: {
-						balanced: { model: "anthropic/claude-opus-4.6" },
+						max: { model: "anthropic/claude-opus-4.6" },
 					},
 				},
 			},
@@ -733,9 +733,9 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 	// -------------------------------------------------------------------------
 	void it("model override thinking suffix wins over agent thinking for displayed thinking", async () => {
 		mockPi.onCall({ echoArgs: true });
-		const agents = [makeAgent("sp-code-review", { model: "balanced", thinking: "high" })];
+		const agents = [makeAgent("sp-review", { model: "max", thinking: "high" })];
 
-		const result = await runPreparedChild(tempDir, agents, "sp-code-review", "Review task", {
+		const result = await runPreparedChild(tempDir, agents, "sp-review", "Review task", {
 			workflow: "superpowers",
 			modelOverride: "openai/gpt-4o:medium",
 		});
@@ -753,15 +753,15 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 	// -------------------------------------------------------------------------
 	void it("model override without thinking suffix discards tier thinking", async () => {
 		mockPi.onCall({ echoArgs: true });
-		const agents = [makeAgent("sp-code-review", { model: "balanced" })];
+		const agents = [makeAgent("sp-review", { model: "max" })];
 
-		const result = await runPreparedChild(tempDir, agents, "sp-code-review", "Review task", {
+		const result = await runPreparedChild(tempDir, agents, "sp-review", "Review task", {
 			workflow: "superpowers",
 			modelOverride: "openai/gpt-4o",
 			config: {
 				superagents: {
 					modelTiers: {
-						balanced: {
+						max: {
 							model: "configured/provider-model",
 							thinking: "medium",
 						},

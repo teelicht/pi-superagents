@@ -295,6 +295,12 @@ void describe("SubagentParams schema", { skip: !available ? "typebox not availab
 		const itemCount = tasksSchema?.items?.properties?.count;
 		assert.equal(itemCount, undefined, "tasks[].count should not exist");
 	});
+
+	void it("publishes synchronous resumeSession for single and parallel implementer fixes", () => {
+		assert.ok(SubagentParams?.properties.resumeSession);
+		const tasks = SubagentParams?.properties.tasks as { items?: { properties?: Record<string, unknown> } };
+		assert.ok(tasks.items?.properties?.resumeSession);
+	});
 });
 
 let savedDepth: string | undefined;

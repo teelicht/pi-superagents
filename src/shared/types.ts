@@ -69,7 +69,15 @@ export interface ModelTierConfig {
 
 export type ModelTierSetting = string | ModelTierConfig;
 
-export type ExecutionRole = "root-planning" | "sp-recon" | "sp-research" | "sp-implementer" | "sp-spec-review" | "sp-code-review" | "sp-debug";
+/**
+ * Scheduling mode for Superpowers task execution.
+ *
+ * - "sequential" executes tasks one at a time in dispatch order.
+ * - "parallel" executes tasks concurrently with bounded concurrency.
+ */
+export type TaskScheduling = "sequential" | "parallel";
+
+export type ExecutionRole = "root-planning" | "sp-recon" | "sp-research" | "sp-implementer" | "sp-review" | "sp-debug";
 
 // ============================================================================
 // Skills
@@ -412,6 +420,7 @@ export interface SuperpowersCommandPreset {
 	useSubagents?: boolean;
 	useTestDrivenDevelopment?: boolean;
 	usePlannotator?: boolean;
+	taskScheduling?: TaskScheduling;
 	worktrees?: SuperpowersCommandWorktreeSettings;
 }
 
@@ -570,6 +579,7 @@ export interface TaskParam {
 	cwd?: string;
 	model?: string;
 	skill?: string | string[] | boolean;
+	resumeSession?: string;
 }
 
 export interface SubagentParamsLike {
@@ -580,6 +590,7 @@ export interface SubagentParamsLike {
 	useTestDrivenDevelopment?: boolean;
 	worktree?: boolean;
 	sessionMode?: SessionMode;
+	resumeSession?: string;
 	cwd?: string;
 	maxOutput?: MaxOutputConfig;
 	artifacts?: boolean;

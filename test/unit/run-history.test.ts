@@ -43,7 +43,7 @@ void test("globalRunHistory preserves model thinking metadata", () => {
 	const runId = "test-run-thinking";
 
 	globalRunHistory.startRun(runId, {
-		agent: "sp-code-review",
+		agent: "sp-review",
 		task: "Review model confirmation",
 		model: "anthropic/claude-sonnet-4",
 		thinking: "medium",
@@ -63,7 +63,7 @@ void test("globalRunHistory preserves model thinking metadata", () => {
 	assert.strictEqual(updated?.thinking, "high");
 
 	globalRunHistory.finishRun(runId, "ok");
-	const persisted = globalRunHistory.getRecent(5).find((run) => run.agent === "sp-code-review" && run.task === "Review model confirmation");
+	const persisted = globalRunHistory.getRecent(5).find((run) => run.agent === "sp-review" && run.task === "Review model confirmation");
 	assert.strictEqual(persisted?.model, "anthropic/claude-sonnet-4-actual");
 	assert.strictEqual(persisted?.thinking, "high");
 });
