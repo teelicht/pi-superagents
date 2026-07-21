@@ -5,6 +5,7 @@
  * - create isolated worktrees from a clean repository state
  * - enforce synthetic-path and setup-hook safety checks
  * - capture diffs and clean up temporary worktree resources
+ * - validate controller-owned pre-isolated Task worktrees that persist across calls
  */
 
 import { spawnSync } from "node:child_process";
@@ -150,6 +151,51 @@ function normalizeComparableCwd(cwd: string): string {
 	} catch {
 		return resolved;
 	}
+}
+
+/**
+ * Resolve the shared `--git-common-dir` for a repository or worktree.
+ *
+ * @param cwd Absolute path inside a git checkout or worktree.
+ * @returns Canonical comparable path of the common git directory, anchoring
+ *   relative values to `cwd` so worktrees can be compared to the parent repo.
+ */
+function resolveGitCommonDir(cwd: string): string {
+	const raw = runGitChecked(cwd, ["rev-parse", "--git-common-dir"]).trim();
+	return normalizeComparableCwd(path.isAbsolute(raw) ? raw : path.resolve(cwd, raw));
+}
+
+/**
+ * Validate an all-or-none set of controller-owned Task worktrees.
+ *
+ * @param tasks Parallel task definitions that may declare explicit working directories.
+ * @param sharedCwd Parent workflow checkout used as the expected repository and wave base.
+ * @returns True when every task is safely pre-isolated, false when no task declares a cwd.
+ * @throws When cwd declarations are mixed, duplicated, dirty, unrelated, or not descendants of the parent HEAD.
+ */
+export function validatePreIsolatedTaskCwds(tasks: ReadonlyArray<{ agent: string; cwd?: string }>, sharedCwd: string): boolean {
+	const declared = tasks.filter((task) => task.cwd !== undefined);
+	if (declared.length === 0) return false;
+	if (declared.length !== tasks.length) throw new Error("pre-isolated parallel tasks must all declare cwd");
+
+	const parent = resolveRepoState(sharedCwd);
+	const parentTop = normalizeComparableCwd(parent.toplevel);
+	const parentCommonDir = resolveGitCommonDir(parent.toplevel);
+	const seen = new Set<string>();
+
+	for (const task of tasks) {
+		const taskState = resolveRepoState(task.cwd as string);
+		const taskTop = normalizeComparableCwd(taskState.toplevel);
+		if (taskTop === parentTop) throw new Error("pre-isolated task cwd must not be the parent checkout");
+		if (seen.has(taskTop)) throw new Error("pre-isolated task cwd values must resolve to distinct worktrees");
+		seen.add(taskTop);
+		if (resolveGitCommonDir(taskTop) !== parentCommonDir) throw new Error("pre-isolated task cwd must belong to the parent repository");
+
+		const ancestry = runGit(taskTop, ["merge-base", "--is-ancestor", parent.baseCommit, taskState.baseCommit]);
+		if (ancestry.status !== 0) throw new Error("pre-isolated task HEAD must descend from the parent wave base");
+	}
+
+	return true;
 }
 
 export function findWorktreeTaskCwdConflict(tasks: ReadonlyArray<{ agent: string; cwd?: string }>, sharedCwd: string): WorktreeTaskCwdConflict | undefined {
