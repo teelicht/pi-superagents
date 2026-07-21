@@ -7,12 +7,14 @@
  * - prepare launch artifacts (packets or fork wrappers) via execution planner
  * - execute child sessions via result delivery store and child runner
  * - aggregate results for parallel execution
+ * - guard resumed lineage-only sessions against duplicate or active use
  *
  * Important dependencies or side effects:
  * - launches child Pi processes through `runPreparedChild`
  * - writes and removes temporary Superpowers packet artifacts via planner
  * - creates and cleans up parallel worktrees when configured
- * - seeds or forks child session files through the session launch resolver
+ * - seeds, forks, or resumes child session files through the session launch resolver
+ * - module-local active-session Set rejects process-local duplicate resume use
  */
 
 import { randomUUID } from "node:crypto";
@@ -59,7 +61,7 @@ import {
 } from "./executor-validation.ts";
 import { aggregateParallelOutputs, mapConcurrent } from "./parallel-utils.ts";
 import { createResultDeliveryStore } from "./result-delivery.ts";
-import { createSessionLaunchResolver, resolveRequestedSessionMode, type SessionLaunchManager } from "./session-mode.ts";
+import { createSessionLaunchResolver, resolveRequestedSessionMode, type SessionFileForIndexInput, type SessionLaunchManager } from "./session-mode.ts";
 import { resolveStepBehavior } from "./settings.ts";
 import { resolveSuperagentWorktreeEnabled } from "./superagents-config.ts";
 import { resolveEffectiveModel } from "./superpowers-policy.ts";
@@ -71,6 +73,21 @@ import {
 	resolveParallelTaskCwd,
 	resolveParallelTaskRuntimeCwd,
 } from "./worktree.ts";
+
+// ---------------------------------------------------------------------------
+// Module-local state
+// ---------------------------------------------------------------------------
+
+/**
+ * Active resumed session paths tracked for the lifetime of a single child run.
+ *
+ * The executor is blocking at the public boundary, so a process-local Set is
+ * enough to prevent two concurrent child launches from sharing the same
+ * resumed lineage-only session. Entries are added before launch and removed in
+ * the `finally` block of `runPlannedChild` so failures do not leave the path
+ * permanently reserved.
+ */
+const activeResumeSessions = new Set<string>();
 
 // ---------------------------------------------------------------------------
 // Types
@@ -114,7 +131,7 @@ interface ExecutionContextData {
 	onUpdate?: (r: AgentToolResult<Details>) => void;
 	agents: AgentConfig[];
 	runId: string;
-	sessionFileForIndex: (input: { index?: number; childCwd: string; sessionMode: SessionMode }) => string | undefined;
+	sessionFileForIndex: (input: SessionFileForIndexInput) => string | undefined;
 	artifactConfig: ArtifactConfig;
 	artifactsDir: string;
 	workflow: WorkflowMode;
@@ -148,6 +165,8 @@ const DEFAULT_LIFECYCLE_EXTENSION_ENTRY = new URL(["..", "extension", "index.ts"
  * @returns Child run result with session mode from the plan.
  *
  * Invariants:
+ * - resumed sessions are tracked in a module-local Set for the duration of
+ *   the child run; the Set is cleared in `finally` even on failure
  * - launch artifacts (packets) are cleaned up in `finally` even on failure
  * - child results always carry the session mode from the plan
  *
@@ -178,32 +197,46 @@ function toUnexpectedChildFailure(plan: PlannedChildRun, error: unknown): Single
 }
 
 async function runPlannedChild(input: RunPlannedChildInput): Promise<SingleResult> {
+	const resumedSessionFile = input.plan.sessionFile;
+	const trackedResumePath = resumedSessionFile ? path.resolve(resumedSessionFile) : null;
+	if (trackedResumePath) {
+		if (activeResumeSessions.has(trackedResumePath)) {
+			throw new Error(`resume session ${trackedResumePath} is already in use`);
+		}
+		activeResumeSessions.add(trackedResumePath);
+	}
 	try {
-		const result = await runPreparedChild(input.plan.runtimeCwd, input.agents, input.plan.agentName, input.plan.taskText, {
-			cwd: input.plan.childCwd,
-			signal: input.signal,
-			runId: input.runId,
-			index: input.plan.index,
-			sessionFile: input.plan.sessionFile,
-			sessionMode: input.plan.sessionMode,
-			taskDelivery: input.plan.taskDelivery,
-			taskFilePath: input.plan.taskFilePath,
-			artifactsDir: input.plan.artifactsDir,
-			artifactConfig: input.plan.artifactConfig,
-			maxOutput: input.plan.maxOutput,
-			maxSubagentDepth: input.plan.maxSubagentDepth,
-			modelOverride: input.plan.modelOverride,
-			skills: input.plan.skills,
-			config: input.plan.config,
-			workflow: input.plan.workflow,
-			useTestDrivenDevelopment: input.plan.useTestDrivenDevelopment,
-			lifecycleExtensionEntry: input.lifecycleExtensionEntry,
-			projectTrusted: input.projectTrusted,
-			onUpdate: input.onUpdate,
-		});
-		return withSingleResultSessionMode(result, input.plan.sessionMode);
+		try {
+			const result = await runPreparedChild(input.plan.runtimeCwd, input.agents, input.plan.agentName, input.plan.taskText, {
+				cwd: input.plan.childCwd,
+				signal: input.signal,
+				runId: input.runId,
+				index: input.plan.index,
+				sessionFile: input.plan.sessionFile,
+				sessionMode: input.plan.sessionMode,
+				taskDelivery: input.plan.taskDelivery,
+				taskFilePath: input.plan.taskFilePath,
+				artifactsDir: input.plan.artifactsDir,
+				artifactConfig: input.plan.artifactConfig,
+				maxOutput: input.plan.maxOutput,
+				maxSubagentDepth: input.plan.maxSubagentDepth,
+				modelOverride: input.plan.modelOverride,
+				skills: input.plan.skills,
+				config: input.plan.config,
+				workflow: input.plan.workflow,
+				useTestDrivenDevelopment: input.plan.useTestDrivenDevelopment,
+				lifecycleExtensionEntry: input.lifecycleExtensionEntry,
+				projectTrusted: input.projectTrusted,
+				onUpdate: input.onUpdate,
+			});
+			return withSingleResultSessionMode(result, input.plan.sessionMode);
+		} finally {
+			input.plan.cleanupLaunchArtifacts();
+		}
 	} finally {
-		input.plan.cleanupLaunchArtifacts();
+		if (trackedResumePath) {
+			activeResumeSessions.delete(trackedResumePath);
+		}
 	}
 }
 
@@ -312,7 +345,7 @@ function formatNeedsParentHelp(result: SingleResult): string | undefined {
  * - pending progress uses original task text (task.task) to avoid leaking internal packet instructions
  *
  * Failure modes:
- * - returns structured validation errors for unknown agents, too many tasks, or worktree conflicts
+ * - returns structured validation errors for unknown agents, too many tasks, worktree conflicts, or duplicate resume sessions
  * - propagates unexpected setup errors to the executor-level catch block
  */
 async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): Promise<AgentToolResult<Details>> {
@@ -327,6 +360,16 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 			content: [{ type: "text", text: `Max ${MAX_PARALLEL} tasks` }],
 			details: { mode: "parallel" as const, results: [] },
 		};
+
+	const seenResumeSessions = new Set<string>();
+	for (const task of tasks) {
+		if (task.resumeSession) {
+			if (seenResumeSessions.has(task.resumeSession)) {
+				return buildParallelModeError("resumeSession may appear only once per parallel request");
+			}
+			seenResumeSessions.add(task.resumeSession);
+		}
+	}
 
 	const agentConfigs: AgentConfig[] = [];
 	for (const t of tasks) {
@@ -417,6 +460,8 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 				sessionFile: sessionFileForIndex({
 					index: i,
 					childCwd: taskRuntimeCwd,
+					agentName: tasks[i].agent,
+					resumeSession: tasks[i].resumeSession,
 					sessionMode: sessionModes[i],
 				}),
 				workflow,
@@ -583,6 +628,8 @@ async function runSinglePath(data: ExecutionContextData, deps: ExecutorDeps): Pr
 		sessionFile: sessionFileForIndex({
 			index: 0,
 			childCwd: runtimeCwd,
+			agentName: params.agent!,
+			resumeSession: params.resumeSession,
 			sessionMode,
 		}),
 		workflow,
@@ -722,6 +769,10 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 		const validationError = validateExecutionInput(params, agents, hasTasks, hasSingle);
 		if (validationError) return validationError;
 
+		if (hasTasks && params.resumeSession) {
+			return buildParallelModeError("top-level resumeSession is valid only for single-agent execution; use tasks[].resumeSession");
+		}
+
 		let detailsSessionMode = resolveRequestedSessionMode({
 			sessionMode: params.sessionMode,
 			defaultSessionMode: "standalone",
@@ -737,7 +788,7 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 			detailsSessionMode = resolveDetailsSessionMode(taskModes);
 		}
 
-		let sessionFileForIndex: (input: { index?: number; childCwd: string; sessionMode: SessionMode }) => string | undefined = () => undefined;
+		let sessionFileForIndex: (input: SessionFileForIndexInput) => string | undefined = () => undefined;
 		try {
 			const sessionLaunchResolver = createSessionLaunchResolver({
 				sessionManager: ctx.sessionManager as unknown as SessionLaunchManager,

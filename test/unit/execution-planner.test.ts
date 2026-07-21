@@ -5,6 +5,7 @@
  * - verify validated tool/executor inputs become conservative child plans
  * - preserve packet/fork/session/model/skill behavior before child process launch
  * - prove async/blocking controls are not part of planning
+ * - preserve a pre-existing (resumed) session file path through to the prepared plan
  */
 
 import assert from "node:assert/strict";
@@ -170,5 +171,42 @@ void describe("execution planner", () => {
 		assert.equal(plan.childCwd.endsWith("worktree"), true);
 		assert.ok(plan.taskFilePath);
 		assert.match(fs.readFileSync(plan.taskFilePath, "utf-8"), /TDD/i);
+	});
+
+	void it("preserves a pre-existing resumed session file path through to the plan", () => {
+		// The continuation flow (Task 4) hands the planner an existing session file
+		// that was already validated by the resolver. The planner must not re-seed
+		// or transform the path: it simply forwards it on the prepared child plan.
+		const cwd = tempDir();
+		const artifactsDir = path.join(cwd, "artifacts");
+		const resumedSessionFile = path.join(cwd, "resumed-child.jsonl");
+		fs.writeFileSync(resumedSessionFile, '{"type":"session","version":3}\n', "utf-8");
+
+		const plan = planChildRun({
+			id: "child-resume-1",
+			index: 0,
+			runtimeCwd: cwd,
+			childCwd: cwd,
+			agents: makeAgentConfigs(["sp-implementer"]),
+			agentName: "sp-implementer",
+			task: "Continue prior implementation",
+			runId: "run-resume-1",
+			artifactsDir,
+			sessionMode: "lineage-only",
+			sessionFile: resumedSessionFile,
+			workflow: "superpowers",
+			useTestDrivenDevelopment: false,
+			includeProgress: false,
+			config: {},
+		});
+
+		assert.equal(plan.sessionFile, resumedSessionFile);
+		// The planner must not rewrite or relocate the resumed session file.
+		assert.ok(fs.existsSync(resumedSessionFile));
+		assert.equal(fs.readFileSync(resumedSessionFile, "utf-8"), '{"type":"session","version":3}\n');
+		// Packet artifact is still created for lineage-only non-fork delivery.
+		assert.ok(plan.taskFilePath);
+		assert.equal(plan.taskDelivery, "artifact");
+		plan.cleanupLaunchArtifacts();
 	});
 });
