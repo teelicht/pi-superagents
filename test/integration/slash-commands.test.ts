@@ -138,6 +138,8 @@ function createState(cwd: string) {
 			configPath: undefined as string | undefined,
 			examplePath: undefined as string | undefined,
 		},
+		superpowersActive: false,
+		compactionSizing: null,
 	};
 }
 
@@ -660,6 +662,51 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.equal(notifications.length, 1);
 		assert.equal(notifications[0].type, "error");
 		assert.match(notifications[0].message, /disabled because config\.json needs attention/);
+	});
+	void it("refuses to execute /sp-implement when parallel task scheduling preflight fails", async () => {
+		const cwd = createSkillFixtureCwd();
+		const userMessages: Array<{ content: string | unknown[]; options?: { deliverAs?: "steer" | "followUp" } }> = [];
+		const notifications: Array<{ message: string; type?: string }> = [];
+		const commands = new Map<string, CommandSpec>();
+		const pi = {
+			events: createEventBus(),
+			registerCommand(name: string, spec: CommandSpec) {
+				commands.set(name, spec);
+			},
+			registerShortcut() {},
+			sendMessage() {},
+			sendUserMessage(content: string | unknown[]) {
+				userMessages.push({ content });
+			},
+		};
+
+		const state = createState(cwd);
+		registerSlashCommands!(
+			pi,
+			state,
+			createEffectiveConfig({
+				superagents: {
+					commands: {
+						"sp-implement": {
+							taskScheduling: "parallel",
+							useSubagents: false,
+							worktrees: { enabled: false },
+						},
+					},
+				},
+			}),
+		);
+		const ctx = createCommandContext({ cwd, hasUI: true });
+		(ctx as { ui: { notify(message: string, type?: string): void } }).ui.notify = (message, type) => {
+			notifications.push({ message, type });
+		};
+		await commands.get("sp-implement")!.handler("tdd fix bug", ctx);
+
+		assert.equal(userMessages.length, 0, "parallel preflight must not send a user message");
+		assert.equal(notifications.length, 1, "parallel preflight must surface a notification");
+		assert.equal(notifications[0].type, "error");
+		assert.match(notifications[0].message, /requires useSubagents: true/);
+		assert.equal(state.superpowersActive, false, "parallel preflight must not arm superpowers");
 	});
 
 	void it("/sp-implement queues a follow-up when the agent is busy", async () => {

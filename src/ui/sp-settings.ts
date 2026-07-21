@@ -22,6 +22,7 @@ import {
 	setSuperpowersModelTierModel,
 	setSuperpowersModelTierThinking,
 	toggleSuperpowersBoolean,
+	toggleSuperpowersTaskScheduling,
 	toggleSuperpowersWorktrees,
 	updateSuperpowersConfigText,
 } from "../superpowers/config-writer.ts";
@@ -112,7 +113,7 @@ export class SuperpowersSettingsComponent implements Component {
 		const title = mode === "settings" ? "Superpowers Settings" : mode === "tier-picker" ? "Select Model Tier" : mode === "model-picker" ? "Select Model" : "Select Thinking Level";
 		const footer =
 			mode === "settings"
-				? "c command | p plannotator | s subagents | t tdd | m model tiers | w worktrees | esc close"
+				? "c command | e execution | p plannotator | s subagents | t tdd | m model tiers | w worktrees | esc close"
 				: mode === "tier-picker"
 					? "↑↓ navigate | enter select | esc back"
 					: mode === "model-picker"
@@ -160,6 +161,11 @@ export class SuperpowersSettingsComponent implements Component {
 			this.tui.requestRender();
 			return;
 		}
+		if (matchesKey(data, "e")) {
+			this.toggleTaskScheduling();
+			this.tui.requestRender();
+			return;
+		}
 		if (matchesKey(data, "w")) {
 			this.toggleWorktrees();
 			this.tui.requestRender();
@@ -180,6 +186,10 @@ export class SuperpowersSettingsComponent implements Component {
 
 	toggleUseTestDrivenDevelopment(): void {
 		this.writeConfig((config) => toggleSuperpowersBoolean(config, this.currentCommandName(), "useTestDrivenDevelopment"));
+	}
+
+	toggleTaskScheduling(): void {
+		this.writeConfig((config) => toggleSuperpowersTaskScheduling(config, this.currentCommandName()));
 	}
 
 	toggleWorktrees(): void {
@@ -528,6 +538,7 @@ export class SuperpowersSettingsComponent implements Component {
 						if ("useSubagents" in preset) configuredSettings.push(`    useSubagents: ${preset.useSubagents}`);
 						if ("useTestDrivenDevelopment" in preset) configuredSettings.push(`    useTestDrivenDevelopment: ${preset.useTestDrivenDevelopment}`);
 						if ("useBranches" in preset) configuredSettings.push(`    useBranches: ${preset.useBranches}`);
+						if ("taskScheduling" in preset) configuredSettings.push(`    taskScheduling: ${preset.taskScheduling}`);
 						if (preset.worktrees && "enabled" in preset.worktrees) configuredSettings.push(`    worktrees.enabled: ${preset.worktrees.enabled}`);
 						if (preset.worktrees && "root" in preset.worktrees) configuredSettings.push(`    worktrees.root: ${preset.worktrees.root ?? "default"}`);
 

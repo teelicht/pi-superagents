@@ -23,6 +23,7 @@ void describe("SubagentState compaction-durability fields", () => {
 				commandName: "sp-implement",
 				task: "fix auth",
 				entrySkill: "using-superpowers",
+				taskScheduling: "sequential",
 				fork: false,
 				rootLifecycleSkillNames: ["verification-before-completion"],
 			},

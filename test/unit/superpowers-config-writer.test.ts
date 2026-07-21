@@ -7,6 +7,7 @@
  * - verify worktree toggles write only worktrees settings
  * - verify model tier updates
  * - verify behavior-only command block output (no description/entrySkill/skillOverlays)
+ * - verify task scheduling toggle writes sequential/parallel
  */
 
 import assert from "node:assert/strict";
@@ -15,6 +16,7 @@ import {
 	setSuperpowersModelTierModel,
 	setSuperpowersModelTierThinking,
 	toggleSuperpowersBoolean,
+	toggleSuperpowersTaskScheduling,
 	toggleSuperpowersWorktrees,
 	updateSuperpowersConfigText,
 } from "../../src/superpowers/config-writer.ts";
@@ -204,5 +206,51 @@ void describe("Superpowers config writer", () => {
 		assert.ok(!("entrySkill" in parsed.superagents.commands["sp-implement"]), "worktrees toggle must not write entrySkill");
 		assert.ok(!("skillOverlays" in parsed.superagents.commands["sp-implement"]), "worktrees toggle must not write skillOverlays");
 		assert.ok("worktrees" in parsed.superagents.commands["sp-implement"]);
+	});
+
+	void it("toggles task scheduling between sequential and parallel on the selected command", () => {
+		const updated = updateSuperpowersConfigText(
+			'{\n  "superagents": {\n    "commands": {\n      "sp-implement": {\n        "useSubagents": true,\n        "taskScheduling": "sequential"\n      },\n      "sp-plan": {\n        "usePlannotator": true\n      }\n    }\n  }\n}\n',
+			(config) => toggleSuperpowersTaskScheduling(config, "sp-implement"),
+		);
+		assert.deepEqual(JSON.parse(updated), {
+			superagents: {
+				commands: {
+					"sp-implement": {
+						useSubagents: true,
+						taskScheduling: "parallel",
+					},
+					"sp-plan": { usePlannotator: true },
+				},
+			},
+		});
+	});
+
+	void it("toggles task scheduling only on the selected command", () => {
+		const updated = updateSuperpowersConfigText(
+			'{\n  "superagents": {\n    "commands": {\n      "sp-implement": { "useSubagents": true },\n      "sp-custom": { "taskScheduling": "parallel" }\n    }\n  }\n}\n',
+			(config) => toggleSuperpowersTaskScheduling(config, "sp-implement"),
+		);
+		assert.deepEqual(JSON.parse(updated), {
+			superagents: {
+				commands: {
+					"sp-implement": { useSubagents: true, taskScheduling: "parallel" },
+					"sp-custom": { taskScheduling: "parallel" },
+				},
+			},
+		});
+	});
+
+	void it("toggles task scheduling back to sequential when already parallel", () => {
+		const updated = updateSuperpowersConfigText('{\n  "superagents": {\n    "commands": {\n      "sp-implement": { "taskScheduling": "parallel" }\n    }\n  }\n}\n', (config) =>
+			toggleSuperpowersTaskScheduling(config, "sp-implement"),
+		);
+		assert.deepEqual(JSON.parse(updated), {
+			superagents: {
+				commands: {
+					"sp-implement": { taskScheduling: "sequential" },
+				},
+			},
+		});
 	});
 });

@@ -6,13 +6,14 @@
  * - preserve supported execution flags
  * - merge command preset settings and inline overrides
  * - carry entry skill name and lifecycle skill names for skill-entry flows
+ * - resolve and preflight the configured task scheduling mode
  *
  * Important side effects:
  * - none; this module is pure and safe to unit test
  */
 
 import type { AgentConfig } from "../agents/agents.ts";
-import type { ExtensionConfig } from "../shared/types.ts";
+import type { ExtensionConfig, TaskScheduling } from "../shared/types.ts";
 
 export interface SuperpowersWorkflowOverrides {
 	useSubagents?: boolean;
@@ -29,6 +30,7 @@ export interface ResolvedSuperpowersRunProfile {
 	commandName: string;
 	task: string;
 	entrySkill: string;
+	taskScheduling: TaskScheduling;
 	useBranches?: boolean;
 	useSubagents?: boolean;
 	useTestDrivenDevelopment?: boolean;
@@ -157,6 +159,7 @@ export function resolveSuperpowersRunProfile(input: {
 		commandName: input.commandName,
 		task: input.parsed.task,
 		entrySkill,
+		taskScheduling: preset.taskScheduling ?? "sequential",
 		fork: input.parsed.fork,
 		rootLifecycleSkillNames: entrypointAgent?.skills ?? [],
 	};
@@ -179,4 +182,23 @@ export function resolveSuperpowersRunProfile(input: {
 	}
 
 	return profile;
+}
+
+/**
+ * Validate that a resolved Superpowers run profile is runnable.
+ *
+ * Parallel scheduling requires both `useSubagents: true` and
+ * `worktrees.enabled: true` because parallel task execution depends on
+ * delegated subagents and per-task worktree isolation. Sequential scheduling
+ * has no prerequisites. Other commands (recon, settings, brainstorming) are
+ * unaffected because they do not toggle `taskScheduling: "parallel"`.
+ *
+ * @param profile Resolved Superpowers run profile to validate.
+ * @returns Human-readable error message, or undefined when the profile is valid.
+ */
+export function validateSuperpowersRunProfile(profile: ResolvedSuperpowersRunProfile): string | undefined {
+	if (profile.taskScheduling !== "parallel") return undefined;
+	if (profile.useSubagents !== true) return "taskScheduling: parallel requires useSubagents: true.";
+	if (profile.worktrees?.enabled !== true) return "taskScheduling: parallel requires worktrees.enabled: true.";
+	return undefined;
 }

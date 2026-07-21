@@ -104,6 +104,7 @@ export function buildSkillEntryPromptInput(params: BuildSkillEntryPromptInputPar
 		usePlannotatorReview: params.profile.usePlannotatorReview,
 		worktrees: params.profile.worktrees,
 		fork: params.profile.fork,
+		taskScheduling: params.profile.taskScheduling,
 		usingSuperpowersSkill: params.usingSuperpowersSkill,
 		entrySkill: params.entrySkill,
 		rootLifecycleSkills: params.rootLifecycleSkills,

@@ -2,9 +2,10 @@
   "superagents": {
     "commands": {
       "sp-implement": {
+        "taskScheduling": "parallel",
         "useSubagents": true,
         "useTestDrivenDevelopment": true,
-        "worktrees": { "enabled": false, "root": null }
+        "worktrees": { "enabled": true, "root": null }
       },
       "sp-brainstorm": {
         "usePlannotator": true

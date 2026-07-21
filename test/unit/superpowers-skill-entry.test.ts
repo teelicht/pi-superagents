@@ -10,6 +10,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildResolvedSkillEntryPrompt, buildSkillEntryPromptInput, parseSkillCommandInput, shouldInterceptSkillCommand } from "../../src/superpowers/skill-entry.ts";
+import type { ResolvedSuperpowersRunProfile } from "../../src/superpowers/workflow-profile.ts";
 
 void describe("Superpowers skill entry helpers", () => {
 	void it("parses direct /skill commands", () => {
@@ -67,6 +68,7 @@ void describe("Superpowers skill entry helpers", () => {
 				commandName: "sp-brainstorm",
 				task: "design onboarding",
 				entrySkill: "brainstorming",
+				taskScheduling: "sequential",
 				useBranches: false,
 				useSubagents: true,
 				useTestDrivenDevelopment: true,
@@ -105,10 +107,11 @@ void describe("Superpowers skill entry helpers", () => {
 	});
 
 	void it("builds a prompt or reports missing lifecycle skills", () => {
-		const profile = {
+		const profile: ResolvedSuperpowersRunProfile = {
 			commandName: "sp-brainstorm",
 			task: "design onboarding",
 			entrySkill: "brainstorming",
+			taskScheduling: "sequential",
 			useBranches: false,
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
@@ -157,10 +160,11 @@ void describe("Superpowers skill entry helpers", () => {
 	});
 
 	void it("returns error when entry skill cannot be resolved", () => {
-		const profile = {
+		const profile: ResolvedSuperpowersRunProfile = {
 			commandName: "sp-brainstorm",
 			task: "design onboarding",
 			entrySkill: "brainstorming",
+			taskScheduling: "sequential",
 			useBranches: false,
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
@@ -193,10 +197,11 @@ void describe("Superpowers skill entry helpers", () => {
 	});
 
 	void it("returns error when root lifecycle skills cannot be resolved", () => {
-		const profile = {
+		const profile: ResolvedSuperpowersRunProfile = {
 			commandName: "sp-implement",
 			task: "implement auth fix",
 			entrySkill: "using-superpowers",
+			taskScheduling: "sequential",
 			useBranches: false,
 			useSubagents: true,
 			useTestDrivenDevelopment: true,
@@ -235,6 +240,7 @@ void describe("Superpowers skill entry helpers", () => {
 				commandName: "skill:brainstorming",
 				task: "design middleware",
 				entrySkill: "brainstorming",
+				taskScheduling: "sequential",
 				useBranches: false,
 				useSubagents: true,
 				useTestDrivenDevelopment: true,
