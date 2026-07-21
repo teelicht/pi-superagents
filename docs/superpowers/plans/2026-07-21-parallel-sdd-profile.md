@@ -122,7 +122,7 @@
 - Consumes: Existing bounded-role discovery, read-only role tools, and upstream Task file handoff.
 - Produces: `TaskScheduling`, `ExecutionRole` with only `sp-review`, `TaskParam.resumeSession`, `SubagentParamsLike.resumeSession`, and one discoverable `sp-review` role.
 
-- [ ] **Step 1: Write failing reviewer and schema contract tests**
+- [x] **Step 1: Write failing reviewer and schema contract tests**
 
 Replace the two-reviewer test in `test/unit/agent-prompts.test.ts` with:
 
@@ -157,7 +157,7 @@ void it("publishes synchronous resumeSession for single and parallel implementer
 
 Update live test fixtures to use `sp-review`. Where a fixture verifies model-tier behavior, use a `max` tier entry and keep its expected concrete model unchanged. Do not edit archived specs or plans.
 
-- [ ] **Step 2: Run the focused tests and verify they fail**
+- [x] **Step 2: Run the focused tests and verify they fail**
 
 Run:
 
@@ -171,7 +171,7 @@ node --experimental-strip-types --test \
 
 Expected: FAIL because `sp-review.md`, `resumeSession`, and the new role union do not exist.
 
-- [ ] **Step 3: Add shared types and public schema fields**
+- [x] **Step 3: Add shared types and public schema fields**
 
 In `src/shared/types.ts`, add and use these exact contracts:
 
@@ -236,7 +236,7 @@ resumeSession: Type.Optional(
 
 Add that property to both `TaskItem` and top-level `SubagentParams`.
 
-- [ ] **Step 4: Replace the two reviewer files with one complete role prompt**
+- [x] **Step 4: Replace the two reviewer files with one complete role prompt**
 
 Create `agents/sp-review.md`:
 
@@ -262,7 +262,7 @@ You are the read-only Superpowers reviewer for one explicitly named scope. Do no
 
 Delete both old reviewer files.
 
-- [ ] **Step 5: Update root/tool wording and live reviewer fixtures**
+- [x] **Step 5: Update root/tool wording and live reviewer fixtures**
 
 Change `buildFileHandoffContract()` to name only `sp-implementer` and `sp-review`, and require `Review scope: task` for per-Task packages. Change the `subagent` tool description and example in `src/extension/index.ts` to list `sp-review` only and describe `resumeSession` as synchronous implementer-fix continuation.
 
@@ -276,7 +276,7 @@ rg -n 'sp-spec-review|sp-code-review' src agents test README.md docs/configurati
 
 Expected: no matches.
 
-- [ ] **Step 6: Run reviewer, schema, policy, rendering, and single-execution tests**
+- [x] **Step 6: Run reviewer, schema, policy, rendering, and single-execution tests**
 
 Run:
 
@@ -294,7 +294,7 @@ node --experimental-strip-types --import ./test/support/register-loader.mjs --te
 
 Expected: PASS with zero failures.
 
-- [ ] **Step 7: Commit the shared contract and reviewer migration**
+- [x] **Step 7: Commit the shared contract and reviewer migration**
 
 ```bash
 git add agents src/shared/types.ts src/shared/schemas.ts src/superpowers/root-prompt.ts src/extension/index.ts test
@@ -327,7 +327,7 @@ git commit -m "feat: unify Superpowers review role"
 - Consumes: `TaskScheduling` and unified reviewer contract from Task 1.
 - Produces: `ResolvedSuperpowersRunProfile.taskScheduling`, `validateSuperpowersRunProfile()`, config persistence, `/sp-settings` toggle, and root scheduling contract.
 
-- [ ] **Step 1: Write failing config, profile, prompt, and UI tests**
+- [x] **Step 1: Write failing config, profile, prompt, and UI tests**
 
 Add profile tests:
 
@@ -365,7 +365,7 @@ Add root-prompt assertions that sequential text says one whole Task at a time an
 
 Add config-writer/UI tests that pressing `e` toggles only the selected command between sequential and parallel and renders `taskScheduling: parallel`.
 
-- [ ] **Step 2: Run focused tests and verify they fail**
+- [x] **Step 2: Run focused tests and verify they fail**
 
 ```bash
 node --experimental-strip-types --import ./test/support/register-loader.mjs --test \
@@ -379,7 +379,7 @@ node --experimental-strip-types --import ./test/support/register-loader.mjs --te
 
 Expected: FAIL because scheduling is neither parsed, rendered, persisted, nor preflighted.
 
-- [ ] **Step 3: Validate and resolve `taskScheduling`**
+- [x] **Step 3: Validate and resolve `taskScheduling`**
 
 Add `taskScheduling` to `COMMAND_PRESET_KEYS`. In `validateCommandPreset()` enforce only the enum shape:
 
@@ -424,7 +424,7 @@ export function validateSuperpowersRunProfile(profile: ResolvedSuperpowersRunPro
 }
 ```
 
-- [ ] **Step 4: Carry scheduling through skill entry and enforce preflight**
+- [x] **Step 4: Carry scheduling through skill entry and enforce preflight**
 
 Add this property in `buildSkillEntryPromptInput()`:
 
@@ -444,7 +444,7 @@ if (profileError) {
 
 Import `validateSuperpowersRunProfile` beside the resolver. The invalid command must send no user message and must not set `state.superpowersActive`.
 
-- [ ] **Step 5: Add the scheduling root contract**
+- [x] **Step 5: Add the scheduling root contract**
 
 Add `taskScheduling: TaskScheduling` to `SuperpowersRootPromptInput`, metadata, and visible summary. Add a documented `buildTaskSchedulingContract()` with these exact branches:
 
@@ -477,7 +477,7 @@ function buildTaskSchedulingContract(taskScheduling: TaskScheduling): string {
 
 Push this block in `buildSuperpowersRootPrompt()` before the general worktree contract.
 
-- [ ] **Step 6: Persist and toggle scheduling in `/sp-settings`**
+- [x] **Step 6: Persist and toggle scheduling in `/sp-settings`**
 
 Include `taskScheduling` in behavior extraction and add:
 
@@ -497,7 +497,7 @@ In `sp-settings.ts`, import it, bind `e`, add `toggleTaskScheduling()`, add `tas
 "c command | e execution | p plannotator | s subagents | t tdd | m model tiers | w worktrees | esc close"
 ```
 
-- [ ] **Step 7: Update bundled default and example config**
+- [x] **Step 7: Update bundled default and example config**
 
 Set the bundled `sp-implement` block to:
 
@@ -522,7 +522,7 @@ Set the example block to a valid opt-in:
 }
 ```
 
-- [ ] **Step 8: Run config, profile, prompt, settings, and command tests**
+- [x] **Step 8: Run config, profile, prompt, settings, and command tests**
 
 ```bash
 node --experimental-strip-types --import ./test/support/register-loader.mjs --test \
@@ -537,7 +537,7 @@ node --experimental-strip-types --import ./test/support/register-loader.mjs --te
 
 Expected: PASS with zero failures.
 
-- [ ] **Step 9: Commit config-selected scheduling**
+- [x] **Step 9: Commit config-selected scheduling**
 
 ```bash
 git add src/execution/config-validation.ts src/superpowers src/ui/sp-settings.ts src/slash/slash-commands.ts default-config.json config.example.json test
