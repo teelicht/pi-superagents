@@ -58,6 +58,7 @@ This design fills those gaps while leaving existing ephemeral parallel calls int
 7. Preserve upstream file handoff, TDD, blocker handling, progress-ledger, final-review, and
    branch-finishing behavior.
 8. Preserve current sequential behavior by default.
+9. Preserve existing `/sp-implement` branch, Plannotator, and `lineage-only` command policy.
 
 ## Non-Goals
 
@@ -117,6 +118,11 @@ Use `"taskScheduling": "sequential"` to force the existing one-Task-at-a-time fl
   field.
 - The setting applies to implementation-plan Task scheduling only. Read-only parallel recon,
   research, and review remain available independently.
+- Selecting parallel scheduling with worktrees enabled is explicit consent for the controller
+  to create and clean the temporary Task worktrees; do not ask for separate worktree approval
+  on every wave.
+- Existing `useBranches`, `usePlannotator`, TDD, and lifecycle settings retain their current
+  resolution and behavior.
 
 ### Validation
 
@@ -234,14 +240,15 @@ The parent `progress.md` is never deleted by Task cleanup.
 ### API
 
 Add an optional `resumeSession` input to single and per-task `subagent` requests. It accepts a
-session file returned by a previous pi-superagents child result.
+session file returned by a previous pi-superagents `sp-implementer` result.
 
 This is deliberately narrow:
 
 - execution remains synchronous and blocking;
 - no status, polling, cancellation, or background API is added;
 - continuation adds one new user turn to the prior child session; and
-- a continued child runs with the same role, model policy, and worktree `cwd`.
+- continuation is limited to `sp-implementer` fix dispatches and runs with the same model policy
+  and worktree `cwd`.
 
 ### Validation
 
@@ -249,7 +256,7 @@ Before launching a continuation, the extension verifies that:
 
 - the session belongs to the current parent-session lineage;
 - it was created by pi-superagents;
-- the requested role matches the original child role;
+- both the original and requested role are `sp-implementer`;
 - the original worktree still exists and matches the requested `cwd`;
 - no process is currently using that child session; and
 - the session mode is `lineage-only`.
