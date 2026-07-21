@@ -5,6 +5,7 @@
  * - create temporary repositories that exercise real git worktree flows
  * - verify setup hooks, synthetic paths, and configured worktree roots
  * - protect default worktree isolation behavior from regressions
+ * - validate controller-owned pre-isolated Task worktrees
  */
 
 import assert from "node:assert/strict";
@@ -13,7 +14,15 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { describe, it } from "node:test";
-import { cleanupWorktrees, createWorktrees, diffWorktrees, findWorktreeTaskCwdConflict, formatWorktreeDiffSummary, type WorktreeSetup } from "../../src/execution/worktree.ts";
+import {
+	cleanupWorktrees,
+	createWorktrees,
+	diffWorktrees,
+	findWorktreeTaskCwdConflict,
+	formatWorktreeDiffSummary,
+	validatePreIsolatedTaskCwds,
+	type WorktreeSetup,
+} from "../../src/execution/worktree.ts";
 
 function git(cwd: string, args: string[]): string {
 	const result = spawnSync("git", ["-C", cwd, ...args], { encoding: "utf-8" });
@@ -39,6 +48,22 @@ function createRepo(prefix: string): string {
 function cleanupRepo(repoDir: string): void {
 	try {
 		fs.rmSync(repoDir, { recursive: true, force: true });
+	} catch {
+		/* empty */
+	}
+}
+
+function createPreIsolatedWorktree(repoDir: string, runId: string, index: number): string {
+	const worktreeParent = fs.mkdtempSync(path.join(os.tmpdir(), `pi-pre-isolated-${runId}-`));
+	const worktreePath = path.join(worktreeParent, `agent-${index}`);
+	const branch = `pre-isolated-${runId}-${index}`;
+	git(repoDir, ["worktree", "add", worktreePath, "-b", branch, "HEAD"]);
+	return worktreePath;
+}
+
+function cleanupPreIsolatedWorktree(worktreePath: string): void {
+	try {
+		fs.rmSync(path.dirname(worktreePath), { recursive: true, force: true });
 	} catch {
 		/* empty */
 	}
@@ -216,6 +241,138 @@ void describe("worktree", () => {
 			agent: "worker-b",
 			cwd: path.join(sharedCwd, "packages", "app"),
 		});
+	});
+
+	void it("validatePreIsolatedTaskCwds returns false when no task declares a cwd", () => {
+		assert.equal(validatePreIsolatedTaskCwds([{ agent: "worker-a" }, { agent: "worker-b" }], "/tmp/never-resolved"), false);
+	});
+
+	void it("validatePreIsolatedTaskCwds throws when only some tasks declare a cwd", () => {
+		const repoDir = createRepo("pi-worktree-pre-isolated-mixed-");
+		const worktreePath = createPreIsolatedWorktree(repoDir, "mixed", 0);
+		try {
+			assert.throws(
+				() => validatePreIsolatedTaskCwds([{ agent: "worker-a", cwd: worktreePath }, { agent: "worker-b" }], repoDir),
+				/pre-isolated parallel tasks must all declare cwd/,
+			);
+		} finally {
+			cleanupPreIsolatedWorktree(worktreePath);
+			cleanupRepo(repoDir);
+		}
+	});
+
+	void it("validatePreIsolatedTaskCwds returns true for two valid pre-isolated worktrees", () => {
+		const repoDir = createRepo("pi-worktree-pre-isolated-valid-");
+		const worktreeAPath = createPreIsolatedWorktree(repoDir, "valid-a", 0);
+		const worktreeBPath = createPreIsolatedWorktree(repoDir, "valid-b", 0);
+		try {
+			assert.equal(
+				validatePreIsolatedTaskCwds(
+					[
+						{ agent: "worker-a", cwd: worktreeAPath },
+						{ agent: "worker-b", cwd: worktreeBPath },
+					],
+					repoDir,
+				),
+				true,
+			);
+		} finally {
+			cleanupPreIsolatedWorktree(worktreeAPath);
+			cleanupPreIsolatedWorktree(worktreeBPath);
+			cleanupRepo(repoDir);
+		}
+	});
+
+	void it("validatePreIsolatedTaskCwds throws when two tasks resolve to the same worktree", () => {
+		const repoDir = createRepo("pi-worktree-pre-isolated-duplicate-");
+		const worktreePath = createPreIsolatedWorktree(repoDir, "duplicate", 0);
+		try {
+			assert.throws(
+				() =>
+					validatePreIsolatedTaskCwds(
+						[
+							{ agent: "worker-a", cwd: worktreePath },
+							{ agent: "worker-b", cwd: worktreePath },
+						],
+						repoDir,
+					),
+				/pre-isolated task cwd values must resolve to distinct worktrees/,
+			);
+		} finally {
+			cleanupPreIsolatedWorktree(worktreePath);
+			cleanupRepo(repoDir);
+		}
+	});
+
+	void it("validatePreIsolatedTaskCwds throws when a task cwd is the parent checkout", () => {
+		const repoDir = createRepo("pi-worktree-pre-isolated-parent-");
+		const worktreePath = createPreIsolatedWorktree(repoDir, "parent", 0);
+		try {
+			assert.throws(
+				() =>
+					validatePreIsolatedTaskCwds(
+						[
+							{ agent: "worker-a", cwd: worktreePath },
+							{ agent: "worker-b", cwd: repoDir },
+						],
+						repoDir,
+					),
+				/pre-isolated task cwd must not be the parent checkout/,
+			);
+		} finally {
+			cleanupPreIsolatedWorktree(worktreePath);
+			cleanupRepo(repoDir);
+		}
+	});
+
+	void it("validatePreIsolatedTaskCwds throws when a task cwd belongs to an unrelated repository", () => {
+		const repoDir = createRepo("pi-worktree-pre-isolated-unrelated-");
+		const otherRepo = createRepo("pi-worktree-pre-isolated-other-repo-");
+		const worktreePath = createPreIsolatedWorktree(repoDir, "unrelated", 0);
+		try {
+			assert.throws(
+				() =>
+					validatePreIsolatedTaskCwds(
+						[
+							{ agent: "worker-a", cwd: worktreePath },
+							{ agent: "worker-b", cwd: otherRepo },
+						],
+						repoDir,
+					),
+				/pre-isolated task cwd must belong to the parent repository/,
+			);
+		} finally {
+			cleanupPreIsolatedWorktree(worktreePath);
+			cleanupRepo(otherRepo);
+			cleanupRepo(repoDir);
+		}
+	});
+
+	void it("validatePreIsolatedTaskCwds throws when a task worktree is dirty", () => {
+		const repoDir = createRepo("pi-worktree-pre-isolated-dirty-");
+		const worktreePath = createPreIsolatedWorktree(repoDir, "dirty", 0);
+		try {
+			fs.writeFileSync(path.join(worktreePath, "scratch.txt"), "uncommitted\n", "utf-8");
+			assert.throws(() => validatePreIsolatedTaskCwds([{ agent: "worker-a", cwd: worktreePath }], repoDir), /worktree isolation requires a clean git working tree/i);
+		} finally {
+			cleanupPreIsolatedWorktree(worktreePath);
+			cleanupRepo(repoDir);
+		}
+	});
+
+	void it("validatePreIsolatedTaskCwds throws when a task HEAD does not descend from the parent HEAD", () => {
+		const repoDir = createRepo("pi-worktree-pre-isolated-ancestor-");
+		const worktreePath = createPreIsolatedWorktree(repoDir, "ancestor", 0);
+		try {
+			fs.writeFileSync(path.join(repoDir, "advanced.txt"), "advanced feature\n", "utf-8");
+			git(repoDir, ["add", "-A"]);
+			git(repoDir, ["commit", "-m", "advance parent wave base"]);
+
+			assert.throws(() => validatePreIsolatedTaskCwds([{ agent: "worker-a", cwd: worktreePath }], repoDir), /pre-isolated task HEAD must descend from the parent wave base/);
+		} finally {
+			cleanupPreIsolatedWorktree(worktreePath);
+			cleanupRepo(repoDir);
+		}
 	});
 
 	void it("diffWorktrees captures committed, modified, and new files without staging the node_modules symlink", () => {
