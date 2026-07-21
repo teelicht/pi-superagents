@@ -556,7 +556,7 @@ git commit -m "feat: configure sequential or parallel SDD"
 - Consumes: Existing `TaskParam.cwd`, `resolveRepoState()`, and Git command helpers.
 - Produces: `validatePreIsolatedTaskCwds(tasks, sharedCwd): boolean` for Task 5 runtime wiring.
 
-- [ ] **Step 1: Write failing real-Git validation tests**
+- [x] **Step 1: Write failing real-Git validation tests**
 
 Import `validatePreIsolatedTaskCwds` and add tests proving:
 
@@ -580,7 +580,7 @@ assert.throws(
 
 Also cover two valid worktrees, duplicate worktrees, the parent checkout, an unrelated repository, a dirty Task worktree, and a Task branch whose `HEAD` does not descend from the parent `HEAD`.
 
-- [ ] **Step 2: Run the worktree test and verify it fails**
+- [x] **Step 2: Run the worktree test and verify it fails**
 
 ```bash
 node --experimental-strip-types --test test/unit/worktree.test.ts
@@ -588,7 +588,7 @@ node --experimental-strip-types --test test/unit/worktree.test.ts
 
 Expected: FAIL because `validatePreIsolatedTaskCwds` is not exported.
 
-- [ ] **Step 3: Implement pre-isolated worktree validation**
+- [x] **Step 3: Implement pre-isolated worktree validation**
 
 Add documented helpers and this exported function to `src/execution/worktree.ts`:
 
@@ -634,7 +634,7 @@ export function validatePreIsolatedTaskCwds(tasks: ReadonlyArray<{ agent: string
 
 Reuse `resolveRepoState()` so dirty parent or Task worktrees fail before child launch.
 
-- [ ] **Step 4: Run the focused worktree test**
+- [x] **Step 4: Run the focused worktree test**
 
 ```bash
 node --experimental-strip-types --test test/unit/worktree.test.ts
@@ -642,7 +642,7 @@ node --experimental-strip-types --test test/unit/worktree.test.ts
 
 Expected: PASS with zero failures.
 
-- [ ] **Step 5: Commit pre-isolated validation**
+- [x] **Step 5: Commit pre-isolated validation**
 
 ```bash
 git add src/execution/worktree.ts test/unit/worktree.test.ts
