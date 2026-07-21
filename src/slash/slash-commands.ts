@@ -55,7 +55,7 @@ import type { ExtensionConfig, SubagentState, ThinkingLevel } from "../shared/ty
 import { createSuperpowersPromptDispatcher } from "../superpowers/prompt-dispatch.ts";
 import { buildSuperpowersVisiblePromptSummary } from "../superpowers/root-prompt.ts";
 import { buildResolvedSkillEntryPrompt } from "../superpowers/skill-entry.ts";
-import { parseSuperpowersWorkflowArgs, type ResolvedSuperpowersRunProfile, resolveSuperpowersRunProfile } from "../superpowers/workflow-profile.ts";
+import { parseSuperpowersWorkflowArgs, type ResolvedSuperpowersRunProfile, resolveSuperpowersRunProfile, validateSuperpowersRunProfile } from "../superpowers/workflow-profile.ts";
 import { SuperpowersSettingsComponent } from "../ui/sp-settings.ts";
 import { SubagentsStatusComponent } from "../ui/subagents-status.ts";
 
@@ -86,6 +86,12 @@ function sendSkillEntryPrompt(
 	profile: ResolvedSuperpowersRunProfile,
 	state: SubagentState,
 ): void {
+	const profileError = validateSuperpowersRunProfile(profile);
+	if (profileError) {
+		if (ctx.hasUI) ctx.ui.notify(profileError, "error");
+		return;
+	}
+
 	const promptResult = buildResolvedSkillEntryPrompt({
 		cwd: ctx.cwd,
 		profile,
@@ -115,6 +121,7 @@ function sendSkillEntryPrompt(
 			usePlannotatorReview: profile.usePlannotatorReview,
 			worktrees: profile.worktrees,
 			fork: profile.fork,
+			taskScheduling: profile.taskScheduling,
 		}),
 		promptResult.prompt,
 		ctx,

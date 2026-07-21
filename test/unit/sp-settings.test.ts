@@ -7,6 +7,7 @@
  * - verify unavailable config paths report a visible write message
  * - verify model tier selections and reload config
  * - verify reports when no models are available
+ * - verify task scheduling toggle writes only the selected command
  */
 
 import * as assert from "node:assert";
@@ -86,6 +87,7 @@ void test("SuperpowersSettingsComponent renders settings in a framed panel", () 
 				"sp-implement": {
 					useSubagents: false,
 					useTestDrivenDevelopment: true,
+					taskScheduling: "sequential",
 					worktrees: { enabled: true, root: "/tmp/superpowers-worktrees" },
 				},
 				"sp-review": { useSubagents: false },
@@ -106,6 +108,7 @@ void test("SuperpowersSettingsComponent renders settings in a framed panel", () 
 	// All commands show their settings
 	assert.match(rendered, /useSubagents: false/);
 	assert.match(rendered, /useTestDrivenDevelopment: true/);
+	assert.match(rendered, /taskScheduling: sequential/);
 });
 
 void test("SuperpowersSettingsComponent ignores q and closes with escape", () => {
@@ -439,4 +442,81 @@ void test("SuperpowersSettingsComponent reports when no models are available", (
 	const rendered = component.render(92).join("\n");
 	// Should show a message when no model options available
 	assert.match(rendered, /No models available|model/i);
+});
+
+void test("SuperpowersSettingsComponent toggles task scheduling between sequential and parallel on the selected command", () => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-settings-"));
+	const configPath = path.join(dir, "config.json");
+	fs.writeFileSync(
+		configPath,
+		'{\n  "superagents": { "commands": { "sp-implement": { "useSubagents": true, "taskScheduling": "sequential" }, "sp-plan": { "usePlannotator": true } } }\n}\n',
+		"utf-8",
+	);
+
+	let config: ExtensionConfig = {
+		superagents: {
+			commands: {
+				"sp-implement": { useSubagents: true, taskScheduling: "sequential" },
+				"sp-plan": { usePlannotator: true },
+			},
+		},
+	};
+
+	const tuiMock = createTuiMock();
+	const component = new SuperpowersSettingsComponent(tuiMock as never, createThemeMock() as never, createState(configPath) as never, () => config, {
+		models: [],
+		reloadConfig: () => {
+			config = JSON.parse(fs.readFileSync(configPath, "utf-8")) as ExtensionConfig;
+		},
+	});
+
+	component.handleInput("e");
+
+	assert.deepStrictEqual(JSON.parse(fs.readFileSync(configPath, "utf-8")), {
+		superagents: {
+			commands: {
+				"sp-implement": { useSubagents: true, taskScheduling: "parallel" },
+				"sp-plan": { usePlannotator: true },
+			},
+		},
+	});
+	const rendered = component.render(100).join("\n");
+	assert.match(rendered, /taskScheduling: parallel/);
+	fs.rmSync(dir, { recursive: true, force: true });
+});
+
+void test("SuperpowersSettingsComponent toggles task scheduling only on the selected command", () => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-settings-"));
+	const configPath = path.join(dir, "config.json");
+	fs.writeFileSync(configPath, '{\n  "superagents": { "commands": { "sp-implement": { "useSubagents": true }, "sp-plan": { "taskScheduling": "parallel" } } }\n}\n', "utf-8");
+
+	let config: ExtensionConfig = {
+		superagents: {
+			commands: {
+				"sp-implement": { useSubagents: true },
+				"sp-plan": { taskScheduling: "parallel" },
+			},
+		},
+	};
+
+	const tuiMock = createTuiMock();
+	const component = new SuperpowersSettingsComponent(tuiMock as never, createThemeMock() as never, createState(configPath) as never, () => config, {
+		models: [],
+		reloadConfig: () => {
+			config = JSON.parse(fs.readFileSync(configPath, "utf-8")) as ExtensionConfig;
+		},
+	});
+
+	// Select sp-implement explicitly (cycle: sp-implement is the first)
+	component.handleInput("e");
+	// Toggle sp-implement
+	const afterFirst = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+	assert.equal(afterFirst.superagents.commands["sp-implement"].taskScheduling, "parallel");
+	assert.equal(afterFirst.superagents.commands["sp-plan"].taskScheduling, "parallel");
+	// Toggle sp-implement back
+	component.handleInput("e");
+	const afterSecond = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+	assert.equal(afterSecond.superagents.commands["sp-implement"].taskScheduling, "sequential");
+	assert.equal(afterSecond.superagents.commands["sp-plan"].taskScheduling, "parallel");
+	fs.rmSync(dir, { recursive: true, force: true });
 });

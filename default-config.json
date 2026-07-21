@@ -4,6 +4,7 @@
     "tools": ["read", "grep", "find", "ls"],
     "commands": {
       "sp-implement": {
+        "taskScheduling": "sequential",
         "useSubagents": true,
         "useTestDrivenDevelopment": true,
         "useBranches": false,
@@ -17,17 +18,17 @@
       }
     },
     "modelTiers": {
-      "cheap": { 
+      "cheap": {
         "model": "opencode-go/minimax-m2.7",
-        "thinking": "low" 
+        "thinking": "low"
       },
-      "balanced": { 
+      "balanced": {
         "model": "opencode-go/glm-5.1",
-        "thinking": "high" 
+        "thinking": "high"
       },
-      "max": { 
+      "max": {
         "model": "openai/gpt-5.5",
-        "thinking": "medium" 
+        "thinking": "medium"
       }
     },
     "interceptSkillCommands": [],

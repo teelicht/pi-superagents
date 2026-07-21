@@ -5,6 +5,7 @@
  * - parse user config text as JSON
  * - update only the Superpowers settings object
  * - serialize stable two-space JSON for TUI-initiated edits
+ * - toggle command-scoped behavior flags (subagents, TDD, plannotator, worktrees, task scheduling)
  *
  * Important side effects:
  * - none; callers perform filesystem writes
@@ -18,8 +19,12 @@ type MutableConfig = ExtensionConfig & {
 
 /**
  * Keys that represent command behavior flags (not metadata).
+ *
+ * Sequential and parallel scheduling are stored as a single field; the value
+ * toggles between them in `toggleSuperpowersTaskScheduling`. Branches and
+ * plannotator remain booleans toggled by `toggleSuperpowersBoolean`.
  */
-const BEHAVIOR_FLAG_KEYS = ["usePlannotator", "useSubagents", "useTestDrivenDevelopment", "useBranches"] as const;
+const BEHAVIOR_FLAG_KEYS = ["usePlannotator", "useSubagents", "useTestDrivenDevelopment", "useBranches", "taskScheduling"] as const;
 
 /**
  * Ensure a mutable Superpowers settings object exists.
@@ -131,6 +136,29 @@ export function toggleSuperpowersWorktrees(config: MutableConfig, commandName = 
 	behaviorOnly.worktrees = { ...(behaviorOnly.worktrees as Record<string, unknown>) };
 	(behaviorOnly.worktrees as Record<string, unknown>).enabled = !((behaviorOnly.worktrees as Record<string, unknown>).enabled ?? false);
 	settings.commands[commandName] = behaviorOnly;
+	return config;
+}
+
+/**
+ * Toggle Superpowers task scheduling between sequential and parallel in a command preset.
+ *
+ * Sequential is the default; selecting parallel is an explicit opt-in that also
+ * requires useSubagents and worktrees.enabled. This helper only persists the
+ * scheduling field; the effective preflight is enforced by
+ * `validateSuperpowersRunProfile` in `superpowers/workflow-profile`.
+ *
+ * Writes only behavior flags to the command block. Never writes description,
+ * entrySkill, or skillOverlays.
+ *
+ * @param config - Mutable config object to modify in place.
+ * @param commandName - Command preset name to update. Defaults to `sp-implement`.
+ * @returns The same config reference, modified.
+ */
+export function toggleSuperpowersTaskScheduling(config: MutableConfig, commandName = "sp-implement"): MutableConfig {
+	const settings = ensureSuperagents(config);
+	const existing = extractBehaviorFlags(settings.commands?.[commandName]);
+	existing.taskScheduling = existing.taskScheduling === "parallel" ? "sequential" : "parallel";
+	settings.commands = { ...(settings.commands ?? {}), [commandName]: existing };
 	return config;
 }
 

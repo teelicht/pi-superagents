@@ -28,6 +28,7 @@ export interface SuperpowersRootPromptInput {
 	usePlannotatorReview?: boolean;
 	worktrees?: { enabled: boolean; root?: string | null };
 	fork: boolean;
+	taskScheduling?: "sequential" | "parallel";
 	usingSuperpowersSkill?: SuperpowersRootPromptSkill;
 	entrySkill?: SuperpowersRootPromptSkill;
 	rootLifecycleSkills?: SuperpowersRootPromptSkill[];
@@ -46,6 +47,7 @@ function buildMetadata(input: SuperpowersRootPromptInput): string {
 	if (input.useTestDrivenDevelopment !== undefined) lines.push(`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`);
 	if (input.usePlannotatorReview !== undefined) lines.push(`usePlannotatorReview: ${input.usePlannotatorReview}`);
 	if (input.worktrees !== undefined) lines.push(`worktrees.enabled: ${input.worktrees.enabled}`);
+	if (input.taskScheduling !== undefined) lines.push(`taskScheduling: ${input.taskScheduling}`);
 	lines.push(`sessionMode: ${input.fork ? "fork" : "lineage-only"}`);
 	return lines.join("\n");
 }
@@ -252,6 +254,37 @@ function buildWorktreeContract(worktreesEnabled: boolean): string {
 }
 
 /**
+ * Build the task scheduling contract block for the root session.
+ *
+ * @param taskScheduling Configured scheduling mode for Superpowers task execution.
+ * @returns Prompt block that constrains sequential versus parallel task execution.
+ */
+function buildTaskSchedulingContract(taskScheduling: "sequential" | "parallel"): string {
+	if (taskScheduling === "sequential") {
+		return [
+			"Task scheduling is SEQUENTIAL by config.",
+			"When executing an implementation plan, use subagent-driven-development one complete Task at a time.",
+			"A Task includes all of its Steps. Dispatch the Task once, review it once with sp-review, resolve findings, then continue.",
+		].join("\n");
+	}
+
+	return [
+		"Task scheduling is PARALLEL by config.",
+		"For implementation plans, compose subagent-driven-development, dispatching-parallel-agents, and using-git-worktrees.",
+		"A Task includes all of its Steps. Never dispatch or review individual Steps.",
+		"Build conservative dependency-ready waves of at most 8 Tasks; overlapping or ambiguous Tasks stay sequential.",
+		"Parallel scheduling with worktrees enabled is approval to create Task worktrees; do not ask again for every wave.",
+		"Before parallel writers start, create one persistent worktree per Task under the configured worktree root and pass each absolute path as that task's cwd.",
+		"Use one task-scope sp-review per completed Task. Resume Critical or Important fixes through that Task's resumeSession, then re-review.",
+		"Integrate approved Task commits in Task-number order, update the parent progress ledger, and clean the Task worktrees.",
+		"Never integrate a failed or blocked Task; its dependents wait even when safe sibling Tasks finish.",
+		"If worktree creation fails, report the reason and run the affected Tasks sequentially.",
+		"If cherry-pick conflicts, abort it and rerun that Task sequentially from the updated parent HEAD instead of inventing a merge.",
+		"After all Tasks are integrated and verified, run one branch-scope sp-review.",
+	].join("\n");
+}
+
+/**
  * Build the task tracking policy block for the root session.
  *
  * @returns Prompt block that constrains task execution tracking behavior.
@@ -328,6 +361,10 @@ export function buildSuperpowersRootPrompt(input: SuperpowersRootPromptInput): s
 		sections.push(buildDelegationContract(input.useSubagents, input.useTestDrivenDevelopment));
 		sections.push("");
 	}
+	if (input.taskScheduling !== undefined) {
+		sections.push(buildTaskSchedulingContract(input.taskScheduling));
+		sections.push("");
+	}
 	if (input.worktrees !== undefined) {
 		sections.push(buildWorktreeContract(input.worktrees.enabled));
 		sections.push("");
@@ -363,6 +400,7 @@ export function buildSuperpowersVisiblePromptSummary(input: SuperpowersRootPromp
 	if (input.useTestDrivenDevelopment !== undefined) configLines.push(`useTestDrivenDevelopment: ${input.useTestDrivenDevelopment}`);
 	if (input.usePlannotatorReview !== undefined) configLines.push(`usePlannotatorReview: ${input.usePlannotatorReview}`);
 	if (input.worktrees !== undefined) configLines.push(`worktrees.enabled: ${input.worktrees.enabled}`);
+	if (input.taskScheduling !== undefined) configLines.push(`taskScheduling: ${input.taskScheduling}`);
 	configLines.push(`sessionMode: ${input.fork ? "fork" : "lineage-only"}`);
 
 	return [`Superpowers ▸ ${input.task}`, "", "Config:", configLines.join("\n")].join("\n");

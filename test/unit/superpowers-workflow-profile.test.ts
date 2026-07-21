@@ -6,12 +6,13 @@
  * - verify command presets are resolved correctly
  * - verify inline tokens override command presets
  * - verify entry skill name is resolved from entrypoint agent or parameter
+ * - verify task scheduling defaults to sequential and is preflighted
  */
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { ExtensionConfig } from "../../src/shared/types.ts";
-import { parseSuperpowersWorkflowArgs, resolveSuperpowersRunProfile } from "../../src/superpowers/workflow-profile.ts";
+import { parseSuperpowersWorkflowArgs, resolveSuperpowersRunProfile, validateSuperpowersRunProfile } from "../../src/superpowers/workflow-profile.ts";
 
 const config: ExtensionConfig = {
 	superagents: {
@@ -68,6 +69,7 @@ void describe("Superpowers workflow profile", () => {
 				useSubagents: true,
 				useTestDrivenDevelopment: true,
 				useBranches: false,
+				taskScheduling: "sequential",
 				worktrees: { enabled: false },
 				fork: false,
 				rootLifecycleSkillNames: ["verification-before-completion", "receiving-code-review", "finishing-a-development-branch"],
@@ -101,6 +103,7 @@ void describe("Superpowers workflow profile", () => {
 				useBranches: true,
 				useSubagents: false, // from preset
 				useTestDrivenDevelopment: true, // from inline token
+				taskScheduling: "sequential",
 				fork: false,
 				rootLifecycleSkillNames: [],
 			},
@@ -280,5 +283,109 @@ void describe("Superpowers workflow profile", () => {
 		});
 
 		assert.equal(profile.entrySkill, "brainstorming");
+	});
+
+	void it("defaults task scheduling to sequential", () => {
+		const profile = resolveSuperpowersRunProfile({
+			config: {},
+			commandName: "sp-implement",
+			parsed: parseSuperpowersWorkflowArgs("fix auth")!,
+		});
+		assert.equal(profile.taskScheduling, "sequential");
+	});
+
+	void it("resolves task scheduling from a command preset", () => {
+		const profile = resolveSuperpowersRunProfile({
+			config: {
+				superagents: {
+					commands: {
+						"sp-implement": {
+							taskScheduling: "parallel",
+							useSubagents: true,
+							worktrees: { enabled: true },
+						},
+					},
+				},
+			},
+			commandName: "sp-implement",
+			parsed: parseSuperpowersWorkflowArgs("fix auth")!,
+		});
+		assert.equal(profile.taskScheduling, "parallel");
+	});
+
+	void it("accepts parallel scheduling when subagents and worktrees are enabled", () => {
+		const profile = resolveSuperpowersRunProfile({
+			config: {
+				superagents: {
+					commands: {
+						"sp-implement": {
+							taskScheduling: "parallel",
+							useSubagents: true,
+							worktrees: { enabled: true },
+						},
+					},
+				},
+			},
+			commandName: "sp-implement",
+			parsed: parseSuperpowersWorkflowArgs("fix auth")!,
+		});
+		assert.equal(validateSuperpowersRunProfile(profile), undefined);
+	});
+
+	void it("rejects parallel scheduling without subagents and worktrees", () => {
+		const profile = resolveSuperpowersRunProfile({
+			config: {
+				superagents: {
+					commands: {
+						"sp-implement": {
+							taskScheduling: "parallel",
+							useSubagents: false,
+							worktrees: { enabled: false },
+						},
+					},
+				},
+			},
+			commandName: "sp-implement",
+			parsed: parseSuperpowersWorkflowArgs("fix auth")!,
+		});
+		assert.match(validateSuperpowersRunProfile(profile) ?? "", /requires useSubagents: true/);
+	});
+
+	void it("rejects parallel scheduling when worktrees are disabled", () => {
+		const profile = resolveSuperpowersRunProfile({
+			config: {
+				superagents: {
+					commands: {
+						"sp-implement": {
+							taskScheduling: "parallel",
+							useSubagents: true,
+							worktrees: { enabled: false },
+						},
+					},
+				},
+			},
+			commandName: "sp-implement",
+			parsed: parseSuperpowersWorkflowArgs("fix auth")!,
+		});
+		assert.match(validateSuperpowersRunProfile(profile) ?? "", /requires worktrees\.enabled: true/);
+	});
+
+	void it("accepts sequential scheduling unconditionally", () => {
+		const profile = resolveSuperpowersRunProfile({
+			config: {
+				superagents: {
+					commands: {
+						"sp-implement": {
+							taskScheduling: "sequential",
+							useSubagents: false,
+							worktrees: { enabled: false },
+						},
+					},
+				},
+			},
+			commandName: "sp-implement",
+			parsed: parseSuperpowersWorkflowArgs("fix auth")!,
+		});
+		assert.equal(validateSuperpowersRunProfile(profile), undefined);
 	});
 });
