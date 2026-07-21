@@ -214,7 +214,7 @@ void describe("renderSubagentResultLines parallel runs", () => {
 					},
 					{
 						index: 1,
-						agent: "sp-code-review",
+						agent: "sp-review",
 						status: "pending",
 						task: "Review auth changes",
 						recentTools: [],
@@ -231,7 +231,7 @@ void describe("renderSubagentResultLines parallel runs", () => {
 		assert.match(text, /^Subagents\s+0\/2 complete/m);
 		assert.match(text, /- running\s+sp-recon\s+unknown\s+Inspect auth flow\s+3 tools\s+12\.3s/);
 		assert.match(text, /-> read src\/auth\/session\.ts/);
-		assert.match(text, /- pending\s+sp-code-review\s+unknown\s+Review auth changes/);
+		assert.match(text, /- pending\s+sp-review\s+unknown\s+Review auth changes/);
 		assert.doesNotMatch(text, /recent:/);
 	});
 
@@ -245,7 +245,7 @@ void describe("renderSubagentResultLines parallel runs", () => {
 						finalOutput: "Recon complete",
 					}),
 					singleResult({
-						agent: "sp-code-review",
+						agent: "sp-review",
 						task: "Review auth changes",
 						progressSummary: { toolCount: 10, durationMs: 41_200 },
 						finalOutput: "Review complete",
@@ -268,7 +268,7 @@ void describe("renderSubagentResultLines parallel runs", () => {
 						finalOutput: "Recon complete",
 					}),
 					singleResult({
-						agent: "sp-code-review",
+						agent: "sp-review",
 						task: "Review auth changes",
 						exitCode: 1,
 						error: "Review failed",
@@ -294,7 +294,7 @@ void describe("renderSubagentResultLines parallel runs", () => {
 						finalOutput: "Recon complete",
 					}),
 					singleResult({
-						agent: "sp-code-review",
+						agent: "sp-review",
 						task: "Review auth changes",
 						exitCode: 2,
 						error: "Script not found",
@@ -397,7 +397,7 @@ void describe("renderSubagentResultLines parallel runs", () => {
 					},
 					{
 						index: 1,
-						agent: "sp-code-review",
+						agent: "sp-review",
 						status: "pending",
 						task: "Review auth changes",
 						model: "configured/review-runtime-model",
@@ -414,7 +414,7 @@ void describe("renderSubagentResultLines parallel runs", () => {
 
 		const text = lines.join("\n");
 		assert.match(text, /sp-recon\s+recon-runtime-model\s+Inspect auth flow/);
-		assert.match(text, /sp-code-review\s+review-runtime-model\s+Review auth changes/);
+		assert.match(text, /sp-review\s+review-runtime-model\s+Review auth changes/);
 	});
 
 	void it("truncates long task, tool, and output previews to the supplied width", () => {

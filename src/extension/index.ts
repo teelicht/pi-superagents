@@ -460,9 +460,10 @@ This is the \`subagent\` tool the Superpowers skills reference (provided by pi-s
 Use this tool only inside a Superpowers workflow when selected skills call for delegation.
 
 SINGLE: { agent: "sp-recon", task: "Inspect the auth flow" }
-PARALLEL: { tasks: [{ agent: "sp-research", task: "Check config" }, { agent: "sp-code-review", task: "Review diff" }] }
+PARALLEL: { tasks: [{ agent: "sp-research", task: "Check config" }, { agent: "sp-review", task: "Review the diff" }] }
 
-Allowed role agents: sp-recon, sp-research, sp-implementer, sp-spec-review, sp-code-review, sp-debug.
+Allowed role agents: sp-recon, sp-research, sp-implementer, sp-review, sp-debug.
+For sp-implementer fix loops, pass \`resumeSession: "<prior-implementer-session-file>"\` to continue a prior implementation synchronously; the reviewer dispatches against that existing session.
 Bounded role agents are not allowed to call subagents.`,
 		parameters: SubagentParams,
 

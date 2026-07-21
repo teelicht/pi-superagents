@@ -203,7 +203,7 @@ void describe("Path resolution for .agents and ~/.agents", () => {
 	void test("should resolve built-in bounded agents with lineage-only session-mode", () => {
 		assertModulesLoaded();
 
-		const boundedAgentNames = ["sp-recon", "sp-research", "sp-implementer", "sp-spec-review", "sp-code-review", "sp-debug"];
+		const boundedAgentNames = ["sp-recon", "sp-research", "sp-implementer", "sp-review", "sp-debug"];
 
 		const result = discoverAgents!(cwdDir);
 		for (const agentName of boundedAgentNames) {

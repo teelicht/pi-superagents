@@ -165,11 +165,11 @@ void describe("superpowers policy", () => {
 	void it("ignores config overlays and merges only agent and step skills for superpowers runs", () => {
 		const skills = resolveRoleSkillSet({
 			workflow: "superpowers",
-			role: "sp-spec-review",
+			role: "sp-review",
 			config: {
 				superagents: {
 					roleSkillOverlays: {
-						"sp-spec-review": ["ignored-config-skill"],
+						"sp-review": ["ignored-config-skill"],
 					},
 				},
 			} as never,

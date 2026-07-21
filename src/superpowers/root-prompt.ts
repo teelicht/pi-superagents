@@ -278,11 +278,11 @@ function buildTaskTrackingContract(): string {
 function buildFileHandoffContract(): string {
 	return [
 		"File Handoff Contract:",
-		"For bounded role agents (sp-implementer, sp-spec-review, sp-code-review):",
+		"For bounded role agents (sp-implementer, sp-review):",
 		"Use the subagent-driven-development skill's file handoff — do not paste requirements inline.",
 		'- Before each sp-implementer dispatch, run the skill\'s `scripts/task-brief PLAN N`; put the printed brief path in the dispatch ("read this first — it is your requirements").',
 		'- Name the implementer\'s report file after the brief (task-<N>-brief.md → task-<N>-report.md) and put that report path in the dispatch ("write your full report here").',
-		"- Before each sp-spec-review / sp-code-review dispatch, run the skill's `scripts/review-package BASE HEAD`; put the printed diff path, plus the brief and report paths, in the dispatch. Reviewers read all three by path.",
+		"- Before each per-task sp-review dispatch, run the skill's `scripts/review-package BASE HEAD`; put the printed diff path, plus the brief and report paths, in the dispatch. The dispatch MUST state exactly `Review scope: task`. Reviewers read all paths by reference.",
 		"- Cleanup is your job, not the extension's: after a reviewer reports DONE (approved), `rm -f` that task's brief, report, and diff. Keep them on DONE_WITH_CONCERNS, NEEDS_CONTEXT, or BLOCKED — fix and re-dispatch loops reuse them.",
 		"- Never remove `progress.md` (the SDD ledger); it persists until finishing-a-development-branch.",
 		"- sp-debug, sp-recon, and sp-research do not use the file handoff; dispatch them with the task inline.",
