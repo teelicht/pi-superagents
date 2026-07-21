@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
+import { seedLineageOnlySessionFile } from "../../src/execution/session-mode.ts";
 import type { ExtensionConfig } from "../../src/shared/types.ts";
 import type { MockPi } from "../support/helpers.ts";
 import { createMockPi, createTempDir, removeTempDir, tryImport } from "../support/helpers.ts";
@@ -191,16 +192,28 @@ void describe("fork context execution wiring", { skip: !available ? "subagent ex
 			{ name: "echo", description: "Echo test agent" },
 			{ name: "second", description: "Second test agent" },
 		],
-		discoverAgentsImpl: (cwd: string) => {
+		discoverAgentsImpl?: (cwd: string) => {
 			agents: Array<{ name: string; description: string; sessionMode?: "standalone" | "lineage-only" | "fork" }>;
-		} = () => ({ agents }),
+		},
 	) {
 		return createSubagentExecutor!({
 			state: makeState(tempDir),
 			getConfig: () => config,
 			getSubagentSessionRoot: () => tempDir,
-			discoverAgents: discoverAgentsImpl,
+			discoverAgents: discoverAgentsImpl ?? (() => ({ agents })),
 		});
+	}
+
+	/**
+	 * Create an executor that knows the bounded `sp-implementer` agent (so
+	 * `sessionMode` defaults to `lineage-only` like the built-in entrypoint).
+	 *
+	 * The agent is read from the real `discoverAgents` at construction time so
+	 * the test setup runs after the tempDir is initialized in beforeEach.
+	 */
+	function makeImplementerExecutor(config: ExtensionConfig = { superagents: { commands: { "sp-implement": { worktrees: { enabled: false } } } } }) {
+		const builtinAgents = discoverAgents ? discoverAgents(tempDir).agents : [];
+		return makeExecutor(config, builtinAgents, (cwd) => ({ agents: discoverAgents ? discoverAgents(cwd).agents : [] }));
 	}
 
 	function makeCtx(sessionManager: SessionManagerStub) {
@@ -375,5 +388,132 @@ void describe("fork context execution wiring", { skip: !available ? "subagent ex
 		// No isError field — verify the error message is present and no results returned.
 		assert.match(result.content[0]?.text ?? "", /Max 8 tasks/);
 		assert.equal(result.details?.results?.length ?? 0, 0);
+	});
+
+	void it("rejects top-level resumeSession when tasks are also provided", async () => {
+		const parentSessionFile = path.join(tempDir, "parent.jsonl");
+		fs.writeFileSync(parentSessionFile, '{"type":"session"}\n', "utf-8");
+		const { manager } = makeSessionManagerRecorder({ sessionFile: parentSessionFile, leafId: "leaf-x" });
+		const executor = makeExecutor();
+
+		const result = await executor.execute(
+			"id",
+			{
+				tasks: [{ agent: "echo", task: "task one" }],
+				resumeSession: "/tmp/some-implementer-session.jsonl",
+			},
+			new AbortController().signal,
+			undefined,
+			makeCtx(manager),
+		);
+
+		assert.match(result.content[0]?.text ?? "", /top-level resumeSession is valid only for single-agent execution/);
+		assert.equal(result.details?.results?.length ?? 0, 0);
+	});
+
+	void it("rejects duplicate non-empty tasks[*].resumeSession values", async () => {
+		const parentSessionFile = path.join(tempDir, "parent.jsonl");
+		fs.writeFileSync(parentSessionFile, '{"type":"session"}\n', "utf-8");
+		const { manager } = makeSessionManagerRecorder({ sessionFile: parentSessionFile, leafId: "leaf-x" });
+		const executor = makeExecutor();
+		const sharedResume = path.join(tempDir, "shared-resume.jsonl");
+
+		const result = await executor.execute(
+			"id",
+			{
+				tasks: [
+					{ agent: "echo", task: "task one", resumeSession: sharedResume },
+					{ agent: "second", task: "task two", resumeSession: sharedResume },
+				],
+			},
+			new AbortController().signal,
+			undefined,
+			makeCtx(manager),
+		);
+
+		assert.match(result.content[0]?.text ?? "", /resumeSession may appear only once per parallel request/);
+		assert.equal(result.details?.results?.length ?? 0, 0);
+	});
+
+	void it("continues a prior sp-implementer session for a single execution", async () => {
+		const parentSessionFile = path.join(tempDir, "parent.jsonl");
+		fs.writeFileSync(parentSessionFile, '{"type":"session"}\n', "utf-8");
+		const { manager, calls } = makeSessionManagerRecorder({ sessionFile: parentSessionFile, leafId: "leaf-x" });
+		const executor = makeImplementerExecutor();
+		const childSessionFile = path.join(tempDir, "prior-implementer.jsonl");
+		seedLineageOnlySessionFile({
+			parentSessionFile,
+			childSessionFile,
+			childCwd: tempDir,
+			agentName: "sp-implementer",
+		});
+
+		const result = await executor.execute(
+			"id",
+			{ agent: "sp-implementer", task: "Continue prior implementation", resumeSession: childSessionFile },
+			new AbortController().signal,
+			undefined,
+			makeCtx(manager),
+		);
+
+		assert.ok(result.content[0]?.text, "expected non-empty response content");
+		assert.equal(result.details?.sessionMode, "lineage-only");
+		// No branched sessions should be created for the resume flow.
+		assert.deepEqual(calls, []);
+		// Header must not be re-seeded.
+		assert.equal(fs.readFileSync(childSessionFile, "utf-8").trim().split("\n").length, 1);
+	});
+
+	void it("rejects a resumeSession with a different parent session", async () => {
+		const parentSessionFile = path.join(tempDir, "parent.jsonl");
+		fs.writeFileSync(parentSessionFile, '{"type":"session"}\n', "utf-8");
+		const { manager } = makeSessionManagerRecorder({ sessionFile: parentSessionFile, leafId: "leaf-x" });
+		const executor = makeImplementerExecutor();
+		const childSessionFile = path.join(tempDir, "wrong-parent.jsonl");
+		seedLineageOnlySessionFile({
+			parentSessionFile: "/tmp/different-parent.jsonl",
+			childSessionFile,
+			childCwd: tempDir,
+			agentName: "sp-implementer",
+		});
+
+		const result = await executor.execute(
+			"id",
+			{ agent: "sp-implementer", task: "Continue prior implementation", resumeSession: childSessionFile },
+			new AbortController().signal,
+			undefined,
+			makeCtx(manager),
+		);
+
+		assert.match(result.content[0]?.text ?? "", /parent session does not match/);
+		assert.equal(result.details?.results?.length ?? 0, 0);
+	});
+
+	void it("rejects duplicate active use of a resumed session when two parallel single executions race", async () => {
+		// The executor's module-local active-session Set plus the upfront parallel
+		// duplicate check together cover every process-local concurrent use. This test
+		// confirms that at most one of two parallel single executions that both resume
+		// the same session can succeed.
+		const parentSessionFile = path.join(tempDir, "parent.jsonl");
+		fs.writeFileSync(parentSessionFile, '{"type":"session"}\n', "utf-8");
+		const { manager } = makeSessionManagerRecorder({ sessionFile: parentSessionFile, leafId: "leaf-x" });
+		const executor = makeImplementerExecutor();
+		const childSessionFile = path.join(tempDir, "race-resume.jsonl");
+		seedLineageOnlySessionFile({
+			parentSessionFile,
+			childSessionFile,
+			childCwd: tempDir,
+			agentName: "sp-implementer",
+		});
+
+		const [first, second] = await Promise.all([
+			executor.execute("id-a", { agent: "sp-implementer", task: "task A", resumeSession: childSessionFile }, new AbortController().signal, undefined, makeCtx(manager)),
+			executor.execute("id-b", { agent: "sp-implementer", task: "task B", resumeSession: childSessionFile }, new AbortController().signal, undefined, makeCtx(manager)),
+		]);
+
+		const messages = [first.content[0]?.text ?? "", second.content[0]?.text ?? ""];
+		const results = [first.details?.results?.[0], second.details?.results?.[0]];
+		const successCount = results.filter((r) => r && r.exitCode === 0).length;
+		assert.ok(successCount <= 1, `expected at most one successful child, got ${successCount}: ${messages.join(" | ")}`);
 	});
 });

@@ -70,6 +70,20 @@ void describe("buildPiArgs session wiring", () => {
 		assert.ok(!args.includes("--no-session"), "--no-session should not be emitted with --session");
 	});
 
+	void it("preserves the exact --session argument order for continuation", () => {
+		// The continuation feature relies on the existing --session argument emitted by
+		// `buildPiArgs`. Resume reuses Pi's --session handling unchanged: this assertion
+		// guards against accidentally adding a second resume mechanism.
+		const built = buildPiArgs({
+			baseArgs: ["--mode", "json", "-p"],
+			task: "Fix review findings",
+			sessionEnabled: true,
+			sessionFile: "/tmp/child-0.jsonl",
+		});
+
+		assert.deepEqual(built.args.slice(0, 5), ["--mode", "json", "-p", "--session", "/tmp/child-0.jsonl"]);
+	});
+
 	void it("keeps fresh mode behavior (no session file)", () => {
 		const { args } = buildPiArgs({
 			baseArgs: ["-p"],
