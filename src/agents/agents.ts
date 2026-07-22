@@ -32,7 +32,6 @@ const KNOWN_FIELDS = new Set([
 ]);
 
 export type AgentSource = "builtin" | "user" | "project";
-export type AgentScope = "project" | "user" | "both";
 export type AgentKind = "entrypoint" | "role";
 export type AgentExecution = "interactive" | "headless";
 
