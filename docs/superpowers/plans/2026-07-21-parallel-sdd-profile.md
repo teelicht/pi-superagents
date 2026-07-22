@@ -665,7 +665,7 @@ git commit -m "feat: validate persistent task worktrees"
 - Consumes: `resumeSession` schema/types from Task 1 and existing Pi `--session` handling.
 - Produces: Marked lineage-only session headers, validated resumed session selection, role/cwd/lineage checks, and active-session exclusion.
 
-- [ ] **Step 1: Write failing continuation validation tests**
+- [x] **Step 1: Write failing continuation validation tests**
 
 Extend lineage session expectations with this marker:
 
@@ -679,7 +679,7 @@ piSuperagents: {
 
 Add tests that a resolver returns the exact existing session for a matching `sp-implementer`, parent, cwd, and lineage-only request. Add rejection tests for wrong parent, wrong role, wrong cwd, standalone/fork mode, missing file, malformed header, missing marker, and duplicate active use.
 
-- [ ] **Step 2: Run session and executor tests and verify they fail**
+- [x] **Step 2: Run session and executor tests and verify they fail**
 
 ```bash
 node --experimental-strip-types --import ./test/support/register-loader.mjs --test \
@@ -691,7 +691,7 @@ node --experimental-strip-types --import ./test/support/register-loader.mjs --te
 
 Expected: FAIL because sessions are not marked or resumable through executor params.
 
-- [ ] **Step 3: Mark seeded sessions and validate resumed files**
+- [x] **Step 3: Mark seeded sessions and validate resumed files**
 
 Extend `seedLineageOnlySessionFile()` to require `agentName` and write:
 
@@ -727,7 +727,7 @@ Extend `SessionLaunchResolver.sessionFileForIndex()` input:
 
 When `resumeSession` is supplied, require `sessionMode === "lineage-only"` and `agentName === "sp-implementer"`, validate, and return it without seeding a new file.
 
-- [ ] **Step 4: Wire continuation into single and parallel executor plans**
+- [x] **Step 4: Wire continuation into single and parallel executor plans**
 
 Pass `agentName` and the appropriate resume field in both `sessionFileForIndex()` calls:
 
@@ -756,7 +756,7 @@ Add a module-local `Set<string>` around `runPlannedChild()` session usage. Resol
 Before planning parallel children, reject duplicate non-empty `tasks[*].resumeSession` values with `buildParallelModeError("resumeSession may appear only once per parallel request")`.
 Also reject a top-level `params.resumeSession` when `params.tasks` is present with `buildParallelModeError("top-level resumeSession is valid only for single-agent execution; use tasks[].resumeSession")`.
 
-- [ ] **Step 5: Prove existing Pi argument handling is reused unchanged**
+- [x] **Step 5: Prove existing Pi argument handling is reused unchanged**
 
 Add/retain this assertion in `test/unit/pi-args.test.ts`:
 
@@ -772,7 +772,7 @@ assert.deepEqual(built.args.slice(0, 5), ["--mode", "json", "-p", "--session", "
 
 Do not add a second resume mechanism to `pi-args.ts` or `execution-planner.ts`.
 
-- [ ] **Step 6: Run continuation tests**
+- [x] **Step 6: Run continuation tests**
 
 ```bash
 node --experimental-strip-types --import ./test/support/register-loader.mjs --test \
@@ -784,7 +784,7 @@ node --experimental-strip-types --import ./test/support/register-loader.mjs --te
 
 Expected: PASS with zero failures.
 
-- [ ] **Step 7: Commit synchronous implementer continuation**
+- [x] **Step 7: Commit synchronous implementer continuation**
 
 ```bash
 git add src/execution/session-mode.ts src/execution/subagent-executor.ts test/unit/session-mode.test.ts test/unit/pi-args.test.ts test/unit/execution-planner.test.ts test/integration/fork-context-execution.test.ts
