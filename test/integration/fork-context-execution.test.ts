@@ -371,8 +371,9 @@ void describe("fork context execution wiring", { skip: !available ? "subagent ex
 		);
 
 		// No isError field — verify the error message is present and no results returned.
-		assert.match(result.content[0]?.text ?? "", /worktree isolation uses the shared cwd/i);
-		assert.match(result.content[0]?.text ?? "", /task 2 \(second\) sets cwd/i);
+		// Mixed pre-isolated declarations are now rejected by validatePreIsolatedTaskCwds
+		// before the legacy shared-cwd conflict check runs.
+		assert.match(result.content[0]?.text ?? "", /pre-isolated parallel tasks must all declare cwd/i);
 		assert.equal(result.details?.results?.length ?? 0, 0);
 	});
 

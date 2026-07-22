@@ -12,7 +12,8 @@
  * Important dependencies or side effects:
  * - launches child Pi processes through `runPreparedChild`
  * - writes and removes temporary Superpowers packet artifacts via planner
- * - creates and cleans up parallel worktrees when configured
+ * - creates and cleans up parallel worktrees when configured; honors pre-isolated controller-owned
+ *   Task worktrees and leaves them intact for subsequent implement/review/fix dispatches
  * - seeds, forks, or resumes child session files through the session launch resolver
  * - module-local active-session Set rejects process-local duplicate resume use
  */
@@ -72,6 +73,7 @@ import {
 	createParallelWorktreeSetup,
 	resolveParallelTaskCwd,
 	resolveParallelTaskRuntimeCwd,
+	validatePreIsolatedTaskCwds,
 } from "./worktree.ts";
 
 // ---------------------------------------------------------------------------
@@ -388,9 +390,17 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 	const effectiveWorktree = resolveSuperagentWorktreeEnabled(params.worktree, workflow, config);
 
 	const effectiveCwd = params.cwd ?? ctx.cwd;
+	let preIsolatedTaskCwds = false;
 	if (effectiveWorktree) {
-		const worktreeTaskCwdError = buildParallelWorktreeTaskCwdError(tasks, effectiveCwd);
-		if (worktreeTaskCwdError) return buildParallelModeError(worktreeTaskCwdError);
+		try {
+			preIsolatedTaskCwds = validatePreIsolatedTaskCwds(tasks, effectiveCwd);
+		} catch (error) {
+			return buildParallelModeError(error instanceof Error ? error.message : String(error));
+		}
+		if (!preIsolatedTaskCwds) {
+			const worktreeTaskCwdError = buildParallelWorktreeTaskCwdError(tasks, effectiveCwd);
+			if (worktreeTaskCwdError) return buildParallelModeError(worktreeTaskCwdError);
+		}
 	}
 
 	const modelOverrides: (string | undefined)[] = tasks.map((t) => t.model);
@@ -399,7 +409,7 @@ async function runParallelPath(data: ExecutionContextData, deps: ExecutorDeps): 
 	const sessionModes = agentConfigs.map((agentConfig) => resolveAgentSessionMode(params, agentConfig));
 	const taskTexts = tasks.map((t) => t.task);
 	const liveResults: (SingleResult | undefined)[] = Array(tasks.length).fill(undefined) as (SingleResult | undefined)[];
-	const { setup: worktreeSetup, errorResult } = createParallelWorktreeSetup(effectiveWorktree, effectiveCwd, runId, tasks, workflow, config);
+	const { setup: worktreeSetup, errorResult } = createParallelWorktreeSetup(effectiveWorktree && !preIsolatedTaskCwds, effectiveCwd, runId, tasks, workflow, config);
 	if (errorResult) return errorResult;
 
 	try {

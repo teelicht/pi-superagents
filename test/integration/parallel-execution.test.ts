@@ -9,7 +9,11 @@
  */
 
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
+import type { ExtensionConfig } from "../../src/shared/types.ts";
 import type { MockPi } from "../support/helpers.ts";
 import { createMockPi, createTempDir, makeAgentConfigs, removeTempDir, tryImport } from "../support/helpers.ts";
 
@@ -17,11 +21,16 @@ import { createMockPi, createTempDir, makeAgentConfigs, removeTempDir, tryImport
 const utils = await tryImport<any>("./src/shared/utils.ts");
 const execution = await tryImport<any>("./src/execution/child-runner.ts");
 const resultDelivery = await tryImport<any>("./src/execution/result-delivery.ts");
+const executorMod = await tryImport<any>("./src/execution/subagent-executor.ts");
+const agentsMod = await tryImport<any>("./src/agents/agents.ts");
 const piAvailable = !!(execution && utils);
+const executorAvailable = !!(executorMod?.createSubagentExecutor && agentsMod?.discoverAgents);
 
 const runPreparedChild = execution?.runPreparedChild;
 const mapConcurrent = utils?.mapConcurrent;
 const createResultDeliveryStore = resultDelivery?.createResultDeliveryStore;
+const createSubagentExecutor = executorMod?.createSubagentExecutor;
+const discoverAgents = agentsMod?.discoverAgents;
 
 // ---------------------------------------------------------------------------
 // mapConcurrent — always runs (pure logic, no pi deps beyond utils.ts)
@@ -182,5 +191,193 @@ void describe("parallel agent execution", { skip: !piAvailable ? "pi packages no
 		assert.equal(results[1].agent, "b");
 		const ok = results.filter((r: any) => r.exitCode === 0).length;
 		assert.equal(ok, 2);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Ordinary automatic worktree cleanup regression
+// ---------------------------------------------------------------------------
+
+/**
+ * Default extension config that enables worktrees for `sp-implement` and seeds
+ * mock model tiers so the executor does not reject tier names like `cheap`/`max`.
+ *
+ * @returns Worktree-enabled config with mock model tiers.
+ */
+function defaultExecutorConfig(): ExtensionConfig {
+	return {
+		superagents: {
+			commands: { "sp-implement": { worktrees: { enabled: true } } },
+			modelTiers: {
+				cheap: { model: "mock/cheap-model", thinking: "low" },
+				max: { model: "mock/max-model", thinking: "medium" },
+			},
+		},
+	};
+}
+
+/**
+ * Run a git command without shell quoting so fixtures work on Windows and POSIX.
+ *
+ * @param cwd Git repository or working directory.
+ * @param args Git CLI arguments.
+ */
+function git(cwd: string, args: string[]): string {
+	const result = spawnSync("git", args, { cwd, encoding: "utf-8" });
+	if (result.status !== 0) {
+		const details = result.stderr.trim() || result.stdout.trim() || `git ${args.join(" ")} failed`;
+		throw new Error(details);
+	}
+	return (result.stdout ?? "").trim();
+}
+
+void describe("parallel worktree cleanup", { skip: !executorAvailable ? "executor not importable" : undefined }, () => {
+	let tempDir: string;
+	let mockPi: MockPi;
+	let parentSessionFile: string;
+
+	/** Saved env vars — restored after every test to keep runs hermetic. */
+	let savedDepth: string | undefined;
+	let savedMaxDepth: string | undefined;
+
+	before(() => {
+		mockPi = createMockPi();
+		mockPi.install();
+	});
+
+	after(() => {
+		mockPi.uninstall();
+	});
+
+	beforeEach(() => {
+		// Save and clear PI_SUBAGENT_DEPTH / PI_SUBAGENT_MAX_DEPTH so tests are
+		// hermetic regardless of whether they run inside a pi session or CI
+		// environment that already has these variables set.
+		savedDepth = process.env.PI_SUBAGENT_DEPTH;
+		savedMaxDepth = process.env.PI_SUBAGENT_MAX_DEPTH;
+		delete process.env.PI_SUBAGENT_DEPTH;
+		delete process.env.PI_SUBAGENT_MAX_DEPTH;
+
+		tempDir = createTempDir("pi-parallel-worktree-test-");
+
+		// Init a clean parent git repository so the automatic worktree path can run.
+		git(tempDir, ["init"]);
+		git(tempDir, ["config", "user.email", "controller@example.com"]);
+		git(tempDir, ["config", "user.name", "Worktree Test"]);
+		fs.writeFileSync(path.join(tempDir, ".gitignore"), "node_modules/\n.worktrees/\nsessions/\nparent.jsonl\n", "utf-8");
+		fs.writeFileSync(path.join(tempDir, "wave-base.txt"), "wave base\n", "utf-8");
+		git(tempDir, ["add", "-A"]);
+		git(tempDir, ["commit", "-m", "wave base"]);
+
+		// Stable parent session file so the executor session root is predictable.
+		const parentSessionDir = path.join(tempDir, "sessions");
+		fs.mkdirSync(parentSessionDir, { recursive: true });
+		parentSessionFile = path.join(parentSessionDir, "parent.jsonl");
+		fs.writeFileSync(parentSessionFile, '{"type":"session"}\n', "utf-8");
+
+		mockPi.reset();
+		mockPi.onCall({ output: "ok" });
+	});
+
+	afterEach(() => {
+		// Restore PI_SUBAGENT_DEPTH / PI_SUBAGENT_MAX_DEPTH to their pre-test values.
+		if (savedDepth !== undefined) {
+			process.env.PI_SUBAGENT_DEPTH = savedDepth;
+		} else {
+			delete process.env.PI_SUBAGENT_DEPTH;
+		}
+		if (savedMaxDepth !== undefined) {
+			process.env.PI_SUBAGENT_MAX_DEPTH = savedMaxDepth;
+		} else {
+			delete process.env.PI_SUBAGENT_MAX_DEPTH;
+		}
+
+		removeTempDir(tempDir);
+	});
+
+	/**
+	 * Build an executor that uses real `sp-implementer` discovery and a worktree-enabled
+	 * config so the ordinary automatic worktree path is exercised.
+	 *
+	 * @param config Optional extension config override.
+	 * @returns Executor wired to the current tempDir and parent session.
+	 */
+	function makeExecutor(config: ExtensionConfig = defaultExecutorConfig()) {
+		return createSubagentExecutor({
+			state: {
+				baseCwd: tempDir,
+				currentSessionId: null,
+				asyncJobs: new Map(),
+				cleanupTimers: new Map(),
+				lastUiContext: null,
+				poller: null,
+				completionSeen: new Map(),
+				watcher: null,
+				watcherRestartTimer: null,
+				resultFileCoalescer: {
+					schedule: () => false,
+					clear: () => {},
+				},
+				configGate: {
+					blocked: false,
+					diagnostics: [],
+					message: "",
+				},
+			},
+			getConfig: () => config,
+			getSubagentSessionRoot: () => path.join(path.dirname(parentSessionFile), path.basename(parentSessionFile, ".jsonl")),
+			discoverAgents: (cwd: string) => ({ agents: discoverAgents ? discoverAgents(cwd).agents : [] }),
+		});
+	}
+
+	function makeCtx(sessionManager: any) {
+		return {
+			cwd: tempDir,
+			hasUI: false,
+			ui: {},
+			modelRegistry: { getAvailable: () => [] },
+			sessionManager,
+		};
+	}
+
+	void it("removes automatic ephemeral worktree paths after a parallel call without Task cwd", async () => {
+		const executor = makeExecutor();
+		const sessionManager = {
+			getSessionFile: () => parentSessionFile,
+			getLeafId: () => "leaf-current",
+			createBranchedSession: (leafId: string) => `/tmp/subagent-fork-${leafId}.jsonl`,
+		};
+		const ctx = makeCtx(sessionManager);
+
+		const result = await executor.execute(
+			"ordinary-parallel",
+			{
+				tasks: [
+					{ agent: "sp-implementer", task: "Ordinary task A" },
+					{ agent: "sp-implementer", task: "Ordinary task B" },
+				],
+				workflow: "superpowers",
+				sessionMode: "lineage-only",
+			},
+			new AbortController().signal,
+			undefined,
+			ctx,
+		);
+
+		assert.equal(result.details?.results.length, 2, `expected 2 results, got: ${result.content[0]?.text ?? ""}`);
+		const listing = git(tempDir, ["worktree", "list", "--porcelain"]);
+		const realTempDir = fs.realpathSync(tempDir);
+		const remaining = listing
+			.split("\n")
+			.filter((line) => line.startsWith("worktree "))
+			.map((line) => line.slice("worktree ".length))
+			.filter((candidate) => {
+				try {
+					return fs.realpathSync(candidate) !== realTempDir;
+				} catch {
+					return candidate !== tempDir;
+				}
+			});
+		assert.deepEqual(remaining, [], "automatic worktree paths must be removed after the parallel call");
 	});
 });
