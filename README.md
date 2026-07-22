@@ -47,7 +47,7 @@ pnpm run install:local
 
 On Pi 0.79+, `pi-superagents` mirrors Pi's project-trust decision. Project-local agents, skills, skill packages, `.pi/settings.json` skill entries, and project agent frontmatter extensions are loaded only when the current Pi context reports the project as trusted. Child subagent Pi processes receive `--approve` when the parent context is trusted and `--no-approve` when it is not, so non-interactive child runs do not silently escalate trust.
 
-Trusting a project enables runtime subagent delegation from project agents but does not automatically register project-local interactive entrypoint agents as slash commands. Custom slash commands should be installed as user-level (`~/.pi/agent/agents/sp-*.md`) or package-bundled entrypoint agents. See [Project Trust](docs/configuration.md#project-trust) in the Configuration reference for the full trust-gated inputs list and slash command registration caveats, and the [Skills Reference](docs/skills.md#skills-reference) for the project skill path policy.
+Trusting a project enables runtime subagent delegation from project agents but does not automatically register project-local interactive entrypoint agents as slash commands. Custom slash commands should be installed as user-level (`~/.pi/agent/agents/sp-*.md`) or package-bundled entrypoint agents. See [Project Trust](docs/configuration.md#project-trust) in the Configuration reference for the full trust-gated inputs list and slash command registration caveats, and the [Skills Reference](docs/skills.md) for the project skill path policy.
 
 ## Execution Model
 
@@ -75,9 +75,33 @@ See [Configuration](docs/configuration.md#custom-commands) for the agent frontma
 
 The `/sp-implement` command activates a structured workflow for task execution with an interactive entrypoint agent, role-specific headless agents, model tiers, and built-in quality gates. The bundled `agents/sp-implement.md` entrypoint injects root lifecycle skills for verification, review-feedback handling, and branch finishing. The bundled `sp-debug` role injects `systematic-debugging` when delegated.
 
-Subagent execution remains conservative and synchronous for ordinary Superpowers workflows. There is intentionally no user-facing `async` or `blocking` switch in agent frontmatter, config, or tool parameters. Internal result ownership prevents duplicate delivery and lifecycle sidecars let child agents report intentional completion or a parent-help request without changing the normal delegation flow. 
+Subagent execution remains conservative and synchronous for ordinary Superpowers workflows. There is intentionally no user-facing `async` or `blocking` switch in agent frontmatter, config, or tool parameters. Internal result ownership prevents duplicate delivery and lifecycle sidecars let child agents report intentional completion or a parent-help request without changing the normal delegation flow.
 
 Subagent-driven development keeps implementer and reviewer reports inline in the Pi conversation. Bounded roles default to `lineage-only` - they see a curated work brief rather than the full parent conversation history.
+
+## Parallel SDD Task Scheduling
+
+`/sp-implement` plans are dispatched one **Task** at a time, where each Task is the whole numbered block of Steps from the implementation plan. The scheduling mode is **config-only** — it is not a slash-command token — and defaults to `sequential` so the bundled config is conservative.
+
+To opt in to parallel Task scheduling for `/sp-implement`, enable the three required flags together in `config.json`:
+
+```json
+{
+  "superagents": {
+    "commands": {
+      "sp-implement": {
+        "taskScheduling": "parallel",
+        "useSubagents": true,
+        "worktrees": { "enabled": true }
+      }
+    }
+  }
+}
+```
+
+Parallel scheduling is **rejected before dispatch** if the config is missing `useSubagents: true` or `worktrees.enabled: true` — the controller surfaces a clear error and the run never starts. The preflight check guarantees every parallel Task runs in its own pre-isolated worktree and is delegated through the `subagent` tool.
+
+Under parallel scheduling, the root session composes three existing upstream Superpowers skills — `subagent-driven-development`, `dispatching-parallel-agents`, and `using-git-worktrees` — without forking or editing them. The controller builds dependency-ready waves of at most eight Tasks, creates one **persistent** worktree per Task before writers start, dispatches each Task whole (never individual Steps), runs one `sp-review` per completed Task, and integrates approved commits in Task-number order. After every Task is integrated, the controller runs one final branch-scope `sp-review`.
 
 Run history is persisted at `~/.pi/agent/run-history.jsonl` for `/subagents-status`. Inline subagent rows and the status overlay show the model reported by the child Pi execution loop and, when available, the effective thinking level used for that run. Set `PI_SUPERAGENTS_RUN_HISTORY_PATH` to isolate that file for tests or sandboxed sessions.
 

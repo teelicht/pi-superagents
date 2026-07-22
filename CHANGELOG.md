@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased] - 2026-07-22
+
+- **Configurable Parallel SDD Profile**
+  - Added a new `taskScheduling` config-only preset ("sequential" by default, "parallel" opts in) so a single bundled config can run either mode without changing slash-command behavior.
+  - Parallel scheduling is rejected before dispatch unless the same `/sp-implement` preset also sets `useSubagents: true` and `worktrees.enabled: true`; the preflight surfaces a clear error and the run never starts.
+  - Added a single Superpowers reviewer role `sp-review` that covers both `Review scope: task` and `Review scope: branch` on the `max` tier; `sp-spec-review` and `sp-code-review` were removed with no aliases. Implementers stay on the `cheap` tier.
+  - Added persistent, controller-owned Task worktrees for parallel SDD waves: each Task is pre-isolated before writers start and the same worktree is reused across the per-Task implement, review, fix, and re-review calls. Generic automatic worktrees remain ephemeral and extension-managed.
+  - Added a synchronous `resumeSession` parameter to the `subagent` tool for `sp-implementer` only; the resumed session must be a `lineage-only` pi-superagents `sp-implementer` file in the current parent lineage, must use the original worktree `cwd`, and is protected against active reuse inside a single run.
+  - Task commits integrate deterministically in Task-number order; unsafe cherry-pick conflicts fall back to a sequential rerun of the affected Task from the updated parent HEAD rather than inventing a merge.
+
 ## [0.11.1] - 2026-07-15
 
 - **Pi-Owned Thinking Levels**

@@ -47,7 +47,7 @@ Slash commands are registered from interactive entrypoint agent frontmatter, not
 
 | Command | Policy Settings |
 |---|---|
-| `sp-implement` | `useSubagents: true`, `useTestDrivenDevelopment: true`, `useBranches: false`, `worktrees: { enabled: false }` |
+| `sp-implement` | `taskScheduling: "sequential"`, `useSubagents: true`, `useTestDrivenDevelopment: true`, `useBranches: false`, `worktrees: { enabled: false }` |
 | `sp-brainstorm` | `usePlannotator: true` |
 | `sp-plan` | `usePlannotator: true` |
 
@@ -73,7 +73,7 @@ Child subagent processes mirror the parent trust decision. Trusted parent contex
 
 ### Slash Command Registration
 
-Trusting a project does **not** automatically register project-local interactive entrypoint agents as slash commands. Slash command registration is wired to user-level and package-bundled entrypoint agents, so custom slash commands should continue to be installed at the user level (for example, `~/.pi/agent/agents/sp-*.md`) or as package-bundled entrypoints, even when a project is trusted. If a future version wires trusted-project command registration, this section will be updated. Until then, project trust enables runtime subagent delegation from project agents but does not expose project entrypoint agents as `/sp-...` commands.
+Trusting a project does **not** automatically register project-local interactive entrypoint agents as slash commands. Slash command registration is wired to user-level and package-bundled entrypoint agents, so custom slash commands should continue to be installed at the user level (for example, `~/.pi/agent/agents/sp-*.md`) or as package-bundled entrypoints, even when a project is trusted. If a future version wires trusted-project command registration, this section will be updated. Until then, project-level entrypoint agents can still be invoked through entry-skill workflows but will not be listed in the slash-command palette.
 
 ## Configuration Keys
 
@@ -126,7 +126,7 @@ Configure `superagents.tools` as a global list of tool names or tool extension p
 }
 ```
 
-These tools are appended after each role's normal tool policy and de-duplicated while preserving order. The bundled default config provides the common read-only baseline (`read`, `grep`, `find`, `ls`) globally, so built-in role agents only list extra tools such as `bash` or `write` in frontmatter. Existing agent `tools:` frontmatter still defines that agent's baseline extras; `superagents.tools` saves you from repeating common additions. Path-like entries such as `./tools/shared-tool.ts` are passed to child Pi as tool extensions using Pi's normal `--extension` handling.
+These tools are appended after each role's normal tool policy and de-duplicated while preserving order. The bundled default config provides the common read-only baseline (`read`, `grep`, `find`, `ls`) globally, so built-in role agents only list extra tools such as `bash` or `write` in frontmatter. Existing agent `tools:` frontmatter still defines that agent's baseline extras; `superagents.tools` saves you from repeating common additions. Path-like entries such as `./tools/shared-tool.ts` are passed through Pi's normal extension/tool resolver, so they must resolve under the same rules described for [Extension Allowlist](#extension-allowlist).
 
 Bounded Superpowers roles still cannot receive delegation tools such as `subagent` through this setting; those entries are filtered by policy for bounded roles. Child lifecycle tools (`subagent_done`, `caller_ping`) remain managed by the runtime.
 
@@ -180,26 +180,51 @@ Each command preset in `config.json` supports these behavior keys:
 | `useSubagents` | Allow delegation through `subagent` tool. |
 | `useTestDrivenDevelopment` | Enable TDD guidance. |
 | `usePlannotator` | Enable Plannotator browser review at approval points. |
+| `taskScheduling` | `"sequential"` (default) or `"parallel"` to opt into parallel Task scheduling. Config-only; not a slash-command token. |
 | `worktrees.enabled` | Use git worktree isolation for parallel tasks. |
 | `worktrees.root` | Directory for worktrees (default: system temp). |
 
 Command metadata (`description`, `entrySkill`) was moved to entrypoint agent frontmatter. Adding or editing command metadata requires adding or editing an `agents/*.md` entrypoint file.
 
+## Parallel SDD Task Scheduling
+
+The `taskScheduling` preset switches `/sp-implement` between sequential and parallel Task execution. The mode is **config-only** — there is no inline token for it on the slash command — and the bundled default is `"sequential"`, so existing installs keep their current behaviour without changes.
+
+Parallel mode is rejected before dispatch if the preset is incomplete. To opt in, the same command preset must also enable `useSubagents: true` and `worktrees.enabled: true`; if either is missing or false, the controller surfaces a clear preflight error and the run never starts.
+
+Canonical example for `/sp-implement`:
+
+```json
+{
+  "superagents": {
+    "commands": {
+      "sp-implement": {
+        "taskScheduling": "parallel",
+        "useSubagents": true,
+        "worktrees": { "enabled": true }
+      }
+    }
+  }
+}
+```
+
+When the preflight passes, the root session composes the three existing upstream Superpowers skills (`subagent-driven-development`, `dispatching-parallel-agents`, `using-git-worktrees`) without forking or editing them. Each Task — the whole numbered block of Steps from the implementation plan — is dispatched together to its own pre-isolated worktree, reviewed once via `sp-review`, and integrated in Task-number order. After every Task is integrated, the controller runs one final branch-scope `sp-review`. See [Skills Reference](skills.md#parallel-sdd-task-scheduling) for the dispatch contract and the [Worktree Isolation](worktrees.md#parallel-sdd-waves-vs-ordinary-parallel-calls) reference for the persistent worktree lifecycle.
+
 ## Inline Role Output
 
-Superpowers role agents return their findings through Pi tool results. The bounded SDD roles (`sp-implementer`, `sp-spec-review`, `sp-code-review`) use the `subagent-driven-development` skill's file handoff: they read the task brief and review-package diff and write the implementer report by path, under the gitignored `.superpowers/sdd/` workspace the skill's `scripts/sdd-workspace` creates — not the repository root. The controller cleans those files up with `rm -f` after a `DONE` review; `progress.md` (the SDD ledger) is preserved until `finishing-a-development-branch`. `sp-debug` keeps inline delivery. The extension injects no `[Read from:]`/`[Write to:]` references and performs no cleanup itself.
+Superpowers role agents return their findings through Pi tool results. The bounded SDD roles (`sp-implementer`, `sp-review`) use the `subagent-driven-development` skill's file handoff: they read the task brief and review-package diff and write the implementer report by path, under the gitignored `.superpowers/sdd/` workspace the skill's `scripts/sdd-workspace` creates — not the repository root. The controller cleans those files up with `rm -f` after a `DONE` review; `progress.md` (the SDD ledger) is preserved until `finishing-a-development-branch`. `sp-debug` keeps inline delivery. The extension injects no `[Read from:]`/`[Write to:]` references and performs no cleanup itself.
 
 Execution artifacts are still available when `artifacts` is enabled. Those files are written to the session artifact directory for debugging and truncation recovery, not to the repository root.
 
 ## Compact Inline Subagent Results
 
-Subagent tool results are rendered inline in the Pi conversation as compact, width-bounded lines. A collapsed view shows the subagent name, runtime-confirmed model label, task, status, and live activity (e.g., current tool). Clicking or expanding the result reveals concise details: model, thinking level when available, skills, recent tools, output preview, errors, and artifact paths. This keeps long-running Superpowers workflows readable without scrolling through verbose JSON or full Markdown output.
+Subagent tool results are rendered inline in the Pi conversation as compact, width-bounded lines. A collapsed view shows the subagent name, runtime-confirmed model label, task, status, and live activity (e.g., current tool). Clicking or expanding the result reveals concise details: model, thinking level when available, skills, recent tools, output preview, errors, and artifact paths. This keeps long-running Superpowers workflows readable without scrolling through verbose JSON or full Markdown output. The result preview is bounded; the full conversation turns live in the child session and in the session artifact directory when artifacts are enabled.
 
 The compact renderer is active for all `subagent` tool results produced by `pi-superagents`. `/subagents-status` remains available for inspecting active or recently completed runs in a dedicated overlay, including the runtime-confirmed model and separate thinking level when available.
 
 ## Run History
 
-Completed subagent runs are stored as JSONL at `~/.pi/agent/run-history.jsonl` so `/subagents-status` can show recent runs across sessions. Inline rows use live progress/result metadata, and run history stores the child Pi-reported model separately from the effective thinking level so the overlay can confirm actual model routing instead of only showing configured defaults. Set `PI_SUPERAGENTS_RUN_HISTORY_PATH` to an absolute file path when you need to isolate run history, for example in tests or sandboxed PI sessions.
+Completed subagent runs are stored as JSONL at `~/.pi/agent/run-history.jsonl` so `/subagents-status` can show recent runs across sessions. Inline rows use live progress/result metadata, and run history stores the child Pi-reported model separately from the effective thinking level so the overlay can confirm actual model routing instead of only showing configured defaults. Set `PI_SUPERAGENTS_RUN_HISTORY_PATH` to an absolute file path when you need to isolate run history, for example in tests or sandboxed sessions where the default path is read-only or shared.
 
 ## Common Override Examples
 
@@ -300,7 +325,7 @@ The reserved tier names `cheap`, `balanced`, `max`, and `reasoning` are always t
 > [!NOTE]
 > In `config.example.json`, `creative` and `legacy` are illustrative custom tiers added to demonstrate the surface; they are not built-in tiers. `thinking` is optional in any tier definition.
 
-You can edit model tier mappings during an active PI session with `/sp-settings`. The model picker reads PI's authenticated model registry, supports type-to-search filtering by provider, ID, or display name (including names containing `q`), scrolls keyboard selection through the full filtered model list, then asks for the tier thinking level. Successful tier edits write the selected `provider/model` and optional `thinking` value to `config.json` and apply to future Superpowers subagents immediately; already-running subagents keep the model they were launched with.
+You can edit model tier mappings during an active PI session with `/sp-settings`. The model picker reads PI's authenticated model registry, supports type-to-search filtering by provider, ID, or display name (including names containing `q`), scrolls keyboard selection through the full filtered model list, then asks for the tier thinking level. Successful tier edits write the selected `provider/model` and optional `thinking` value to `config.json` and apply to future Superpowers subagents immediately. Tier edits never retroactively re-target an already-running child; a child Pi process keeps the model it launched with until that run completes.
 
 `/sp-settings` also edits command-scoped workflow toggles. Use `c` to select a command, then toggle `p` for Plannotator, `s` for subagents, `t` for TDD, or `w` for worktrees on that selected command preset. This avoids writing Plannotator or TDD settings into unrelated command presets.
 
@@ -386,6 +411,8 @@ Run implementation through the Superpowers workflow:
 
 Root prompts now instruct delegated Superpowers calls to pass the resolved `useTestDrivenDevelopment` value explicitly. This prevents custom commands such as `sp-lean` from accidentally inheriting another command's TDD setting when they delegate to `sp-implementer`. If a direct `subagent` tool call omits the parameter entirely, the runtime does not inject TDD by default.
 
+The Task scheduling mode for `/sp-implement` is **config-only** via the `taskScheduling` preset. It is not a slash-command token and cannot be toggled inline. See [Parallel SDD Task Scheduling](#parallel-sdd-task-scheduling) for the parallel opt-in and preflight rules.
+
 ### `/sp-brainstorm`
 
 Run brainstorming with Plannotator spec review:
@@ -411,6 +438,5 @@ Run planning with Plannotator plan review:
 | Recon | `sp-recon` | Context gathering for task discovery |
 | Research | `sp-research` | Evidence gathering for complex logic |
 | Implementer | `sp-implementer` | Planned code changes with verification |
-| Code Review | `sp-code-review` | Quality reviewer for implementation |
-| Spec Review | `sp-spec-review` | Verification against design specs |
+| Reviewer | `sp-review` | Combined specification and code-quality reviewer for one Task (`Review scope: task`) or the whole branch (`Review scope: branch`); uses the `max` model tier |
 | Debug | `sp-debug` | Failure investigation and root-cause analysis; injects `systematic-debugging` |
