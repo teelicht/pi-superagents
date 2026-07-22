@@ -31,7 +31,7 @@ Maintenance note: skill discovery helpers are exercised through dynamic tests an
 // Parallel tasks can override skills per task
 { tasks: [
   { agent: "sp-research", task: "Check config", skill: "openai-docs" },
-  { agent: "sp-code-review", task: "Review the diff", skill: false }
+  { agent: "sp-review", task: "Review the diff", skill: false }
 ] }
 ```
 
@@ -84,6 +84,7 @@ skills: verification-before-completion
 ```
 
 The `subagent` tool is the one the upstream Superpowers skills reference as "subagent from pi-subagents". Pi-superagents is the pi-subagents-compatible fork; the tool description states this and its actual capabilities (synchronous single, parallel, and forked-context dispatch — no async, chain, or resume/status) so models connect the skill reference to this tool.
+
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | Yes | Agent identifier used by the `subagent` tool or matching entrypoint name |
@@ -116,14 +117,22 @@ Bounded role agents (delegated to subagents) support:
 The `skills` field in entrypoint agents is reserved for root lifecycle skills. These are skills with explicit trigger points (e.g., `verification-before-completion`, `receiving-code-review`, `finishing-a-development-branch`) that apply to the root session only.
 
 Superpowers skill selection is trigger-driven via `using-superpowers`. Do not preload domain skills through command config. Entrypoint `skills` are not overlay replacements — they are lifecycle/root skills with explicit trigger points.
+
 Command-scoped workflow toggles can be changed through `/sp-settings`; model tier edits in the same overlay use a type-to-search picker backed by PI's authenticated model registry. The picker accepts `q` as search text, scrolls through all filtered results rather than only the visible page, and is followed by a thinking-level picker for the tier.
 
 Bundled entrypoint assignments:
+
 - `agents/sp-implement.md` assigns `verification-before-completion`, `receiving-code-review`, and `finishing-a-development-branch` as root lifecycle skills.
 - `agents/sp-brainstorm.md` and `agents/sp-plan.md` assign their respective entry skills.
 
 Bundled role assignments:
+
 - `agents/sp-debug.md` assigns `systematic-debugging` to the bounded debug role.
+- `agents/sp-implementer.md` ships on the `cheap` model tier and reads/writes implementer reports by path; its `maxSubagentDepth: 0` keeps it from delegating further.
+- `agents/sp-review.md` is the only Superpowers reviewer; it ships on the `max` tier and supports two scopes, declared explicitly in the dispatch:
+  - `Review scope: task` — review one Task (brief, implementer report, review-package diff).
+  - `Review scope: branch` — review the integrated branch (design/spec, plan, branch review package, verification evidence, Minor-findings ledger).
+  The reviewer returns one of `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`, and Critical/Important findings block approval.
 
 ### Re-arming after compaction
 
@@ -134,6 +143,20 @@ invoking `verification-before-completion`, `receiving-code-review`, and
 the original command. The re-injection is sized by the compaction reason
 (threshold = full, overflow = trimmed, manual = pointer) and only occurs
 in sessions where a Superpowers command has been explicitly activated.
+
+## Parallel SDD Task Scheduling
+
+When `/sp-implement` is configured with `taskScheduling: "parallel"`, `useSubagents: true`, and `worktrees.enabled: true`, the root session controller drives the implementation plan in waves. The controller composes the three existing upstream Superpowers skills — `subagent-driven-development`, `dispatching-parallel-agents`, and `using-git-worktrees` — **without forking or editing them**:
+
+- `subagent-driven-development` provides the file-handoff convention (brief/report/diff by path under `.superpowers/sdd/`).
+- `dispatching-parallel-agents` provides the wave-building and dependency-ready heuristics.
+- `using-git-worktrees` provides the directory convention and safety rules for the per-Task worktrees.
+
+A **Task** is the whole numbered block of Steps from the implementation plan. The controller dispatches all Steps of one Task together to a single `sp-implementer` session — it never dispatches or reviews individual Steps. After the implementer reports, the controller runs exactly one `sp-review` against the Task (dispatch MUST state `Review scope: task`). If the review returns Critical or Important findings, the controller resumes the same `sp-implementer` session through `resumeSession` for a synchronous fix, then runs the per-Task `sp-review` again. The Task commit is integrated in Task-number order, and after every Task is integrated the controller runs one final branch-scope `sp-review` (dispatch MUST state `Review scope: branch`).
+
+Sequential scheduling keeps the same dispatch cadence: one Task at a time, one `sp-review` per Task, with no parallel writers, no persistent worktrees, and no `resumeSession` use. The Task-includes-all-Steps rule still holds.
+
+Worktree lifecycle for parallel SDD waves is described in the [Worktree Isolation reference](worktrees.md#two-kinds-of-parallel-worktree): the controller pre-creates one persistent worktree per Task under the configured worktree root and reuses it across implement → review → fix → re-review; ordinary parallel calls (the extension's generic `tasks: [...]` path) still get ephemeral, extension-owned worktrees.
 
 ## Child Lifecycle Tools
 
@@ -151,7 +174,7 @@ Inline subagent result rows show each run's compact runtime-confirmed model labe
 
 ## Role Output
 
-Skills and role prompts should return findings in the assistant response. Pi Superagents forwards that response through the `subagent` tool result and preserves optional debug artifacts outside the repository. The bounded SDD role agents (`sp-implementer`, `sp-spec-review`, `sp-code-review`) use the `subagent-driven-development` skill's file handoff: the controller runs the skill's `scripts/task-brief` and `scripts/review-package`, hands the resulting brief/report/diff paths to the agent by path in the dispatch, and the implementer writes its report by path under the gitignored `.superpowers/sdd/` workspace. The controller cleans those files up with `rm -f` after a `DONE` review; `progress.md` (the SDD ledger) is preserved until `finishing-a-development-branch`. `sp-debug`, `sp-recon`, and `sp-research` keep inline delivery. The extension injects no `[Read from:]`/`[Write to:]` references and performs no cleanup itself.
+Skills and role prompts should return findings in the assistant response. Pi Superagents forwards that response through the `subagent` tool result and preserves optional debug artifacts outside the repository. The bounded SDD role agents (`sp-implementer`, `sp-review`) use the `subagent-driven-development` skill's file handoff: the controller runs the skill's `scripts/task-brief` and `scripts/review-package`, hands the resulting brief/report/diff paths to the agent by path in the dispatch, and the implementer writes its report by path under the gitignored `.superpowers/sdd/` workspace. The controller cleans those files up with `rm -f` after a `DONE` review; `progress.md` (the SDD ledger) is preserved until `finishing-a-development-branch`. `sp-debug`, `sp-recon`, and `sp-research` keep inline delivery. The extension injects no `[Read from:]`/`[Write to:]` references and performs no cleanup itself.
 
 Subagent results are rendered as compact inline lines in the Pi conversation. Collapsed view shows the agent name, compact runtime-confirmed model label, task, status, and current tool activity. Expanded view reveals model, thinking level when available, skills, recent tools, output preview, errors, and artifact paths. This keeps long-running Superpowers workflows readable without scrolling through verbose output.
 

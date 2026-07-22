@@ -19,6 +19,7 @@ Maintenance note: static analysis runs with `pnpm exec fallow`; keep documented 
 | `cwd`             | string                                  | parent cwd                | Working directory for the subagent. |
 | `skill`           | `string \| string[] \| false`           | agent default             | Skills to inject into the agent prompt. `false` disables all skills. |
 | `model`           | string                                  | agent default             | Override the model for this specific run. Can be a concrete ID or a tier name (`cheap`, `balanced`, `max`). |
+| `resumeSession`   | string                                  | -                         | Absolute path to a prior pi-superagents `lineage-only` `sp-implementer` session JSONL file in the current parent lineage, continued synchronously. See [Resuming a Superpowers implementer session](#resuming-a-superpowers-implementer-session). |
 | `artifacts`       | boolean                                 | `true`                    | Whether to write debug artifacts (input/output logs). |
 | `includeProgress` | boolean                                 | `false`                   | Whether to include full internal progress metadata in the result. |
 
@@ -34,7 +35,7 @@ Provide either `agent` plus `task` for a single delegation, or `tasks` for paral
 
 Subagent output is inline: the child Pi process streams assistant text back through the `subagent` tool result. The tool does not accept an output-file parameter and does not instruct Superpowers roles to write repo-root report files.
 
-> **Note:** The `subagent` tool does not accept ad-hoc extension paths at call time. Extension loading for child Pi processes is controlled through `superagents.extensions` in the global config and the `extensions` field in agent frontmatter (additive to the global list). Shared child tools are controlled through `superagents.tools`, which appends tool names or tool extension paths to every subagent after role-specific policy. Implicit Pi extension discovery is disabled by default; only configured extensions are loaded for subagents. Configured entries may be local paths or normal Pi `-e` source specs such as `npm:@scope/package`, `git:github.com/user/repo`, `https://...`, or `ssh://...`. Missing local paths return a clear error and do not spawn the child Pi process; package and remote specs are resolved by child Pi.
+> **Note:** The `subagent` tool does not accept ad-hoc extension paths at call time. Extension loading for child Pi processes is controlled through `superagents.extensions` in the global config and the `extensions` field in agent frontmatter (additive to the global list). Shared child tools are controlled through `superagents.tools`, which appends tool names or tool extension paths to every subagent after role-specific policy. Implicit Pi extension discovery is disabled by default; only configured extensions load. Pi agent extensions and project agent frontmatter `extensions:` are subject to [Project Trust](configuration.md#project-trust).
 
 ### TaskItem (for parallel tasks)
 
@@ -45,6 +46,7 @@ Subagent output is inline: the child Pi process streams assistant text back thro
 | `cwd`   | string  | Optional directory override for this specific parallel task. |
 | `model` | string  | Optional model/tier override for this task. |
 | `skill` | mixed   | Optional skill override for this task. |
+| `resumeSession` | string | Optional `sp-implementer` lineage-only session file to continue. See [Resuming a Superpowers implementer session](#resuming-a-superpowers-implementer-session). Each `resumeSession` may appear at most once per `tasks[]` array. |
 
 ## Session Mode
 
@@ -54,6 +56,24 @@ Subagent output is inline: the child Pi process streams assistant text back thro
 - **`fork`**: The child inherits the full parent conversation history as read-only context, working in its own isolated branch. Useful when the subagent genuinely needs the full session background.
 - **`standalone`**: Fully isolated session with no parent linkage or inherited context.
 
+## Resuming a Superpowers implementer session
+
+`resumeSession` continues a prior `sp-implementer` session synchronously inside the current Superpowers run. The runtime re-launches the existing JSONL session file rather than starting a fresh `sp-implementer` run, so the resumed child sees its prior turns and tools.
+
+The parameter is intentionally narrow:
+
+- **Synchronous only.** The `subagent` tool does not accept `async`, `wait`, or `collect`; `resumeSession` runs the resumed child in the same blocking call.
+- **Implementer-only.** `resumeSession` is only valid when `agent` (top-level) or `tasks[i].agent` is `sp-implementer`. The runtime rejects other agents with an explicit error.
+- **Lineage-only.** The resumed session file must have been launched with `sessionMode: "lineage-only"`. `standalone` and `fork` files are rejected.
+- **Owner-checked.** The session file must have been written by pi-superagents. The runtime checks the session header's `piSuperagents` marker for `owner: "pi-superagents"`, `agent: "sp-implementer"`, and `sessionMode: "lineage-only"`.
+- **Lineage-checked.** The session file's `parentSession` must match the absolute path of the current parent session file, so the resumed child links back into the same parent lineage.
+- **cwd-checked.** The session file's `cwd` must equal the resolved `cwd` for the current dispatch. The fix dispatch must run in the original worktree so the implementer sees the same files the reviewer reviewed.
+- **Active-use protected.** The runtime tracks resumed session files in a per-run set. Each path may appear at most once across the top-level `resumeSession` and `tasks[].resumeSession` entries; reusing a resumed file inside the same parallel request or across nested runs is rejected so two in-flight calls never share one session.
+
+Top-level `resumeSession` is only valid for single-agent `subagent` calls. Parallel `tasks[]` requests must place `resumeSession` on the specific `tasks[i]` entry, and that array may include at most one resumed implementer at a time.
+
+Typical use: the parallel SDD controller dispatches `sp-implementer` with `resumeSession` for fix loops on a single Task without spinning up a new session. See [Skills Reference](skills.md#parallel-sdd-task-scheduling) for the dispatch contract.
+
 ## Lifecycle Signals (Internal)
 
 Child processes can emit lifecycle signals (`subagent_done`, `caller_ping`) through internal tools registered through the tool policy. These tools are for bounded role completion signaling and parent request handling; they are not general-purpose delegation tools. Lifecycle signals are consumed by the parent after the child exits.
@@ -62,7 +82,7 @@ Child processes can emit lifecycle signals (`subagent_done`, `caller_ping`) thro
 
 When `artifacts` is enabled, Pi Superagents stores debugging input, output, JSONL, and metadata files in the session artifact directory. These artifacts are separate from the repository working tree and replace the older file-handoff pattern that wrote `implementer-report.md`, `spec-review.md`, or `code-review.md` into the project root.
 
-Work briefs for bounded roles are delivered as packet files under `<session-artifacts-dir>/packets/`. The runtime creates these packets before launching the child, passes the packet path to the child as its prompt, and cleans them up automatically when the child exits. The packet carries the controller's dispatch text — including the file-handoff paths (`task-<N>-brief.md`, `task-<N>-report.md`, `review-<…>.diff`) authored by the `subagent-driven-development` skill's scripts under `.superpowers/sdd/`. The extension injects no `[Read from:]`/`[Write to:]` references; the bounded SDD roles read and write those files by path, and the controller cleans them up with `rm -f` after a `DONE` review (`progress.md` is preserved).
+Work briefs for bounded roles are delivered as packet files under `<session-artifacts-dir>/packets/`. The runtime creates these packets before launching the child, passes the packet path to the child as its prompt, and cleans them up automatically when the child exits. The packet carries the controller's dispatch text — including the file-handoff paths (`task-<N>-brief.md`, `task-<N>-report.md`, `review-<…>.diff`) authored by the `subagent-driven-development` skill's scripts under `.superpowers/sdd/` — so bounded role agents read the same files the upstream skill scripts produce. The skill scripts (not the extension) are the source of those files; the extension just hands the child the paths and reads the report back.
 
 ## Review Bridge Tools
 
