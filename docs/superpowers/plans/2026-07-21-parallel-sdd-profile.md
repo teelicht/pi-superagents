@@ -804,7 +804,7 @@ git commit -m "feat: resume implementer fix sessions"
 - Consumes: Scheduling policy from Task 2, `validatePreIsolatedTaskCwds()` from Task 3, and continuation from Task 4.
 - Produces: Runtime selection between controller-owned persistent worktrees and existing automatic ephemeral worktrees, plus end-to-end regression evidence.
 
-- [ ] **Step 1: Write the failing runtime integration test**
+- [x] **Step 1: Write the failing runtime integration test**
 
 Create `test/integration/parallel-sdd-execution.test.ts` with the standard repository header and helpers from `fork-context-execution.test.ts`. The main test must:
 
@@ -882,7 +882,7 @@ void it("keeps pre-isolated task worktrees across implement review and resumed f
 
 The fixture must use real temporary Git worktrees from one parent repository, mock Pi child execution, manual Task commits, deterministic cherry-picks, and final `git worktree remove` cleanup. Also assert only approved Task commits reach the parent branch and parent `.superpowers/sdd/progress.md` survives Task cleanup.
 
-- [ ] **Step 2: Run the integration test and verify it fails**
+- [x] **Step 2: Run the integration test and verify it fails**
 
 ```bash
 node --experimental-strip-types --import ./test/support/register-loader.mjs --test test/integration/parallel-sdd-execution.test.ts
@@ -890,7 +890,7 @@ node --experimental-strip-types --import ./test/support/register-loader.mjs --te
 
 Expected: FAIL because explicit Task worktree paths are rejected while automatic worktrees are enabled.
 
-- [ ] **Step 3: Select pre-isolated or automatic worktrees in the executor**
+- [x] **Step 3: Select pre-isolated or automatic worktrees in the executor**
 
 Import `validatePreIsolatedTaskCwds` and replace the worktree setup branch with:
 
@@ -925,11 +925,11 @@ const { setup: worktreeSetup, errorResult } = createParallelWorktreeSetup(
 
 Leave existing diff capture and `finally` cleanup conditional on `worktreeSetup`. Therefore controller-owned worktrees persist, while automatic worktrees still produce patches and clean themselves.
 
-- [ ] **Step 4: Add regression coverage for ordinary ephemeral worktrees**
+- [x] **Step 4: Add regression coverage for ordinary ephemeral worktrees**
 
 In `test/integration/parallel-execution.test.ts`, retain an ordinary parallel call with no Task `cwd` and assert its automatic worktree paths are removed after completion. This protects the existing default path from the pre-isolated bypass.
 
-- [ ] **Step 5: Run worktree, continuation, and parallel integration tests**
+- [x] **Step 5: Run worktree, continuation, and parallel integration tests**
 
 ```bash
 node --experimental-strip-types --import ./test/support/register-loader.mjs --test \
@@ -942,7 +942,7 @@ node --experimental-strip-types --import ./test/support/register-loader.mjs --te
 
 Expected: PASS with zero failures.
 
-- [ ] **Step 6: Commit runtime integration**
+- [x] **Step 6: Commit runtime integration**
 
 ```bash
 git add src/execution/subagent-executor.ts test/integration/parallel-execution.test.ts test/integration/parallel-sdd-execution.test.ts
