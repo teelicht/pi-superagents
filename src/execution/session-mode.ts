@@ -19,10 +19,10 @@ import * as path from "node:path";
 import type { SessionMode, TaskDeliveryMode } from "../shared/types.ts";
 
 /** Pi-superagents marker block attached to every seeded lineage-only session header. */
-export const PI_SUPERAGENTS_OWNER = "pi-superagents";
+const PI_SUPERAGENTS_OWNER = "pi-superagents";
 
 /** The bounded implementer role authorized to resume lineage-only sessions. */
-export const RESUMABLE_IMPLEMENTER_AGENT = "sp-implementer";
+const RESUMABLE_IMPLEMENTER_AGENT = "sp-implementer";
 
 export interface SessionLaunchManager {
 	getSessionFile(): string | undefined;
