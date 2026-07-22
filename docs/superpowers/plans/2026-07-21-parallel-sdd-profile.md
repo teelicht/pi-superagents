@@ -1039,14 +1039,14 @@ Expected: no whitespace errors; only intended implementation and documentation f
 
 ## Final Verification Checklist
 
-- [ ] `taskScheduling` is config-only and defaults to sequential.
-- [ ] Parallel mode preflight requires subagents and worktrees.
-- [ ] Root policy composes existing upstream skills and dispatches whole Tasks, never Steps.
-- [ ] Pre-isolated Task worktrees persist across implement, review, fix, and re-review calls.
-- [ ] Generic automatic worktrees remain ephemeral and tested.
-- [ ] `resumeSession` is synchronous, implementer-only, lineage-checked, cwd-checked, and active-use protected.
-- [ ] Only `sp-review` exists and it uses `max` for Task and branch scopes.
-- [ ] Implementers remain on `cheap`.
-- [ ] Task commits integrate deterministically and unsafe conflicts fall back to sequential rerun.
-- [ ] All five required user documents are current.
-- [ ] Biome, TypeScript, Fallow, unit, integration, and e2e checks pass.
+- [x] `taskScheduling` is config-only and defaults to sequential.
+- [x] Parallel mode preflight requires subagents and worktrees.
+- [x] Root policy composes existing upstream skills and dispatches whole Tasks, never Steps.
+- [x] Pre-isolated Task worktrees persist across implement, review, fix, and re-review calls.
+- [x] Generic automatic worktrees remain ephemeral and tested.
+- [x] `resumeSession` is synchronous, implementer-only, lineage-checked, cwd-checked, and active-use protected.
+- [x] Only `sp-review` exists and it uses `max` for Task and branch scopes.
+- [x] Implementers remain on `cheap`.
+- [x] Task commits integrate deterministically and unsafe conflicts fall back to sequential rerun.
+- [x] All five required user documents are current.
+- [x] Biome, TypeScript, Fallow, unit, integration, and e2e checks pass.
