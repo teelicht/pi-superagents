@@ -965,7 +965,7 @@ git commit -m "feat: preserve parallel SDD task worktrees"
 - Consumes: Final config, worktree, continuation, reviewer, and scheduling behavior from Tasks 1-5.
 - Produces: Complete user-facing contract and release-ready verification evidence.
 
-- [ ] **Step 1: Document the config-only scheduling choice**
+- [x] **Step 1: Document the config-only scheduling choice**
 
 Add this canonical example to `README.md` and `docs/configuration.md`:
 
@@ -985,7 +985,7 @@ Add this canonical example to `README.md` and `docs/configuration.md`:
 
 State that sequential is the default, scheduling is not a slash-command token, and invalid parallel/subagent/worktree combinations are rejected before dispatch.
 
-- [ ] **Step 2: Document persistent SDD worktrees and continuation**
+- [x] **Step 2: Document persistent SDD worktrees and continuation**
 
 In `docs/worktrees.md`, distinguish:
 
@@ -996,13 +996,13 @@ parallel SDD wave      → controller-owned persistent Task worktrees → review
 
 In `docs/parameters.md`, add `resumeSession` to top-level and Task-item tables. State that it accepts only a pi-superagents `lineage-only` `sp-implementer` session from the current parent lineage and must use the original worktree `cwd`.
 
-- [ ] **Step 3: Document whole-Task scheduling and the single reviewer**
+- [x] **Step 3: Document whole-Task scheduling and the single reviewer**
 
 In `docs/skills.md`, state that parallel SDD composes the three existing upstream skills, never forks or edits them, dispatches all Steps of one Task together, reviews once per Task, and runs one final branch review.
 
 Replace all live user documentation references to the old reviewer roles with `sp-review`. Add a changelog entry calling out the intentional removal with no aliases.
 
-- [ ] **Step 4: Verify live references and documentation coverage**
+- [x] **Step 4: Verify live references and documentation coverage**
 
 ```bash
 rg -n 'taskScheduling|resumeSession|sp-review' README.md docs/configuration.md docs/worktrees.md docs/parameters.md docs/skills.md
@@ -1011,7 +1011,7 @@ rg -n 'sp-spec-review|sp-code-review' src agents test README.md docs/configurati
 
 Expected: the first command finds every feature in the appropriate references; the second returns no matches.
 
-- [ ] **Step 5: Run formatting, types, static analysis, and all tests**
+- [x] **Step 5: Run formatting, types, static analysis, and all tests**
 
 ```bash
 pnpm run lint
@@ -1023,7 +1023,7 @@ pnpm run test:all
 
 Expected: the formatter reports no remaining changes on the second Biome command; every command exits 0; unit, integration, and e2e suites report zero failures.
 
-- [ ] **Step 6: Inspect the final diff and commit documentation**
+- [x] **Step 6: Inspect the final diff and commit documentation**
 
 ```bash
 git diff --check
