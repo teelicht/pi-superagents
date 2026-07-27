@@ -10,3 +10,12 @@ minimumReleaseAgeExclude:
   - '@earendil-works/pi-ai@0.80.6'
   - '@earendil-works/pi-coding-agent@0.80.6'
   - '@earendil-works/pi-tui@0.80.6'
+  - '@fallow-cli/darwin-arm64@3.8.0'
+  - '@fallow-cli/darwin-x64@3.8.0'
+  - '@fallow-cli/linux-arm64-gnu@3.8.0'
+  - '@fallow-cli/linux-arm64-musl@3.8.0'
+  - '@fallow-cli/linux-x64-gnu@3.8.0'
+  - '@fallow-cli/linux-x64-musl@3.8.0'
+  - '@fallow-cli/win32-arm64-msvc@3.8.0'
+  - '@fallow-cli/win32-x64-msvc@3.8.0'
+  - fallow@3.8.0
