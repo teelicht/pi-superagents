@@ -4,6 +4,7 @@
  * Responsibilities:
  * - verify Pi entrypoints point at the new `src/extension` files
  * - verify npm package publishing includes the directory-based layout
+ * - verify managed installs run the config migration and ship consolidated agents
  */
 
 import assert from "node:assert/strict";
@@ -85,19 +86,31 @@ void describe("package.json manifest", () => {
 		assert.match(workspaceConfig, /^ {2}protobufjs: false$/m);
 	});
 
-	void it("uses Pi 0.80.7 development dependencies", () => {
+	void it("runs install migrations and ships the consolidated reviewer", () => {
+		const packageJson = readPackageJson();
+		const scripts = (packageJson.scripts as Record<string, string> | undefined) ?? {};
+
+		assert.equal(scripts.postinstall, "node --experimental-strip-types ./scripts/migrate-package-install.ts");
+		assert.ok(fs.existsSync(path.resolve("scripts/migrate-package-install.ts")));
+		assert.ok(fs.existsSync(path.resolve("scripts/migrate-user-config.ts")));
+		assert.ok(fs.existsSync(path.resolve("agents/sp-review.md")));
+		assert.ok(!fs.existsSync(path.resolve("agents/sp-spec-review.md")));
+		assert.ok(!fs.existsSync(path.resolve("agents/sp-code-review.md")));
+	});
+
+	void it("uses Pi 0.82.1 development dependencies", () => {
 		const packageJson = readPackageJson();
 		const deps = (packageJson.devDependencies as Record<string, string> | undefined) ?? {};
 
-		assert.equal(deps["@earendil-works/pi-agent-core"], "^0.80.7");
-		assert.equal(deps["@earendil-works/pi-ai"], "^0.80.7");
-		assert.equal(deps["@earendil-works/pi-coding-agent"], "^0.80.7");
-		assert.equal(deps["@earendil-works/pi-tui"], "^0.80.7");
+		assert.equal(deps["@earendil-works/pi-agent-core"], "^0.82.1");
+		assert.equal(deps["@earendil-works/pi-ai"], "^0.82.1");
+		assert.equal(deps["@earendil-works/pi-coding-agent"], "^0.82.1");
+		assert.equal(deps["@earendil-works/pi-tui"], "^0.82.1");
 	});
 
 	void it("requires a Pi host that emits agent_settled", () => {
 		const packageJson = readPackageJson();
 		const peers = (packageJson.peerDependencies as Record<string, string> | undefined) ?? {};
-		assert.equal(peers["@earendil-works/pi-coding-agent"], "^0.80.7");
+		assert.equal(peers["@earendil-works/pi-coding-agent"], "^0.82.1");
 	});
 });
