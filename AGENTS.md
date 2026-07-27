@@ -20,7 +20,8 @@ These are required to satisfy the TypeScript-first and quality-gate requirements
 
 # Documentation Rules
 
-Every source file and every non-trivial function must include documentation headers.
+- Every source file and every non-trivial function must include documentation headers.
+- Keep the `README.md` short and focus on core aspects. Everything esle must go into to files in `docs`.
 
 ## File header (required)
 

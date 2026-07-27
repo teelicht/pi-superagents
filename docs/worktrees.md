@@ -2,7 +2,9 @@
 
 When multiple agents run in parallel against the same repository, they can clobber each other's file changes. Pi Superagents can automatically give each parallel agent its own git worktree branched from HEAD to provide perfect isolation.
 
-This reference targets Pi `^0.80.7`.
+This reference targets Pi `^0.82.1`.
+
+Worktree automation starts only from an explicit Pi Superagents workflow while the default `superagents.optInOnly: true` setting is active; ordinary Pi requests do not enter Superpowers through the upstream automatic bootstrap hook.
 
 > **Relationship to the `using-git-worktrees` skill:** that skill guides the root-session agent in setting up *one* isolated workspace for its own feature work (detect existing isolation, prefer native tools, fall back to `git worktree add`, verify `.gitignore`). This extension's worktree isolation is a separate concern: it programmatically creates *N* parallel worktrees for concurrent subagent runs. The runtime now mirrors the skill's directory convention (default `.worktrees/` at the repository root, the `using-git-worktrees` skill's `git worktree add` invocation, and the auto-`.gitignore` safety rule), but the SDD Task-worktree lifecycle stays under the controller's control.
 
@@ -18,7 +20,7 @@ parallel SDD wave      → controller-owned persistent Task worktrees → review
 ```
 
 - **Ordinary parallel call.** Triggered when a Superpowers command runs `tasks: [...]` against an existing command preset. The extension creates a fresh worktree per task under the configured worktree root, captures each agent's diff as `.patch` artifacts, and cleans up the worktree and temporary branch automatically before the parent run finishes.
-- **Parallel SDD wave.** Triggered when `/sp-implement` is configured with `taskScheduling: "parallel"`, `useSubagents: true`, and `worktrees.enabled: true`. The root session controller pre-creates one persistent worktree per Task under the configured worktree root, dispatches the Task's `sp-implementer` into that worktree, reuses the same worktree for the per-Task `sp-review`, the implementer fix dispatch via `resumeSession`, and the re-review, and finally cherry-picks the approved commit into the parent branch. The controller owns cleanup; the extension only validates the worktree is safe to enter. See the [Skills Reference](skills.md#parallel-sdd-task-scheduling) for the dispatch contract and the [Configuration reference](configuration.md#parallel-sdd-task-scheduling) for the preflight rules.
+- **Parallel SDD wave.** Triggered by `/sp-implement-parallel`, or when another implementation command resolves `taskScheduling: "parallel"`, `useSubagents: true`, and `worktrees.enabled: true`. The root session controller pre-creates one persistent worktree per Task under the configured worktree root, dispatches the Task's `sp-implementer` into that worktree, reuses the same worktree for the per-Task `sp-review`, the implementer fix dispatch via `resumeSession`, and the re-review, and finally cherry-picks the approved commit into the parent branch. The controller owns cleanup; the extension only validates the worktree is safe to enter. See the [Skills Reference](skills.md#parallel-sdd-task-scheduling) for the dispatch contract and the [Configuration reference](configuration.md#parallel-sdd-task-scheduling) for the preflight rules.
 
 When `taskScheduling: "parallel"` is set but a worktree is unsafe to create, the controller surfaces the failure and runs the affected Task sequentially instead of silently dropping back to a different mode.
 
@@ -48,13 +50,13 @@ Example behavior-only config for `/sp-implement`:
 }
 ```
 
-Canonical parallel-SDD config for `/sp-implement` (the same preset must also flip `taskScheduling` and `useSubagents` to opt in; see the [Configuration reference](configuration.md#parallel-sdd-task-scheduling)):
+Bundled parallel-SDD config for `/sp-implement-parallel`:
 
 ```json
 {
   "superagents": {
     "commands": {
-      "sp-implement": {
+      "sp-implement-parallel": {
         "taskScheduling": "parallel",
         "useSubagents": true,
         "worktrees": { "enabled": true }
@@ -64,11 +66,15 @@ Canonical parallel-SDD config for `/sp-implement` (the same preset must also fli
 }
 ```
 
-When resolved worktree config is `enabled: false`, Superpowers treats that as a hard off switch. Root prompts must not ask for worktrees, and Superpowers subagent runs ignore `worktree: true` requests.
+During upgrades, a custom `sp-implement.worktrees.root` is copied to a missing
+`sp-implement-parallel` preset automatically. At runtime, an enabled parallel
+or custom command worktree policy takes precedence over the sequential
+`sp-implement` hard-off; `sp-implement.worktrees.enabled: false` remains the
+fallback only when no command enables worktrees.
 
 After parallel completion, per-agent diff stats are appended to the output. Full patch files are written to the artifacts directory.
 
-While parallel worktree runs are active, inline subagent rows and `/subagents-status` show each delegated subagent separately, including its runtime-confirmed model, effective thinking level when available, resolved skills, and any missing-skill warnings. Worktree isolation does not change entrypoint or role skill resolution; for example, `/sp-implement` root lifecycle skills and `sp-debug`'s `systematic-debugging` assignment are resolved before any child process runs in a worktree.
+While parallel worktree runs are active, inline subagent rows and `/subagents-status` show each delegated subagent separately, including its runtime-confirmed model, effective thinking level when available, resolved skills, and any missing-skill warnings. Worktree isolation does not change entrypoint or role skill resolution; implementation root lifecycle skills and `sp-debug`'s `systematic-debugging` assignment are resolved before any child process runs in a worktree.
 
 Agent reports themselves are returned inline through Pi tool results. Worktree isolation does not require `implementer-report.md` or `code-review.md` files in the worktree. Worktree isolation and session mode are separate concerns: packet handoff files live in the session artifact directory, not inside the worktree, and are cleaned up by the runtime.
 

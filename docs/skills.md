@@ -2,7 +2,7 @@
 
 Skills are specialized instructions loaded from `SKILL.md` files and injected into the agent's system prompt.
 
-This reference targets Pi `^0.80.7`.
+This reference targets Pi `^0.82.1`.
 
 Maintenance note: skill discovery helpers are exercised through dynamic tests and plugin entrypoints. `.fallowrc.json` documents the small export surface that remains intentionally available for those dynamic paths.
 
@@ -116,13 +116,13 @@ Bounded role agents (delegated to subagents) support:
 
 The `skills` field in entrypoint agents is reserved for root lifecycle skills. These are skills with explicit trigger points (e.g., `verification-before-completion`, `receiving-code-review`, `finishing-a-development-branch`) that apply to the root session only.
 
-Superpowers skill selection is trigger-driven via `using-superpowers`. Do not preload domain skills through command config. Entrypoint `skills` are not overlay replacements — they are lifecycle/root skills with explicit trigger points.
+Superpowers skill selection inside an explicit workflow is trigger-driven via `using-superpowers`. With the default `superagents.optInOnly: true`, ordinary prompts do not advertise that bootstrap skill and the obra/superpowers Pi package's automatic bootstrap hook is neutralized. `/sp-*` and explicit `/skill:*` commands still resolve the installed upstream skills. Do not preload domain skills through command config. Entrypoint `skills` are not overlay replacements — they are lifecycle/root skills with explicit trigger points.
 
 Command-scoped workflow toggles can be changed through `/sp-settings`; model tier edits in the same overlay use a type-to-search picker backed by PI's authenticated model registry. The picker accepts `q` as search text, scrolls through all filtered results rather than only the visible page, and is followed by a thinking-level picker for the tier.
 
 Bundled entrypoint assignments:
 
-- `agents/sp-implement.md` assigns `verification-before-completion`, `receiving-code-review`, and `finishing-a-development-branch` as root lifecycle skills.
+- `agents/sp-implement.md` and `agents/sp-implement-parallel.md` assign `verification-before-completion`, `receiving-code-review`, and `finishing-a-development-branch` as root lifecycle skills.
 - `agents/sp-brainstorm.md` and `agents/sp-plan.md` assign their respective entry skills.
 
 Bundled role assignments:
@@ -133,6 +133,10 @@ Bundled role assignments:
   - `Review scope: task` — review one Task (brief, implementer report, review-package diff).
   - `Review scope: branch` — review the integrated branch (design/spec, plan, branch review package, verification evidence, Minor-findings ledger).
   The reviewer returns one of `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`, and Critical/Important findings block approval.
+
+Install upgrades rename user-level `sp-spec-review.md` and
+`sp-code-review.md` files to timestamped backups. This prevents stale user
+agents from surviving beside the consolidated bundled `sp-review` role.
 
 ### Re-arming after compaction
 
@@ -146,7 +150,7 @@ in sessions where a Superpowers command has been explicitly activated.
 
 ## Parallel SDD Task Scheduling
 
-When `/sp-implement` is configured with `taskScheduling: "parallel"`, `useSubagents: true`, and `worktrees.enabled: true`, the root session controller drives the implementation plan in waves. The controller composes the three existing upstream Superpowers skills — `subagent-driven-development`, `dispatching-parallel-agents`, and `using-git-worktrees` — **without forking or editing them**:
+When `/sp-implement-parallel` runs—or another implementation command resolves `taskScheduling: "parallel"`, `useSubagents: true`, and `worktrees.enabled: true`—the root session controller drives the implementation plan in waves. The controller composes the three existing upstream Superpowers skills — `subagent-driven-development`, `dispatching-parallel-agents`, and `using-git-worktrees` — **without forking or editing them**:
 
 - `subagent-driven-development` provides the file-handoff convention (brief/report/diff by path under `.superpowers/sdd/`).
 - `dispatching-parallel-agents` provides the wave-building and dependency-ready heuristics.

@@ -2,7 +2,7 @@
 
 `@teelicht/pi-superagents` loads configuration in two layers: **bundled defaults** and **user overrides**.
 
-This reference targets Pi `^0.80.7`.
+This reference targets Pi `^0.82.1`.
 
 Bundled defaults ship inside the package and provide sensible baseline values. User overrides live in:
 
@@ -20,6 +20,21 @@ At runtime, user config merges on top of the bundled defaults. You only need to 
 
 > [!NOTE]
 > `config.example.json` is illustrative only. Copy only the settings you want to change into `config.json`; unspecified fields are filled in from the bundled defaults.
+
+## Install-time upgrades
+
+Normal installs and `pnpm install:local` safely migrate existing user config.
+Before writing, the installer creates `config.json.bak-<timestamp>`. It then:
+
+- adds the bundled `sp-implement-parallel` preset when missing;
+- moves legacy `taskScheduling: "parallel"` behavior from `sp-implement` to
+  `sp-implement-parallel`, leaving `sp-implement` sequential;
+- carries a custom `worktrees.root` into the parallel preset;
+- removes obsolete `sp-spec-review` and `sp-code-review` command presets.
+
+Already-migrated configs are left byte-for-byte unchanged. Invalid JSON fails
+the install migration instead of being overwritten. The same migration can be
+run explicitly with `npx @teelicht/pi-superagents --migrate-config`.
 
 ## Validation
 
@@ -43,15 +58,16 @@ The repository includes `.fallowrc.json` for `pnpm exec fallow`. It keeps dead-c
 
 ## Built-in Commands
 
-Slash commands are registered from interactive entrypoint agent frontmatter, not generated from `config.json`. The bundled defaults include behavior flags for three built-in commands:
+Slash commands are registered from interactive entrypoint agent frontmatter, not generated from `config.json`. The bundled defaults include behavior flags for four built-in commands:
 
 | Command | Policy Settings |
 |---|---|
 | `sp-implement` | `taskScheduling: "sequential"`, `useSubagents: true`, `useTestDrivenDevelopment: true`, `useBranches: false`, `worktrees: { enabled: false }` |
+| `sp-implement-parallel` | `taskScheduling: "parallel"`, `useSubagents: true`, `useTestDrivenDevelopment: true`, `useBranches: false`, `worktrees: { enabled: true }` |
 | `sp-brainstorm` | `usePlannotator: true` |
 | `sp-plan` | `usePlannotator: true` |
 
-Each built-in command has a corresponding bundled interactive entrypoint agent file (`agents/sp-implement.md`, `agents/sp-brainstorm.md`, `agents/sp-plan.md`). The entrypoint agent file provides command metadata (name, description, command name, entry skill) and root lifecycle skills. The command preset in `config.json` only controls runtime behavior flags.
+Each built-in command has a corresponding bundled interactive entrypoint agent file, including `agents/sp-implement.md` and `agents/sp-implement-parallel.md`. The entrypoint agent file provides command metadata (name, description, command name, entry skill) and root lifecycle skills. The command preset in `config.json` only controls runtime behavior flags.
 
 Built-in command behavior can be augmented or overridden by user config. Settings in your `config.json` are deep-merged on top of the bundled defaults: any fields you specify replace the corresponding built-in values, while unspecified fields remain at their built-in defaults. To create a variant of a built-in command, reference the built-in command name in your `commands` map and override only the fields you need. Use a different command name only when you also create a matching interactive entrypoint agent.
 
@@ -88,6 +104,7 @@ Configures the Superpowers workflow.
 | `tools` | Array of tool names or tool extension paths appended to every subagent after role-specific tool policy. Use this for shared tools you do not want to repeat in every agent frontmatter file. |
 | `modelTiers` | Maps abstract tier names (`cheap`, `balanced`, `max`, plus any custom tiers) to concrete model configs. |
 | `interceptSkillCommands` | List of skill names intercepted for Superpowers entry (`brainstorming`, `writing-plans`). |
+| `optInOnly` | When `true` (default), hides `using-superpowers` from ordinary model skill selection and neutralizes obra/superpowers' automatic Pi bootstrap hook. Explicit `/sp-*` and `/skill:*` commands still work. |
 | `superpowersSkills` | List of Superpowers process skill names (bundled default, not user-configurable). |
 
 ### Extension Allowlist
@@ -188,17 +205,17 @@ Command metadata (`description`, `entrySkill`) was moved to entrypoint agent fro
 
 ## Parallel SDD Task Scheduling
 
-The `taskScheduling` preset switches `/sp-implement` between sequential and parallel Task execution. The mode is **config-only** — there is no inline token for it on the slash command — and the bundled default is `"sequential"`, so existing installs keep their current behaviour without changes.
+`/sp-implement` has a bundled sequential preset. `/sp-implement-parallel` has a bundled parallel preset. `taskScheduling` remains **config-only** per command — there is no inline token for switching modes.
 
-Parallel mode is rejected before dispatch if the preset is incomplete. To opt in, the same command preset must also enable `useSubagents: true` and `worktrees.enabled: true`; if either is missing or false, the controller surfaces a clear preflight error and the run never starts.
+Parallel mode is rejected before dispatch if the active command preset does not also enable `useSubagents: true` and `worktrees.enabled: true`; the controller surfaces a clear preflight error and the run never starts.
 
-Canonical example for `/sp-implement`:
+Bundled `/sp-implement-parallel` preset:
 
 ```json
 {
   "superagents": {
     "commands": {
-      "sp-implement": {
+      "sp-implement-parallel": {
         "taskScheduling": "parallel",
         "useSubagents": true,
         "worktrees": { "enabled": true }
@@ -329,6 +346,22 @@ You can edit model tier mappings during an active PI session with `/sp-settings`
 
 `/sp-settings` also edits command-scoped workflow toggles. Use `c` to select a command, then toggle `p` for Plannotator, `s` for subagents, `t` for TDD, or `w` for worktrees on that selected command preset. This avoids writing Plannotator or TDD settings into unrelated command presets.
 
+## Opt-in-only Superpowers
+
+Superpowers activation is explicit by default:
+
+```json
+{
+  "superagents": {
+    "optInOnly": true
+  }
+}
+```
+
+With this setting, Pi does not advertise `using-superpowers` to the model during ordinary requests. If `git:github.com/obra/superpowers` is also installed as a Pi package, Pi Superagents replaces its automatic `using-superpowers` bootstrap with a hidden opt-in guard regardless of extension load order. The upstream skills remain installed and available to `/sp-*` and `/skill:*` commands; no upstream files or Pi package settings are changed.
+
+Set `optInOnly` to `false` to restore Pi's normal model-driven skill visibility and allow the upstream automatic bootstrap hook to run.
+
 ## Direct Skill Interception
 
 Route skill commands through Superpowers:
@@ -411,7 +444,17 @@ Run implementation through the Superpowers workflow:
 
 Root prompts now instruct delegated Superpowers calls to pass the resolved `useTestDrivenDevelopment` value explicitly. This prevents custom commands such as `sp-lean` from accidentally inheriting another command's TDD setting when they delegate to `sp-implementer`. If a direct `subagent` tool call omits the parameter entirely, the runtime does not inject TDD by default.
 
-The Task scheduling mode for `/sp-implement` is **config-only** via the `taskScheduling` preset. It is not a slash-command token and cannot be toggled inline. See [Parallel SDD Task Scheduling](#parallel-sdd-task-scheduling) for the parallel opt-in and preflight rules.
+`/sp-implement` stays sequential by default. The scheduling mode is not an inline token.
+
+### `/sp-implement-parallel`
+
+Run dependency-ready implementation Tasks in isolated worktrees:
+
+```text
+/sp-implement-parallel implement the approved plan
+```
+
+The bundled preset enables parallel scheduling, subagents, TDD, and worktrees. See [Parallel SDD Task Scheduling](#parallel-sdd-task-scheduling) for the dispatch and preflight rules.
 
 ### `/sp-brainstorm`
 
