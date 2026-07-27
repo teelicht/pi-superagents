@@ -16,7 +16,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, describe, it } from "node:test";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { type ExtensionAPI, formatSkillsForPrompt } from "@earendil-works/pi-coding-agent";
 import { registerCompactionDurabilityHandlers } from "../../src/extension/compaction-durability.ts";
 import { clearSkillCache } from "../../src/shared/skills.ts";
 import type { SubagentState } from "../../src/shared/types.ts";
@@ -266,6 +266,39 @@ async function loadExtensionWithBrainstormConfig(tempDirs: string[], config: unk
 	return { mock, cwd: home };
 }
 
+/**
+ * Apply captured before-agent-start handlers using Pi's chained system-prompt semantics.
+ *
+ * @param handlers Captured extension lifecycle handlers.
+ * @param systemPrompt Initial Pi system prompt.
+ * @param skills Loaded Pi skill metadata exposed to handlers.
+ * @returns Final system prompt after every registered handler.
+ */
+function applyBeforeAgentStartHandlers(handlers: Map<string, LifecycleHandler[]>, systemPrompt: string, skills: unknown[]): string {
+	let current = systemPrompt;
+	for (const handler of handlers.get("before_agent_start") ?? []) {
+		const result = handler({ prompt: "ordinary request", systemPrompt: current, systemPromptOptions: { skills } }) as { systemPrompt?: string } | undefined;
+		if (result?.systemPrompt) current = result.systemPrompt;
+	}
+	return current;
+}
+
+/**
+ * Apply captured context handlers using Pi's chained-message semantics.
+ *
+ * @param handlers Captured extension lifecycle handlers.
+ * @param messages Initial agent messages.
+ * @returns Final messages after every registered handler.
+ */
+function applyContextHandlers(handlers: Map<string, LifecycleHandler[]>, messages: unknown[]): unknown[] {
+	let current = messages;
+	for (const handler of handlers.get("context") ?? []) {
+		const result = handler({ messages: current }) as { messages?: unknown[] } | undefined;
+		if (result?.messages) current = result.messages;
+	}
+	return current;
+}
+
 void describe("compaction-durability wiring", () => {
 	const originalHome = process.env.HOME;
 	const originalUserProfile = process.env.USERPROFILE;
@@ -286,6 +319,89 @@ void describe("compaction-durability wiring", () => {
 		assert.ok(mock.lifecycle.get("context")?.[0], "expected context handler to be registered");
 		assert.ok(mock.lifecycle.get("agent_settled")?.[0], "expected agent_settled handler to be registered");
 		assert.equal(mock.lifecycle.has("agent_end"), false);
+	});
+
+	void it("hides using-superpowers from ordinary model skill discovery by default", async () => {
+		const { mock } = await loadExtensionWithBrainstormConfig(tempDirs, { superagents: {} });
+		const skills = [
+			{
+				name: "using-superpowers",
+				description: "Bootstrap Superpowers",
+				filePath: "/skills/using-superpowers/SKILL.md",
+				baseDir: "/skills/using-superpowers",
+				sourceInfo: { source: "test", scope: "user" },
+				disableModelInvocation: false,
+			},
+			{
+				name: "brainstorming",
+				description: "Brainstorm features",
+				filePath: "/skills/brainstorming/SKILL.md",
+				baseDir: "/skills/brainstorming",
+				sourceInfo: { source: "test", scope: "user" },
+				disableModelInvocation: false,
+			},
+		];
+		const result = applyBeforeAgentStartHandlers(mock.lifecycle, `Base prompt${formatSkillsForPrompt(skills as never)}`, skills);
+
+		assert.doesNotMatch(result, /<name>using-superpowers<\/name>/);
+		assert.match(result, /<name>brainstorming<\/name>/);
+	});
+
+	void it("replaces an upstream Superpowers bootstrap with an opt-in guard", async () => {
+		const { mock } = await loadExtensionWithBrainstormConfig(tempDirs, { superagents: {} });
+		const upstreamBootstrap = {
+			role: "user",
+			content: [
+				{
+					type: "text",
+					text: "<EXTREMELY_IMPORTANT>\nsuperpowers:using-superpowers bootstrap for pi\n\nYou have superpowers.\n</EXTREMELY_IMPORTANT>",
+				},
+			],
+			timestamp: 1,
+		};
+		const messages = applyContextHandlers(mock.lifecycle, [upstreamBootstrap, { role: "user", content: "hello" }]);
+		const serialized = JSON.stringify(messages);
+
+		assert.doesNotMatch(serialized, /You have superpowers/);
+		assert.match(serialized, /superpowers:using-superpowers bootstrap for pi/);
+		assert.match(serialized, /explicit \/sp-/);
+	});
+
+	void it("prevents a later-loaded upstream hook from injecting its bootstrap", async () => {
+		const { mock } = await loadExtensionWithBrainstormConfig(tempDirs, { superagents: {} });
+		const messages = applyContextHandlers(mock.lifecycle, [{ role: "user", content: "hello" }]);
+		const upstreamWouldInject = !JSON.stringify(messages).includes("superpowers:using-superpowers bootstrap for pi");
+
+		assert.equal(upstreamWouldInject, false);
+	});
+
+	void it("restores normal model visibility and context when opt-in-only mode is disabled", async () => {
+		const { mock } = await loadExtensionWithBrainstormConfig(tempDirs, { superagents: { optInOnly: false } });
+		const skills = [
+			{
+				name: "using-superpowers",
+				description: "Bootstrap Superpowers",
+				filePath: "/skills/using-superpowers/SKILL.md",
+				baseDir: "/skills/using-superpowers",
+				sourceInfo: { source: "test", scope: "user" },
+				disableModelInvocation: false,
+			},
+		];
+		const systemPrompt = `Base prompt${formatSkillsForPrompt(skills as never)}`;
+
+		assert.match(applyBeforeAgentStartHandlers(mock.lifecycle, systemPrompt, skills), /<name>using-superpowers<\/name>/);
+		assert.deepEqual(applyContextHandlers(mock.lifecycle, [{ role: "user", content: "hello" }]), [{ role: "user", content: "hello" }]);
+	});
+
+	void it("preserves user messages that merely quote the upstream marker", async () => {
+		const { mock } = await loadExtensionWithBrainstormConfig(tempDirs, { superagents: {} });
+		const quoted = {
+			role: "user",
+			content: [{ type: "text", text: "Why does superpowers:using-superpowers bootstrap for pi exist?" }],
+		};
+		const messages = applyContextHandlers(mock.lifecycle, [quoted]);
+
+		assert.ok(messages.includes(quoted));
 	});
 
 	void it("/sp-brainstorm dispatch arms full re-injection after threshold compaction", async () => {

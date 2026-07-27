@@ -8,15 +8,19 @@
  *   npx @teelicht/pi-superagents --remove # Remove the extension
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
+import { fileURLToPath } from "node:url";
 
 const EXTENSION_DIR = path.join(os.homedir(), ".pi", "agent", "extensions", "subagent");
 const USER_CONFIG_PATH = path.join(EXTENSION_DIR, "config.json");
 const DEFAULT_CONFIG_PATH = path.join(EXTENSION_DIR, "default-config.json");
 const EXAMPLE_CONFIG_PATH = path.join(EXTENSION_DIR, "config.example.json");
+const REVIEW_AGENT_PATH = path.join(EXTENSION_DIR, "agents", "sp-review.md");
+const MIGRATION_SCRIPT_PATH = fileURLToPath(new URL("./scripts/migrate-user-config.ts", import.meta.url));
+const USER_AGENT_DIRS = [path.join(os.homedir(), ".pi", "agent", "agents"), path.join(os.homedir(), ".agents")];
 const REPO_URL = "https://github.com/teelicht/pi-superagents.git";
 
 const args = process.argv.slice(2);
@@ -65,8 +69,8 @@ if (isCheckConfig) {
 
 if (isMigrateConfig) {
 	try {
-		const result = migrateUserConfigForInstall();
-		console.log(result.message);
+		const result = runInstallMigrations();
+		console.log(result.changes.length > 0 ? result.changes.join("\n") : "User config already current.");
 		process.exit(result.changed ? 0 : 1);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
@@ -121,22 +125,28 @@ function validateUserConfigForInstall() {
 }
 
 /**
- * Replace an unchanged copied default config with an empty override.
+ * Run the typed migration bridge from the npm-compatible JavaScript installer.
  *
- * @returns Migration result for installer output.
+ * The installer remains `.mjs` so Node can execute the package bin directly;
+ * application migration logic stays TypeScript and runs with Node type stripping.
+ *
+ * @returns Parsed migration result.
+ * @throws When the migration subprocess fails or returns invalid JSON.
  */
-function migrateUserConfigForInstall() {
-	if (!fs.existsSync(USER_CONFIG_PATH)) return { changed: false, message: "config.json does not exist." };
-	if (!fs.existsSync(DEFAULT_CONFIG_PATH)) return { changed: false, message: "default-config.json is missing; cannot compare safely." };
-	const parsed = JSON.parse(fs.readFileSync(USER_CONFIG_PATH, "utf-8"));
-	const defaults = JSON.parse(fs.readFileSync(DEFAULT_CONFIG_PATH, "utf-8"));
-	if (JSON.stringify(parsed) !== JSON.stringify(defaults)) {
-		return { changed: false, message: "No safe migration is available. Edit config.json manually using config.example.json." };
-	}
-	const backupPath = `${USER_CONFIG_PATH}.bak-${Date.now()}`;
-	fs.copyFileSync(USER_CONFIG_PATH, backupPath);
-	fs.writeFileSync(USER_CONFIG_PATH, "{}\n", "utf-8");
-	return { changed: true, message: `Migrated config.json to {}; backup written to ${backupPath}` };
+function runInstallMigrations() {
+	const stdout = execFileSync(
+		process.execPath,
+		[
+			"--experimental-strip-types",
+			MIGRATION_SCRIPT_PATH,
+			USER_CONFIG_PATH,
+			DEFAULT_CONFIG_PATH,
+			REVIEW_AGENT_PATH,
+			...USER_AGENT_DIRS,
+		],
+		{ encoding: "utf-8" },
+	);
+	return JSON.parse(stdout);
 }
 
 // Install
@@ -179,6 +189,14 @@ if (fs.existsSync(EXTENSION_DIR)) {
 }
 
 const createdUserConfig = ensureUserConfig();
+let migrationResult;
+try {
+	migrationResult = runInstallMigrations();
+} catch (error) {
+	const message = error instanceof Error ? error.message : String(error);
+	console.error(`Failed to migrate existing pi-superagents settings: ${message}`);
+	process.exit(1);
+}
 const installDiagnostics = validateUserConfigForInstall();
 
 console.log(`
@@ -189,6 +207,7 @@ The extension is now available in pi. Tools added:
 Documentation: ${EXTENSION_DIR}/README.md
 Config override file: ${USER_CONFIG_PATH}${createdUserConfig ? " (created from defaults)" : ""}
 Config examples:       ${EXAMPLE_CONFIG_PATH}
+Install migrations:    ${migrationResult.changes.length > 0 ? migrationResult.changes.join("; ") : "already current"}
 `);
 
 if (installDiagnostics.errors.length || installDiagnostics.warnings.length) {

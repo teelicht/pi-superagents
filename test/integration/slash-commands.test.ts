@@ -3,7 +3,7 @@
  *
  * Responsibilities:
  * - verify only Superpowers commands and configured custom commands are registered
- * - verify /sp-implement sends a root-session prompt with resolved defaults
+ * - verify sequential and parallel implementation commands resolve their bundled defaults
  * - verify custom commands apply presets and inline tokens override them
  * - verify /subagents-status, ctrl+alt+s, and /sp-settings open their respective overlays
  * - verify config-gated refusal blocks execution
@@ -241,6 +241,7 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		});
 		registerSlashCommands!(pi, createState(process.cwd()), config);
 		assert.ok(commands.has("sp-implement"), "expected /sp-implement to be registered");
+		assert.ok(commands.has("sp-implement-parallel"), "expected /sp-implement-parallel to be registered");
 		assert.ok(commands.has("sp-brainstorm"), "expected /sp-brainstorm to be registered");
 		assert.ok(commands.has("sp-plan"), "expected /sp-plan to be registered");
 		assert.ok(commands.has("subagents-status"), "expected /subagents-status to be registered");
@@ -254,6 +255,24 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.ok(!commands.has("parallel"), "expected /parallel to NOT be registered");
 		assert.ok(!commands.has("agents"), "expected /agents to NOT be registered");
 		assert.match(shortcuts.get("ctrl+alt+s")!.description ?? "", /subagents status/i);
+	});
+
+	void it("/sp-implement-parallel sends the bundled parallel profile", async () => {
+		const cwd = createSkillFixtureCwd();
+		const { commands, userMessages, pi } = createPiHarness();
+
+		registerSlashCommands!(pi, createState(cwd), createEffectiveConfig());
+		await commands.get("sp-implement-parallel")!.handler("implement auth fix", createCommandContext({ cwd }));
+
+		assert.equal(userMessages.length, 1);
+		const prompt = String(userMessages[0].content);
+		assert.match(prompt, /taskScheduling:\s*parallel/);
+		assert.match(prompt, /useSubagents:\s*true/);
+		assert.match(prompt, /useTestDrivenDevelopment:\s*true/);
+		assert.match(prompt, /worktrees\.enabled:\s*true/);
+		assert.match(prompt, /verification-before-completion/);
+		assert.match(prompt, /receiving-code-review/);
+		assert.match(prompt, /finishing-a-development-branch/);
 	});
 
 	void it("/sp-implement includes the plannotator review contract when enabled", async () => {
@@ -371,6 +390,7 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		assert.equal(userMessages.length, 1);
 		const prompt = String(userMessages[0].content);
 		assert.match(prompt, /workflow:\s*"superpowers"/);
+		assert.match(prompt, /taskScheduling:\s*sequential/);
 		assert.match(prompt, /useSubagents:\s*true/);
 		assert.match(prompt, /useTestDrivenDevelopment:\s*true/);
 		assert.match(prompt, /worktrees\.enabled:\s*false/);

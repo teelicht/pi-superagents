@@ -10,6 +10,13 @@
         "useBranches": false,
         "worktrees": { "enabled": false, "root": null }
       },
+      "sp-implement-parallel": {
+        "taskScheduling": "parallel",
+        "useSubagents": true,
+        "useTestDrivenDevelopment": true,
+        "useBranches": false,
+        "worktrees": { "enabled": true, "root": null }
+      },
       "sp-brainstorm": {
         "usePlannotator": true
       },
@@ -19,19 +26,19 @@
     },
     "modelTiers": {
       "cheap": {
-        "model": "opencode-go/minimax-m2.7",
-        "thinking": "low"
+        "model": "opencode-go/minimax-m3"
       },
       "balanced": {
-        "model": "opencode-go/glm-5.1",
+        "model": "opencode-go/glm-5.2",
         "thinking": "high"
       },
       "max": {
-        "model": "openai/gpt-5.5",
-        "thinking": "medium"
+        "model": "openai/gpt-5.6-sol",
+        "thinking": "high"
       }
     },
     "interceptSkillCommands": [],
+    "optInOnly": true,
     "superpowersSkills": [
       "using-superpowers",
       "brainstorming",

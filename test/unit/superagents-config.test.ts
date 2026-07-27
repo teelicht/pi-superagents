@@ -71,6 +71,36 @@ void describe("superagents config helpers", () => {
 	});
 
 	/**
+	 * Verifies the bundled parallel command takes precedence over the sequential
+	 * command's disabled worktree setting.
+	 *
+	 * @returns Nothing; asserts parallel command worktree settings are selected.
+	 */
+	void it("uses enabled sp-implement-parallel worktrees over sequential defaults", () => {
+		const config = {
+			superagents: {
+				commands: {
+					"sp-implement": { worktrees: { enabled: false, root: null } },
+					"sp-implement-parallel": { worktrees: { enabled: true, root: ".worktrees" } },
+				},
+			},
+		};
+
+		assert.equal(resolveSuperagentWorktreeEnabled(undefined, "superpowers", config), true);
+		assert.deepEqual(
+			resolveSuperagentWorktreeCreateOptions({
+				workflow: "superpowers",
+				config,
+				agents: ["sp-implementer", "sp-review"],
+			}),
+			{
+				agents: ["sp-implementer", "sp-review"],
+				rootDir: ".worktrees",
+			},
+		);
+	});
+
+	/**
 	 * Verifies worktree create options are scoped to the Superpowers workflow.
 	 *
 	 * @returns Nothing; asserts resolved createWorktrees options.

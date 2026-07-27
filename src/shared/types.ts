@@ -440,6 +440,8 @@ export interface SuperpowersSettings {
 	commands?: Record<string, SuperpowersCommandPreset>;
 	modelTiers?: Record<string, ModelTierSetting>;
 	interceptSkillCommands?: string[];
+	/** Require explicit `/sp-*` or `/skill:*` activation instead of automatic using-superpowers bootstrap. */
+	optInOnly?: boolean;
 	superpowersSkills?: string[];
 	/** Global extensions applied to all subagent runs before agent-specific extensions. */
 	extensions?: string[];

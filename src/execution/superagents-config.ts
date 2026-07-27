@@ -14,7 +14,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import type { AgentSource } from "../agents/agents.ts";
-import type { ExtensionConfig, WorkflowMode } from "../shared/types.ts";
+import type { ExtensionConfig, SuperpowersCommandWorktreeSettings, WorkflowMode } from "../shared/types.ts";
 import type { CreateWorktreesOptions } from "./worktree.ts";
 
 /**
@@ -28,6 +28,25 @@ export function getSuperagentSettings(config: ExtensionConfig): ExtensionConfig[
 }
 
 /**
+ * Select the worktree policy used by Superpowers tool calls.
+ *
+ * Enabled command presets take precedence so the bundled parallel command is
+ * not disabled by the sequential command's explicit hard-off. The sequential
+ * preset remains the fallback for installations without a parallel command.
+ *
+ * @param config Extension config containing command-scoped worktree settings.
+ * @returns Selected worktree settings, if configured.
+ */
+function resolveSuperagentWorktreeSettings(config: ExtensionConfig): SuperpowersCommandWorktreeSettings | undefined {
+	const commands = config.superagents?.commands;
+	const parallel = commands?.["sp-implement-parallel"]?.worktrees;
+	if (parallel?.enabled === true) return parallel;
+
+	const enabled = Object.values(commands ?? {}).find((preset) => preset.worktrees?.enabled === true)?.worktrees;
+	return enabled ?? commands?.["sp-implement"]?.worktrees;
+}
+
+/**
  * Resolve the effective default worktree flag for a run.
  *
  * Inputs/outputs:
@@ -36,7 +55,8 @@ export function getSuperagentSettings(config: ExtensionConfig): ExtensionConfig[
  *   explicit value when present or the Superpowers default
  *
  * Invariants:
- * - `superagents.commands["sp-implement"].worktrees.enabled: false` is a hard off switch for Superpowers
+ * - an enabled parallel/custom command takes precedence over sequential defaults
+ * - `sp-implement.worktrees.enabled: false` remains a hard off when no command enables worktrees
  * - only the explicit Superpowers workflow gets a config-driven default
  * - default workflow runs preserve caller behavior when no explicit flag is set
  *
@@ -47,12 +67,12 @@ export function getSuperagentSettings(config: ExtensionConfig): ExtensionConfig[
  */
 export function resolveSuperagentWorktreeEnabled(requested: boolean | undefined, workflow: WorkflowMode, config: ExtensionConfig): boolean | undefined {
 	if (workflow === "superpowers") {
-		const worktrees = config.superagents?.commands?.["sp-implement"]?.worktrees;
+		const worktrees = resolveSuperagentWorktreeSettings(config);
 		if (worktrees?.enabled === false) return false;
 	}
 	if (requested !== undefined) return requested;
 	if (workflow !== "superpowers") return undefined;
-	return config.superagents?.commands?.["sp-implement"]?.worktrees?.enabled ?? true;
+	return resolveSuperagentWorktreeSettings(config)?.enabled ?? true;
 }
 
 /**
@@ -65,7 +85,7 @@ export function resolveSuperagentWorktreeEnabled(requested: boolean | undefined,
 function resolveSuperagentWorktreeRuntimeOptions(workflow: WorkflowMode, config: ExtensionConfig): Omit<CreateWorktreesOptions, "agents"> {
 	if (workflow !== "superpowers") return {};
 
-	const worktrees = config.superagents?.commands?.["sp-implement"]?.worktrees;
+	const worktrees = resolveSuperagentWorktreeSettings(config);
 	const options: Omit<CreateWorktreesOptions, "agents"> = {};
 
 	if (worktrees?.root) {

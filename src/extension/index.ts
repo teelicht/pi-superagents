@@ -31,6 +31,7 @@ import { parseSuperpowersWorkflowArgs, resolveSuperpowersRunProfile } from "../s
 import { renderSubagentResult } from "../ui/render.ts";
 import { registerCompactionDurabilityHandlers } from "./compaction-durability.ts";
 import { createRuntimeConfigStore } from "./config-store.ts";
+import { registerSuperpowersOptInGuard } from "./superpowers-opt-in.ts";
 
 /**
  * Derive subagent session base directory from parent session file.
@@ -503,6 +504,7 @@ Bounded role agents are not allowed to call subagents.`,
 	// so Superpowers opt-in survives context compaction.
 	registerCompactionDurabilityHandlers(pi, state, { cwd: () => state.baseCwd });
 	const skillCommandPromptDispatcher = createSuperpowersPromptDispatcher(pi);
+	registerSuperpowersOptInGuard(pi, () => configStore.getConfig());
 
 	/**
 	 * Intercept opted-in skill commands before native Pi skill expansion.

@@ -1,7 +1,7 @@
 {
   "superagents": {
     "commands": {
-      "sp-implement": {
+      "sp-implement-parallel": {
         "taskScheduling": "parallel",
         "useSubagents": true,
         "useTestDrivenDevelopment": true,
@@ -27,7 +27,7 @@
         "thinking": "high"
       },
       "max": {
-        "model": "openai/gpt-5.5",
+        "model": "openai/gpt-5.6-sol",
         "thinking": "high"
       },
       "creative": {
@@ -35,6 +35,7 @@
         "thinking": "high"
       }
     },
-    "interceptSkillCommands": []
+    "interceptSkillCommands": [],
+    "optInOnly": true
   }
 }
