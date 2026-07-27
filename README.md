@@ -2,7 +2,7 @@
 
 [Pi agent-harness](https://pi.dev) extension to support [Superpowers](https://github.com/obra/superpowers) workflows using subagents. The official Superpowers Pi package injects the Superpowers skills into every session. By contrast, the pi-superagents extension leaves it up to the user to decide when Superpowers should be used.
 
-Current compatibility target: Pi `^0.80.7`.
+Current compatibility target: Pi `^0.82.1`.
 
 ## Features
 
@@ -23,13 +23,20 @@ pi install npm:@teelicht/pi-superagents
 ```
 
 > [!NOTE]
-> This tool requires the `superpowers` skills to be installed. Install them via [https://skills.sh/obra/superpowers](https://skills.sh/obra/superpowers). Do NOT install them for Pi specifically as the Superpowers git repo suggests! This would inject superpowers into EVERY agent session.
+> Requires the [`superpowers` skills](https://skills.sh/obra/superpowers), installable with `pi install git:github.com/obra/superpowers`.
+> `superagents.optInOnly` defaults to `true`, so Superpowers runs only through `/sp-*` or `/skill:*`. Set it to `false` to restore automatic activation.
 
 On install, `pi-superagents` creates `config.json` from the bundled defaults:
 
 ```text
 ~/.pi/agent/extensions/subagent/config.json
 ```
+
+Updates migrate existing configs in place with a timestamped backup: the
+`sp-implement-parallel` preset is added when missing, legacy parallel
+`sp-implement` settings are split into the new command, and custom worktree
+roots are retained. Obsolete user `sp-spec-review.md` and `sp-code-review.md`
+agents are backed up so the bundled consolidated `sp-review` agent is used.
 
 To remove:
 
@@ -57,13 +64,14 @@ Subagent execution is synchronous and blocking. The `subagent` tool does not acc
 
 Superpowers slash commands are registered from interactive entrypoint agent frontmatter, not generated from `config.json`. `config.json` only changes runtime behavior for commands that already have a matching entrypoint agent. Use `superagents.tools` to append shared tool names or tool extension paths to every subagent without repeating them in each agent frontmatter file.
 
-| Command                 | Description                                                                 |
-| ----------------------- | --------------------------------------------------------------------------- |
-| `/sp-brainstorm <task>` | Brainstorm a task and save a spec, optionally review it with Plannotator UI |
-| `/sp-plan <task>`       | Plan a task with optional Plannotator plan review                           |
-| `/sp-implement <task>`  | Run an implementation task through the Superpowers flow                     |
-| `/subagents-status`     | Open active and recent subagent run status, including runtime-confirmed models, thinking levels, and resolved skills |
-| `/sp-settings`          | Open superagents settings                                                   |
+| Command                          | Description                                                                 |
+| -------------------------------- | --------------------------------------------------------------------------- |
+| `/sp-brainstorm <task>`          | Brainstorm a task and save a spec, optionally review it with Plannotator UI |
+| `/sp-plan <task>`                | Plan a task with optional Plannotator plan review                           |
+| `/sp-implement <task>`           | Run an implementation task sequentially through the Superpowers flow       |
+| `/sp-implement-parallel <task>`  | Run dependency-ready implementation Tasks in isolated parallel worktrees   |
+| `/subagents-status`              | Open active and recent subagent run status, including runtime-confirmed models, thinking levels, and resolved skills |
+| `/sp-settings`                   | Open superagents settings                                                   |
 
 ### Custom Commands
 
@@ -73,7 +81,7 @@ See [Configuration](docs/configuration.md#custom-commands) for the agent frontma
 
 ### Agents
 
-The `/sp-implement` command activates a structured workflow for task execution with an interactive entrypoint agent, role-specific headless agents, model tiers, and built-in quality gates. The bundled `agents/sp-implement.md` entrypoint injects root lifecycle skills for verification, review-feedback handling, and branch finishing. The bundled `sp-debug` role injects `systematic-debugging` when delegated.
+The `/sp-implement` and `/sp-implement-parallel` commands activate the same structured implementation workflow with different bundled scheduling presets. Their entrypoints inject root lifecycle skills for verification, review-feedback handling, and branch finishing. The bundled `sp-debug` role injects `systematic-debugging` when delegated.
 
 Subagent execution remains conservative and synchronous for ordinary Superpowers workflows. There is intentionally no user-facing `async` or `blocking` switch in agent frontmatter, config, or tool parameters. Internal result ownership prevents duplicate delivery and lifecycle sidecars let child agents report intentional completion or a parent-help request without changing the normal delegation flow.
 
@@ -81,15 +89,15 @@ Subagent-driven development keeps implementer and reviewer reports inline in the
 
 ## Parallel SDD Task Scheduling
 
-`/sp-implement` plans are dispatched one **Task** at a time, where each Task is the whole numbered block of Steps from the implementation plan. The scheduling mode is **config-only** — it is not a slash-command token — and defaults to `sequential` so the bundled config is conservative.
+`/sp-implement` stays sequential. `/sp-implement-parallel` uses the same workflow with bundled `taskScheduling: "parallel"`, `useSubagents: true`, and `worktrees.enabled: true` defaults. In both modes, a **Task** is the whole numbered block of Steps from the implementation plan.
 
-To opt in to parallel Task scheduling for `/sp-implement`, enable the three required flags together in `config.json`:
+The bundled parallel preset is equivalent to:
 
 ```json
 {
   "superagents": {
     "commands": {
-      "sp-implement": {
+      "sp-implement-parallel": {
         "taskScheduling": "parallel",
         "useSubagents": true,
         "worktrees": { "enabled": true }
@@ -99,7 +107,7 @@ To opt in to parallel Task scheduling for `/sp-implement`, enable the three requ
 }
 ```
 
-Parallel scheduling is **rejected before dispatch** if the config is missing `useSubagents: true` or `worktrees.enabled: true` — the controller surfaces a clear error and the run never starts. The preflight check guarantees every parallel Task runs in its own pre-isolated worktree and is delegated through the `subagent` tool.
+Scheduling remains config-only per command and cannot be toggled with an inline token. Parallel scheduling is **rejected before dispatch** if the active command preset is missing `useSubagents: true` or `worktrees.enabled: true`.
 
 Under parallel scheduling, the root session composes three existing upstream Superpowers skills — `subagent-driven-development`, `dispatching-parallel-agents`, and `using-git-worktrees` — without forking or editing them. The controller builds dependency-ready waves of at most eight Tasks, creates one **persistent** worktree per Task before writers start, dispatches each Task whole (never individual Steps), runs one `sp-review` per completed Task, and integrates approved commits in Task-number order. After every Task is integrated, the controller runs one final branch-scope `sp-review`.
 

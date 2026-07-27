@@ -2,7 +2,9 @@
 
 These are the parameters the **LLM agent** passes when it calls the `subagent` tool. These parameters are used to delegate work to Superpowers role agents.
 
-This reference targets Pi `^0.80.7`.
+This reference targets Pi `^0.82.1`.
+
+These parameters apply after explicit Superpowers activation. The default `superagents.optInOnly: true` setting keeps ordinary Pi requests outside the Superpowers workflow, including when the upstream obra/superpowers Pi package is installed.
 
 Maintenance note: static analysis runs with `pnpm exec fallow`; keep documented tool parameters and shared parameter types exported only when they are part of runtime or test-facing API.
 
@@ -72,7 +74,11 @@ The parameter is intentionally narrow:
 
 Top-level `resumeSession` is only valid for single-agent `subagent` calls. Parallel `tasks[]` requests must place `resumeSession` on the specific `tasks[i]` entry, and that array may include at most one resumed implementer at a time.
 
-Typical use: the parallel SDD controller dispatches `sp-implementer` with `resumeSession` for fix loops on a single Task without spinning up a new session. See [Skills Reference](skills.md#parallel-sdd-task-scheduling) for the dispatch contract.
+Typical use: `/sp-implement-parallel` dispatches `sp-implementer` with `resumeSession` for fix loops on a single Task without spinning up a new session. See [Skills Reference](skills.md#parallel-sdd-task-scheduling) for the dispatch contract.
+
+Install upgrades also retire legacy `sp-spec-review` and `sp-code-review`
+agents. Review dispatches should use the bundled consolidated `sp-review` role
+for both task and branch scopes.
 
 ## Lifecycle Signals (Internal)
 
