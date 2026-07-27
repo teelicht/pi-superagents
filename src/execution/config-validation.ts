@@ -36,7 +36,7 @@ export interface FormatConfigDiagnosticsOptions {
 
 const TOP_LEVEL_KEYS = new Set(["superagents"]);
 
-const SUPERAGENTS_KEYS = new Set(["commands", "modelTiers", "interceptSkillCommands", "extensions", "tools", "superpowersSkills"]);
+const SUPERAGENTS_KEYS = new Set(["commands", "modelTiers", "interceptSkillCommands", "extensions", "tools", "optInOnly", "superpowersSkills"]);
 
 /** Skills that can be intercepted for direct skill command interception. */
 const SUPPORTED_INTERCEPTED_SKILLS = new Set(["brainstorming", "writing-plans"]);
@@ -386,6 +386,9 @@ function validateSuperagentsSection(diagnostics: ConfigDiagnostic[], superagents
 	}
 	if ("tools" in superagents) {
 		validateToolsSection(diagnostics, superagents.tools);
+	}
+	if ("optInOnly" in superagents && typeof superagents.optInOnly !== "boolean") {
+		pushConfigIssue(diagnostics, "superagents.optInOnly", "must be a boolean.");
 	}
 	if ("superpowersSkills" in superagents) {
 		diagnostics.push({

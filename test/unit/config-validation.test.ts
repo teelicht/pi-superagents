@@ -38,6 +38,7 @@ const defaults: ExtensionConfig = {
 			max: { model: "openai/gpt-5.4" },
 		},
 		interceptSkillCommands: [],
+		optInOnly: true,
 		superpowersSkills: [],
 		extensions: [],
 		tools: [],
@@ -477,6 +478,22 @@ void describe("config validation", () => {
 
 		assert.equal(result.blocked, false);
 		assert.deepEqual(result.config.superagents?.interceptSkillCommands, ["brainstorming"]);
+	});
+
+	void it("accepts an explicit opt-in-only override", () => {
+		const validation = validateConfigObject({ superagents: { optInOnly: false } });
+		const result = loadEffectiveConfig(defaults, { superagents: { optInOnly: false } });
+
+		assert.equal(validation.blocked, false);
+		assert.deepEqual(validation.diagnostics, []);
+		assert.equal(result.config.superagents?.optInOnly, false);
+	});
+
+	void it("rejects a non-boolean opt-in-only override", () => {
+		const result = validateConfigObject({ superagents: { optInOnly: "sometimes" } });
+
+		assert.equal(result.blocked, true);
+		assert.ok(result.diagnostics.some((diagnostic) => diagnostic.path === "superagents.optInOnly"));
 	});
 
 	// ---------------------------------------------------------------------------

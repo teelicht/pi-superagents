@@ -14,7 +14,7 @@ import { describe, it } from "node:test";
 
 const TOP_LEVEL_OPTION_KEYS = ["superagents"] as const;
 
-const SUPERAGENTS_OPTION_KEYS = ["commands", "modelTiers", "interceptSkillCommands", "extensions", "tools", "superpowersSkills"] as const;
+const SUPERAGENTS_OPTION_KEYS = ["commands", "modelTiers", "interceptSkillCommands", "extensions", "tools", "optInOnly", "superpowersSkills"] as const;
 
 /**
  * Read and parse a config JSON file from the repository root.
@@ -42,6 +42,7 @@ function assertPublicConfigSurface(config: Record<string, unknown>, bundledDefau
 		interceptSkillCommands?: unknown;
 		extensions?: unknown;
 		tools?: unknown;
+		optInOnly?: unknown;
 		superpowersSkills?: unknown;
 	};
 	const metadataKeys = Object.keys(config).filter((key) => key.startsWith("_"));
@@ -94,6 +95,7 @@ function assertPublicConfigSurface(config: Record<string, unknown>, bundledDefau
 	assert.ok(String(cheapTier.model).length > 0);
 	assert.ok(String(balancedTier.model).length > 0);
 	assert.ok(String(maxTier.model).length > 0);
+	assert.equal(superagents.optInOnly, true);
 	assert.deepEqual(metadataKeys, []);
 }
 

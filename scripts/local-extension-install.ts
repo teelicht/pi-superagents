@@ -16,6 +16,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
+import { applyInstallMigrations } from "../src/execution/config-migration.ts";
 
 export interface InstallLocalExtensionFilesOptions {
 	sourceRoot: string;
@@ -230,11 +231,18 @@ function main(argv: string[]): number {
 		targetRoot,
 		relativePaths: packagedPaths,
 	});
+	const migration = applyInstallMigrations({
+		userConfigPath: path.join(targetRoot, USER_CONFIG_FILE),
+		defaultConfigPath: path.join(targetRoot, "default-config.json"),
+		requiredReviewAgentPath: path.join(targetRoot, "agents", "sp-review.md"),
+		userAgentDirs: [path.join(os.homedir(), ".pi", "agent", "agents"), path.join(os.homedir(), ".agents")],
+	});
 
 	process.stdout.write(
 		[
 			`Installed local Pi extension refresh to ${targetRoot}`,
 			`Copied ${copiedPaths.length} packaged files from ${sourceRoot}`,
+			...(migration.changes.length > 0 ? migration.changes.map((change) => `Migrated: ${change}`) : ["User config already current."]),
 			"",
 			"Restart pi to load the refreshed extension.",
 			"",
