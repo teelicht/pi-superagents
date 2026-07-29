@@ -2,7 +2,7 @@
  * Internal CLI bridge for install-time config and review-agent migrations.
  *
  * Responsibilities:
- * - invoke the typed migration module from the plain-JavaScript npm installer
+ * - invoke the typed config migration, including explicit-only Superpowers activation
  * - emit one machine-readable JSON result for installer status output
  *
  * Important side effects:
@@ -10,7 +10,22 @@
  * - may rename obsolete user review-agent files
  */
 
-import { applyInstallMigrations } from "../src/execution/config-migration.ts";
+import { applyInstallMigrations, type ApplyInstallMigrationsResult } from "../src/execution/config-migration.ts";
+
+/**
+ * Migrate a user config, including adding explicit-only Superpowers activation when absent.
+ *
+ * @param argv User config, defaults, review agent, then zero or more user-agent directories.
+ * @returns Applied install migrations.
+ */
+function migrateUserConfig(argv: string[]): ApplyInstallMigrationsResult {
+	const [userConfigPath, defaultConfigPath, requiredReviewAgentPath, ...userAgentDirs] = argv;
+	if (!userConfigPath || !defaultConfigPath || !requiredReviewAgentPath) {
+		throw new Error("Usage: migrate-user-config.ts <config.json> <default-config.json> <sp-review.md> [user-agent-dir ...]");
+	}
+
+	return applyInstallMigrations({ userConfigPath, defaultConfigPath, requiredReviewAgentPath, userAgentDirs });
+}
 
 /**
  * Run the migration CLI using positional paths supplied by the installer.
@@ -19,17 +34,7 @@ import { applyInstallMigrations } from "../src/execution/config-migration.ts";
  * @returns Process exit code.
  */
 function main(argv: string[]): number {
-	const [userConfigPath, defaultConfigPath, requiredReviewAgentPath, ...userAgentDirs] = argv;
-	if (!userConfigPath || !defaultConfigPath || !requiredReviewAgentPath) {
-		throw new Error("Usage: migrate-user-config.ts <config.json> <default-config.json> <sp-review.md> [user-agent-dir ...]");
-	}
-
-	const result = applyInstallMigrations({
-		userConfigPath,
-		defaultConfigPath,
-		requiredReviewAgentPath,
-		userAgentDirs,
-	});
+	const result = migrateUserConfig(argv);
 	process.stdout.write(`${JSON.stringify(result)}\n`);
 	return 0;
 }

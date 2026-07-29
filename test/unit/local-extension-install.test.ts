@@ -3,7 +3,7 @@
  *
  * Responsibilities:
  * - verify installable files are copied into a Pi extension directory
- * - ensure stale files are removed when refreshing an existing install
+ * - ensure stale files are removed while user config backups are preserved
  * - keep the local debug-install workflow aligned with the package layout
  */
 
@@ -102,6 +102,7 @@ void describe("installLocalExtensionFiles", () => {
 		fs.writeFileSync(path.join(sourceRoot, "default-config.json"), '{\n  "useSubagents": false\n}\n', "utf-8");
 		fs.mkdirSync(targetRoot, { recursive: true });
 		fs.writeFileSync(path.join(targetRoot, "config.json"), '{\n  "useSubagents": true\n}\n', "utf-8");
+		fs.writeFileSync(path.join(targetRoot, "config.json.bak-1234"), '{\n  "useSubagents": false\n}\n', "utf-8");
 		fs.writeFileSync(path.join(targetRoot, "config.example.json"), '{\n  "old": true\n}\n', "utf-8");
 		fs.writeFileSync(path.join(targetRoot, "stale.ts"), "old\n", "utf-8");
 
@@ -112,6 +113,7 @@ void describe("installLocalExtensionFiles", () => {
 		});
 
 		assert.equal(fs.readFileSync(path.join(targetRoot, "config.json"), "utf-8"), '{\n  "useSubagents": true\n}\n');
+		assert.equal(fs.readFileSync(path.join(targetRoot, "config.json.bak-1234"), "utf-8"), '{\n  "useSubagents": false\n}\n');
 		assert.equal(fs.readFileSync(path.join(targetRoot, "config.example.json"), "utf-8"), '{\n  "useSubagents": false\n}\n');
 		assert.equal(fs.existsSync(path.join(targetRoot, "stale.ts")), false);
 	});

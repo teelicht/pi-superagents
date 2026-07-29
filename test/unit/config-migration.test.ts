@@ -2,6 +2,7 @@
  * Unit coverage for install-time user config and review-agent migrations.
  *
  * Responsibilities:
+ * - verify explicit-only Superpowers activation is added without replacing overrides
  * - verify missing parallel presets are added from bundled defaults
  * - verify legacy parallel sp-implement settings split into sp-implement-parallel
  * - verify obsolete review command blocks and stale user agent files are cleaned up
@@ -17,6 +18,7 @@ import type { ExtensionConfig } from "../../src/shared/types.ts";
 
 const defaults: ExtensionConfig = {
 	superagents: {
+		makeSuperpowersSkillsOptInOnly: true,
 		commands: {
 			"sp-implement": {
 				taskScheduling: "sequential",
@@ -59,10 +61,25 @@ function tempDir(): string {
 }
 
 void describe("migrateUserConfigDocument", () => {
+	void it("adds the bundled opt-in-only flag when missing", () => {
+		const result = migrateUserConfigDocument({}, { superagents: { makeSuperpowersSkillsOptInOnly: true } });
+
+		assert.equal(result.config.superagents?.makeSuperpowersSkillsOptInOnly, true);
+		assert.deepEqual(result.changes, ["Added superagents.makeSuperpowersSkillsOptInOnly from bundled defaults."]);
+	});
+
+	void it("preserves an explicit opt-in-only override", () => {
+		const result = migrateUserConfigDocument({ superagents: { makeSuperpowersSkillsOptInOnly: false } }, { superagents: { makeSuperpowersSkillsOptInOnly: true } });
+
+		assert.equal(result.config.superagents?.makeSuperpowersSkillsOptInOnly, false);
+		assert.deepEqual(result.changes, []);
+	});
+
 	void it("adds the bundled sp-implement-parallel preset when missing", () => {
 		const result = migrateUserConfigDocument(
 			{
 				superagents: {
+					makeSuperpowersSkillsOptInOnly: true,
 					commands: {
 						"sp-implement": {
 							useSubagents: false,
@@ -148,6 +165,7 @@ void describe("migrateUserConfigDocument", () => {
 		const result = migrateUserConfigDocument(
 			{
 				superagents: {
+					makeSuperpowersSkillsOptInOnly: true,
 					commands: {
 						"sp-implement": defaults.superagents!.commands!["sp-implement"],
 						"sp-implement-parallel": defaults.superagents!.commands!["sp-implement-parallel"],
@@ -217,6 +235,7 @@ void describe("applyInstallMigrations", () => {
 		assert.equal(result.changed, true);
 		assert.ok(result.backupPath && fs.existsSync(result.backupPath));
 		const migrated = JSON.parse(fs.readFileSync(userConfigPath, "utf-8")) as ExtensionConfig;
+		assert.equal(migrated.superagents?.makeSuperpowersSkillsOptInOnly, true);
 		assert.equal(migrated.superagents?.commands?.["sp-implement"]?.taskScheduling, "sequential");
 		assert.ok(migrated.superagents?.commands?.["sp-implement-parallel"]);
 		assert.equal(migrated.superagents?.commands?.["sp-spec-review"], undefined);

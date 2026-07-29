@@ -26,6 +26,7 @@ At runtime, user config merges on top of the bundled defaults. You only need to 
 Normal installs and `pnpm install:local` safely migrate existing user config.
 Before writing, the installer creates `config.json.bak-<timestamp>`. It then:
 
+- adds `superagents.makeSuperpowersSkillsOptInOnly: true` when missing while preserving an explicit `false`;
 - adds the bundled `sp-implement-parallel` preset when missing;
 - moves legacy `taskScheduling: "parallel"` behavior from `sp-implement` to
   `sp-implement-parallel`, leaving `sp-implement` sequential;
@@ -34,7 +35,8 @@ Before writing, the installer creates `config.json.bak-<timestamp>`. It then:
 
 Already-migrated configs are left byte-for-byte unchanged. Invalid JSON fails
 the install migration instead of being overwritten. The same migration can be
-run explicitly with `npx @teelicht/pi-superagents --migrate-config`.
+run explicitly with `npx @teelicht/pi-superagents --migrate-config`. Local
+extension refreshes preserve existing `config.json.bak-*` migration backups.
 
 ## Validation
 
@@ -104,7 +106,7 @@ Configures the Superpowers workflow.
 | `tools` | Array of tool names or tool extension paths appended to every subagent after role-specific tool policy. Use this for shared tools you do not want to repeat in every agent frontmatter file. |
 | `modelTiers` | Maps abstract tier names (`cheap`, `balanced`, `max`, plus any custom tiers) to concrete model configs. |
 | `interceptSkillCommands` | List of skill names intercepted for Superpowers entry (`brainstorming`, `writing-plans`). |
-| `optInOnly` | When `true` (default), hides `using-superpowers` from ordinary model skill selection and neutralizes obra/superpowers' automatic Pi bootstrap hook. Explicit `/sp-*` and `/skill:*` commands still work. |
+| `makeSuperpowersSkillsOptInOnly` | When `true` (default), hides `using-superpowers` from ordinary model skill selection and neutralizes obra/superpowers' automatic Pi bootstrap hook. Explicit `/sp-*` and `/skill:*` commands still work. |
 | `superpowersSkills` | List of Superpowers process skill names (bundled default, not user-configurable). |
 
 ### Extension Allowlist
@@ -353,14 +355,14 @@ Superpowers activation is explicit by default:
 ```json
 {
   "superagents": {
-    "optInOnly": true
+    "makeSuperpowersSkillsOptInOnly": true
   }
 }
 ```
 
 With this setting, Pi does not advertise `using-superpowers` to the model during ordinary requests. If `git:github.com/obra/superpowers` is also installed as a Pi package, Pi Superagents replaces its automatic `using-superpowers` bootstrap with a hidden opt-in guard regardless of extension load order. The upstream skills remain installed and available to `/sp-*` and `/skill:*` commands; no upstream files or Pi package settings are changed.
 
-Set `optInOnly` to `false` to restore Pi's normal model-driven skill visibility and allow the upstream automatic bootstrap hook to run.
+Set `makeSuperpowersSkillsOptInOnly` to `false` to restore Pi's normal model-driven skill visibility and allow the upstream automatic bootstrap hook to run.
 
 ## Direct Skill Interception
 

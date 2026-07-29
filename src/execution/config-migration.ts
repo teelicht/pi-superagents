@@ -2,6 +2,7 @@
  * Install-time migration helpers for user config and legacy review agents.
  *
  * Responsibilities:
+ * - enable explicit-only Superpowers activation for existing configs
  * - add the bundled parallel implementation preset without replacing user settings
  * - split legacy parallel `sp-implement` settings into `sp-implement-parallel`
  * - retire obsolete review command presets and user agent files with backups
@@ -56,6 +57,20 @@ function clone<T>(value: T): T {
 }
 
 /**
+ * Add the bundled explicit-only activation flag without replacing a user override.
+ *
+ * @param config Mutable cloned user config.
+ * @param defaults Bundled defaults for the installed version.
+ * @param changes Human-readable migration changes.
+ */
+function addSuperpowersSkillsOptInDefault(config: ExtensionConfig, defaults: ExtensionConfig, changes: string[]): void {
+	if (defaults.superagents?.makeSuperpowersSkillsOptInOnly !== true || config.superagents?.makeSuperpowersSkillsOptInOnly !== undefined) return;
+	config.superagents ??= {};
+	config.superagents.makeSuperpowersSkillsOptInOnly = true;
+	changes.push("Added superagents.makeSuperpowersSkillsOptInOnly from bundled defaults.");
+}
+
+/**
  * Merge legacy parallel settings over the bundled parallel preset.
  *
  * Parallel invariants are forced on while user-selected TDD, branch, and
@@ -91,6 +106,7 @@ function buildParallelPreset(bundled: SuperpowersCommandPreset, legacy?: Superpo
 export function migrateUserConfigDocument(userConfig: ExtensionConfig, defaults: ExtensionConfig): UserConfigMigrationResult {
 	const config = clone(userConfig);
 	const changes: string[] = [];
+	addSuperpowersSkillsOptInDefault(config, defaults, changes);
 	const bundledParallel = defaults.superagents?.commands?.[PARALLEL_COMMAND];
 
 	if (!bundledParallel) return { config, changes };
