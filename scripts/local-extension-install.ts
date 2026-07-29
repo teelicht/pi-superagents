@@ -7,7 +7,7 @@
  * - provide a simple CLI for refreshing the local development install
  *
  * Important side effects:
- * - removes the target extension directory before copying the refreshed files
+ * - replaces the target extension directory while preserving user config and backups
  * - shells out to `npm pack --dry-run --json` in the source repository
  */
 
@@ -65,8 +65,8 @@ const USER_CONFIG_FILE = "config.json";
 /**
  * Copy the installable files into the target Pi extension directory.
  *
- * Preserves the user-owned config.json across refreshes by saving and
- * restoring it around the destructive target directory removal.
+ * Preserves the user-owned config.json and its migration backups across
+ * refreshes by saving and restoring them around target directory removal.
  *
  * @param options Source root, target root, and packaged relative file paths.
  * @returns Sorted list of copied relative paths.
@@ -85,6 +85,12 @@ export function installLocalExtensionFiles(options: InstallLocalExtensionFilesOp
 	const existingUserConfig = fs.statSync(userConfigPath, { throwIfNoEntry: false })?.isFile()
 		? fs.readFileSync(userConfigPath, "utf-8")
 		: undefined;
+	const existingConfigBackups = fs.existsSync(targetRoot)
+		? fs
+				.readdirSync(targetRoot, { withFileTypes: true })
+				.filter((entry) => entry.isFile() && entry.name.startsWith(`${USER_CONFIG_FILE}.bak-`))
+				.map((entry) => [entry.name, fs.readFileSync(path.join(targetRoot, entry.name))] as const)
+		: [];
 
 	fs.rmSync(targetRoot, { recursive: true, force: true });
 	fs.mkdirSync(targetRoot, { recursive: true });
@@ -111,6 +117,7 @@ export function installLocalExtensionFiles(options: InstallLocalExtensionFilesOp
 	} else if (!fs.existsSync(finalUserConfigPath)) {
 		fs.writeFileSync(finalUserConfigPath, "{}\n", "utf-8");
 	}
+	for (const [fileName, contents] of existingConfigBackups) fs.writeFileSync(path.join(targetRoot, fileName), contents);
 
 	return relativePaths;
 }

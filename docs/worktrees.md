@@ -4,7 +4,7 @@ When multiple agents run in parallel against the same repository, they can clobb
 
 This reference targets Pi `^0.82.1`.
 
-Worktree automation starts only from an explicit Pi Superagents workflow while the default `superagents.optInOnly: true` setting is active; ordinary Pi requests do not enter Superpowers through the upstream automatic bootstrap hook.
+Worktree automation starts only from an explicit Pi Superagents workflow while the default `superagents.makeSuperpowersSkillsOptInOnly: true` setting is active; ordinary Pi requests do not enter Superpowers through the upstream automatic bootstrap hook.
 
 > **Relationship to the `using-git-worktrees` skill:** that skill guides the root-session agent in setting up *one* isolated workspace for its own feature work (detect existing isolation, prefer native tools, fall back to `git worktree add`, verify `.gitignore`). This extension's worktree isolation is a separate concern: it programmatically creates *N* parallel worktrees for concurrent subagent runs. The runtime now mirrors the skill's directory convention (default `.worktrees/` at the repository root, the `using-git-worktrees` skill's `git worktree add` invocation, and the auto-`.gitignore` safety rule), but the SDD Task-worktree lifecycle stays under the controller's control.
 

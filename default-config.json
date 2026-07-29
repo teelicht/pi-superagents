@@ -38,7 +38,7 @@
       }
     },
     "interceptSkillCommands": [],
-    "optInOnly": true,
+    "makeSuperpowersSkillsOptInOnly": true,
     "superpowersSkills": [
       "using-superpowers",
       "brainstorming",

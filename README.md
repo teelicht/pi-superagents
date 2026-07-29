@@ -24,7 +24,7 @@ pi install npm:@teelicht/pi-superagents
 
 > [!NOTE]
 > Requires the [`superpowers` skills](https://skills.sh/obra/superpowers), installable with `pi install git:github.com/obra/superpowers`.
-> `superagents.optInOnly` defaults to `true`, so Superpowers runs only through `/sp-*` or `/skill:*`. Set it to `false` to restore automatic activation.
+> `superagents.makeSuperpowersSkillsOptInOnly` defaults to `true`, so Superpowers runs only through `/sp-*` or `/skill:*`. Set it to `false` to restore automatic activation.
 
 On install, `pi-superagents` creates `config.json` from the bundled defaults:
 

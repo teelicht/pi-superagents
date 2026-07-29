@@ -4,7 +4,7 @@ These are the parameters the **LLM agent** passes when it calls the `subagent` t
 
 This reference targets Pi `^0.82.1`.
 
-These parameters apply after explicit Superpowers activation. The default `superagents.optInOnly: true` setting keeps ordinary Pi requests outside the Superpowers workflow, including when the upstream obra/superpowers Pi package is installed.
+These parameters apply after explicit Superpowers activation. The default `superagents.makeSuperpowersSkillsOptInOnly: true` setting keeps ordinary Pi requests outside the Superpowers workflow, including when the upstream obra/superpowers Pi package is installed.
 
 Maintenance note: static analysis runs with `pnpm exec fallow`; keep documented tool parameters and shared parameter types exported only when they are part of runtime or test-facing API.
 

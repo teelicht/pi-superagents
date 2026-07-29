@@ -11,8 +11,10 @@
   - Added a synchronous `resumeSession` parameter to the `subagent` tool for `sp-implementer` only; the resumed session must be a `lineage-only` pi-superagents `sp-implementer` file in the current parent lineage, must use the original worktree `cwd`, and is protected against active reuse inside a single run.
   - Task commits integrate deterministically in Task-number order; unsafe cherry-pick conflicts fall back to a sequential rerun of the affected Task from the updated parent HEAD rather than inventing a merge.
 - **Explicit Superpowers Activation**
-  - Added default-on `superagents.optInOnly`, which hides `using-superpowers` from ordinary model skill selection while preserving explicit `/sp-*` and `/skill:*` activation.
-  - Neutralized obra/superpowers' automatic Pi bootstrap hook without modifying its package files or Pi settings; the guard works regardless of extension load order and can be disabled with `optInOnly: false`.
+  - Added default-on `superagents.makeSuperpowersSkillsOptInOnly`, which hides `using-superpowers` from ordinary model skill selection while preserving explicit `/sp-*` and `/skill:*` activation.
+  - Existing user configs now receive `makeSuperpowersSkillsOptInOnly: true` during install migration when the flag is missing; explicit `false` overrides remain unchanged.
+  - Local extension refreshes preserve existing config migration backups while replacing package-owned files.
+  - Neutralized obra/superpowers' automatic Pi bootstrap hook without modifying its package files or Pi settings; the guard works regardless of extension load order and can be disabled with `makeSuperpowersSkillsOptInOnly: false`.
 - **Dependency Maintenance**
   - Updated Pi development dependencies and the required Pi host version to `^0.82.1`, Biome to 2.5.5, and Fallow to 3.8.0.
 

@@ -27,8 +27,8 @@ const SUPERPOWERS_OPT_IN_GUARD_TYPE = "pi-superagents-opt-in-guard";
  * @param config Current effective extension config.
  * @returns True unless the user explicitly disables opt-in-only mode.
  */
-function isOptInOnly(config: ExtensionConfig): boolean {
-	return config.superagents?.optInOnly !== false;
+function shouldMakeSuperpowersSkillsOptInOnly(config: ExtensionConfig): boolean {
+	return config.superagents?.makeSuperpowersSkillsOptInOnly !== false;
 }
 
 /**
@@ -93,7 +93,7 @@ function buildOptInGuardMessage() {
  */
 export function registerSuperpowersOptInGuard(pi: ExtensionAPI, getConfig: () => ExtensionConfig): void {
 	pi.on("before_agent_start", (event) => {
-		if (!isOptInOnly(getConfig())) return;
+		if (!shouldMakeSuperpowersSkillsOptInOnly(getConfig())) return;
 		const skills = event.systemPromptOptions?.skills;
 		if (!Array.isArray(skills)) return;
 
@@ -104,7 +104,7 @@ export function registerSuperpowersOptInGuard(pi: ExtensionAPI, getConfig: () =>
 	});
 
 	pi.on("context", (event) => {
-		if (!isOptInOnly(getConfig())) return;
+		if (!shouldMakeSuperpowersSkillsOptInOnly(getConfig())) return;
 
 		const withoutUpstream = event.messages.filter((message) => !isUpstreamBootstrapMessage(message));
 		if (withoutUpstream.some(isOptInGuardMessage)) {

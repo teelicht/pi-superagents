@@ -376,7 +376,7 @@ void describe("compaction-durability wiring", () => {
 	});
 
 	void it("restores normal model visibility and context when opt-in-only mode is disabled", async () => {
-		const { mock } = await loadExtensionWithBrainstormConfig(tempDirs, { superagents: { optInOnly: false } });
+		const { mock } = await loadExtensionWithBrainstormConfig(tempDirs, { superagents: { makeSuperpowersSkillsOptInOnly: false } });
 		const skills = [
 			{
 				name: "using-superpowers",

@@ -36,6 +36,6 @@
       }
     },
     "interceptSkillCommands": [],
-    "optInOnly": true
+    "makeSuperpowersSkillsOptInOnly": true
   }
 }
