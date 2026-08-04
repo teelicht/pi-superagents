@@ -2,7 +2,7 @@
 
 These are the parameters the **LLM agent** passes when it calls the `subagent` tool. These parameters are used to delegate work to Superpowers role agents.
 
-This reference targets Pi `^0.82.1`.
+This reference targets Pi `^0.82.1` and Superpowers `v6.2+`.
 
 These parameters apply after explicit Superpowers activation. The default `superagents.makeSuperpowersSkillsOptInOnly: true` setting keeps ordinary Pi requests outside the Superpowers workflow, including when the upstream obra/superpowers Pi package is installed.
 
@@ -61,6 +61,8 @@ Subagent output is inline: the child Pi process streams assistant text back thro
 ## Resuming a Superpowers implementer session
 
 `resumeSession` continues a prior `sp-implementer` session synchronously inside the current Superpowers run. The runtime re-launches the existing JSONL session file rather than starting a fresh `sp-implementer` run, so the resumed child sees its prior turns and tools.
+
+During SDD fix rounds, the installed upstream skill decides whether to resume the original implementer or dispatch a fresh one. Pass `resumeSession` only for the former; Pi Superagents validates and continues that session synchronously but does not define retry limits or implementer-selection policy.
 
 The parameter is intentionally narrow:
 

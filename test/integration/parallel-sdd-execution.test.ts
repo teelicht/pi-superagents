@@ -230,11 +230,7 @@ void describe("parallel SDD execution", { skip: !available ? "subagent executor 
 		// The controller persists its plan-scoped progress ledger next to the parent checkout (gitignored).
 		const sddDir = path.join(tempDir, ".superpowers", "sdd", "parallel-sdd");
 		fs.mkdirSync(sddDir, { recursive: true });
-		fs.writeFileSync(
-			path.join(sddDir, "progress.md"),
-			"# SDD ledger — plan: docs/superpowers/plans/parallel-sdd.md\nwave: T1+T2\n",
-			"utf-8",
-		);
+		fs.writeFileSync(path.join(sddDir, "progress.md"), "# SDD ledger — plan: docs/superpowers/plans/parallel-sdd.md\nwave: T1+T2\n", "utf-8");
 
 		// Create two pre-isolated worktrees on dedicated branches.
 		taskOneCwd = createPreIsolatedWorktree(tempDir, "sdd-task-one");
@@ -387,10 +383,7 @@ void describe("parallel SDD execution", { skip: !available ? "subagent executor 
 
 		const progressLedger = path.join(tempDir, ".superpowers", "sdd", "parallel-sdd", "progress.md");
 		assert.ok(fs.existsSync(progressLedger), "controller progress ledger must survive the lifecycle");
-		assert.match(
-			fs.readFileSync(progressLedger, "utf-8"),
-			/^# SDD ledger — plan: docs\/superpowers\/plans\/parallel-sdd\.md$/m,
-		);
+		assert.match(fs.readFileSync(progressLedger, "utf-8"), /^# SDD ledger — plan: docs\/superpowers\/plans\/parallel-sdd\.md$/m);
 
 		const branchReview = await executor.execute(
 			"review-branch",
