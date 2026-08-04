@@ -95,7 +95,7 @@ Extension and shared-tool loading for subagents is independent of worktree isola
 - `node_modules/` is symlinked into each worktree when it is safe to do so, avoiding unnecessary dependency installs.
 - Worktree runs use the shared parallel `cwd`. Task-level `cwd` overrides must be omitted or match that shared `cwd`.
 - A configured project-local `worktrees.root` is ignored automatically: if it is not in `.gitignore`, the runtime appends it (the `using-git-worktrees` skill's safety rule). The default `.worktrees/` root is likewise appended when first used.
-- Parallel SDD Task worktrees must be pre-isolated by the controller before any writer starts, must remain in place across the per-Task `sp-review`, the `resumeSession` fix dispatch, and the re-review, and are removed by the controller after the Task commit is integrated into the parent branch.
+- Parallel SDD Task worktrees must be pre-isolated by the controller before any writer starts, remain in place across upstream's review/fix/re-review loop, and be removed by the controller after the Task commit is integrated into the parent branch. Use `resumeSession` only when upstream requests resuming the original implementer.
 
 ## Internals
 

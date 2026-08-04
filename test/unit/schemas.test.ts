@@ -296,12 +296,16 @@ void describe("SubagentParams schema", { skip: !available ? "typebox not availab
 		assert.equal(itemCount, undefined, "tasks[].count should not exist");
 	});
 
-	void it("publishes synchronous resumeSession for single and parallel implementer fixes", () => {
+	void it("publishes conditional synchronous resumeSession guidance for single and parallel runs", () => {
 		const properties = (SubagentParams as { properties?: Record<string, unknown> }).properties ?? {};
-		assert.ok(properties.resumeSession, "SubagentParams.resumeSession schema should exist");
+		const resumeSession = properties.resumeSession as { description?: string } | undefined;
+		assert.ok(resumeSession, "SubagentParams.resumeSession schema should exist");
+		assert.match(String(resumeSession.description ?? ""), /when upstream requests resuming the original implementer/i);
 		const tasks = properties.tasks as { items?: { properties?: Record<string, unknown> } } | undefined;
 		const itemProperties = tasks?.items?.properties ?? {};
-		assert.ok(itemProperties.resumeSession, "tasks[].resumeSession schema should exist");
+		const itemResumeSession = itemProperties.resumeSession as { description?: string } | undefined;
+		assert.ok(itemResumeSession, "tasks[].resumeSession schema should exist");
+		assert.match(String(itemResumeSession.description ?? ""), /when upstream requests resuming the original implementer/i);
 	});
 });
 

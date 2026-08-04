@@ -375,6 +375,22 @@ void describe("parallel SDD execution", { skip: !available ? "subagent executor 
 		assert.equal(fix.details?.results.length, 1, `expected 1 fix result, got: ${fix.content[0]?.text ?? ""}`);
 		assert.equal(fix.details?.results[0].sessionFile, taskOneSession, "fix dispatch must reuse the original task one session file");
 
+		const reReview = await executor.execute(
+			"re-review-task-one",
+			{
+				agent: "sp-review",
+				task: "Review scope: re-review\nVerify the prior finding and fix diff only",
+				cwd: taskOneCwd,
+				workflow: "superpowers",
+				sessionMode: "lineage-only",
+			},
+			new AbortController().signal,
+			undefined,
+			ctx,
+		);
+		assert.equal(reReview.details?.results.length, 1, `expected 1 re-review result, got: ${reReview.content[0]?.text ?? ""}`);
+		assert.equal(reReview.details?.results[0].exitCode, 0, `re-review must succeed: ${reReview.content[0]?.text ?? ""}`);
+
 		// Deterministic cherry-pick: integrate only the approved Task 1 commits.
 		// Task 2 is intentionally left unintegrated to prove "only approved" reaches the parent.
 		const taskOneTip = findWorktreeCommit(taskOneCwd);

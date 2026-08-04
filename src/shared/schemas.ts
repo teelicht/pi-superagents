@@ -25,7 +25,9 @@ const TaskItem = Type.Object(
 		cwd: Type.Optional(Type.String()),
 		model: Type.Optional(Type.String({ description: "Override model for this discovered agent task." })),
 		skill: Type.Optional(SkillOverride),
-		resumeSession: Type.Optional(Type.String({ description: "Prior pi-superagents sp-implementer session file to continue for a synchronous review-fix dispatch." })),
+		resumeSession: Type.Optional(
+			Type.String({ description: "Prior pi-superagents sp-implementer session file to continue synchronously when upstream requests resuming the original implementer." }),
+		),
 	},
 	{ additionalProperties: false },
 );
@@ -64,7 +66,9 @@ export const SubagentParams = Type.Object(
 		includeProgress: Type.Optional(Type.Boolean({ description: "Include detailed step-by-step progress in the tool output." })),
 		skill: Type.Optional(SkillOverride),
 		model: Type.Optional(Type.String({ description: "Override the model for this discovered agent execution." })),
-		resumeSession: Type.Optional(Type.String({ description: "Prior pi-superagents sp-implementer session file to continue for a synchronous review-fix dispatch." })),
+		resumeSession: Type.Optional(
+			Type.String({ description: "Prior pi-superagents sp-implementer session file to continue synchronously when upstream requests resuming the original implementer." }),
+		),
 	},
 	{
 		additionalProperties: false,
