@@ -4,24 +4,27 @@ import { buildSuperpowersRootPrompt, buildSuperpowersVisiblePromptSummary } from
 
 const base = { task: "do the thing", fork: false } as const;
 
-void describe("root prompt file handoff contract", () => {
-	void it("emits the File Handoff Contract when useSubagents is true", () => {
+void describe("root prompt SDD adapter contract", () => {
+	void it("emits the upstream-authoritative SDD adapter when useSubagents is true", () => {
 		const prompt = buildSuperpowersRootPrompt({ ...base, useSubagents: true });
-		assert.match(prompt, /File Handoff Contract/);
-		assert.match(prompt, /scripts\/task-brief/);
-		assert.match(prompt, /scripts\/review-package/);
-		assert.match(prompt, /rm -f/);
-		assert.match(prompt, /progress\.md/);
+		assert.match(prompt, /Superpowers SDD Adapter Contract/);
+		assert.match(prompt, /selected upstream.*subagent-driven-development.*authoritative/i);
+		assert.match(prompt, /Review scope: task/);
+		assert.match(prompt, /Review scope: re-review/);
+		assert.match(prompt, /Review scope: branch/);
+		assert.match(prompt, /resumeSession/);
+		assert.match(prompt, /upstream requests resuming the original implementer/i);
+		assert.match(prompt, /final cleanup step/i);
+		assert.match(prompt, /before invoking.*finishing-a-development-branch/i);
+		assert.doesNotMatch(prompt, /scripts\/task-brief/);
+		assert.doesNotMatch(prompt, /scripts\/review-package/);
+		assert.doesNotMatch(prompt, /rm -f/);
+		assert.doesNotMatch(prompt, /progress\.md/);
 	});
 
-	void it("omits the File Handoff Contract when useSubagents is false", () => {
-		const prompt = buildSuperpowersRootPrompt({ ...base, useSubagents: false });
-		assert.doesNotMatch(prompt, /File Handoff Contract/);
-	});
-
-	void it("omits the File Handoff Contract when useSubagents is undefined", () => {
-		const prompt = buildSuperpowersRootPrompt({ ...base });
-		assert.doesNotMatch(prompt, /File Handoff Contract/);
+	void it("omits the SDD adapter when useSubagents is false or undefined", () => {
+		assert.doesNotMatch(buildSuperpowersRootPrompt({ ...base, useSubagents: false }), /Superpowers SDD Adapter Contract/);
+		assert.doesNotMatch(buildSuperpowersRootPrompt({ ...base }), /Superpowers SDD Adapter Contract/);
 	});
 });
 
@@ -29,8 +32,8 @@ void describe("root prompt task scheduling contract", () => {
 	void it("emits the sequential scheduling contract when taskScheduling is sequential", () => {
 		const prompt = buildSuperpowersRootPrompt({ ...base, taskScheduling: "sequential" });
 		assert.match(prompt, /Task scheduling is SEQUENTIAL by config/);
-		assert.match(prompt, /use subagent-driven-development one complete Task at a time/);
-		assert.match(prompt, /Dispatch the Task once, review it once with sp-review/);
+		assert.match(prompt, /scheduling controls Task order only/i);
+		assert.match(prompt, /follow the selected upstream SDD workflow/i);
 		assert.doesNotMatch(prompt, /Task scheduling is PARALLEL by config/);
 		assert.doesNotMatch(prompt, /dispatching-parallel-agents/);
 		assert.doesNotMatch(prompt, /at most 8 Tasks/);
@@ -44,24 +47,20 @@ void describe("root prompt task scheduling contract", () => {
 		assert.match(prompt, /using-git-worktrees/);
 	});
 
-	void it("parallel contract specifies persistent worktrees, complete Tasks, and sp-review", () => {
+	void it("parallel contract specifies persistent worktrees, complete Tasks, and upstream SDD flow", () => {
 		const prompt = buildSuperpowersRootPrompt({ ...base, taskScheduling: "parallel" });
 		assert.match(prompt, /persistent worktree per Task/);
 		assert.match(prompt, /A Task includes all of its Steps\. Never dispatch or review individual Steps/);
-		assert.match(prompt, /task-scope sp-review per completed Task/);
-		assert.match(prompt, /sp-review/);
-	});
-
-	void it("parallel contract mentions resumeSession for fixes through the affected Task", () => {
-		const prompt = buildSuperpowersRootPrompt({ ...base, taskScheduling: "parallel" });
-		assert.match(prompt, /resumeSession/);
-		assert.match(prompt, /Critical or Important fixes through that Task's resumeSession/);
+		assert.match(prompt, /scheduling controls Task order and isolation only/i);
+		assert.match(prompt, /follow the selected upstream SDD workflow/i);
+		assert.match(prompt, /Review scope: branch/);
+		assert.doesNotMatch(prompt, /Resume Critical or Important fixes/);
+		assert.doesNotMatch(prompt, /parent progress ledger/);
 	});
 
 	void it("parallel contract demands deterministic, ordered integration", () => {
 		const prompt = buildSuperpowersRootPrompt({ ...base, taskScheduling: "parallel" });
-		assert.match(prompt, /Integrate approved Task commits in Task-number order/);
-		assert.match(prompt, /update the parent progress ledger/);
+		assert.match(prompt, /Integrate upstream-approved Task commits in Task-number order/);
 		assert.match(prompt, /clean the Task worktrees/);
 		assert.match(prompt, /Never integrate a failed or blocked Task/);
 	});
