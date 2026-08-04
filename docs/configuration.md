@@ -2,7 +2,7 @@
 
 `@teelicht/pi-superagents` loads configuration in two layers: **bundled defaults** and **user overrides**.
 
-This reference targets Pi `^0.82.1`.
+This reference targets Pi `^0.82.1` and Superpowers `v6.2+`.
 
 Bundled defaults ship inside the package and provide sensible baseline values. User overrides live in:
 
@@ -227,11 +227,11 @@ Bundled `/sp-implement-parallel` preset:
 }
 ```
 
-When the preflight passes, the root session composes the three existing upstream Superpowers skills (`subagent-driven-development`, `dispatching-parallel-agents`, `using-git-worktrees`) without forking or editing them. Each Task — the whole numbered block of Steps from the implementation plan — is dispatched together to its own pre-isolated worktree, reviewed once via `sp-review`, and integrated in Task-number order. After every Task is integrated, the controller runs one final branch-scope `sp-review`. See [Skills Reference](skills.md#parallel-sdd-task-scheduling) for the dispatch contract and the [Worktree Isolation](worktrees.md#parallel-sdd-waves-vs-ordinary-parallel-calls) reference for the persistent worktree lifecycle.
+When preflight passes, Pi Superagents controls dependency-ready waves, persistent per-Task worktrees, and Task-number integration. Each Task and the final branch review otherwise follows the selected upstream SDD workflow; the Pi adapter only supplies `sp-implementer`, `sp-review`, conditional `resumeSession`, and the exact `Review scope: task`, `Review scope: re-review`, and `Review scope: branch` markers. See [Skills Reference](skills.md#parallel-sdd-task-scheduling) for the dispatch contract and the [Worktree Isolation](worktrees.md#parallel-sdd-waves-vs-ordinary-parallel-calls) reference for the persistent worktree lifecycle.
 
 ## Inline Role Output
 
-Superpowers role agents return their findings through Pi tool results. The bounded SDD roles (`sp-implementer`, `sp-review`) use the `subagent-driven-development` skill's file handoff: they read the task brief and review-package diff and write the implementer report by path, under the gitignored `.superpowers/sdd/` workspace the skill's `scripts/sdd-workspace` creates — not the repository root. The controller cleans those files up with `rm -f` after a `DONE` review; `progress.md` (the SDD ledger) is preserved until `finishing-a-development-branch`. `sp-debug` keeps inline delivery. The extension injects no `[Read from:]`/`[Write to:]` references and performs no cleanup itself.
+Superpowers role agents return their findings through Pi tool results. For SDD runs, the selected upstream `subagent-driven-development` skill is authoritative for plan-scoped workspace paths, ledger and handoff files, review/fix loops, and final cleanup; Pi Superagents does not duplicate those mechanics in its generated prompt.
 
 Execution artifacts are still available when `artifacts` is enabled. Those files are written to the session artifact directory for debugging and truncation recovery, not to the repository root.
 
@@ -483,5 +483,5 @@ Run planning with Plannotator plan review:
 | Recon | `sp-recon` | Context gathering for task discovery |
 | Research | `sp-research` | Evidence gathering for complex logic |
 | Implementer | `sp-implementer` | Planned code changes with verification |
-| Reviewer | `sp-review` | Combined specification and code-quality reviewer for one Task (`Review scope: task`) or the whole branch (`Review scope: branch`); uses the `max` model tier |
+| Reviewer | `sp-review` | Bounded reviewer for `Review scope: task`, `Review scope: re-review`, or `Review scope: branch`; the supplied upstream reviewer template controls each review; uses the `max` model tier |
 | Debug | `sp-debug` | Failure investigation and root-cause analysis; injects `systematic-debugging` |

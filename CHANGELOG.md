@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+- **Superpowers v6.2 Compatibility**
+  - Required Superpowers v6.2+ and made the installed upstream SDD skill authoritative for lifecycle mechanics.
+  - Added `Review scope: re-review`, conditional implementer continuation through `resumeSession`, and cleanup-before-branch-finishing guidance without copying upstream scripts or workspace paths.
+  - Preserved Pi-owned sequential/parallel scheduling and persistent parallel Task-worktree integration.
+
 ## [0.12.0] - 2026-07-27
 
 - **Configurable Parallel SDD Profile**

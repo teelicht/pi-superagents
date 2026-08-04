@@ -2,7 +2,7 @@
 
 When multiple agents run in parallel against the same repository, they can clobber each other's file changes. Pi Superagents can automatically give each parallel agent its own git worktree branched from HEAD to provide perfect isolation.
 
-This reference targets Pi `^0.82.1`.
+This reference targets Pi `^0.82.1` and Superpowers `v6.2+`.
 
 Worktree automation starts only from an explicit Pi Superagents workflow while the default `superagents.makeSuperpowersSkillsOptInOnly: true` setting is active; ordinary Pi requests do not enter Superpowers through the upstream automatic bootstrap hook.
 
@@ -20,7 +20,7 @@ parallel SDD wave      → controller-owned persistent Task worktrees → review
 ```
 
 - **Ordinary parallel call.** Triggered when a Superpowers command runs `tasks: [...]` against an existing command preset. The extension creates a fresh worktree per task under the configured worktree root, captures each agent's diff as `.patch` artifacts, and cleans up the worktree and temporary branch automatically before the parent run finishes.
-- **Parallel SDD wave.** Triggered by `/sp-implement-parallel`, or when another implementation command resolves `taskScheduling: "parallel"`, `useSubagents: true`, and `worktrees.enabled: true`. The root session controller pre-creates one persistent worktree per Task under the configured worktree root, dispatches the Task's `sp-implementer` into that worktree, reuses the same worktree for the per-Task `sp-review`, the implementer fix dispatch via `resumeSession`, and the re-review, and finally cherry-picks the approved commit into the parent branch. The controller owns cleanup; the extension only validates the worktree is safe to enter. See the [Skills Reference](skills.md#parallel-sdd-task-scheduling) for the dispatch contract and the [Configuration reference](configuration.md#parallel-sdd-task-scheduling) for the preflight rules.
+- **Parallel SDD wave.** Triggered by `/sp-implement-parallel`, or when another implementation command resolves `taskScheduling: "parallel"`, `useSubagents: true`, and `worktrees.enabled: true`. The upstream SDD skill owns the plan-scoped `.superpowers/sdd/<plan-basename>/` workspace and its final cleanup. Pi Superagents separately owns the persistent per-Task worktrees used for parallel scheduling: it creates them for dependency-ready Tasks, keeps each through upstream's review/fix loop, integrates upstream-approved commits in Task-number order, and then removes those Task worktrees. `resumeSession` is used only when upstream requests resuming the original implementer; later rounds may use a fresh session. See the [Skills Reference](skills.md#parallel-sdd-task-scheduling) for the dispatch contract and the [Configuration reference](configuration.md#parallel-sdd-task-scheduling) for the preflight rules.
 
 When `taskScheduling: "parallel"` is set but a worktree is unsafe to create, the controller surfaces the failure and runs the affected Task sequentially instead of silently dropping back to a different mode.
 

@@ -2,7 +2,7 @@
 
 [Pi agent-harness](https://pi.dev) extension to support [Superpowers](https://github.com/obra/superpowers) workflows using subagents. The official Superpowers Pi package injects the Superpowers skills into every session. By contrast, the pi-superagents extension leaves it up to the user to decide when Superpowers should be used.
 
-Current compatibility target: Pi `^0.82.1`.
+Current compatibility targets: Pi `^0.82.1` and Superpowers `v6.2+`.
 
 ## Features
 
@@ -23,7 +23,7 @@ pi install npm:@teelicht/pi-superagents
 ```
 
 > [!NOTE]
-> Requires the [`superpowers` skills](https://skills.sh/obra/superpowers), installable with `pi install git:github.com/obra/superpowers`.
+> Requires Superpowers v6.2+ ([`superpowers` skills](https://skills.sh/obra/superpowers)), installable with `pi install git:github.com/obra/superpowers`.
 > `superagents.makeSuperpowersSkillsOptInOnly` defaults to `true`, so Superpowers runs only through `/sp-*` or `/skill:*`. Set it to `false` to restore automatic activation.
 
 On install, `pi-superagents` creates `config.json` from the bundled defaults:
@@ -85,7 +85,7 @@ The `/sp-implement` and `/sp-implement-parallel` commands activate the same stru
 
 Subagent execution remains conservative and synchronous for ordinary Superpowers workflows. There is intentionally no user-facing `async` or `blocking` switch in agent frontmatter, config, or tool parameters. Internal result ownership prevents duplicate delivery and lifecycle sidecars let child agents report intentional completion or a parent-help request without changing the normal delegation flow.
 
-Subagent-driven development keeps implementer and reviewer reports inline in the Pi conversation. Bounded roles default to `lineage-only` - they see a curated work brief rather than the full parent conversation history.
+The installed upstream `subagent-driven-development` skill owns its plan-scoped workspace, ledger, handoff artifacts, review/fix loop, retry and adjudication rules, and final cleanup. Pi Superagents only maps those steps to `sp-implementer`, `sp-review`, `resumeSession` when upstream requests the original implementer, and the local `Review scope: task`, `Review scope: re-review`, and `Review scope: branch` markers. Parallel mode additionally owns dependency-ready Task waves and per-Task worktree integration. Bounded roles default to `lineage-only` - they see a curated work brief rather than the full parent conversation history.
 
 ## Parallel SDD Task Scheduling
 
@@ -109,7 +109,7 @@ The bundled parallel preset is equivalent to:
 
 Scheduling remains config-only per command and cannot be toggled with an inline token. Parallel scheduling is **rejected before dispatch** if the active command preset is missing `useSubagents: true` or `worktrees.enabled: true`.
 
-Under parallel scheduling, the root session composes three existing upstream Superpowers skills — `subagent-driven-development`, `dispatching-parallel-agents`, and `using-git-worktrees` — without forking or editing them. The controller builds dependency-ready waves of at most eight Tasks, creates one **persistent** worktree per Task before writers start, dispatches each Task whole (never individual Steps), runs one `sp-review` per completed Task, and integrates approved commits in Task-number order. After every Task is integrated, the controller runs one final branch-scope `sp-review`.
+Under parallel scheduling, the root session composes three existing upstream Superpowers skills — `subagent-driven-development`, `dispatching-parallel-agents`, and `using-git-worktrees` — without forking or editing them. Pi Superagents controls dependency-ready waves of at most eight Tasks, creates one **persistent** worktree per Task before writers start, and integrates upstream-approved commits in Task-number order. Each Task and the final branch review otherwise follow the selected upstream SDD workflow through the local role and review-scope markers.
 
 Run history is persisted at `~/.pi/agent/run-history.jsonl` for `/subagents-status`. Inline subagent rows and the status overlay show the model reported by the child Pi execution loop and, when available, the effective thinking level used for that run. Set `PI_SUPERAGENTS_RUN_HISTORY_PATH` to isolate that file for tests or sandboxed sessions.
 
