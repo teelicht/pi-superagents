@@ -222,17 +222,19 @@ void describe("parallel SDD execution", { skip: !available ? "subagent executor 
 		git(tempDir, ["init"]);
 		git(tempDir, ["config", "user.email", "controller@example.com"]);
 		git(tempDir, ["config", "user.name", "SDD Controller"]);
-		fs.writeFileSync(path.join(tempDir, ".gitignore"), "node_modules/\n.worktrees/\nsessions/\nparent.jsonl\n", "utf-8");
+		fs.writeFileSync(path.join(tempDir, ".gitignore"), "node_modules/\n.worktrees/\nsessions/\n.superpowers/\nparent.jsonl\n", "utf-8");
 		fs.writeFileSync(path.join(tempDir, "wave-base.txt"), "wave base\n", "utf-8");
 		git(tempDir, ["add", "-A"]);
 		git(tempDir, ["commit", "-m", "wave base"]);
 
-		// The controller persists its progress ledger next to the parent checkout.
-		const sddDir = path.join(tempDir, ".superpowers", "sdd");
+		// The controller persists its plan-scoped progress ledger next to the parent checkout (gitignored).
+		const sddDir = path.join(tempDir, ".superpowers", "sdd", "parallel-sdd");
 		fs.mkdirSync(sddDir, { recursive: true });
-		fs.writeFileSync(path.join(sddDir, "progress.md"), "# Parallel SDD progress\nwave: T1+T2\n", "utf-8");
-		git(tempDir, ["add", "-A"]);
-		git(tempDir, ["commit", "-m", "seed progress ledger"]);
+		fs.writeFileSync(
+			path.join(sddDir, "progress.md"),
+			"# SDD ledger — plan: docs/superpowers/plans/parallel-sdd.md\nwave: T1+T2\n",
+			"utf-8",
+		);
 
 		// Create two pre-isolated worktrees on dedicated branches.
 		taskOneCwd = createPreIsolatedWorktree(tempDir, "sdd-task-one");
@@ -383,8 +385,12 @@ void describe("parallel SDD execution", { skip: !available ? "subagent executor 
 		const taskOneBase = gitOut(tempDir, ["merge-base", taskOneTip, "HEAD"]);
 		git(tempDir, ["cherry-pick", `${taskOneBase}..${taskOneTip}`]);
 
-		const progressLedger = path.join(tempDir, ".superpowers", "sdd", "progress.md");
+		const progressLedger = path.join(tempDir, ".superpowers", "sdd", "parallel-sdd", "progress.md");
 		assert.ok(fs.existsSync(progressLedger), "controller progress ledger must survive the lifecycle");
+		assert.match(
+			fs.readFileSync(progressLedger, "utf-8"),
+			/^# SDD ledger — plan: docs\/superpowers\/plans\/parallel-sdd\.md$/m,
+		);
 
 		const branchReview = await executor.execute(
 			"review-branch",
