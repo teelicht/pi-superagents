@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-08-04
+
 - **Superpowers v6.2 Compatibility**
   - Required Superpowers v6.2+ and made the installed upstream SDD skill authoritative for lifecycle mechanics.
   - Added `Review scope: re-review`, conditional implementer continuation through `resumeSession`, and cleanup-before-branch-finishing guidance without copying upstream scripts or workspace paths.
