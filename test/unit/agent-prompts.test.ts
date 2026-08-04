@@ -32,7 +32,7 @@ void describe("bounded role agent prompts", () => {
 		assert.match(body, /report.*path given in your task/i);
 	});
 
-	void it("exposes one max-tier reviewer for task and branch scopes", () => {
+	void it("exposes one max-tier reviewer for task, re-review, and branch scopes", () => {
 		assert.equal(fs.existsSync(path.join(agentsDir, "sp-spec-review.md")), false);
 		assert.equal(fs.existsSync(path.join(agentsDir, "sp-code-review.md")), false);
 
@@ -42,11 +42,13 @@ void describe("bounded role agent prompts", () => {
 		assert.match(body, /session-mode: lineage-only/);
 		assert.match(body, /maxSubagentDepth: 0/);
 		assert.match(body, /Review scope: task/);
+		assert.match(body, /Review scope: re-review/);
 		assert.match(body, /Review scope: branch/);
-		assert.match(body, /brief/i);
-		assert.match(body, /report/i);
-		assert.match(body, /diff/i);
+		assert.match(body, /upstream reviewer template/i);
+		assert.match(body, /inputs, boundaries, and successful output format/i);
+		assert.match(body, /prior findings and the fix diff only/i);
 		assert.match(body, /read-only/i);
+		assert.doesNotMatch(body, /Return one of: `DONE`/);
 	});
 
 	void it("sp-debug does not reference a debug-brief file", () => {
