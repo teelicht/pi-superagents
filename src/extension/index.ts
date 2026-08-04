@@ -464,7 +464,7 @@ SINGLE: { agent: "sp-recon", task: "Inspect the auth flow" }
 PARALLEL: { tasks: [{ agent: "sp-research", task: "Check config" }, { agent: "sp-review", task: "Review the diff" }] }
 
 Allowed role agents: sp-recon, sp-research, sp-implementer, sp-review, sp-debug.
-For sp-implementer fix loops, pass \`resumeSession: "<prior-implementer-session-file>"\` to continue a prior implementation synchronously; the reviewer dispatches against that existing session.
+When upstream requests resuming the original implementer, pass \`resumeSession: "<prior-implementer-session-file>"\` to continue it synchronously; otherwise omit \`resumeSession\` and follow upstream's implementer selection.
 Bounded role agents are not allowed to call subagents.`,
 		parameters: SubagentParams,
 

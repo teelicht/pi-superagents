@@ -233,5 +233,7 @@ void describe("extension config gating", { skip: !available ? "extension not imp
 		assert.match(description, /pi-subagents/, "description must reference the pi-subagents package name the skills cite");
 		assert.match(description, /skills reference/, "description must state this is the tool the skills reference");
 		assert.match(description, /no async, chain, or resume/, "description must set correct capability expectations");
+		assert.match(description, /when upstream requests resuming the original implementer/i, "resume guidance must defer implementer selection to upstream");
+		assert.doesNotMatch(description, /For sp-implementer fix loops, pass/, "resume guidance must not make resumeSession unconditional");
 	});
 });

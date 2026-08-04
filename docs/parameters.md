@@ -76,11 +76,12 @@ The parameter is intentionally narrow:
 
 Top-level `resumeSession` is only valid for single-agent `subagent` calls. Parallel `tasks[]` requests must place `resumeSession` on the specific `tasks[i]` entry, and that array may include at most one resumed implementer at a time.
 
-Typical use: `/sp-implement-parallel` dispatches `sp-implementer` with `resumeSession` for fix loops on a single Task without spinning up a new session. See [Skills Reference](skills.md#parallel-sdd-task-scheduling) for the dispatch contract.
+When upstream requests resuming the original implementer, `/sp-implement-parallel` passes that Task's prior session through `resumeSession`; otherwise it dispatches the implementer upstream selects. See [Skills Reference](skills.md#parallel-sdd-task-scheduling) for the dispatch contract.
 
 Install upgrades also retire legacy `sp-spec-review` and `sp-code-review`
 agents. Review dispatches should use the bundled consolidated `sp-review` role
-for both task and branch scopes.
+with exactly `Review scope: task`, `Review scope: re-review`, or
+`Review scope: branch`.
 
 ## Lifecycle Signals (Internal)
 
@@ -90,7 +91,7 @@ Child processes can emit lifecycle signals (`subagent_done`, `caller_ping`) thro
 
 When `artifacts` is enabled, Pi Superagents stores debugging input, output, JSONL, and metadata files in the session artifact directory. These artifacts are separate from the repository working tree and replace the older file-handoff pattern that wrote `implementer-report.md`, `spec-review.md`, or `code-review.md` into the project root.
 
-Work briefs for bounded roles are delivered as packet files under `<session-artifacts-dir>/packets/`. The runtime creates these packets before launching the child, passes the packet path to the child as its prompt, and cleans them up automatically when the child exits. The packet carries the controller's dispatch text — including the file-handoff paths (`task-<N>-brief.md`, `task-<N>-report.md`, `review-<…>.diff`) authored by the `subagent-driven-development` skill's scripts under `.superpowers/sdd/` — so bounded role agents read the same files the upstream skill scripts produce. The skill scripts (not the extension) are the source of those files; the extension just hands the child the paths and reads the report back.
+Work briefs for bounded roles are delivered as packet files under `<session-artifacts-dir>/packets/`. The runtime creates these packets before launching the child, passes the packet path to the child as its prompt, and cleans them up automatically when the child exits. The packet carries the controller's dispatch text, including any handoff paths supplied by the upstream `subagent-driven-development` workflow. Upstream owns those artifacts and their layout; the extension only forwards the dispatch and child response.
 
 ## Review Bridge Tools
 

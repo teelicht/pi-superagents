@@ -3,7 +3,7 @@
  *
  * Responsibilities:
  * - verify each built-in bounded role prompt carries the contract its dispatch
- *   requires (path-based brief/report handoff, read-only enforcement, etc.)
+ *   requires (three review scopes, upstream-template delegation, read-only enforcement)
  * - guard the unified `sp-review` role (max tier, lineage-only session) so
  *   a future addition cannot accidentally re-spawn the legacy two-reviewer split
  * - keep the discoverable `sp-*` role set in sync with the agents/ directory

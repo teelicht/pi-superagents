@@ -18,7 +18,7 @@ Require Superpowers v6.2 or newer and make its installed skills the sole authori
 - SDD script names and arguments;
 - workspace and ledger paths;
 - task handoff files;
-- initial review and scoped re-review behavior;
+- initial review, scoped re-review, and final branch review behavior;
 - retry limits and adjudication; and
 - final plan-workspace cleanup.
 
@@ -26,8 +26,10 @@ Pi Superagents will retain only the Pi-specific adapter behavior that upstream c
 
 - dispatch implementers through `sp-implementer`;
 - dispatch initial task reviews, scoped re-reviews, and final branch reviews through `sp-review`;
-- resume the original implementer through `resumeSession`; and
-- use local review-scope markers so the bounded reviewer selects the correct mode.
+- resume the original implementer through `resumeSession`;
+- use local review-scope markers so the bounded reviewer selects the correct mode;
+- choose sequential or parallel Task scheduling; and
+- for parallel scheduling, create and integrate per-Task worktrees in dependency-ready waves.
 
 Do not add runtime version detection or support for pre-v6.2 SDD contracts.
 
@@ -53,6 +55,20 @@ For fix rounds, the adapter tells the controller to pass the previous `sp-implem
 through `resumeSession` whenever upstream requests resuming the original implementer. Existing
 session validation and synchronous execution behavior remain unchanged.
 
+## Task-Scheduling Boundary
+
+Keep Pi's sequential/parallel scheduling and parallel worktree orchestration in
+`buildTaskSchedulingContract`. Those are local execution choices, not upstream SDD lifecycle rules.
+The parallel contract may continue to define wave size, dependency ordering, Task-worktree creation,
+integration order, conflict fallback, and Task-worktree cleanup.
+
+Remove or replace scheduling-contract text that independently defines initial-review cadence, fix
+eligibility, implementer reuse, re-review behavior, retry limits, adjudication, final review inputs,
+or plan-workspace cleanup. For each Task and the final branch review, the contract instead tells the
+controller to follow the selected upstream SDD workflow and apply the Pi agent/scope mapping above.
+In particular, `resumeSession` is used only when upstream calls for resuming the original implementer;
+upstream may require a fresh implementer in later rounds.
+
 ## Cleanup Lifecycle
 
 Cleanup stays controller-owned and upstream-defined. Pi Superagents must not compute the workspace
@@ -69,15 +85,20 @@ workspace layout and deletion command later.
 ## Reviewer Role
 
 Update `agents/sp-review.md` to accept exactly three scopes: `task`, `re-review`, and `branch`.
+For every valid scope, the upstream reviewer template included in the dispatch controls the review
+inputs, boundaries, and successful output format. The Pi role adds only read-only enforcement,
+scope selection, evidence requirements, and `NEEDS_CONTEXT`/`BLOCKED` failure handling.
 
-- `task` keeps the existing combined specification and code-quality review.
+- `task` follows the supplied upstream task-review template for the combined specification and
+  code-quality review.
 - `re-review` follows the upstream scoped re-review template included in the dispatch. It verifies
   prior findings and the fix diff only, and returns the format required by that template instead of
   restarting the full task review.
-- `branch` keeps the existing integrated-branch review.
+- `branch` follows the supplied upstream final code-review template for the integrated branch.
 
 Missing or unknown scope markers continue to return `NEEDS_CONTEXT`. The role remains read-only and
-cannot invoke subagents.
+cannot invoke subagents. It must not wrap a successful upstream report in the role's current
+`DONE`/`DONE_WITH_CONCERNS` status vocabulary when that would replace the template's required format.
 
 ## Tests
 
@@ -87,14 +108,17 @@ Update the smallest existing checks that encode the compatibility boundary:
   - assert the adapter declares upstream SDD authoritative;
   - assert all three local review markers and `resumeSession` mapping are present;
   - assert final upstream cleanup is required before branch finishing; and
+  - assert sequential and parallel scheduling defer review/fix lifecycle decisions to upstream while
+    preserving Pi's local parallel orchestration rules; and
   - assert the prompt no longer contains the old `review-package BASE HEAD`, flat workspace,
     per-task `rm -f`, or persistent-ledger instructions.
 - `test/unit/agent-prompts.test.ts`
-  - assert `sp-review` accepts scoped re-review and delegates its contract to the supplied upstream
-    template while preserving existing task and branch behavior.
+  - assert `sp-review` accepts all three scopes and delegates each review's inputs, boundaries, and
+    successful output format to the supplied upstream template.
 - `test/integration/parallel-sdd-execution.test.ts`
   - replace the old flat ledger fixture with a plan-scoped workspace and a plan-identifying first
-    line; keep the existing assertion that the controller-owned ledger survives task integration.
+    line; add `.superpowers/` to the fixture's `.gitignore` instead of committing the ledger; and keep
+    the existing assertion that the controller-owned ledger survives task integration.
 
 No test will copy or execute upstream scripts. The compatibility tests guard only Pi's adapter and
 ensure it does not reintroduce upstream implementation details.
@@ -119,7 +143,9 @@ the design in effect when they were written.
 2. Initial task review, scoped re-review, and final branch review all route through `sp-review` with
    an unambiguous local scope marker.
 3. Fix rounds can resume the original `sp-implementer` through the existing `resumeSession` input.
-4. The root contract requires completion of upstream's final SDD cleanup before branch finishing.
-5. Active documentation requires Superpowers v6.2+ and describes upstream as the SDD lifecycle
+4. Sequential and parallel scheduling retain Pi-owned orchestration without overriding upstream
+   review cadence, retry, adjudication, or plan-workspace rules.
+5. The root contract requires completion of upstream's final SDD cleanup before branch finishing.
+6. Active documentation requires Superpowers v6.2+ and describes upstream as the SDD lifecycle
    authority.
-6. Unit, integration, typecheck, and formatting checks pass.
+7. Unit, integration, typecheck, and formatting checks pass.
