@@ -262,25 +262,25 @@ function buildWorktreeContract(worktreesEnabled: boolean): string {
 function buildTaskSchedulingContract(taskScheduling: "sequential" | "parallel"): string {
 	if (taskScheduling === "sequential") {
 		return [
-			"Task scheduling is SEQUENTIAL by config.",
-			"When executing an implementation plan, use subagent-driven-development one complete Task at a time.",
-			"A Task includes all of its Steps. Dispatch the Task once, review it once with sp-review, resolve findings, then continue.",
+			"Task scheduling is SEQUENTIAL by config; scheduling controls Task order only.",
+			"Execute one complete Task at a time. A Task includes all of its Steps.",
+			"For each Task and the final branch review, follow the selected upstream SDD workflow and apply the Pi SDD adapter's role and review-scope mapping.",
 		].join("\n");
 	}
 
 	return [
-		"Task scheduling is PARALLEL by config.",
+		"Task scheduling is PARALLEL by config; scheduling controls Task order and isolation only.",
 		"For implementation plans, compose subagent-driven-development, dispatching-parallel-agents, and using-git-worktrees.",
 		"A Task includes all of its Steps. Never dispatch or review individual Steps.",
 		"Build conservative dependency-ready waves of at most 8 Tasks; overlapping or ambiguous Tasks stay sequential.",
 		"Parallel scheduling with worktrees enabled is approval to create Task worktrees; do not ask again for every wave.",
 		"Before parallel writers start, create one persistent worktree per Task under the configured worktree root and pass each absolute path as that task's cwd.",
-		"Use one task-scope sp-review per completed Task. Resume Critical or Important fixes through that Task's resumeSession, then re-review.",
-		"Integrate approved Task commits in Task-number order, update the parent progress ledger, and clean the Task worktrees.",
+		"For each Task, follow the selected upstream SDD workflow and apply the Pi SDD adapter's role and review-scope mapping.",
+		"Integrate upstream-approved Task commits in Task-number order, then clean the Task worktrees.",
 		"Never integrate a failed or blocked Task; its dependents wait even when safe sibling Tasks finish.",
 		"If worktree creation fails, report the reason and run the affected Tasks sequentially.",
 		"If cherry-pick conflicts, abort it and rerun that Task sequentially from the updated parent HEAD instead of inventing a merge.",
-		"After all Tasks are integrated and verified, run one branch-scope sp-review.",
+		"After all Tasks are integrated and verified, continue the selected upstream SDD workflow through final review using `Review scope: branch`.",
 	].join("\n");
 }
 
@@ -299,26 +299,25 @@ function buildTaskTrackingContract(): string {
 }
 
 /**
- * Build the file-handoff contract block for the root session.
+ * Build the Pi adapter for the upstream Superpowers SDD lifecycle.
  *
- * Teaches the controller to use the subagent-driven-development skill's file
- * handoff (brief/report/diff by path) when delegating to the bounded sp-* roles,
- * and to clean up those files with `rm -f` after a DONE review. The extension
- * performs no cleanup itself.
+ * The installed upstream skill owns lifecycle mechanics. This block only maps
+ * those mechanics to Pi role names, review scopes, and session continuation.
  *
- * @returns Prompt block for the file-handoff contract.
+ * @returns Prompt block for the local SDD adapter contract.
  */
-function buildFileHandoffContract(): string {
+function buildSddAdapterContract(): string {
 	return [
-		"File Handoff Contract:",
-		"For bounded role agents (sp-implementer, sp-review):",
-		"Use the subagent-driven-development skill's file handoff — do not paste requirements inline.",
-		'- Before each sp-implementer dispatch, run the skill\'s `scripts/task-brief PLAN N`; put the printed brief path in the dispatch ("read this first — it is your requirements").',
-		'- Name the implementer\'s report file after the brief (task-<N>-brief.md → task-<N>-report.md) and put that report path in the dispatch ("write your full report here").',
-		"- Before each per-task sp-review dispatch, run the skill's `scripts/review-package BASE HEAD`; put the printed diff path, plus the brief and report paths, in the dispatch. The dispatch MUST state exactly `Review scope: task`. Reviewers read all paths by reference.",
-		"- Cleanup is your job, not the extension's: after a reviewer reports DONE (approved), `rm -f` that task's brief, report, and diff. Keep them on DONE_WITH_CONCERNS, NEEDS_CONTEXT, or BLOCKED — fix and re-dispatch loops reuse them.",
-		"- Never remove `progress.md` (the SDD ledger); it persists until finishing-a-development-branch.",
-		"- sp-debug, sp-recon, and sp-research do not use the file handoff; dispatch them with the task inline.",
+		"Superpowers SDD Adapter Contract:",
+		"The selected upstream `subagent-driven-development` skill is authoritative for scripts, workspace and ledger paths, handoff files, review and fix loops, retry and adjudication rules, and final plan-workspace cleanup.",
+		"Do not reconstruct those upstream mechanics from this Pi adapter.",
+		"- Dispatch implementers through `sp-implementer`.",
+		"- Initial task review: dispatch `sp-review` with exactly `Review scope: task`.",
+		"- Scoped fix re-review: dispatch `sp-review` with exactly `Review scope: re-review`.",
+		"- Final whole-branch review: dispatch `sp-review` with exactly `Review scope: branch`.",
+		"- The upstream reviewer template in the dispatch controls review inputs, boundaries, and output format; the marker only selects the Pi role mode.",
+		"- When upstream requests resuming the original implementer, pass its prior session file through `resumeSession`; otherwise follow upstream's implementer selection.",
+		"- After the final branch review is clean, complete upstream's final cleanup step before invoking `finishing-a-development-branch`.",
 	].join("\n");
 }
 
@@ -372,7 +371,7 @@ export function buildSuperpowersRootPrompt(input: SuperpowersRootPromptInput): s
 	if (input.useSubagents === true) {
 		sections.push(buildTaskTrackingContract());
 		sections.push("");
-		sections.push(buildFileHandoffContract());
+		sections.push(buildSddAdapterContract());
 		sections.push("");
 	}
 	if (input.usePlannotatorReview !== undefined) {
