@@ -21,7 +21,6 @@ These are required to satisfy the TypeScript-first and quality-gate requirements
 # Documentation Rules
 
 - Every source file and every non-trivial function must include documentation headers.
-- Keep the `README.md` short and focus on core aspects. Everything esle must go into to files in `docs`.
 
 ## File header (required)
 
@@ -44,9 +43,16 @@ Keep comments precise and maintained with code changes.
 
 ## User Documentation
 
+Keep `README.md` lean! It must only contain a basic description of the extension and its functionalities, as well
+as installation instructions and references to other projects. All other documentation lives in `docs/`.
+
 - After each change, make sure that the user documentation is updated:
   - `README.md`
   - `docs/configuration.md`
   - `docs/worktrees.md`
   - `docs/parameters.md`
   - `docs/skills.md`
+
+## Changelog
+
+After each change update the `CHANGELOG.md` file. Keep the contents short and avoid too much technical details. 
