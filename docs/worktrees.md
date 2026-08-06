@@ -113,6 +113,8 @@ See [Configuration Reference](configuration.md) for `superagents.commands.<name>
 
 The `/sp-settings` overlay also shows Superpowers model tiers and command-scoped workflow toggles. Use `c` to select a command before pressing `w`; worktree toggles are written to the selected command preset. Tier edits use a type-to-search model picker followed by a thinking-level picker and apply immediately to future subagents, while worktree command registration changes may still require a PI reload.
 
+Worktree scheduling does not change model routing: normal built-in role dispatches omit per-call model overrides and use the role tier configured in `superagents.modelTiers`. A one-off override is passed only when explicitly requested by the user.
+
 ## Release Notes
 
 Worktree behavior affects parallel execution safety, so user-facing changes to this subsystem should be called out in `CHANGELOG.md` before publishing. Follow the [Release Process](releases.md) when preparing a version that changes worktree defaults, cleanup, branch behavior, or artifact output.

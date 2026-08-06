@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Fixed Superpowers role dispatch to use configured model tiers unless the user explicitly requests an override.
+
 ## [1.13.0] - 2026-08-04
 
 - **Superpowers v6.2 Compatibility**

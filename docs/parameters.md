@@ -20,7 +20,7 @@ Maintenance note: static analysis runs with `pnpm exec fallow`; keep documented 
 | `sessionMode`     | `"standalone" \| "lineage-only" \| "fork"` | `"lineage-only"` (bounded roles) | Child session visibility mode. `lineage-only` links to parent session tree without inheriting conversation turns; `fork` inherits full parent history; `standalone` is fully isolated. |
 | `cwd`             | string                                  | parent cwd                | Working directory for the subagent. |
 | `skill`           | `string \| string[] \| false`           | agent default             | Skills to inject into the agent prompt. `false` disables all skills. |
-| `model`           | string                                  | agent default             | Override the model for this specific run. Can be a concrete ID or a tier name (`cheap`, `balanced`, `max`). |
+| `model`           | string                                  | agent default             | Explicit user-requested one-off model override. Omit during normal Superpowers dispatch so the role's configured tier remains active. |
 | `resumeSession`   | string                                  | -                         | Absolute path to a prior pi-superagents `lineage-only` `sp-implementer` session JSONL file in the current parent lineage, continued synchronously. See [Resuming a Superpowers implementer session](#resuming-a-superpowers-implementer-session). |
 | `artifacts`       | boolean                                 | `true`                    | Whether to write debug artifacts (input/output logs). |
 | `includeProgress` | boolean                                 | `false`                   | Whether to include full internal progress metadata in the result. |
@@ -32,6 +32,8 @@ Execution is strictly synchronous and blocking. The `subagent` tool does not acc
 The runtime may attach additive completion metadata to results. The child's normal answer remains available as text; the envelope only adds `status`, `summary`, optional `parentRequest`, and optional artifact references for parent orchestration.
 
 Runtime-confirmed models, effective thinking levels, and resolved skills are shown in inline subagent rows/details and `/subagents-status` for active and recent subagent runs. Missing skills are shown as warnings there. The bundled `sp-debug` role resolves `systematic-debugging` from its frontmatter unless a call overrides or disables skills.
+
+For normal built-in role dispatch, omit `model` and `tasks[].model`: the extension resolves the role's frontmatter tier through the current `superagents.modelTiers` configuration. Set either field only when the user explicitly requests a one-off override; generic skill guidance must not invent one.
 
 Provide either `agent` plus `task` for a single delegation, or `tasks` for parallel delegation. The runtime validates this selector after Pi accepts the tool call; the machine-readable schema stays intentionally simple for host compatibility.
 
@@ -46,7 +48,7 @@ Subagent output is inline: the child Pi process streams assistant text back thro
 | `agent` | string  | Role agent name. |
 | `task`  | string  | Task description. |
 | `cwd`   | string  | Optional directory override for this specific parallel task. |
-| `model` | string  | Optional model/tier override for this task. |
+| `model` | string  | Explicit user-requested one-off override for this task; omit it during normal tier-routed dispatch. |
 | `skill` | mixed   | Optional skill override for this task. |
 | `resumeSession` | string | Optional `sp-implementer` lineage-only session file to continue. See [Resuming a Superpowers implementer session](#resuming-a-superpowers-implementer-session). Each `resumeSession` may appear at most once per `tasks[]` array. |
 

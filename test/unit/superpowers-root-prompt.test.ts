@@ -89,6 +89,19 @@ void describe("Superpowers root prompt", () => {
 		assert.doesNotMatch(prompt, /Task tracking is the responsibility/);
 	});
 
+	void it("keeps normal role dispatch on configured model tiers while preserving explicit user overrides", () => {
+		const prompt = buildSuperpowersRootPrompt({
+			task: "implement auth fix",
+			useSubagents: true,
+			fork: false,
+		});
+
+		assert.match(prompt, /omit `model` and `tasks\[\]\.model`/i);
+		assert.match(prompt, /frontmatter model tier.*current.*modelTiers/i);
+		assert.match(prompt, /only when the user explicitly requests a one-off override/i);
+		assert.match(prompt, /overrides conflicting.*skill guidance/i);
+	});
+
 	void it("omits delegation, tdd, branch, worktree contracts when booleans are absent", () => {
 		const prompt = buildSuperpowersRootPrompt({
 			task: "design onboarding",
