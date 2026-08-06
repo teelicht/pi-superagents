@@ -90,9 +90,15 @@ void describe("package.json manifest", () => {
 		const packageJson = readPackageJson();
 		const scripts = (packageJson.scripts as Record<string, string> | undefined) ?? {};
 
-		assert.equal(scripts.postinstall, "node --experimental-strip-types ./scripts/migrate-package-install.ts");
-		assert.ok(fs.existsSync(path.resolve("scripts/migrate-package-install.ts")));
-		assert.ok(fs.existsSync(path.resolve("scripts/migrate-user-config.ts")));
+		assert.equal(scripts.postinstall, "node ./scripts/migrate-package-install.mjs");
+		assert.equal(scripts["build:install-scripts"], "node --experimental-strip-types ./scripts/build-install-scripts.ts");
+		assert.ok(fs.existsSync(path.resolve("scripts/migrate-package-install.ts")), "authored TypeScript postinstall source should remain");
+		assert.ok(fs.existsSync(path.resolve("scripts/migrate-user-config.ts")), "authored TypeScript migration source should remain");
+		assert.ok(fs.existsSync(path.resolve("scripts/build-install-scripts.ts")), "install-script bundler should be committed");
+		assert.ok(fs.existsSync(path.resolve("scripts/migrate-package-install.mjs")), "bundled postinstall .mjs should be committed");
+		assert.ok(fs.existsSync(path.resolve("scripts/migrate-user-config.mjs")), "bundled bin migration .mjs should be committed");
+		assert.ok(fs.statSync(path.resolve("scripts/migrate-package-install.mjs")).size > 0, "bundled postinstall .mjs should not be empty");
+		assert.ok(fs.statSync(path.resolve("scripts/migrate-user-config.mjs")).size > 0, "bundled bin migration .mjs should not be empty");
 		assert.ok(fs.existsSync(path.resolve("agents/sp-review.md")));
 		assert.ok(!fs.existsSync(path.resolve("agents/sp-spec-review.md")));
 		assert.ok(!fs.existsSync(path.resolve("agents/sp-code-review.md")));

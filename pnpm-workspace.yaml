@@ -1,5 +1,6 @@
 allowBuilds:
   '@google/genai': false
+  esbuild: true
   protobufjs: false
 minimumReleaseAgeExclude:
   - '@earendil-works/pi-agent-core@0.79.10'
