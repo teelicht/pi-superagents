@@ -135,6 +135,8 @@ Bundled role assignments:
   - `Review scope: branch` — use the supplied upstream final code-review template.
   Missing or unknown scope markers return `NEEDS_CONTEXT`. Successful reports follow the supplied upstream template rather than a fixed local status vocabulary.
 
+Normal dispatches omit `model` and `tasks[].model`, allowing these frontmatter tiers to resolve through `superagents.modelTiers`. Those tool fields are only for one-off model overrides explicitly requested by the user.
+
 Install upgrades rename user-level `sp-spec-review.md` and
 `sp-code-review.md` files to timestamped backups. This prevents stale user
 agents from surviving beside the consolidated bundled `sp-review` role.

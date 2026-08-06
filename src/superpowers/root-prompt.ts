@@ -192,6 +192,10 @@ function buildDelegationContract(useSubagents: boolean, useTestDrivenDevelopment
 			"Subagent delegation is ENABLED by config.",
 			"When a selected Superpowers skill calls for delegated work, you must use the `subagent` tool rather than doing that delegated work inline.",
 			"This applies especially to implementation-plan execution, independent parallel investigations, bounded implementation, review, focused research, and debugging workflows.",
+			"During normal Superpowers dispatch, omit `model` and `tasks[].model`.",
+			"Each built-in role's frontmatter model tier is resolved through the current `superagents.modelTiers` configuration.",
+			"Pass a model override only when the user explicitly requests a one-off override; never infer or invent one.",
+			"This extension runtime policy overrides conflicting generic skill guidance about always specifying a model.",
 			...(useTestDrivenDevelopment !== undefined
 				? [
 						`When delegating, pass \`useTestDrivenDevelopment: ${useTestDrivenDevelopment}\` in every \`subagent\` call so child agents inherit the active command profile explicitly.`,

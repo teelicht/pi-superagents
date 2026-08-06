@@ -60,6 +60,8 @@ Trusting a project enables runtime subagent delegation from project agents but d
 
 Subagent execution is synchronous and blocking. The `subagent` tool does not accept `async`, `wait`, `collect`, or `cancel` parameters. Lifecycle tools (`subagent_done`, `caller_ping`) are registered as internal child-only tools through policy; they are not general-purpose delegation tools.
 
+Built-in Superpowers roles normally omit the tool's `model` fields so their frontmatter tiers resolve through `superagents.modelTiers`; a model override is reserved for an explicit user-requested one-off exception.
+
 ## Integrated Slash Commands
 
 Superpowers slash commands are registered from interactive entrypoint agent frontmatter, not generated from `config.json`. `config.json` only changes runtime behavior for commands that already have a matching entrypoint agent. Use `superagents.tools` to append shared tool names or tool extension paths to every subagent without repeating them in each agent frontmatter file.

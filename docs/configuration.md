@@ -109,6 +109,8 @@ Configures the Superpowers workflow.
 | `makeSuperpowersSkillsOptInOnly` | When `true` (default), hides `using-superpowers` from ordinary model skill selection and neutralizes obra/superpowers' automatic Pi bootstrap hook. Explicit `/sp-*` and `/skill:*` commands still work. |
 | `superpowersSkills` | List of Superpowers process skill names (bundled default, not user-configurable). |
 
+Built-in Superpowers roles normally use their frontmatter tier from `modelTiers`. The root dispatcher omits `model` and `tasks[].model` unless the user explicitly requests a one-off model override.
+
 ### Extension Allowlist
 
 Subagents run with implicit Pi extension discovery disabled by default. Configure `superagents.extensions` as a global list of extensions that every subagent should receive:

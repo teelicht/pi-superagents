@@ -45,6 +45,9 @@ interface SubagentParamsSchema {
 					agent?: {
 						description?: string;
 					};
+					model?: {
+						description?: string;
+					};
 					count?: {
 						minimum?: number;
 						description?: string;
@@ -54,6 +57,9 @@ interface SubagentParamsSchema {
 		};
 		agent?: unknown;
 		task?: unknown;
+		model?: {
+			description?: string;
+		};
 		useTestDrivenDevelopment?: unknown;
 		action?: unknown;
 		chainName?: unknown;
@@ -294,6 +300,16 @@ void describe("SubagentParams schema", { skip: !available ? "typebox not availab
 		assert.ok(tasksSchema, "tasks schema should exist");
 		const itemCount = tasksSchema?.items?.properties?.count;
 		assert.equal(itemCount, undefined, "tasks[].count should not exist");
+	});
+
+	void it("describes model fields as explicit user-requested overrides of role tier routing", () => {
+		const modelDescription = SubagentParams?.properties?.model?.description ?? "";
+		assert.match(modelDescription, /omit.*normal.*Superpowers/i);
+		assert.match(modelDescription, /user explicitly requests.*one-off override/i);
+
+		const taskModelDescription = SubagentParams?.properties?.tasks?.items?.properties?.model?.description ?? "";
+		assert.match(taskModelDescription, /omit.*normal.*Superpowers/i);
+		assert.match(taskModelDescription, /user explicitly requests.*one-off override/i);
 	});
 
 	void it("publishes conditional synchronous resumeSession guidance for single and parallel runs", () => {

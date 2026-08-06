@@ -23,7 +23,12 @@ const TaskItem = Type.Object(
 		agent: SuperpowersRoleNameSchema,
 		task: Type.String({ description: "Objective for this discovered agent task." }),
 		cwd: Type.Optional(Type.String()),
-		model: Type.Optional(Type.String({ description: "Override model for this discovered agent task." })),
+		model: Type.Optional(
+			Type.String({
+				description:
+					"Optional one-off model override. Omit during normal Superpowers dispatch so the role's frontmatter tier resolves through configuration; set only when the user explicitly requests a one-off override.",
+			}),
+		),
 		skill: Type.Optional(SkillOverride),
 		resumeSession: Type.Optional(
 			Type.String({ description: "Prior pi-superagents sp-implementer session file to continue synchronously when upstream requests resuming the original implementer." }),
@@ -65,7 +70,12 @@ export const SubagentParams = Type.Object(
 		artifacts: Type.Optional(Type.Boolean({ description: "Whether to preserve execution artifacts for debugging." })),
 		includeProgress: Type.Optional(Type.Boolean({ description: "Include detailed step-by-step progress in the tool output." })),
 		skill: Type.Optional(SkillOverride),
-		model: Type.Optional(Type.String({ description: "Override the model for this discovered agent execution." })),
+		model: Type.Optional(
+			Type.String({
+				description:
+					"Optional one-off model override. Omit during normal Superpowers dispatch so the role's frontmatter tier resolves through configuration; set only when the user explicitly requests a one-off override.",
+			}),
+		),
 		resumeSession: Type.Optional(
 			Type.String({ description: "Prior pi-superagents sp-implementer session file to continue synchronously when upstream requests resuming the original implementer." }),
 		),
