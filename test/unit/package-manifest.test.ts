@@ -64,7 +64,7 @@ void describe("package.json manifest", () => {
 
 	void it("uses frozen pnpm installs and current setup actions in GitHub workflows", () => {
 		const packageJson = readPackageJson();
-		assert.equal(packageJson.packageManager, "pnpm@11.6.0");
+		assert.equal(packageJson.packageManager, "pnpm@11.20.0");
 		assert.ok(fs.existsSync(path.resolve("pnpm-lock.yaml")), "pnpm-lock.yaml should be committed");
 		assert.ok(!fs.existsSync(path.resolve("package-lock.json")), "package-lock.json should not be committed");
 		const releaseWorkflow = readTextFile(".github/workflows/release.yml");
@@ -73,6 +73,7 @@ void describe("package.json manifest", () => {
 		for (const workflow of [releaseWorkflow, testWorkflow]) {
 			assert.match(workflow, /uses:\s*actions\/checkout@v7/);
 			assert.match(workflow, /uses:\s*pnpm\/action-setup@v6/);
+			assert.match(workflow, /uses:\s*actions\/setup-node@v7/);
 			assert.match(workflow, /cache:\s*"?pnpm"?/);
 			assert.match(workflow, /run:\s*pnpm install --frozen-lockfile/);
 			assert.doesNotMatch(workflow, /run:\s*npm (?:ci|install|run)/);
@@ -104,19 +105,19 @@ void describe("package.json manifest", () => {
 		assert.ok(!fs.existsSync(path.resolve("agents/sp-code-review.md")));
 	});
 
-	void it("uses Pi 0.82.1 development dependencies", () => {
+	void it("uses Pi 0.84.1 development dependencies", () => {
 		const packageJson = readPackageJson();
 		const deps = (packageJson.devDependencies as Record<string, string> | undefined) ?? {};
 
-		assert.equal(deps["@earendil-works/pi-agent-core"], "^0.82.1");
-		assert.equal(deps["@earendil-works/pi-ai"], "^0.82.1");
-		assert.equal(deps["@earendil-works/pi-coding-agent"], "^0.82.1");
-		assert.equal(deps["@earendil-works/pi-tui"], "^0.82.1");
+		assert.equal(deps["@earendil-works/pi-agent-core"], "^0.84.1");
+		assert.equal(deps["@earendil-works/pi-ai"], "^0.84.1");
+		assert.equal(deps["@earendil-works/pi-coding-agent"], "^0.84.1");
+		assert.equal(deps["@earendil-works/pi-tui"], "^0.84.1");
 	});
 
 	void it("requires a Pi host that emits agent_settled", () => {
 		const packageJson = readPackageJson();
 		const peers = (packageJson.peerDependencies as Record<string, string> | undefined) ?? {};
-		assert.equal(peers["@earendil-works/pi-coding-agent"], "^0.82.1");
+		assert.equal(peers["@earendil-works/pi-coding-agent"], "^0.84.1");
 	});
 });
