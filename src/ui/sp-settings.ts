@@ -539,6 +539,7 @@ export class SuperpowersSettingsComponent implements Component {
 						if ("useTestDrivenDevelopment" in preset) configuredSettings.push(`    useTestDrivenDevelopment: ${preset.useTestDrivenDevelopment}`);
 						if ("useBranches" in preset) configuredSettings.push(`    useBranches: ${preset.useBranches}`);
 						if ("taskScheduling" in preset) configuredSettings.push(`    taskScheduling: ${preset.taskScheduling}`);
+						if ("reviewCadence" in preset) configuredSettings.push(`    reviewCadence: ${preset.reviewCadence}`);
 						if (preset.worktrees && "enabled" in preset.worktrees) configuredSettings.push(`    worktrees.enabled: ${preset.worktrees.enabled}`);
 						if (preset.worktrees && "root" in preset.worktrees) configuredSettings.push(`    worktrees.root: ${preset.worktrees.root ?? "default"}`);
 

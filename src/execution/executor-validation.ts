@@ -3,6 +3,7 @@
  *
  * Responsibilities:
  * - validate mutually exclusive single and parallel execution inputs
+ * - enforce final-only review dispatch for the active command profile
  * - convert execution exceptions into structured tool results
  * - annotate aggregate and child results with explicit session-mode metadata
  *
@@ -13,7 +14,7 @@
 
 import type { AgentToolResult } from "@earendil-works/pi-agent-core";
 import type { AgentConfig } from "../agents/agents.ts";
-import type { Details, SessionMode, SingleResult, SubagentParamsLike } from "../shared/types.ts";
+import type { Details, ReviewCadence, SessionMode, SingleResult, SubagentParamsLike } from "../shared/types.ts";
 import { resolveRequestedSessionMode } from "./session-mode.ts";
 
 /**
@@ -111,6 +112,50 @@ export function validateExecutionInput(params: SubagentParamsLike, agents: Agent
 				defaultSessionMode: "standalone",
 			}),
 		);
+	}
+
+	return null;
+}
+
+/**
+ * Build a structured review-cadence validation error.
+ *
+ * @param params Request whose review dispatch violated command policy.
+ * @param message User-facing explanation of the allowed final review form.
+ * @returns Tool result with no child executions.
+ */
+function buildReviewCadenceError(params: SubagentParamsLike, message: string): AgentToolResult<Details> {
+	return {
+		content: [{ type: "text", text: message }],
+		details: { mode: (params.tasks?.length ?? 0) > 0 ? "parallel" : "single", results: [] },
+	};
+}
+
+/**
+ * Enforce final-only reviewer dispatch for the active command profile.
+ *
+ * Non-review agents are unaffected. Under `final-only`, `sp-review` must be a
+ * single dispatch with exactly one `Review scope: branch` marker; task-wave,
+ * task-scope, re-review, missing, or ambiguous scope dispatches are rejected.
+ *
+ * @param params Raw single or parallel execution parameters.
+ * @param reviewCadence Active command's resolved review cadence.
+ * @returns A structured rejection, or null when the request is allowed.
+ */
+export function validateReviewCadence(params: SubagentParamsLike, reviewCadence: ReviewCadence | undefined): AgentToolResult<Details> | null {
+	if (reviewCadence !== "final-only") return null;
+
+	const requested = params.tasks?.length ? params.tasks : params.agent && params.task ? [{ agent: params.agent, task: params.task }] : [];
+	const reviewRequests = requested.filter((request) => request.agent === "sp-review");
+	if (reviewRequests.length === 0) return null;
+
+	if (params.tasks?.length) {
+		return buildReviewCadenceError(params, "Under reviewCadence: final-only, final review must be dispatched alone in single-agent mode after all Tasks are complete.");
+	}
+
+	const scopes = [...reviewRequests[0].task.matchAll(/^Review scope:\s*(task|re-review|branch)\s*$/gim)].map((match) => match[1]);
+	if (scopes.length !== 1 || scopes[0] !== "branch") {
+		return buildReviewCadenceError(params, "Under reviewCadence: final-only, only a single final `Review scope: branch` dispatch is allowed after all Tasks are complete.");
 	}
 
 	return null;

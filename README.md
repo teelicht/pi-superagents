@@ -87,7 +87,7 @@ The `/sp-implement` and `/sp-implement-parallel` commands activate the same stru
 
 Subagent execution remains conservative and synchronous for ordinary Superpowers workflows. There is intentionally no user-facing `async` or `blocking` switch in agent frontmatter, config, or tool parameters. Internal result ownership prevents duplicate delivery and lifecycle sidecars let child agents report intentional completion or a parent-help request without changing the normal delegation flow.
 
-The installed upstream `subagent-driven-development` skill owns its plan-scoped workspace, ledger, handoff artifacts, review/fix loop, retry and adjudication rules, and final cleanup. Pi Superagents only maps those steps to `sp-implementer`, `sp-review`, `resumeSession` when upstream requests the original implementer, and the local `Review scope: task`, `Review scope: re-review`, and `Review scope: branch` markers. Parallel mode additionally owns dependency-ready Task waves and per-Task worktree integration. Bounded roles default to `lineage-only` - they see a curated work brief rather than the full parent conversation history.
+The installed upstream `subagent-driven-development` skill owns its plan-scoped workspace, ledger, handoff artifacts, and final cleanup. Per-command `reviewCadence` selects its normal `"per-task"` review loop or `"final-only"`, which permits only a final whole-plan `Review scope: branch` dispatch. Parallel mode additionally owns dependency-ready Task waves and per-Task worktree integration. Bounded roles default to `lineage-only` - they see a curated work brief rather than the full parent conversation history.
 
 ## Parallel SDD Task Scheduling
 
@@ -101,6 +101,7 @@ The bundled parallel preset is equivalent to:
     "commands": {
       "sp-implement-parallel": {
         "taskScheduling": "parallel",
+        "reviewCadence": "per-task",
         "useSubagents": true,
         "worktrees": { "enabled": true }
       }
@@ -111,7 +112,7 @@ The bundled parallel preset is equivalent to:
 
 Scheduling remains config-only per command and cannot be toggled with an inline token. Parallel scheduling is **rejected before dispatch** if the active command preset is missing `useSubagents: true` or `worktrees.enabled: true`.
 
-Under parallel scheduling, the root session composes three existing upstream Superpowers skills — `subagent-driven-development`, `dispatching-parallel-agents`, and `using-git-worktrees` — without forking or editing them. Pi Superagents controls dependency-ready waves of at most eight Tasks, creates one **persistent** worktree per Task before writers start, and integrates upstream-approved commits in Task-number order. Each Task and the final branch review otherwise follow the selected upstream SDD workflow through the local role and review-scope markers.
+Under parallel scheduling, the root session composes three existing upstream Superpowers skills — `subagent-driven-development`, `dispatching-parallel-agents`, and `using-git-worktrees` — without forking or editing them. Pi Superagents controls dependency-ready waves of at most eight Tasks, creates one **persistent** worktree per Task before writers start, and integrates successful commits in Task-number order. The bundled `"per-task"` cadence preserves the upstream review/fix loop; set `"final-only"` to review once after all Tasks are integrated.
 
 Run history is persisted at `~/.pi/agent/run-history.jsonl` for `/subagents-status`. Inline subagent rows and the status overlay show the model reported by the child Pi execution loop and, when available, the effective thinking level used for that run. Set `PI_SUPERAGENTS_RUN_HISTORY_PATH` to isolate that file for tests or sandboxed sessions.
 

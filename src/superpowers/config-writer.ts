@@ -5,7 +5,7 @@
  * - parse user config text as JSON
  * - update only the Superpowers settings object
  * - serialize stable two-space JSON for TUI-initiated edits
- * - toggle command-scoped behavior flags (subagents, TDD, plannotator, worktrees, task scheduling)
+ * - toggle command-scoped behavior flags while preserving configured review cadence
  *
  * Important side effects:
  * - none; callers perform filesystem writes
@@ -24,7 +24,7 @@ type MutableConfig = ExtensionConfig & {
  * toggles between them in `toggleSuperpowersTaskScheduling`. Branches and
  * plannotator remain booleans toggled by `toggleSuperpowersBoolean`.
  */
-const BEHAVIOR_FLAG_KEYS = ["usePlannotator", "useSubagents", "useTestDrivenDevelopment", "useBranches", "taskScheduling"] as const;
+const BEHAVIOR_FLAG_KEYS = ["usePlannotator", "useSubagents", "useTestDrivenDevelopment", "useBranches", "taskScheduling", "reviewCadence"] as const;
 
 /**
  * Ensure a mutable Superpowers settings object exists.

@@ -122,6 +122,7 @@ function sendSkillEntryPrompt(
 			worktrees: profile.worktrees,
 			fork: profile.fork,
 			taskScheduling: profile.taskScheduling,
+			reviewCadence: profile.reviewCadence,
 		}),
 		promptResult.prompt,
 		ctx,

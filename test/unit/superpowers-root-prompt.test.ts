@@ -102,6 +102,25 @@ void describe("Superpowers root prompt", () => {
 		assert.match(prompt, /overrides conflicting.*skill guidance/i);
 	});
 
+	void it("overrides upstream per-task reviews when final-only cadence is configured", () => {
+		const prompt = buildSuperpowersRootPrompt({
+			task: "implement auth fix",
+			useSubagents: true,
+			taskScheduling: "sequential",
+			reviewCadence: "final-only",
+			fork: false,
+		});
+
+		assert.match(prompt, /reviewCadence: final-only/);
+		assert.match(prompt, /FINAL-ONLY.*overrides.*upstream.*per-task/i);
+		assert.match(prompt, /do not dispatch.*Review scope: task.*Review scope: re-review/i);
+		assert.match(prompt, /before Task 1.*git rev-parse HEAD.*final review base/i);
+		assert.match(prompt, /implementation ran on.*main.*do not use `git merge-base main HEAD`/i);
+		assert.match(prompt, /Review scope: branch/);
+		assert.doesNotMatch(prompt, /Initial task review:/);
+		assert.doesNotMatch(prompt, /Scoped fix re-review:/);
+	});
+
 	void it("omits delegation, tdd, branch, worktree contracts when booleans are absent", () => {
 		const prompt = buildSuperpowersRootPrompt({
 			task: "design onboarding",

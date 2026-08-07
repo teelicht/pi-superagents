@@ -21,6 +21,7 @@ const config: ExtensionConfig = {
 				useSubagents: true,
 				useTestDrivenDevelopment: true,
 				useBranches: false,
+				reviewCadence: "per-task",
 				worktrees: { enabled: false },
 			},
 			"superpowers-lean": {
@@ -70,6 +71,7 @@ void describe("Superpowers workflow profile", () => {
 				useTestDrivenDevelopment: true,
 				useBranches: false,
 				taskScheduling: "sequential",
+				reviewCadence: "per-task",
 				worktrees: { enabled: false },
 				fork: false,
 				rootLifecycleSkillNames: ["verification-before-completion", "receiving-code-review", "finishing-a-development-branch"],
@@ -104,6 +106,7 @@ void describe("Superpowers workflow profile", () => {
 				useSubagents: false, // from preset
 				useTestDrivenDevelopment: true, // from inline token
 				taskScheduling: "sequential",
+				reviewCadence: "per-task",
 				fork: false,
 				rootLifecycleSkillNames: [],
 			},
@@ -292,6 +295,30 @@ void describe("Superpowers workflow profile", () => {
 			parsed: parseSuperpowersWorkflowArgs("fix auth")!,
 		});
 		assert.equal(profile.taskScheduling, "sequential");
+	});
+
+	void it("defaults review cadence to per-task when the command preset omits it", () => {
+		const profile = resolveSuperpowersRunProfile({
+			config: {},
+			commandName: "sp-implement",
+			parsed: parseSuperpowersWorkflowArgs("fix auth")!,
+		});
+		assert.equal(profile.reviewCadence, "per-task");
+	});
+
+	void it("resolves final-only review cadence from the active command preset", () => {
+		const profile = resolveSuperpowersRunProfile({
+			config: {
+				superagents: {
+					commands: {
+						"sp-implement": { reviewCadence: "final-only" },
+					},
+				},
+			},
+			commandName: "sp-implement",
+			parsed: parseSuperpowersWorkflowArgs("fix auth")!,
+		});
+		assert.equal(profile.reviewCadence, "final-only");
 	});
 
 	void it("resolves task scheduling from a command preset", () => {

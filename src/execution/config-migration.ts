@@ -5,6 +5,7 @@
  * - enable explicit-only Superpowers activation for existing configs
  * - add the bundled parallel implementation preset without replacing user settings
  * - split legacy parallel `sp-implement` settings into `sp-implement-parallel`
+ * - pin missing `reviewCadence` values to `per-task` so upgrades keep historical review timing
  * - retire obsolete review command presets and user agent files with backups
  *
  * Important side effects:
@@ -71,6 +72,27 @@ function addSuperpowersSkillsOptInDefault(config: ExtensionConfig, defaults: Ext
 }
 
 /**
+ * Pin missing review cadence to the historical per-task default.
+ *
+ * Existing installs predate `reviewCadence` and always ran upstream per-task
+ * reviews. Writing an explicit `per-task` value keeps that behavior stable if
+ * bundled defaults later change. Explicit `final-only` overrides are preserved.
+ *
+ * @param config Mutable cloned user config.
+ * @param changes Human-readable migration changes.
+ */
+function addReviewCadenceDefaults(config: ExtensionConfig, changes: string[]): void {
+	const commands = config.superagents?.commands;
+	if (!commands) return;
+	for (const [commandName, preset] of Object.entries(commands)) {
+		if (!preset || typeof preset !== "object" || Array.isArray(preset)) continue;
+		if (preset.reviewCadence !== undefined) continue;
+		preset.reviewCadence = "per-task";
+		changes.push(`Added reviewCadence: per-task to superagents.commands.${commandName}.`);
+	}
+}
+
+/**
  * Merge legacy parallel settings over the bundled parallel preset.
  *
  * Parallel invariants are forced on while user-selected TDD, branch, and
@@ -109,41 +131,44 @@ export function migrateUserConfigDocument(userConfig: ExtensionConfig, defaults:
 	addSuperpowersSkillsOptInDefault(config, defaults, changes);
 	const bundledParallel = defaults.superagents?.commands?.[PARALLEL_COMMAND];
 
-	if (!bundledParallel) return { config, changes };
-
 	config.superagents ??= {};
 	config.superagents.commands ??= {};
 	const commands = config.superagents.commands;
-	const legacyImplement = commands[SEQUENTIAL_COMMAND];
-	const legacyWasParallel = legacyImplement?.taskScheduling === "parallel";
 
-	if (!commands[PARALLEL_COMMAND]) {
-		commands[PARALLEL_COMMAND] = buildParallelPreset(bundledParallel, legacyWasParallel ? legacyImplement : undefined);
-		if (!legacyWasParallel && legacyImplement?.worktrees?.root != null) {
-			commands[PARALLEL_COMMAND].worktrees = {
-				...(commands[PARALLEL_COMMAND].worktrees ?? {}),
-				enabled: true,
-				root: legacyImplement.worktrees.root,
+	if (bundledParallel) {
+		const legacyImplement = commands[SEQUENTIAL_COMMAND];
+		const legacyWasParallel = legacyImplement?.taskScheduling === "parallel";
+
+		if (!commands[PARALLEL_COMMAND]) {
+			commands[PARALLEL_COMMAND] = buildParallelPreset(bundledParallel, legacyWasParallel ? legacyImplement : undefined);
+			if (!legacyWasParallel && legacyImplement?.worktrees?.root != null) {
+				commands[PARALLEL_COMMAND].worktrees = {
+					...(commands[PARALLEL_COMMAND].worktrees ?? {}),
+					enabled: true,
+					root: legacyImplement.worktrees.root,
+				};
+			}
+			changes.push(`Added ${PARALLEL_COMMAND} from bundled defaults.`);
+		}
+
+		if (legacyWasParallel && legacyImplement) {
+			commands[SEQUENTIAL_COMMAND] = {
+				...legacyImplement,
+				taskScheduling: "sequential",
+				worktrees: { ...(legacyImplement.worktrees ?? {}), enabled: false },
 			};
+			changes.push(`Reset ${SEQUENTIAL_COMMAND} to sequential scheduling; parallel settings moved to ${PARALLEL_COMMAND}.`);
 		}
-		changes.push(`Added ${PARALLEL_COMMAND} from bundled defaults.`);
-	}
 
-	if (legacyWasParallel && legacyImplement) {
-		commands[SEQUENTIAL_COMMAND] = {
-			...legacyImplement,
-			taskScheduling: "sequential",
-			worktrees: { ...(legacyImplement.worktrees ?? {}), enabled: false },
-		};
-		changes.push(`Reset ${SEQUENTIAL_COMMAND} to sequential scheduling; parallel settings moved to ${PARALLEL_COMMAND}.`);
-	}
-
-	for (const commandName of LEGACY_REVIEW_COMMANDS) {
-		if (commands[commandName]) {
-			delete commands[commandName];
-			changes.push(`Removed obsolete ${commandName} command preset; use sp-review.`);
+		for (const commandName of LEGACY_REVIEW_COMMANDS) {
+			if (commands[commandName]) {
+				delete commands[commandName];
+				changes.push(`Removed obsolete ${commandName} command preset; use sp-review.`);
+			}
 		}
 	}
+
+	addReviewCadenceDefaults(config, changes);
 
 	return { config, changes };
 }

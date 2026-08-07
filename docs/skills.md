@@ -155,15 +155,15 @@ in sessions where a Superpowers command has been explicitly activated.
 
 When `/sp-implement-parallel` runs—or another implementation command resolves `taskScheduling: "parallel"`, `useSubagents: true`, and `worktrees.enabled: true`—the root session controller drives the implementation plan in waves. The controller composes the three existing upstream Superpowers skills — `subagent-driven-development`, `dispatching-parallel-agents`, and `using-git-worktrees` — **without forking or editing them**:
 
-- `subagent-driven-development` is authoritative for SDD scripts, plan workspace and ledger, handoff artifacts, review/fix cadence, retry and adjudication, and final cleanup.
+- `subagent-driven-development` is authoritative for SDD scripts, plan workspace and ledger, handoff artifacts, and final cleanup. The active command's `reviewCadence` may override its review timing.
 - `dispatching-parallel-agents` provides the wave-building and dependency-ready heuristics.
 - `using-git-worktrees` provides the directory convention and safety rules for the per-Task worktrees.
 
-A **Task** is the whole numbered block of Steps from the implementation plan. The controller dispatches all Steps of one Task together to a single `sp-implementer` session — it never dispatches or reviews individual Steps. For each Task and the final branch review, follow the selected upstream SDD workflow and apply Pi's role and review-scope mapping (`Review scope: task`, `Review scope: re-review`, `Review scope: branch`). Pass `resumeSession` only when upstream requests resuming the original implementer. Integrate upstream-approved Task commits in Task-number order.
+A **Task** is the whole numbered block of Steps from the implementation plan. The controller dispatches all Steps of one Task together to a single `sp-implementer` session — it never dispatches or reviews individual Steps. `reviewCadence: "per-task"` retains the upstream task/re-review/final mapping. `"final-only"` skips and runtime-rejects task/re-review dispatches, integrates successful Task commits in Task-number order, then runs `Review scope: branch` alone against the whole-plan diff. This marker works on `main`; the review base is `HEAD` recorded before Task 1, not `git merge-base main HEAD`.
 
 Sequential scheduling keeps Pi-owned Task order only: one complete Task at a time, with no parallel writers and no persistent Task worktrees. The Task-includes-all-Steps rule still holds.
 
-Worktree lifecycle for parallel SDD waves is described in the [Worktree Isolation reference](worktrees.md#two-kinds-of-parallel-worktree): the controller pre-creates one persistent worktree per Task under the configured worktree root and reuses it across implement → review → fix → re-review; ordinary parallel calls (the extension's generic `tasks: [...]` path) still get ephemeral, extension-owned worktrees.
+Worktree lifecycle for parallel SDD waves is described in the [Worktree Isolation reference](worktrees.md#two-kinds-of-parallel-worktree): the controller pre-creates one persistent worktree per Task under the configured worktree root. Per-task cadence reuses it across implement → review → fix → re-review; final-only cadence integrates successful implementation commits before the single final review. Ordinary parallel calls still get ephemeral, extension-owned worktrees.
 
 ## Child Lifecycle Tools
 

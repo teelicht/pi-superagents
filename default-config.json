@@ -5,6 +5,7 @@
     "commands": {
       "sp-implement": {
         "taskScheduling": "sequential",
+        "reviewCadence": "per-task",
         "useSubagents": true,
         "useTestDrivenDevelopment": true,
         "useBranches": false,
@@ -12,6 +13,7 @@
       },
       "sp-implement-parallel": {
         "taskScheduling": "parallel",
+        "reviewCadence": "per-task",
         "useSubagents": true,
         "useTestDrivenDevelopment": true,
         "useBranches": false,

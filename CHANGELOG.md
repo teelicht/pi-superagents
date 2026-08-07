@@ -3,7 +3,8 @@
 ## [Unreleased]
 
 - Fixed Superpowers role dispatch to use configured model tiers unless the user explicitly requests an override.
-- Fixed `postinstall` and `npx` install failing on Node versions that forbid type-stripping inside `node_modules` (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`) by bundling the install-time migration scripts to plain `.mjs` via a dev-only esbuild step, rebuilt automatically on `npm publish`; TypeScript remains the authored source of truth.
+- Added per-command review cadence, defaulting to per-Task reviews with a final-only opt-in.
+- Fixed Node installation failures by bundling install-time migration scripts ([#69](https://github.com/teelicht/pi-superagents/pull/69) by [@adamteale](https://github.com/adamteale)).
 
 ## [1.13.0] - 2026-08-04
 

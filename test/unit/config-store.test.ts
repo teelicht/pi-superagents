@@ -7,6 +7,7 @@
  * - verify diagnostics capture validation outcome
  * - verify ConfigGateState maintains stable object identity across operations
  * - verify stale command warnings propagate through config store
+ * - verify first-load migration pins missing reviewCadence without repeating writes
  */
 
 import assert from "node:assert/strict";
@@ -111,6 +112,89 @@ void describe("createRuntimeConfigStore", () => {
 			gateState.diagnostics.some((d) => d.path === "superagents.commands.sp-missing" && d.level === "warning"),
 			"Expected warning for sp-missing command not in entrypointCommands",
 		);
+	});
+});
+
+void describe("loadRuntimeConfigState migrations", () => {
+	it("writes missing reviewCadence: per-task on first load and leaves later loads unchanged", () => {
+		const configDir = createTempConfigDir({
+			"default-config.json": JSON.stringify({
+				superagents: {
+					makeSuperpowersSkillsOptInOnly: true,
+					commands: {
+						"sp-implement": { useSubagents: true, reviewCadence: "per-task" },
+						"sp-implement-parallel": {
+							taskScheduling: "parallel",
+							useSubagents: true,
+							reviewCadence: "per-task",
+							worktrees: { enabled: true },
+						},
+					},
+				},
+			}),
+			"config.json": JSON.stringify({
+				superagents: {
+					commands: {
+						"sp-implement": { useSubagents: true },
+					},
+				},
+			}),
+		});
+
+		const first = loadRuntimeConfigState(configDir);
+		assert.equal(first.blocked, false);
+		assert.equal(first.config.superagents?.commands?.["sp-implement"]?.reviewCadence, "per-task");
+
+		const userConfigPath = path.join(configDir, "config.json");
+		const migrated = JSON.parse(fs.readFileSync(userConfigPath, "utf-8")) as {
+			superagents?: { commands?: Record<string, { reviewCadence?: string }> };
+		};
+		assert.equal(migrated.superagents?.commands?.["sp-implement"]?.reviewCadence, "per-task");
+		const backups = fs.readdirSync(configDir).filter((name) => name.startsWith("config.json.bak-"));
+		assert.equal(backups.length, 1);
+
+		const beforeSecond = fs.readFileSync(userConfigPath, "utf-8");
+		const second = loadRuntimeConfigState(configDir);
+		assert.equal(second.config.superagents?.commands?.["sp-implement"]?.reviewCadence, "per-task");
+		assert.equal(fs.readFileSync(userConfigPath, "utf-8"), beforeSecond);
+		assert.equal(fs.readdirSync(configDir).filter((name) => name.startsWith("config.json.bak-")).length, 1);
+	});
+
+	it("preserves an explicit final-only review cadence on first load", () => {
+		const configDir = createTempConfigDir({
+			"default-config.json": JSON.stringify({
+				superagents: {
+					makeSuperpowersSkillsOptInOnly: true,
+					commands: {
+						"sp-implement": { useSubagents: true, reviewCadence: "per-task" },
+						"sp-implement-parallel": {
+							taskScheduling: "parallel",
+							useSubagents: true,
+							reviewCadence: "per-task",
+							worktrees: { enabled: true },
+						},
+					},
+				},
+			}),
+			"config.json": JSON.stringify({
+				superagents: {
+					makeSuperpowersSkillsOptInOnly: true,
+					commands: {
+						"sp-implement": { useSubagents: true, reviewCadence: "final-only" },
+						"sp-implement-parallel": {
+							taskScheduling: "parallel",
+							useSubagents: true,
+							reviewCadence: "per-task",
+							worktrees: { enabled: true },
+						},
+					},
+				},
+			}),
+		});
+
+		const state = loadRuntimeConfigState(configDir);
+		assert.equal(state.config.superagents?.commands?.["sp-implement"]?.reviewCadence, "final-only");
+		assert.equal(fs.readdirSync(configDir).filter((name) => name.startsWith("config.json.bak-")).length, 0);
 	});
 });
 

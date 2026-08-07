@@ -67,9 +67,11 @@ function assertPublicConfigSurface(config: Record<string, unknown>, bundledDefau
 		assert.equal(spImplement.useSubagents, true);
 		assert.equal(spImplement.useTestDrivenDevelopment, true);
 		assert.equal(spImplement.useBranches, false);
+		assert.equal(spImplement.reviewCadence, "per-task");
 		const spImplementWorktrees = spImplement.worktrees as Record<string, unknown>;
 		assert.equal(spImplementWorktrees.enabled, false);
 		assert.equal(spImplementWorktrees.root, null);
+		assert.equal(commands["sp-implement-parallel"]?.reviewCadence, "per-task");
 
 		const spBrainstorm = commands["sp-brainstorm"];
 		assert.ok(spBrainstorm, "Expected sp-brainstorm command");
