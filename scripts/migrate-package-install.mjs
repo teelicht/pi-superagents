@@ -22,6 +22,16 @@ function addSuperpowersSkillsOptInDefault(config, defaults, changes) {
   config.superagents.makeSuperpowersSkillsOptInOnly = true;
   changes.push("Added superagents.makeSuperpowersSkillsOptInOnly from bundled defaults.");
 }
+function addReviewCadenceDefaults(config, changes) {
+  const commands = config.superagents?.commands;
+  if (!commands) return;
+  for (const [commandName, preset] of Object.entries(commands)) {
+    if (!preset || typeof preset !== "object" || Array.isArray(preset)) continue;
+    if (preset.reviewCadence !== void 0) continue;
+    preset.reviewCadence = "per-task";
+    changes.push(`Added reviewCadence: per-task to superagents.commands.${commandName}.`);
+  }
+}
 function buildParallelPreset(bundled, legacy) {
   const root = legacy?.worktrees?.root ?? bundled.worktrees?.root;
   return {
@@ -42,37 +52,39 @@ function migrateUserConfigDocument(userConfig, defaults) {
   const changes = [];
   addSuperpowersSkillsOptInDefault(config, defaults, changes);
   const bundledParallel = defaults.superagents?.commands?.[PARALLEL_COMMAND];
-  if (!bundledParallel) return { config, changes };
   config.superagents ??= {};
   config.superagents.commands ??= {};
   const commands = config.superagents.commands;
-  const legacyImplement = commands[SEQUENTIAL_COMMAND];
-  const legacyWasParallel = legacyImplement?.taskScheduling === "parallel";
-  if (!commands[PARALLEL_COMMAND]) {
-    commands[PARALLEL_COMMAND] = buildParallelPreset(bundledParallel, legacyWasParallel ? legacyImplement : void 0);
-    if (!legacyWasParallel && legacyImplement?.worktrees?.root != null) {
-      commands[PARALLEL_COMMAND].worktrees = {
-        ...commands[PARALLEL_COMMAND].worktrees ?? {},
-        enabled: true,
-        root: legacyImplement.worktrees.root
+  if (bundledParallel) {
+    const legacyImplement = commands[SEQUENTIAL_COMMAND];
+    const legacyWasParallel = legacyImplement?.taskScheduling === "parallel";
+    if (!commands[PARALLEL_COMMAND]) {
+      commands[PARALLEL_COMMAND] = buildParallelPreset(bundledParallel, legacyWasParallel ? legacyImplement : void 0);
+      if (!legacyWasParallel && legacyImplement?.worktrees?.root != null) {
+        commands[PARALLEL_COMMAND].worktrees = {
+          ...commands[PARALLEL_COMMAND].worktrees ?? {},
+          enabled: true,
+          root: legacyImplement.worktrees.root
+        };
+      }
+      changes.push(`Added ${PARALLEL_COMMAND} from bundled defaults.`);
+    }
+    if (legacyWasParallel && legacyImplement) {
+      commands[SEQUENTIAL_COMMAND] = {
+        ...legacyImplement,
+        taskScheduling: "sequential",
+        worktrees: { ...legacyImplement.worktrees ?? {}, enabled: false }
       };
+      changes.push(`Reset ${SEQUENTIAL_COMMAND} to sequential scheduling; parallel settings moved to ${PARALLEL_COMMAND}.`);
     }
-    changes.push(`Added ${PARALLEL_COMMAND} from bundled defaults.`);
-  }
-  if (legacyWasParallel && legacyImplement) {
-    commands[SEQUENTIAL_COMMAND] = {
-      ...legacyImplement,
-      taskScheduling: "sequential",
-      worktrees: { ...legacyImplement.worktrees ?? {}, enabled: false }
-    };
-    changes.push(`Reset ${SEQUENTIAL_COMMAND} to sequential scheduling; parallel settings moved to ${PARALLEL_COMMAND}.`);
-  }
-  for (const commandName of LEGACY_REVIEW_COMMANDS) {
-    if (commands[commandName]) {
-      delete commands[commandName];
-      changes.push(`Removed obsolete ${commandName} command preset; use sp-review.`);
+    for (const commandName of LEGACY_REVIEW_COMMANDS) {
+      if (commands[commandName]) {
+        delete commands[commandName];
+        changes.push(`Removed obsolete ${commandName} command preset; use sp-review.`);
+      }
     }
   }
+  addReviewCadenceDefaults(config, changes);
   return { config, changes };
 }
 function backupPathFor(filePath, timestamp) {

@@ -110,7 +110,7 @@ const executorAvailable = !!executorMod?.createSubagentExecutor;
  * @param cwd Workspace root used by the executor under test.
  * @returns State object compatible with the current executor wiring.
  */
-function makeState(cwd: string) {
+function makeState(cwd: string, reviewCadence?: "per-task" | "final-only") {
 	return {
 		baseCwd: cwd,
 		currentSessionId: null,
@@ -120,6 +120,20 @@ function makeState(cwd: string) {
 			diagnostics: [],
 			message: "",
 		},
+		superpowersActive: reviewCadence !== undefined,
+		compactionSizing: null,
+		rootLifecycleSkillNames: [],
+		rootPromptProfile: reviewCadence
+			? {
+					commandName: "sp-implement",
+					task: "test",
+					entrySkill: "using-superpowers",
+					taskScheduling: "sequential",
+					reviewCadence,
+					fork: false,
+					rootLifecycleSkillNames: [],
+				}
+			: null,
 	};
 }
 
@@ -166,15 +180,23 @@ function makeCtx(cwd: string, sessionManager: SessionManagerStub) {
  *
  * @param cwd Workspace root for the run.
  * @param config Optional extension config overrides.
+ * @param reviewCadence Optional active command review cadence.
  * @returns Executor instance under test.
  */
-function makeExecutor(cwd: string, config: ExtensionConfig = {}): NonNullable<ExecutorModule["createSubagentExecutor"]> extends (...args: unknown[]) => infer R ? R : never {
+function makeExecutor(
+	cwd: string,
+	config: ExtensionConfig = {},
+	reviewCadence?: "per-task" | "final-only",
+): NonNullable<ExecutorModule["createSubagentExecutor"]> extends (...args: unknown[]) => infer R ? R : never {
 	return executorMod!.createSubagentExecutor!({
-		state: makeState(cwd),
+		state: makeState(cwd, reviewCadence),
 		getConfig: () => config,
 		getSubagentSessionRoot: () => cwd,
 		discoverAgents: () => ({
-			agents: [{ name: "echo", description: "Echo test agent" }],
+			agents: [
+				{ name: "echo", description: "Echo test agent" },
+				{ name: "sp-review", description: "Review test agent" },
+			],
 		}),
 	});
 }
@@ -403,5 +425,50 @@ void describe("sessionMode runtime compatibility", { skip: !executorAvailable ? 
 		assert.equal(sessionFiles.length, 1, "expected one seeded session file");
 		assert.equal(readSessionHeader(sessionFiles[0]).parentSession, parentSessionFile);
 		assert.equal(fs.readFileSync(sessionFiles[0], "utf-8").trim().split("\n").length, 1);
+	});
+
+	void it("rejects task review dispatches when the active command is final-only", async () => {
+		const { manager } = makeSessionManagerRecorder();
+		const executor = makeExecutor(tempDir, {}, "final-only");
+
+		const result = await executor.execute(
+			"id",
+			{ agent: "sp-review", task: "Review scope: task\nReview Task 1" },
+			new AbortController().signal,
+			undefined,
+			makeCtx(tempDir, manager),
+		);
+
+		assert.match(result.content[0]?.text ?? "", /reviewCadence: final-only.*Review scope: branch/is);
+	});
+
+	void it("allows a single branch-scoped final review when the active command is final-only", async () => {
+		const { manager } = makeSessionManagerRecorder();
+		const executor = makeExecutor(tempDir, {}, "final-only");
+
+		const result = await executor.execute(
+			"id",
+			{ agent: "sp-review", task: "Review scope: branch\nReview the complete plan diff" },
+			new AbortController().signal,
+			undefined,
+			makeCtx(tempDir, manager),
+		);
+
+		assert.equal(result.content[0]?.text, "ok");
+	});
+
+	void it("rejects final review inside a parallel task wave", async () => {
+		const { manager } = makeSessionManagerRecorder();
+		const executor = makeExecutor(tempDir, {}, "final-only");
+
+		const result = await executor.execute(
+			"id",
+			{ tasks: [{ agent: "sp-review", task: "Review scope: branch\nReview the complete plan diff" }] },
+			new AbortController().signal,
+			undefined,
+			makeCtx(tempDir, manager),
+		);
+
+		assert.match(result.content[0]?.text ?? "", /final review.*single.*after all Tasks/i);
 	});
 });

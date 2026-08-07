@@ -31,12 +31,15 @@ Before writing, the installer creates `config.json.bak-<timestamp>`. It then:
 - moves legacy `taskScheduling: "parallel"` behavior from `sp-implement` to
   `sp-implement-parallel`, leaving `sp-implement` sequential;
 - carries a custom `worktrees.root` into the parallel preset;
+- pins missing command `reviewCadence` values to `"per-task"`, preserving historical review timing;
 - removes obsolete `sp-spec-review` and `sp-code-review` command presets.
 
-Already-migrated configs are left byte-for-byte unchanged. Invalid JSON fails
-the install migration instead of being overwritten. The same migration can be
-run explicitly with `npx @teelicht/pi-superagents --migrate-config`. Local
-extension refreshes preserve existing `config.json.bak-*` migration backups.
+Already-migrated configs are left byte-for-byte unchanged. The extension also
+applies this migration on first launch when an update skipped the installer,
+with the same timestamped backup. Invalid JSON fails closed instead of being
+overwritten. The migration can be run explicitly with
+`npx @teelicht/pi-superagents --migrate-config`. Local extension refreshes
+preserve existing `config.json.bak-*` migration backups.
 
 ## Validation
 
@@ -64,8 +67,8 @@ Slash commands are registered from interactive entrypoint agent frontmatter, not
 
 | Command | Policy Settings |
 |---|---|
-| `sp-implement` | `taskScheduling: "sequential"`, `useSubagents: true`, `useTestDrivenDevelopment: true`, `useBranches: false`, `worktrees: { enabled: false }` |
-| `sp-implement-parallel` | `taskScheduling: "parallel"`, `useSubagents: true`, `useTestDrivenDevelopment: true`, `useBranches: false`, `worktrees: { enabled: true }` |
+| `sp-implement` | `taskScheduling: "sequential"`, `reviewCadence: "per-task"`, `useSubagents: true`, `useTestDrivenDevelopment: true`, `useBranches: false`, `worktrees: { enabled: false }` |
+| `sp-implement-parallel` | `taskScheduling: "parallel"`, `reviewCadence: "per-task"`, `useSubagents: true`, `useTestDrivenDevelopment: true`, `useBranches: false`, `worktrees: { enabled: true }` |
 | `sp-brainstorm` | `usePlannotator: true` |
 | `sp-plan` | `usePlannotator: true` |
 
@@ -202,6 +205,7 @@ Each command preset in `config.json` supports these behavior keys:
 | `useTestDrivenDevelopment` | Enable TDD guidance. |
 | `usePlannotator` | Enable Plannotator browser review at approval points. |
 | `taskScheduling` | `"sequential"` (default) or `"parallel"` to opt into parallel Task scheduling. Config-only; not a slash-command token. |
+| `reviewCadence` | `"per-task"` uses upstream task review/re-review gates; `"final-only"` rejects those scopes and permits only a single `Review scope: branch` dispatch after all Tasks. Config-only per command. |
 | `worktrees.enabled` | Use git worktree isolation for parallel tasks. |
 | `worktrees.root` | Directory for worktrees (default: system temp). |
 
@@ -213,6 +217,8 @@ Command metadata (`description`, `entrySkill`) was moved to entrypoint agent fro
 
 Parallel mode is rejected before dispatch if the active command preset does not also enable `useSubagents: true` and `worktrees.enabled: true`; the controller surfaces a clear preflight error and the run never starts.
 
+The bundled implementation commands use `reviewCadence: "per-task"`, preserving the upstream review/fix loop. Set a command to `"final-only"` to reject `Review scope: task` and `Review scope: re-review` calls and permit only one final `Review scope: branch` call after all Tasks. Here, `branch` means the whole-plan diff and does not require a feature branch. When implementation runs on `main`, the controller records `HEAD` before Task 1 and reviews that base through final `HEAD` instead of using `git merge-base main HEAD`.
+
 Bundled `/sp-implement-parallel` preset:
 
 ```json
@@ -221,6 +227,7 @@ Bundled `/sp-implement-parallel` preset:
     "commands": {
       "sp-implement-parallel": {
         "taskScheduling": "parallel",
+        "reviewCadence": "per-task",
         "useSubagents": true,
         "worktrees": { "enabled": true }
       }
@@ -229,7 +236,7 @@ Bundled `/sp-implement-parallel` preset:
 }
 ```
 
-When preflight passes, Pi Superagents controls dependency-ready waves, persistent per-Task worktrees, and Task-number integration. Each Task and the final branch review otherwise follows the selected upstream SDD workflow; the Pi adapter only supplies `sp-implementer`, `sp-review`, conditional `resumeSession`, and the exact `Review scope: task`, `Review scope: re-review`, and `Review scope: branch` markers. See [Skills Reference](skills.md#parallel-sdd-task-scheduling) for the dispatch contract and the [Worktree Isolation](worktrees.md#parallel-sdd-waves-vs-ordinary-parallel-calls) reference for the persistent worktree lifecycle.
+When preflight passes, Pi Superagents controls dependency-ready waves, persistent per-Task worktrees, and Task-number integration. `"per-task"` cadence follows the upstream task/re-review/final loop; `"final-only"` integrates successful Tasks before one whole-plan review. See [Skills Reference](skills.md#parallel-sdd-task-scheduling) for the dispatch contract and the [Worktree Isolation](worktrees.md#parallel-sdd-waves-vs-ordinary-parallel-calls) reference for the persistent worktree lifecycle.
 
 ## Inline Role Output
 

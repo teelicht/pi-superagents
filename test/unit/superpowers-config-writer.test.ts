@@ -210,7 +210,7 @@ void describe("Superpowers config writer", () => {
 
 	void it("toggles task scheduling between sequential and parallel on the selected command", () => {
 		const updated = updateSuperpowersConfigText(
-			'{\n  "superagents": {\n    "commands": {\n      "sp-implement": {\n        "useSubagents": true,\n        "taskScheduling": "sequential"\n      },\n      "sp-plan": {\n        "usePlannotator": true\n      }\n    }\n  }\n}\n',
+			'{\n  "superagents": {\n    "commands": {\n      "sp-implement": {\n        "useSubagents": true,\n        "taskScheduling": "sequential",\n        "reviewCadence": "final-only"\n      },\n      "sp-plan": {\n        "usePlannotator": true\n      }\n    }\n  }\n}\n',
 			(config) => toggleSuperpowersTaskScheduling(config, "sp-implement"),
 		);
 		assert.deepEqual(JSON.parse(updated), {
@@ -219,6 +219,7 @@ void describe("Superpowers config writer", () => {
 					"sp-implement": {
 						useSubagents: true,
 						taskScheduling: "parallel",
+						reviewCadence: "final-only",
 					},
 					"sp-plan": { usePlannotator: true },
 				},

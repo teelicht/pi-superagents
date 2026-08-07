@@ -77,6 +77,9 @@ export type ModelTierSetting = string | ModelTierConfig;
  */
 export type TaskScheduling = "sequential" | "parallel";
 
+/** Review timing for implementation-plan commands. */
+export type ReviewCadence = "per-task" | "final-only";
+
 export type ExecutionRole = "root-planning" | "sp-recon" | "sp-research" | "sp-implementer" | "sp-review" | "sp-debug";
 
 // ============================================================================
@@ -421,6 +424,7 @@ export interface SuperpowersCommandPreset {
 	useTestDrivenDevelopment?: boolean;
 	usePlannotator?: boolean;
 	taskScheduling?: TaskScheduling;
+	reviewCadence?: ReviewCadence;
 	worktrees?: SuperpowersCommandWorktreeSettings;
 }
 

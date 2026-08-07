@@ -81,9 +81,11 @@ Top-level `resumeSession` is only valid for single-agent `subagent` calls. Paral
 When upstream requests resuming the original implementer, `/sp-implement-parallel` passes that Task's prior session through `resumeSession`; otherwise it dispatches the implementer upstream selects. See [Skills Reference](skills.md#parallel-sdd-task-scheduling) for the dispatch contract.
 
 Install upgrades also retire legacy `sp-spec-review` and `sp-code-review`
-agents. Review dispatches should use the bundled consolidated `sp-review` role
-with exactly `Review scope: task`, `Review scope: re-review`, or
-`Review scope: branch`.
+agents. Review dispatches use the bundled consolidated `sp-review` role. With
+`reviewCadence: "per-task"`, use `Review scope: task`, `Review scope: re-review`,
+or `Review scope: branch` as directed by the workflow. With `"final-only"`, the
+runtime rejects task/re-review scopes and parallel reviewer dispatches; only a
+single final `Review scope: branch` dispatch is allowed.
 
 ## Lifecycle Signals (Internal)
 

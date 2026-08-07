@@ -14,6 +14,8 @@
  * - none; callers resolve skill file content before invoking this module
  */
 
+import type { ReviewCadence } from "../shared/types.ts";
+
 export interface SuperpowersRootPromptSkill {
 	name: string;
 	path: string;
@@ -29,6 +31,7 @@ export interface SuperpowersRootPromptInput {
 	worktrees?: { enabled: boolean; root?: string | null };
 	fork: boolean;
 	taskScheduling?: "sequential" | "parallel";
+	reviewCadence?: ReviewCadence;
 	usingSuperpowersSkill?: SuperpowersRootPromptSkill;
 	entrySkill?: SuperpowersRootPromptSkill;
 	rootLifecycleSkills?: SuperpowersRootPromptSkill[];
@@ -48,6 +51,7 @@ function buildMetadata(input: SuperpowersRootPromptInput): string {
 	if (input.usePlannotatorReview !== undefined) lines.push(`usePlannotatorReview: ${input.usePlannotatorReview}`);
 	if (input.worktrees !== undefined) lines.push(`worktrees.enabled: ${input.worktrees.enabled}`);
 	if (input.taskScheduling !== undefined) lines.push(`taskScheduling: ${input.taskScheduling}`);
+	if (input.reviewCadence !== undefined) lines.push(`reviewCadence: ${input.reviewCadence}`);
 	lines.push(`sessionMode: ${input.fork ? "fork" : "lineage-only"}`);
 	return lines.join("\n");
 }
@@ -261,14 +265,17 @@ function buildWorktreeContract(worktreesEnabled: boolean): string {
  * Build the task scheduling contract block for the root session.
  *
  * @param taskScheduling Configured scheduling mode for Superpowers task execution.
+ * @param reviewCadence Configured review timing for the active command.
  * @returns Prompt block that constrains sequential versus parallel task execution.
  */
-function buildTaskSchedulingContract(taskScheduling: "sequential" | "parallel"): string {
+function buildTaskSchedulingContract(taskScheduling: "sequential" | "parallel", reviewCadence: ReviewCadence): string {
 	if (taskScheduling === "sequential") {
 		return [
 			"Task scheduling is SEQUENTIAL by config; scheduling controls Task order only.",
 			"Execute one complete Task at a time. A Task includes all of its Steps.",
-			"For each Task and the final branch review, follow the selected upstream SDD workflow and apply the Pi SDD adapter's role and review-scope mapping.",
+			reviewCadence === "final-only"
+				? "Do not dispatch reviewers between Tasks; continue through every successful Task before the final whole-plan review."
+				: "For each Task and the final branch review, follow the selected upstream SDD workflow and apply the Pi SDD adapter's role and review-scope mapping.",
 		].join("\n");
 	}
 
@@ -279,8 +286,12 @@ function buildTaskSchedulingContract(taskScheduling: "sequential" | "parallel"):
 		"Build conservative dependency-ready waves of at most 8 Tasks; overlapping or ambiguous Tasks stay sequential.",
 		"Parallel scheduling with worktrees enabled is approval to create Task worktrees; do not ask again for every wave.",
 		"Before parallel writers start, create one persistent worktree per Task under the configured worktree root and pass each absolute path as that task's cwd.",
-		"For each Task, follow the selected upstream SDD workflow and apply the Pi SDD adapter's role and review-scope mapping.",
-		"Integrate upstream-approved Task commits in Task-number order, then clean the Task worktrees.",
+		reviewCadence === "final-only"
+			? "Do not dispatch reviewers inside Task waves; wait until every successful Task commit is integrated."
+			: "For each Task, follow the selected upstream SDD workflow and apply the Pi SDD adapter's role and review-scope mapping.",
+		reviewCadence === "final-only"
+			? "Integrate successful Task commits in Task-number order, then clean the Task worktrees."
+			: "Integrate upstream-approved Task commits in Task-number order, then clean the Task worktrees.",
 		"Never integrate a failed or blocked Task; its dependents wait even when safe sibling Tasks finish.",
 		"If worktree creation fails, report the reason and run the affected Tasks sequentially.",
 		"If cherry-pick conflicts, abort it and rerun that Task sequentially from the updated parent HEAD instead of inventing a merge.",
@@ -305,12 +316,30 @@ function buildTaskTrackingContract(): string {
 /**
  * Build the Pi adapter for the upstream Superpowers SDD lifecycle.
  *
- * The installed upstream skill owns lifecycle mechanics. This block only maps
- * those mechanics to Pi role names, review scopes, and session continuation.
+ * The installed upstream skill owns lifecycle mechanics except where the
+ * configured review cadence explicitly narrows review timing. This block maps
+ * the resulting flow to Pi role names, review scopes, and session continuation.
  *
+ * @param reviewCadence Configured review timing for the active command.
  * @returns Prompt block for the local SDD adapter contract.
  */
-function buildSddAdapterContract(): string {
+function buildSddAdapterContract(reviewCadence: ReviewCadence): string {
+	if (reviewCadence === "final-only") {
+		return [
+			"Superpowers SDD Adapter Contract:",
+			"Review cadence is FINAL-ONLY by config and overrides the upstream per-task review and re-review instructions.",
+			"The selected upstream `subagent-driven-development` skill remains authoritative for scripts, workspace and ledger paths, handoff files, implementation dispatch, and final plan-workspace cleanup.",
+			"- Dispatch implementers through `sp-implementer`.",
+			"- Before Task 1, record `git rev-parse HEAD` as the final review base.",
+			"- Do not dispatch `Review scope: task` or `Review scope: re-review`; the runtime rejects both under this command profile.",
+			"- After every Task is complete and integrated, generate the final review package from the recorded final review base through current HEAD and dispatch `sp-review` alone with exactly `Review scope: branch`.",
+			"- `Review scope: branch` means the final whole-plan diff; it does not require a feature branch.",
+			"- When implementation ran on `main`, do not use `git merge-base main HEAD`; it resolves to current HEAD and would produce an empty review diff.",
+			"- If final review finds issues, dispatch a fix implementer and repeat `Review scope: branch` after the fix; stay in the final review phase.",
+			"- After the final whole-plan review is clean, complete upstream's final cleanup step before invoking `finishing-a-development-branch`.",
+		].join("\n");
+	}
+
 	return [
 		"Superpowers SDD Adapter Contract:",
 		"The selected upstream `subagent-driven-development` skill is authoritative for scripts, workspace and ledger paths, handoff files, review and fix loops, retry and adjudication rules, and final plan-workspace cleanup.",
@@ -365,7 +394,7 @@ export function buildSuperpowersRootPrompt(input: SuperpowersRootPromptInput): s
 		sections.push("");
 	}
 	if (input.taskScheduling !== undefined) {
-		sections.push(buildTaskSchedulingContract(input.taskScheduling));
+		sections.push(buildTaskSchedulingContract(input.taskScheduling, input.reviewCadence ?? "per-task"));
 		sections.push("");
 	}
 	if (input.worktrees !== undefined) {
@@ -375,7 +404,7 @@ export function buildSuperpowersRootPrompt(input: SuperpowersRootPromptInput): s
 	if (input.useSubagents === true) {
 		sections.push(buildTaskTrackingContract());
 		sections.push("");
-		sections.push(buildSddAdapterContract());
+		sections.push(buildSddAdapterContract(input.reviewCadence ?? "per-task"));
 		sections.push("");
 	}
 	if (input.usePlannotatorReview !== undefined) {
@@ -404,6 +433,7 @@ export function buildSuperpowersVisiblePromptSummary(input: SuperpowersRootPromp
 	if (input.usePlannotatorReview !== undefined) configLines.push(`usePlannotatorReview: ${input.usePlannotatorReview}`);
 	if (input.worktrees !== undefined) configLines.push(`worktrees.enabled: ${input.worktrees.enabled}`);
 	if (input.taskScheduling !== undefined) configLines.push(`taskScheduling: ${input.taskScheduling}`);
+	if (input.reviewCadence !== undefined) configLines.push(`reviewCadence: ${input.reviewCadence}`);
 	configLines.push(`sessionMode: ${input.fork ? "fork" : "lineage-only"}`);
 
 	return [`Superpowers ▸ ${input.task}`, "", "Config:", configLines.join("\n")].join("\n");

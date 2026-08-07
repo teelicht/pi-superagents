@@ -6,14 +6,14 @@
  * - preserve supported execution flags
  * - merge command preset settings and inline overrides
  * - carry entry skill name and lifecycle skill names for skill-entry flows
- * - resolve and preflight the configured task scheduling mode
+ * - resolve task scheduling and per-command review cadence
  *
  * Important side effects:
  * - none; this module is pure and safe to unit test
  */
 
 import type { AgentConfig } from "../agents/agents.ts";
-import type { ExtensionConfig, TaskScheduling } from "../shared/types.ts";
+import type { ExtensionConfig, ReviewCadence, TaskScheduling } from "../shared/types.ts";
 
 export interface SuperpowersWorkflowOverrides {
 	useSubagents?: boolean;
@@ -31,6 +31,7 @@ export interface ResolvedSuperpowersRunProfile {
 	task: string;
 	entrySkill: string;
 	taskScheduling: TaskScheduling;
+	reviewCadence?: ReviewCadence;
 	useBranches?: boolean;
 	useSubagents?: boolean;
 	useTestDrivenDevelopment?: boolean;
@@ -160,6 +161,7 @@ export function resolveSuperpowersRunProfile(input: {
 		task: input.parsed.task,
 		entrySkill,
 		taskScheduling: preset.taskScheduling ?? "sequential",
+		reviewCadence: preset.reviewCadence ?? "per-task",
 		fork: input.parsed.fork,
 		rootLifecycleSkillNames: entrypointAgent?.skills ?? [],
 	};

@@ -6,6 +6,7 @@
  * - verify missing parallel presets are added from bundled defaults
  * - verify legacy parallel sp-implement settings split into sp-implement-parallel
  * - verify obsolete review command blocks and stale user agent files are cleaned up
+ * - verify missing reviewCadence is pinned to per-task without replacing explicit values
  */
 
 import assert from "node:assert/strict";
@@ -22,6 +23,7 @@ const defaults: ExtensionConfig = {
 		commands: {
 			"sp-implement": {
 				taskScheduling: "sequential",
+				reviewCadence: "per-task",
 				useSubagents: true,
 				useTestDrivenDevelopment: true,
 				useBranches: false,
@@ -29,6 +31,7 @@ const defaults: ExtensionConfig = {
 			},
 			"sp-implement-parallel": {
 				taskScheduling: "parallel",
+				reviewCadence: "per-task",
 				useSubagents: true,
 				useTestDrivenDevelopment: true,
 				useBranches: false,
@@ -167,8 +170,8 @@ void describe("migrateUserConfigDocument", () => {
 				superagents: {
 					makeSuperpowersSkillsOptInOnly: true,
 					commands: {
-						"sp-implement": defaults.superagents!.commands!["sp-implement"],
-						"sp-implement-parallel": defaults.superagents!.commands!["sp-implement-parallel"],
+						"sp-implement": { ...defaults.superagents!.commands!["sp-implement"], reviewCadence: "per-task" },
+						"sp-implement-parallel": { ...defaults.superagents!.commands!["sp-implement-parallel"], reviewCadence: "per-task" },
 					},
 				},
 			},
@@ -176,6 +179,49 @@ void describe("migrateUserConfigDocument", () => {
 		);
 
 		assert.deepEqual(result.changes, []);
+	});
+
+	void it("pins missing reviewCadence to per-task on existing command presets", () => {
+		const result = migrateUserConfigDocument(
+			{
+				superagents: {
+					makeSuperpowersSkillsOptInOnly: true,
+					commands: {
+						"sp-implement": { useSubagents: true },
+						"sp-implement-parallel": { taskScheduling: "parallel", useSubagents: true, worktrees: { enabled: true } },
+						"sp-custom": { useSubagents: false },
+					},
+				},
+			},
+			defaults,
+		);
+
+		assert.equal(result.config.superagents?.commands?.["sp-implement"]?.reviewCadence, "per-task");
+		assert.equal(result.config.superagents?.commands?.["sp-implement-parallel"]?.reviewCadence, "per-task");
+		assert.equal(result.config.superagents?.commands?.["sp-custom"]?.reviewCadence, "per-task");
+		assert.ok(result.changes.some((change) => change === "Added reviewCadence: per-task to superagents.commands.sp-implement."));
+		assert.ok(result.changes.some((change) => /reviewCadence: per-task.*sp-custom/.test(change)));
+	});
+
+	void it("preserves an explicit final-only review cadence override", () => {
+		const result = migrateUserConfigDocument(
+			{
+				superagents: {
+					makeSuperpowersSkillsOptInOnly: true,
+					commands: {
+						"sp-implement": { useSubagents: true, reviewCadence: "final-only" },
+						"sp-implement-parallel": defaults.superagents!.commands!["sp-implement-parallel"],
+					},
+				},
+			},
+			defaults,
+		);
+
+		assert.equal(result.config.superagents?.commands?.["sp-implement"]?.reviewCadence, "final-only");
+		assert.equal(
+			result.changes.some((change) => change === "Added reviewCadence: per-task to superagents.commands.sp-implement."),
+			false,
+		);
 	});
 });
 

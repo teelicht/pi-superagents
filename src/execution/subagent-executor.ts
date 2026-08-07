@@ -56,6 +56,7 @@ import {
 	resolveDetailsSessionMode,
 	toExecutionErrorResult,
 	validateExecutionInput,
+	validateReviewCadence,
 	withProgressResultSessionMode,
 	withSessionModeDetails,
 	withSingleResultSessionMode,
@@ -778,6 +779,8 @@ export function createSubagentExecutor(deps: ExecutorDeps): {
 		const hasSingle = Boolean(params.agent && params.task);
 		const validationError = validateExecutionInput(params, agents, hasTasks, hasSingle);
 		if (validationError) return validationError;
+		const reviewCadenceError = validateReviewCadence(params, deps.state.superpowersActive ? deps.state.rootPromptProfile?.reviewCadence : undefined);
+		if (reviewCadenceError) return reviewCadenceError;
 
 		if (hasTasks && params.resumeSession) {
 			return buildParallelModeError("top-level resumeSession is valid only for single-agent execution; use tasks[].resumeSession");

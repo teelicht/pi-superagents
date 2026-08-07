@@ -74,6 +74,29 @@ void describe("config validation", () => {
 		});
 	});
 
+	void it("accepts per-command review cadence values and rejects unknown values", () => {
+		const valid = validateConfigObject({
+			superagents: {
+				commands: {
+					"sp-implement": { reviewCadence: "final-only" },
+					"sp-implement-parallel": { reviewCadence: "per-task" },
+				},
+			},
+		});
+		assert.equal(valid.blocked, false);
+
+		const invalid = validateConfigObject({
+			superagents: {
+				commands: {
+					"sp-implement": { reviewCadence: "sometimes" },
+				},
+			},
+		});
+		assert.equal(invalid.blocked, true);
+		assert.equal(invalid.diagnostics[0]?.path, "superagents.commands.sp-implement.reviewCadence");
+		assert.match(invalid.diagnostics[0]?.message ?? "", /per-task.*final-only/);
+	});
+
 	void it("deep merges model tiers while preserving defaults", () => {
 		const result = loadEffectiveConfig(defaults, {
 			superagents: {

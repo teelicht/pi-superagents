@@ -16,11 +16,11 @@ The extension owns two distinct worktree lifecycles. They share `worktrees.enabl
 
 ```text
 ordinary parallel call → extension-owned ephemeral worktrees → patch capture → automatic cleanup
-parallel SDD wave      → controller-owned persistent Task worktrees → review/fix reuse → cherry-pick → controller cleanup
+parallel SDD wave      → controller-owned persistent Task worktrees → configured review cadence → cherry-pick → controller cleanup
 ```
 
 - **Ordinary parallel call.** Triggered when a Superpowers command runs `tasks: [...]` against an existing command preset. The extension creates a fresh worktree per task under the configured worktree root, captures each agent's diff as `.patch` artifacts, and cleans up the worktree and temporary branch automatically before the parent run finishes.
-- **Parallel SDD wave.** Triggered by `/sp-implement-parallel`, or when another implementation command resolves `taskScheduling: "parallel"`, `useSubagents: true`, and `worktrees.enabled: true`. The upstream SDD skill owns the plan-scoped `.superpowers/sdd/<plan-basename>/` workspace and its final cleanup. Pi Superagents separately owns the persistent per-Task worktrees used for parallel scheduling: it creates them for dependency-ready Tasks, keeps each through upstream's review/fix loop, integrates upstream-approved commits in Task-number order, and then removes those Task worktrees. `resumeSession` is used only when upstream requests resuming the original implementer; later rounds may use a fresh session. See the [Skills Reference](skills.md#parallel-sdd-task-scheduling) for the dispatch contract and the [Configuration reference](configuration.md#parallel-sdd-task-scheduling) for the preflight rules.
+- **Parallel SDD wave.** Triggered by `/sp-implement-parallel`, or when another implementation command resolves `taskScheduling: "parallel"`, `useSubagents: true`, and `worktrees.enabled: true`. The upstream SDD skill owns the plan-scoped `.superpowers/sdd/<plan-basename>/` workspace and its final cleanup. Pi Superagents separately owns the persistent per-Task worktrees used for parallel scheduling. With `reviewCadence: "per-task"`, each worktree stays through that Task's review/fix loop. With `"final-only"`, successful Task commits integrate without intermediate reviewers and one whole-plan review runs after all integrations. See the [Skills Reference](skills.md#parallel-sdd-task-scheduling) for the dispatch contract and the [Configuration reference](configuration.md#parallel-sdd-task-scheduling) for the preflight rules.
 
 When `taskScheduling: "parallel"` is set but a worktree is unsafe to create, the controller surfaces the failure and runs the affected Task sequentially instead of silently dropping back to a different mode.
 
@@ -114,6 +114,8 @@ See [Configuration Reference](configuration.md) for `superagents.commands.<name>
 The `/sp-settings` overlay also shows Superpowers model tiers and command-scoped workflow toggles. Use `c` to select a command before pressing `w`; worktree toggles are written to the selected command preset. Tier edits use a type-to-search model picker followed by a thinking-level picker and apply immediately to future subagents, while worktree command registration changes may still require a PI reload.
 
 Worktree scheduling does not change model routing: normal built-in role dispatches omit per-call model overrides and use the role tier configured in `superagents.modelTiers`. A one-off override is passed only when explicitly requested by the user.
+
+Review timing is independently selected by `superagents.commands.<name>.reviewCadence`. The bundled implementation commands use `"per-task"`, preserving review/fix reuse inside each Task worktree; set `"final-only"` to run one whole-plan review after integration.
 
 ## Release Notes
 

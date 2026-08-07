@@ -3,18 +3,21 @@
  *
  * Responsibilities:
  * - own extension-level config paths and effective config loading
+ * - apply safe user-config migrations on first load when install migration was skipped
  * - provide gate diagnostics and in-place gate mutation
  * - export `createRuntimeConfigStore`, `loadRuntimeConfigState`, and `RuntimeConfigStore`
  * - enable live config reload without extension restart
  *
  * Important dependencies:
- * - fs, os, path (node:fs, node:os, node:path)
+ * - fs, path (node:fs, node:path)
  * - config-validation.ts (loadEffectiveConfig, formatConfigDiagnostics)
+ * - config-migration.ts (applyInstallMigrations)
  * - types.ts (ConfigGateState, ExtensionConfig, ConfigDiagnostic)
  */
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { applyInstallMigrations } from "../execution/config-migration.ts";
 import { formatConfigDiagnostics, loadEffectiveConfig } from "../execution/config-validation.ts";
 import type { ConfigDiagnostic, ConfigGateState, ExtensionConfig } from "../shared/types.ts";
 
@@ -110,6 +113,7 @@ export function loadRuntimeConfigState(packageConfigDir: string, userConfigDir =
 	const { bundledDefaultConfigPath, userConfigPath, exampleConfigPath } = resolveRuntimeConfigPaths(packageConfigDir, userConfigDir);
 
 	try {
+		applyInstallMigrations({ userConfigPath, defaultConfigPath: bundledDefaultConfigPath });
 		const bundledDefaults = (readJsonConfig(bundledDefaultConfigPath) ?? {}) as ExtensionConfig;
 		const userConfig = readJsonConfig(userConfigPath);
 		const result = loadEffectiveConfig(bundledDefaults, userConfig, { entrypointCommands });

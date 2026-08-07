@@ -41,7 +41,7 @@ const SUPERAGENTS_KEYS = new Set(["commands", "modelTiers", "interceptSkillComma
 /** Skills that can be intercepted for direct skill command interception. */
 const SUPPORTED_INTERCEPTED_SKILLS = new Set(["brainstorming", "writing-plans"]);
 
-const COMMAND_PRESET_KEYS = new Set(["useBranches", "useSubagents", "useTestDrivenDevelopment", "usePlannotator", "taskScheduling", "worktrees"]);
+const COMMAND_PRESET_KEYS = new Set(["useBranches", "useSubagents", "useTestDrivenDevelopment", "usePlannotator", "taskScheduling", "reviewCadence", "worktrees"]);
 
 const COMMAND_NAME_PATTERN = /^(?:superpowers-[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|sp-[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)$/;
 
@@ -205,6 +205,9 @@ function validateCommandPreset(diagnostics: ConfigDiagnostic[], value: unknown, 
 	}
 	if ("taskScheduling" in value && value.taskScheduling !== "sequential" && value.taskScheduling !== "parallel") {
 		pushConfigIssue(diagnostics, `${path}.taskScheduling`, 'must be "sequential" or "parallel".');
+	}
+	if ("reviewCadence" in value && value.reviewCadence !== "per-task" && value.reviewCadence !== "final-only") {
+		pushConfigIssue(diagnostics, `${path}.reviewCadence`, 'must be "per-task" or "final-only".');
 	}
 	if ("worktrees" in value && !isRecord(value.worktrees)) {
 		pushConfigIssue(diagnostics, `${path}.worktrees`, "must be an object.");
