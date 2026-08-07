@@ -42,8 +42,9 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "postinstall": "node --experimental-strip-types ./scripts/migrate-package-install.ts",
-    "prepublishOnly": "pnpm test",
+    "build:install-scripts": "node --experimental-strip-types ./scripts/build-install-scripts.ts",
+    "postinstall": "node ./scripts/migrate-package-install.mjs",
+    "prepublishOnly": "pnpm run build:install-scripts && pnpm test",
     "debug:pi-local": "node --experimental-strip-types ./scripts/local-extension-install.ts",
     "install:local": "pnpm run debug:pi-local",
     "qa": "biome check --write && tsc --noEmit && pnpm run test:all",
@@ -75,6 +76,7 @@
     "@earendil-works/pi-tui": "^0.82.1",
     "@types/node": "^26.1.1",
     "@vitest/coverage-v8": "^4.1.10",
+    "esbuild": "^0.28.1",
     "fallow": "^3.8.0",
     "typebox": "^1.3.6",
     "typescript": "^7.0.2",
