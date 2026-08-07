@@ -19,7 +19,7 @@ const USER_CONFIG_PATH = path.join(EXTENSION_DIR, "config.json");
 const DEFAULT_CONFIG_PATH = path.join(EXTENSION_DIR, "default-config.json");
 const EXAMPLE_CONFIG_PATH = path.join(EXTENSION_DIR, "config.example.json");
 const REVIEW_AGENT_PATH = path.join(EXTENSION_DIR, "agents", "sp-review.md");
-const MIGRATION_SCRIPT_PATH = fileURLToPath(new URL("./scripts/migrate-user-config.ts", import.meta.url));
+const MIGRATION_SCRIPT_PATH = fileURLToPath(new URL("./scripts/migrate-user-config.mjs", import.meta.url));
 const USER_AGENT_DIRS = [path.join(os.homedir(), ".pi", "agent", "agents"), path.join(os.homedir(), ".agents")];
 const REPO_URL = "https://github.com/teelicht/pi-superagents.git";
 
@@ -125,10 +125,12 @@ function validateUserConfigForInstall() {
 }
 
 /**
- * Run the typed migration bridge from the npm-compatible JavaScript installer.
+ * Run the install-time config migration bridge from the JavaScript installer.
  *
  * The installer remains `.mjs` so Node can execute the package bin directly;
- * application migration logic stays TypeScript and runs with Node type stripping.
+ * migration logic is authored in TypeScript and bundled to
+ * `scripts/migrate-user-config.mjs` so it runs with plain `node` from inside
+ * `node_modules`, where Node forbids `--experimental-strip-types`.
  *
  * @returns Parsed migration result.
  * @throws When the migration subprocess fails or returns invalid JSON.
@@ -137,7 +139,6 @@ function runInstallMigrations() {
 	const stdout = execFileSync(
 		process.execPath,
 		[
-			"--experimental-strip-types",
 			MIGRATION_SCRIPT_PATH,
 			USER_CONFIG_PATH,
 			DEFAULT_CONFIG_PATH,
