@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-08-07
+
+- Updated all npm and GitHub Actions dependencies, the Pi compatibility target to `^0.84.1`, and pnpm to 11.20.0.
 - Fixed Superpowers role dispatch to use configured model tiers unless the user explicitly requests an override.
 - Added per-command review cadence, defaulting to per-Task reviews with a final-only opt-in.
 - Fixed Node installation failures by bundling install-time migration scripts ([#69](https://github.com/teelicht/pi-superagents/pull/69) by [@adamteale](https://github.com/adamteale)).
