@@ -44,7 +44,9 @@
     "superpowersSkills": [
       "using-superpowers",
       "brainstorming",
+      "systematic-debugging",
       "writing-plans",
+      "writing-skills",
       "executing-plans",
       "test-driven-development",
       "requesting-code-review",
