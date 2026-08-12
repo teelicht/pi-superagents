@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.14.1] - 2026-08-12
+
+- Added the missing `systematic-debugging` and `writing-skills` entries to the bundled Superpowers skill defaults, restoring their availability for automatic injection ([#70](https://github.com/teelicht/pi-superagents/pull/70) by [Chris Davis (@d33disc)](https://github.com/d33disc)).
+
 ## [1.14.0] - 2026-08-07
 
 - Updated all npm and GitHub Actions dependencies, the Pi compatibility target to `^0.84.1`, and pnpm to 11.20.0.
