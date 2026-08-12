@@ -1,6 +1,6 @@
 {
   "name": "@teelicht/pi-superagents",
-  "version": "1.14.0",
+  "version": "1.14.1",
   "packageManager": "pnpm@11.20.0",
   "description": "Pi extension for Superpowers workflows: recon, research, implementation, review, and debug",
   "author": "Thomas Lichtenecker",
