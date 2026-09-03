@@ -75,6 +75,33 @@ function includeLifecycleExtension(extensions: string[], sessionFile: string | u
 }
 
 /**
+ * Hint appended when a child pi run fails with an unresolvable model pattern.
+ *
+ * pi emits "No models match pattern" when the resolved model id matches no
+ * configured provider. Superpowers role agents usually resolve through
+ * superagents.modelTiers, so the actionable fix is checking the tier config
+ * against the models pi actually exposes.
+ */
+const NO_MODEL_MATCH_MARKER = "No models match pattern";
+const NO_MODEL_MATCH_HINT =
+	"— Superpowers role agents usually resolve through superagents.modelTiers. " +
+	"Check superagents.modelTiers in config.json against `pi --list-models` " +
+	"and set tiers to models your providers can resolve.";
+
+/**
+ * Append actionable modelTiers guidance to an unresolvable-model error.
+ *
+ * @param error Raw error text from the child pi process (message or stderr).
+ * @returns The original text when unrelated; enriched text when it indicates
+ *   that no configured provider matched the resolved model pattern.
+ */
+export function enrichNoModelMatchError(error: string): string {
+	if (!error || !error.includes(NO_MODEL_MATCH_MARKER)) return error;
+	const cleaned = error.replace(/^Warning:\s*/i, "").trim();
+	return `${cleaned} ${NO_MODEL_MATCH_HINT}`;
+}
+
+/**
  * Runtime launch data derived before a child process is spawned.
  *
  * Carries normalized policy, prompt, tool, skill, argument, and progress state so
@@ -403,7 +430,7 @@ function processJsonMessageLine(evt: { type?: string; message?: Message; toolNam
 				context.result.model = evt.message.model;
 				context.progress.model = evt.message.model;
 			}
-			if (evt.message.errorMessage) context.result.error = evt.message.errorMessage;
+			if (evt.message.errorMessage) context.result.error = enrichNoModelMatchError(evt.message.errorMessage);
 			recordProgressFromMessage(context.progress, evt.message);
 		}
 		fireChildProgressUpdate(context);
@@ -632,7 +659,7 @@ export async function runPreparedChild(runtimeCwd: string, agents: AgentConfig[]
 				processClosed = true;
 				if (buf.trim()) processLine(buf);
 				if (code !== 0 && stderrBuf.trim() && !result.error) {
-					result.error = stderrBuf.trim();
+					result.error = enrichNoModelMatchError(stderrBuf.trim());
 				}
 				cleanupProcessListeners();
 				resolve(code ?? 0);
