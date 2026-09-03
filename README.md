@@ -60,7 +60,20 @@ Trusting a project enables runtime subagent delegation from project agents but d
 
 Subagent execution is synchronous and blocking. The `subagent` tool does not accept `async`, `wait`, `collect`, or `cancel` parameters. Lifecycle tools (`subagent_done`, `caller_ping`) are registered as internal child-only tools through policy; they are not general-purpose delegation tools.
 
-Built-in Superpowers roles normally omit the tool's `model` fields so their frontmatter tiers resolve through `superagents.modelTiers`; a model override is reserved for an explicit user-requested one-off exception.
+Built-in Superpowers role agents normally omit the tool's `model` fields so their frontmatter tiers resolve through `superagents.modelTiers`; a model override is reserved for an explicit user-requested one-off exception.
+
+### Model tiers must resolve to your providers
+
+`superagents.modelTiers` names must match models your configured providers can
+resolve — verify with `pi --list-models` before relying on them. The example and
+seeded default config reference specific providers (`opencode-go/*`,
+`openai/gpt-5.6-sol`); if you do not have those providers, set each tier to a
+model you do have (via `/sp-settings` or `config.json`) before dispatching
+Superpowers role agents.
+
+When a child run fails with `No models match pattern "provider/model"`, no
+configured provider matched the resolved tier model. Superpowers surfaces this
+with guidance pointing at `superagents.modelTiers`; fix the tier and re-run.
 
 ## Integrated Slash Commands
 
