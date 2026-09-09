@@ -105,19 +105,19 @@ void describe("package.json manifest", () => {
 		assert.ok(!fs.existsSync(path.resolve("agents/sp-code-review.md")));
 	});
 
-	void it("uses Pi 0.84.1 development dependencies", () => {
+	void it("uses Pi 0.85.1 development dependencies", () => {
 		const packageJson = readPackageJson();
 		const deps = (packageJson.devDependencies as Record<string, string> | undefined) ?? {};
 
-		assert.equal(deps["@earendil-works/pi-agent-core"], "^0.84.1");
-		assert.equal(deps["@earendil-works/pi-ai"], "^0.84.1");
-		assert.equal(deps["@earendil-works/pi-coding-agent"], "^0.84.1");
-		assert.equal(deps["@earendil-works/pi-tui"], "^0.84.1");
+		assert.equal(deps["@earendil-works/pi-agent-core"], "^0.85.1");
+		assert.equal(deps["@earendil-works/pi-ai"], "^0.85.1");
+		assert.equal(deps["@earendil-works/pi-coding-agent"], "^0.85.1");
+		assert.equal(deps["@earendil-works/pi-tui"], "^0.85.1");
 	});
 
 	void it("requires a Pi host that emits agent_settled", () => {
 		const packageJson = readPackageJson();
 		const peers = (packageJson.peerDependencies as Record<string, string> | undefined) ?? {};
-		assert.equal(peers["@earendil-works/pi-coding-agent"], "^0.84.1");
+		assert.equal(peers["@earendil-works/pi-coding-agent"], "^0.85.1");
 	});
 });

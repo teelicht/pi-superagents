@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [1.14.2] - 2026-09-09
+
+- Updated the Pi compatibility target to `^0.85.1`
+- Added actionable `superagents.modelTiers` guidance when a child pi run fails with `No models match pattern` ([#71](https://github.com/teelicht/pi-superagents/pull/71) by [@h6y3](https://github.com/h6y3), replicated after the branch diverged from main).
+- Fixed the Superpowers opt-in guard to hide `using-superpowers` when Bash is the only file-reading tool (Pi 0.85+ skills prompt wording).
+- Fixed `/subagents-status` and `/sp-settings` overlays to require interactive TUI mode; they now notify in RPC mode instead of rendering nothing.
+- Simplified parent project-trust detection to use `ctx.isProjectTrusted()` directly.
+
 ## [1.14.1] - 2026-08-12
 
 - Added the missing `systematic-debugging` and `writing-skills` entries to the bundled Superpowers skill defaults, restoring their availability for automatic injection ([#70](https://github.com/teelicht/pi-superagents/pull/70) by [Chris Davis (@d33disc)](https://github.com/d33disc)).

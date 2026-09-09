@@ -99,23 +99,11 @@ const activeResumeSessions = new Set<string>();
 /**
  * Read the parent Pi project-trust decision from the extension context.
  *
- * Uses a typed-optional lookup so the build succeeds against the current Pi
- * 0.75 type surface where `isProjectTrusted` is not yet declared; once Pi 0.79+
- * is the minimum, this helper can be removed in favor of `ctx.isProjectTrusted()`.
- *
  * @param ctx Pi extension context.
- * @returns True when the project is trusted; defaults to true for compatibility.
+ * @returns True when the project is trusted.
  */
 function isProjectTrusted(ctx: ExtensionContext): boolean {
-	const candidate = (ctx as unknown as { isProjectTrusted?: () => boolean }).isProjectTrusted;
-	if (typeof candidate === "function") {
-		try {
-			return candidate.call(ctx) !== false;
-		} catch {
-			return true;
-		}
-	}
-	return true;
+	return ctx.isProjectTrusted();
 }
 
 interface ExecutorDeps {

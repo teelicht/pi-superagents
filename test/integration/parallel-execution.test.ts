@@ -334,6 +334,7 @@ void describe("parallel worktree cleanup", { skip: !executorAvailable ? "executo
 		return {
 			cwd: tempDir,
 			hasUI: false,
+			isProjectTrusted: () => true,
 			ui: {},
 			modelRegistry: { getAvailable: () => [] },
 			sessionManager,

@@ -31,7 +31,7 @@
         "model": "opencode-go/minimax-m3"
       },
       "balanced": {
-        "model": "opencode-go/glm-5.2",
+        "model": "opencode-go/glm-5.3-flash",
         "thinking": "high"
       },
       "max": {

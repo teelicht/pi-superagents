@@ -292,6 +292,7 @@ void describe("parallel SDD execution", { skip: !available ? "subagent executor 
 		return {
 			cwd: tempDir,
 			hasUI: false,
+			isProjectTrusted: () => true,
 			ui: {},
 			modelRegistry: { getAvailable: () => [] },
 			sessionManager,

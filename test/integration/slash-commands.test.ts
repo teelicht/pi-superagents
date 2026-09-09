@@ -210,6 +210,7 @@ Fixture skill content for slash-command integration tests.
 function createCommandContext(
 	overrides: Partial<{
 		hasUI: boolean;
+		mode: "tui" | "rpc" | "json" | "print";
 		custom: (...args: unknown[]) => Promise<unknown>;
 		idle: boolean;
 		cwd: string;
@@ -219,6 +220,7 @@ function createCommandContext(
 		cwd: overrides.cwd ?? process.cwd(),
 		isIdle: () => overrides.idle ?? true,
 		hasUI: overrides.hasUI ?? false,
+		mode: overrides.mode ?? "tui",
 		ui: {
 			notify: (_message: string) => {},
 			setStatus: (_key: string, _text: string | undefined) => {},
@@ -621,6 +623,29 @@ void describe("lean superpowers slash commands", { skip: !available ? "slash-com
 		);
 
 		assert.equal(doneCalls, 0);
+	});
+
+	void it("does not open custom overlays in RPC mode", async () => {
+		const { commands, pi } = createPiHarness();
+		const notifications: string[] = [];
+		let customCalls = 0;
+		registerSlashCommands!(pi, createState(process.cwd()), createEffectiveConfig());
+		const ctx = createCommandContext({
+			hasUI: true,
+			mode: "rpc",
+			custom: async () => {
+				customCalls++;
+				return undefined;
+			},
+		});
+		ctx.ui.notify = (message: string) => notifications.push(message);
+
+		await commands.get("subagents-status")!.handler("", ctx);
+		await commands.get("sp-settings")!.handler("", ctx);
+
+		assert.equal(customCalls, 0);
+		assert.equal(notifications.length, 2);
+		assert.ok(notifications.every((message) => /interactive TUI/i.test(message)));
 	});
 
 	void it("/subagents-status returns cleanly when UI is unavailable", async () => {

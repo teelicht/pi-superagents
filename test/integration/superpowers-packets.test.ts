@@ -193,6 +193,7 @@ void describe("superpowers packets in real execution paths", {
 		return {
 			cwd: tempDir,
 			hasUI: false,
+			isProjectTrusted: () => true,
 			ui: {},
 			modelRegistry: { getAvailable: () => [] },
 			sessionManager: {

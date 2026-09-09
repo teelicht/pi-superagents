@@ -342,6 +342,21 @@ void describe("single sync execution", { skip: !available ? "pi packages not ava
 
 		assert.equal(result.exitCode, 1);
 		assert.equal(result.model, "sonnet");
+		assert.ok(result.error?.includes("superagents.modelTiers"), `error should carry modelTiers guidance, got: ${result.error}`);
+	});
+
+	void it("enriches stderr no-model-match warnings with modelTiers guidance", async () => {
+		mockPi.onCall({
+			exitCode: 1,
+			stderr: 'Warning: No models match pattern "openai/gpt-5.6-sol:high"',
+			jsonl: [],
+		});
+		const agents = [makeAgent("echo", { model: "sonnet" })];
+
+		const result = await runPreparedChild(tempDir, agents, "echo", "Task", {});
+
+		assert.equal(result.exitCode, 1);
+		assert.ok(result.error?.includes("superagents.modelTiers"), `error should carry modelTiers guidance, got: ${result.error}`);
 	});
 
 	void it("applies superpowers tier thinking when the tier config provides it", async () => {

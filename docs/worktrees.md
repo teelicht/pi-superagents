@@ -2,7 +2,7 @@
 
 When multiple agents run in parallel against the same repository, they can clobber each other's file changes. Pi Superagents can automatically give each parallel agent its own git worktree branched from HEAD to provide perfect isolation.
 
-This reference targets Pi `^0.84.1` and Superpowers `v6.2+`.
+This reference targets Pi `^0.85.1` and Superpowers `v6.2+`.
 
 Worktree automation starts only from an explicit Pi Superagents workflow while the default `superagents.makeSuperpowersSkillsOptInOnly: true` setting is active; ordinary Pi requests do not enter Superpowers through the upstream automatic bootstrap hook.
 

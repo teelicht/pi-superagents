@@ -131,19 +131,22 @@ function sendSkillEntryPrompt(
 }
 
 /**
- * Open the Subagents status overlay when UI is available.
+ * Open the Subagents status overlay in interactive TUI sessions.
  *
  * @param ctx Current extension command or shortcut context.
  */
 async function openSubagentsStatusOverlay(ctx: ExtensionContext): Promise<void> {
-	if (!ctx.hasUI) return;
+	if (ctx.mode !== "tui") {
+		if (ctx.hasUI) ctx.ui.notify("The subagents status overlay requires an interactive TUI session.", "warning");
+		return;
+	}
 	await ctx.ui.custom<void>((tui, theme, _kb, done) => {
 		return new SubagentsStatusComponent(tui, theme, () => done(undefined));
 	});
 }
 
 /**
- * Open the Superpowers settings overlay when UI is available.
+ * Open the Superpowers settings overlay in interactive TUI sessions.
  *
  * @param ctx Current extension command context.
  * @param state Shared extension state for config gate checks.
@@ -151,7 +154,10 @@ async function openSubagentsStatusOverlay(ctx: ExtensionContext): Promise<void> 
  * @param reloadConfig Optional callback to reload config after changes.
  */
 async function openSuperpowersSettingsOverlay(ctx: ExtensionContext, state: SubagentState, configSource: ConfigSource, reloadConfig?: () => void): Promise<void> {
-	if (!ctx.hasUI) return;
+	if (ctx.mode !== "tui") {
+		if (ctx.hasUI) ctx.ui.notify("The Superpowers settings overlay requires an interactive TUI session.", "warning");
+		return;
+	}
 	// Get model options from the model registry
 	let modelOptions: SettingsModelOption[] = [];
 	let modelRegistryError: string | undefined;

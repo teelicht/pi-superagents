@@ -100,6 +100,7 @@ function createCtx(notifications: Array<{ message: string; type?: string }>, ses
 	return {
 		cwd: process.cwd(),
 		hasUI: true,
+		isProjectTrusted: () => true,
 		ui: {
 			notify(message: string, type?: string) {
 				notifications.push({ message, type });

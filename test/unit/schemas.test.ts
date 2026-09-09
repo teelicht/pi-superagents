@@ -169,6 +169,7 @@ function makeCtx(cwd: string, sessionManager: SessionManagerStub) {
 	return {
 		cwd,
 		hasUI: false,
+		isProjectTrusted: () => true,
 		ui: {},
 		modelRegistry: { getAvailable: () => [] },
 		sessionManager,

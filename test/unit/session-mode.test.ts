@@ -4,7 +4,7 @@
  * Responsibilities:
  * - verify precedence across explicit params, deprecated aliases, agent defaults, and system defaults
  * - ensure lineage-only creates linked child sessions without copying conversation turns
- * - preserve fork caching behavior through the new resolver entry point
+ * - preserve fork caching behavior and compacted context through the resolver entry point
  * - validate resumed lineage-only session files for the sp-implementer role
  * - prove the resolver returns the same path for a valid resume request and rejects mismatches
  */
@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { afterEach, describe, it } from "node:test";
+import { SessionManager } from "@earendil-works/pi-coding-agent";
 import {
 	createSessionLaunchResolver,
 	resolveRequestedSessionMode,
@@ -389,6 +390,50 @@ void describe("createSessionLaunchResolver", () => {
 		assert.equal(first, firstAgain);
 		assert.notEqual(first, second);
 		assert.deepEqual(calls, ["leaf-123", "leaf-123"]);
+	});
+
+	void it("preserves the compaction boundary when the real Pi manager forks", () => {
+		const tempDir = makeTempDir("pi-session-mode-compacted-fork-");
+		const manager = SessionManager.create(tempDir, path.join(tempDir, "parent-sessions"));
+		manager.appendMessage({ role: "user", content: "before compaction", timestamp: Date.now() });
+		const firstKeptEntryId = manager.appendMessage({
+			role: "assistant",
+			content: [{ type: "text", text: "kept answer" }],
+			api: "openai-responses",
+			provider: "openai",
+			model: "test-model",
+			usage: {
+				input: 1,
+				output: 1,
+				cacheRead: 0,
+				cacheWrite: 0,
+				totalTokens: 2,
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+			},
+			stopReason: "stop",
+			timestamp: Date.now(),
+		});
+		manager.appendCompaction("Earlier conversation summary", firstKeptEntryId, 2);
+		const leafId = manager.appendMessage({ role: "user", content: "after compaction", timestamp: Date.now() });
+		const resolver = createSessionLaunchResolver({
+			sessionManager: manager,
+			sessionRoot: path.join(tempDir, "child-sessions"),
+		});
+
+		const forkFile = resolver.sessionFileForIndex({
+			sessionMode: "fork",
+			childCwd: tempDir,
+			agentName: "sp-review",
+		});
+
+		assert.ok(forkFile);
+		const forkedContext = SessionManager.open(forkFile).buildContextEntries();
+		assert.deepEqual(
+			forkedContext.map((entry) => entry.type),
+			["compaction", "message", "message"],
+		);
+		assert.equal(forkedContext[0]?.type === "compaction" ? forkedContext[0].firstKeptEntryId : undefined, firstKeptEntryId);
+		assert.equal(forkedContext.at(-1)?.id, leafId);
 	});
 
 	void it("seeds lineage-only sessions per index without branching", () => {

@@ -272,12 +272,18 @@ async function loadExtensionWithBrainstormConfig(tempDirs: string[], config: unk
  * @param handlers Captured extension lifecycle handlers.
  * @param systemPrompt Initial Pi system prompt.
  * @param skills Loaded Pi skill metadata exposed to handlers.
+ * @param selectedTools Active Pi tools used to choose the skill file reader.
  * @returns Final system prompt after every registered handler.
  */
-function applyBeforeAgentStartHandlers(handlers: Map<string, LifecycleHandler[]>, systemPrompt: string, skills: unknown[]): string {
+function applyBeforeAgentStartHandlers(
+	handlers: Map<string, LifecycleHandler[]>,
+	systemPrompt: string,
+	skills: unknown[],
+	selectedTools: string[] = ["read", "bash", "edit", "write"],
+): string {
 	let current = systemPrompt;
 	for (const handler of handlers.get("before_agent_start") ?? []) {
-		const result = handler({ prompt: "ordinary request", systemPrompt: current, systemPromptOptions: { skills } }) as { systemPrompt?: string } | undefined;
+		const result = handler({ prompt: "ordinary request", systemPrompt: current, systemPromptOptions: { skills, selectedTools } }) as { systemPrompt?: string } | undefined;
 		if (result?.systemPrompt) current = result.systemPrompt;
 	}
 	return current;
@@ -345,6 +351,24 @@ void describe("compaction-durability wiring", () => {
 
 		assert.doesNotMatch(result, /<name>using-superpowers<\/name>/);
 		assert.match(result, /<name>brainstorming<\/name>/);
+	});
+
+	void it("hides using-superpowers when Bash is the only skill file reader", async () => {
+		const { mock } = await loadExtensionWithBrainstormConfig(tempDirs, { superagents: {} });
+		const skills = [
+			{
+				name: "using-superpowers",
+				description: "Bootstrap Superpowers",
+				filePath: "/skills/using-superpowers/SKILL.md",
+				baseDir: "/skills/using-superpowers",
+				sourceInfo: { source: "test", scope: "user" },
+				disableModelInvocation: false,
+			},
+		];
+		const bashSkillPrompt = formatSkillsForPrompt(skills as never).replace("Use the read tool to load a skill's file", "Use bash to load a skill's file");
+		const result = applyBeforeAgentStartHandlers(mock.lifecycle, `Base prompt${bashSkillPrompt}`, skills, ["bash"]);
+
+		assert.doesNotMatch(result, /<name>using-superpowers<\/name>/);
 	});
 
 	void it("replaces an upstream Superpowers bootstrap with an opt-in guard", async () => {

@@ -2,7 +2,7 @@
 
 Skills are specialized instructions loaded from `SKILL.md` files and injected into the agent's system prompt.
 
-This reference targets Pi `^0.84.1` and Superpowers `v6.2+`.
+This reference targets Pi `^0.85.1` and Superpowers `v6.2+`.
 
 Maintenance note: skill discovery helpers are exercised through dynamic tests and plugin entrypoints. `.fallowrc.json` documents the small export surface that remains intentionally available for those dynamic paths.
 

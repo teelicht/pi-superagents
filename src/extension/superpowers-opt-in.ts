@@ -92,13 +92,24 @@ function buildOptInGuardMessage() {
  * @param getConfig Live effective-config accessor.
  */
 export function registerSuperpowersOptInGuard(pi: ExtensionAPI, getConfig: () => ExtensionConfig): void {
+	// Mirrors Pi's skill-prompt rule: the first of read/bash present in the
+	// active tools becomes the file-reading tool the prompt references.
+	const resolveSkillFileTool = (selectedTools: string[]): "bash" | "read" => (selectedTools.includes("read") ? "read" : "bash");
+
 	pi.on("before_agent_start", (event) => {
 		if (!shouldMakeSuperpowersSkillsOptInOnly(getConfig())) return;
 		const skills = event.systemPromptOptions?.skills;
 		if (!Array.isArray(skills)) return;
 
-		const currentSkillsPrompt = formatSkillsForPrompt(skills);
-		const filteredSkillsPrompt = formatSkillsForPrompt(skills.map((skill) => (skill.name === "using-superpowers" ? { ...skill, disableModelInvocation: true } : skill)));
+		// Pi renders the skills prompt with "bash" instead of "read" when bash is
+		// the only file-reading tool (Pi 0.85+). Rebuild with the same tool so the
+		// prompt comparison below matches what the model actually sees.
+		const fileTool = resolveSkillFileTool(event.systemPromptOptions?.selectedTools ?? ["read", "bash"]);
+		const currentSkillsPrompt = formatSkillsForPrompt(skills, fileTool);
+		const filteredSkillsPrompt = formatSkillsForPrompt(
+			skills.map((skill) => (skill.name === "using-superpowers" ? { ...skill, disableModelInvocation: true } : skill)),
+			fileTool,
+		);
 		if (!currentSkillsPrompt || currentSkillsPrompt === filteredSkillsPrompt || !event.systemPrompt.includes(currentSkillsPrompt)) return;
 		return { systemPrompt: event.systemPrompt.replace(currentSkillsPrompt, filteredSkillsPrompt) };
 	});
