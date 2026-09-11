@@ -65,12 +65,12 @@ The repository includes `.fallowrc.json` for `pnpm exec fallow`. It keeps dead-c
 
 Slash commands are registered from interactive entrypoint agent frontmatter, not generated from `config.json`. The bundled defaults include behavior flags for four built-in commands:
 
-| Command | Policy Settings |
-|---|---|
-| `sp-implement` | `taskScheduling: "sequential"`, `reviewCadence: "per-task"`, `useSubagents: true`, `useTestDrivenDevelopment: true`, `useBranches: false`, `worktrees: { enabled: false }` |
-| `sp-implement-parallel` | `taskScheduling: "parallel"`, `reviewCadence: "per-task"`, `useSubagents: true`, `useTestDrivenDevelopment: true`, `useBranches: false`, `worktrees: { enabled: true }` |
-| `sp-brainstorm` | `usePlannotator: true` |
-| `sp-plan` | `usePlannotator: true` |
+| Command | Description | Policy Settings |
+|---|---|---|
+| `sp-implement` | Run an implementation task sequentially through the Superpowers flow | `taskScheduling: "sequential"`, `reviewCadence: "per-task"`, `useSubagents: true`, `useTestDrivenDevelopment: true`, `useBranches: false`, `worktrees: { enabled: false }` |
+| `sp-implement-parallel` | Run dependency-ready implementation Tasks in isolated parallel worktrees | `taskScheduling: "parallel"`, `reviewCadence: "per-task"`, `useSubagents: true`, `useTestDrivenDevelopment: true`, `useBranches: false`, `worktrees: { enabled: true }` |
+| `sp-brainstorm` | Brainstorm a task and save a spec, optionally review it with Plannotator | `usePlannotator: true` |
+| `sp-plan` | Plan a task with optional Plannotator plan review | `usePlannotator: true` |
 
 Each built-in command has a corresponding bundled interactive entrypoint agent file, including `agents/sp-implement.md` and `agents/sp-implement-parallel.md`. The entrypoint agent file provides command metadata (name, description, command name, entry skill) and root lifecycle skills. The command preset in `config.json` only controls runtime behavior flags.
 
