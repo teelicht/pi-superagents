@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Fixed Superpowers skills installed as git packages (`pi install git:github.com/obra/superpowers`) failing to resolve entry skills such as `using-superpowers`, because the git-install directory was missing from the skill discovery paths; discovery now ignores symlinks whose targets leave the git-install root.
+
 ## [1.14.2] - 2026-09-09
 
 - Updated the Pi compatibility target to `^0.85.1`

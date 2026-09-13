@@ -10,11 +10,15 @@ Maintenance note: skill discovery helpers are exercised through dynamic tests an
 
 - **Project, only when Pi project trust is active:** `.pi/skills/{name}/SKILL.md` and `.agents/skills/{name}/SKILL.md`
 - **Project packages, only when Pi project trust is active:** `.pi/npm/node_modules/*` via `package.json -> pi.skills`
+- **Project git packages, only when Pi project trust is active:** `.pi/git/<host>/<path segments>` via `package.json -> pi.skills`
 - **Project settings, only when Pi project trust is active:** `.pi/settings.json -> skills`
 - **User:** `~/.pi/agent/skills/{name}/SKILL.md` and `~/.agents/skills/{name}/SKILL.md`
 - **User packages:** `~/.pi/agent/npm/node_modules/*` via `package.json -> pi.skills`
+- **User git packages:** `~/.pi/agent/git/<host>/<path segments>` via `package.json -> pi.skills`
 - **User settings:** `~/.pi/agent/settings.json -> skills`
 - **Global packages:** global npm packages with `package.json -> pi.skills`
+
+Git packages are resolved through their `pi.skills` metadata only. Repo roots are located by their `.git` entry (a directory for clones, a file for worktrees), so multi-segment paths such as GitLab subgroups resolve like plain `owner/repo` ones. Discovery remains inside each canonical git-install root and ignores symlinks whose targets leave it. The git-install root itself is never passed to Pi's skill loader, because Pi writes a `.gitignore` containing `*` there; packages without a `pi.skills` declaration contribute no skills, matching the npm package collector. Temporary git installs under `<agentDir>/tmp/extensions/git-*` are not scanned.
 
 ## Usage
 
