@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Updated Biome and its configuration schema to 2.5.13 to prevent VS Code language-server startup conflicts with stale versioned daemons.
+
 ## [1.14.3] - 2026-09-14
 
 - Fixed Superpowers skills installed as git packages (`pi install git:github.com/obra/superpowers`) failing to resolve entry skills such as `using-superpowers`; contributed by [Go.YAMADA (@usaturn)](https://github.com/usaturn) in [#72](https://github.com/teelicht/pi-superagents/pull/72).
