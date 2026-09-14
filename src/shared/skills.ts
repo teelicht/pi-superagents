@@ -17,8 +17,9 @@ export type SkillSource = "project" | "user" | "project-package" | "user-package
  * Options controlling project-local skill input discovery.
  *
  * When `includeProject` is false, project-local `.pi/skills`, `.agents/skills`,
- * `.pi/settings.json` skill entries, and `.pi/npm/node_modules/*` package skills
- * are excluded. User/global skill paths remain available in both modes.
+ * `.pi/settings.json` skill entries, `.pi/npm/node_modules/*` package skills,
+ * and `.pi/git` git package skills are excluded. User/global skill paths
+ * remain available in both modes.
  */
 export interface SkillDiscoveryOptions {
 	/** Whether project-local .pi/.agents skill inputs should be loaded. Defaults to true for compatibility. */
@@ -244,6 +245,148 @@ function dedupeSkillPaths(skillPaths: string[]): string[] {
 	return [...new Set(skillPaths)];
 }
 
+/**
+ * Discover package roots in one or more Pi git-install roots.
+ *
+ * Pi clones git packages beneath `<root>/<host>/<remote path segments>`; the
+ * number of path segments varies (GitHub paths have two, GitLab subgroups and
+ * generic git URL pathnames can have more), so package roots are located by
+ * their `.git` entry (a directory for clones, a file for worktrees) rather
+ * than a fixed depth. The scan stops at the first level containing a `.git`
+ * entry and never descends into repository content. Dot-prefixed path segments
+ * below the host are kept — Pi's git-source validation accepts them — so
+ * repositories named like `.dotfiles` remain discoverable; dot-prefixed host
+ * directories are skipped. Symlinks whose targets leave their git-install root
+ * are skipped. Cycles through in-root symlinked directories are prevented by
+ * resolving each visited directory to its real path and skipping real paths
+ * seen before; the single visited set is shared across all roots in one call.
+ * Temporary git installations
+ * (`<agentDir>/tmp/extensions/git-*`) are out of scope, mirroring the npm
+ * collector's coverage of durable installs only.
+ *
+ * @param roots Git-install roots such as `<agentDir>/git` or `<cwd>/.pi/git`.
+ * @returns Repo-level package root directories.
+ */
+function collectGitPackageRoots(roots: string[]): string[] {
+	const packages: string[] = [];
+	const visited = new Set<string>();
+	for (const root of roots) {
+		const realRoot = resolveRealDirectory(root);
+		if (realRoot === undefined) continue;
+		for (const host of readPackageDirectoryEntries(root)) {
+			collectNestedGitPackageRoots(path.join(root, host.name), realRoot, visited, packages);
+		}
+	}
+	return packages;
+}
+
+/**
+ * Walk one host directory in search of git package roots.
+ *
+ * A directory containing a `.git` entry is a package root and is not
+ * descended into. Symlink cycles cannot cause unbounded recursion: each
+ * directory is resolved to its real path and real paths already in `visited`
+ * are skipped. Symlinks resolving outside `realRoot` are also skipped. Reported
+ * package roots keep their logical (`dir`) path; the real path is used for
+ * boundary and cycle checks only.
+ *
+ * @param dir Current scan directory (logical path; symlinks not resolved for reporting).
+ * @param realRoot Canonical git-install root that bounds the scan.
+ * @param visited Real paths already traversed in this `collectGitPackageRoots` call.
+ * @param packages Accumulator for discovered package roots.
+ */
+function collectNestedGitPackageRoots(dir: string, realRoot: string, visited: Set<string>, packages: string[]): void {
+	const realDir = resolveRealDirectory(dir);
+	if (realDir === undefined || !isWithinPath(realDir, realRoot) || visited.has(realDir)) return;
+	visited.add(realDir);
+
+	if (fs.existsSync(path.join(dir, ".git"))) {
+		packages.push(dir);
+		return;
+	}
+	for (const entry of readGitPackageDirectoryEntries(dir)) {
+		collectNestedGitPackageRoots(path.join(dir, entry.name), realRoot, visited, packages);
+	}
+}
+
+/**
+ * Resolve a scan directory to its real path when it is a directory.
+ *
+ * @param dir Scan directory (logical path, possibly through symlinks).
+ * @returns Real path of the directory, or `undefined` for broken symlinks,
+ * missing paths, and non-directories (such as a symlink to a file).
+ */
+function resolveRealDirectory(dir: string): string | undefined {
+	try {
+		const real = fs.realpathSync(dir);
+		return fs.statSync(real).isDirectory() ? real : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Read repo-candidate entries from one directory.
+ *
+ * Unlike `readPackageDirectoryEntries` this keeps dot-prefixed names, since
+ * Pi accepts them as git path segments; only the `.git` entry itself is
+ * skipped.
+ *
+ * @param dir Directory to scan.
+ * @returns Directory or symlink entries, excluding the `.git` entry.
+ */
+function readGitPackageDirectoryEntries(dir: string): fs.Dirent[] {
+	if (!fs.existsSync(dir)) return [];
+	try {
+		return fs
+			.readdirSync(dir, { withFileTypes: true })
+			.filter((entry) => entry.name !== ".git")
+			.filter((entry) => entry.isDirectory() || entry.isSymbolicLink());
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * Resolve skill paths declared by packages under Pi git-install roots.
+ *
+ * @param roots Git-install roots such as `<agentDir>/git` or `<cwd>/.pi/git`.
+ * @returns De-duplicated absolute skill paths declared under `pi.skills`.
+ */
+function collectGitPackageSkillPathsFromRoots(roots: string[]): string[] {
+	const packageRoots = collectGitPackageRoots(roots);
+	const skillPaths = packageRoots.flatMap(resolvePackageSkillMetadata);
+	return dedupeSkillPaths(skillPaths);
+}
+
+/**
+ * Collect skill directories exposed by git-installed Pi packages.
+ *
+ * The git-install root itself must never be passed to the Pi skill loader:
+ * Pi writes a `.gitignore` containing `*` into that directory, so the loader
+ * would hide every skill beneath it. Skills are therefore resolved through
+ * each package's `pi.skills` metadata, matching the npm package collector.
+ *
+ * @param cwd Project working directory.
+ * @param options Discovery options (e.g. project trust flag).
+ * @returns De-duplicated absolute skill paths from git-installed packages.
+ */
+function collectGitPackageSkillPaths(cwd: string, options: SkillDiscoveryOptions = {}): string[] {
+	const includeProject = options.includeProject ?? true;
+	const roots = [...(includeProject ? [path.join(cwd, CONFIG_DIR, "git")] : []), path.join(AGENT_DIR, "git")];
+	return collectGitPackageSkillPathsFromRoots(roots);
+}
+
+/**
+ * Test-only helper that exposes git package skill paths for given install roots.
+ *
+ * @param gitRoots Explicit git-install roots such as `<agentDir>/git`.
+ * @returns De-duplicated skill paths declared by git-installed packages.
+ */
+export function buildGitPackageSkillPathsForTest(gitRoots: string[]): string[] {
+	return collectGitPackageSkillPathsFromRoots(gitRoots);
+}
+
 function collectSettingsSkillPaths(cwd: string, options: SkillDiscoveryOptions = {}): string[] {
 	const includeProject = options.includeProject ?? true;
 	const results: string[] = [];
@@ -284,8 +427,9 @@ function buildSkillPaths(cwd: string, options: SkillDiscoveryOptions = {}): stri
 		path.join(os.homedir(), ".agents", "skills"),
 	];
 	const packagePaths = collectPackageSkillPaths(cwd, options);
+	const gitPackagePaths = collectGitPackageSkillPaths(cwd, options);
 	const settingsPaths = collectSettingsSkillPaths(cwd, options);
-	return [...new Set([...defaultSkillPaths, ...packagePaths, ...settingsPaths])];
+	return [...new Set([...defaultSkillPaths, ...packagePaths, ...gitPackagePaths, ...settingsPaths])];
 }
 
 /**

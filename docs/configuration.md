@@ -82,7 +82,7 @@ On Pi 0.79+, `pi-superagents` mirrors Pi's project-trust decision through `ctx.i
 
 - **Project-local agents** (`.agents/*.md`, `.pi/agents/*.md`) used for runtime subagent delegation.
 - **Project skills** — see the [Skills Reference](skills.md#skills-reference) for the full project skill path policy.
-- **Project skill packages** (`.pi/npm/node_modules/*` via `package.json -> pi.skills`).
+- **Project skill packages** (`.pi/npm/node_modules/*` and `.pi/git/<host>/<path segments>`, both via `package.json -> pi.skills`). See the [Skills Reference](skills.md#skills-reference) for the git package discovery rules.
 - **Project settings skill entries** (`.pi/settings.json -> skills`).
 - **Project agent frontmatter `extensions:`** entries. Untrusted project agents do not contribute to child Pi `--extension` flags.
 
