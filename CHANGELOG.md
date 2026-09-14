@@ -2,7 +2,9 @@
 
 ## [Unreleased]
 
-- Fixed Superpowers skills installed as git packages (`pi install git:github.com/obra/superpowers`) failing to resolve entry skills such as `using-superpowers`, because the git-install directory was missing from the skill discovery paths; discovery now ignores symlinks whose targets leave the git-install root.
+## [1.14.3] - 2026-09-14
+
+- Fixed Superpowers skills installed as git packages (`pi install git:github.com/obra/superpowers`) failing to resolve entry skills such as `using-superpowers`; contributed by [Go.YAMADA (@usaturn)](https://github.com/usaturn) in [#72](https://github.com/teelicht/pi-superagents/pull/72).
 
 ## [1.14.2] - 2026-09-09
 
